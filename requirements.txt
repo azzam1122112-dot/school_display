@@ -1,0 +1,13 @@
+asgiref==3.10.0
+dj-database-url==3.0.1
+Django==5.1.2
+djangorestframework==3.16.1
+hijri-converter==2.3.2.post1
+hijridate==2.3.0
+psycopg==3.2.11
+psycopg-binary==3.2.11
+python-dotenv==1.1.1
+sqlparse==0.5.3
+typing_extensions==4.15.0
+tzdata==2025.2
+whitenoise==6.11.0

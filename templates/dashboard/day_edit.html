@@ -1,0 +1,405 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}تحرير اليوم{% endblock %}
+{% block content %}
+
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+  <h2 class="text-2xl font-extrabold">
+    تحرير: <span class="text-blue-700">{{ day.day_name }}</span>
+  </h2>
+  <div class="flex items-center gap-2">
+    <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 text-sm">
+      عدد الحصص: <strong>{{ day.periods_count }}</strong>
+    </span>
+  </div>
+</div>
+
+<form method="post" action="{% url 'dashboard:day_autofill' day.weekday %}"
+      class="bg-white rounded-2xl p-5 ring-1 ring-slate-200 space-y-3 mb-6" id="autofillForm">
+  {% csrf_token %}
+  <div class="flex items-center justify-between">
+    <h3 class="font-bold">التعبئة التلقائية لأوقات اليوم</h3>
+    <span class="text-xs text-slate-500">سيتم استبدال الحصص والفسح الحالية لهذا اليوم</span>
+  </div>
+
+  <div class="grid md:grid-cols-6 gap-3 items-end">
+    <div>
+      <label class="block text-sm mb-1">بداية اليوم</label>
+      <input type="time" name="start_time" value="07:00" step="60"
+             class="w-full px-3 py-2 rounded-lg ring-1 ring-slate-300">
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1">طول الحصة (دقيقة)</label>
+      <input type="number" name="period_minutes" value="45" min="0"
+             class="w-full px-3 py-2 rounded-lg ring-1 ring-slate-300">
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1">فاصل بين الحصص (دقيقة)</label>
+      <input type="number" name="gap_minutes" value="0" min="0"
+             class="w-full px-3 py-2 rounded-lg ring-1 ring-slate-300">
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1">الفسحة بعد الحصة رقم</label>
+      <input type="number" name="break_after" value="4" min="0"
+             class="w-full px-3 py-2 rounded-lg ring-1 ring-slate-300">
+      <p class="text-xs text-slate-500 mt-1">ضع 0 لإلغاء الفسحة.</p>
+    </div>
+
+    <div>
+      <label class="block text-sm mb-1">مدة الفسحة (دقيقة)</label>
+      <input type="number" name="break_minutes" value="20" min="0"
+             class="w-full px-3 py-2 rounded-lg ring-1 ring-slate-300">
+    </div>
+  </div>
+
+  <div class="pt-1">
+    <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700">
+      تعبئة تلقائية الآن
+    </button>
+  </div>
+
+  <p class="text-xs text-slate-500">
+    الوقت بالدقائق فقط. التلامس (نهاية الحصة = بداية التالية) مسموح.
+  </p>
+</form>
+
+<form method="post" class="space-y-6" id="dayForm">
+  {% csrf_token %}
+
+  <!-- إعداد اليوم مع زر حفظ ملاصق -->
+  <div class="bg-white rounded-2xl p-5 ring-1 ring-slate-200">
+    <h3 class="font-bold mb-2">إعداد اليوم</h3>
+    <div class="flex items-end gap-2 max-w-md">
+      <div class="grow">
+        {{ form.periods_count.label_tag }} {{ form.periods_count }}
+        {% if form.periods_count.errors %}
+          <p class="text-xs text-red-600 mt-1">{{ form.periods_count.errors|join:", " }}</p>
+        {% endif %}
+      </div>
+      <button type="submit" id="saveCountBtn"
+              class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 hidden">
+        حفظ عدد الحصص
+      </button>
+    </div>
+    <p class="text-xs text-slate-500 mt-2">
+      عند تغيير عدد الحصص اضغط زر “حفظ عدد الحصص” لحفظ القيمة سريعًا.
+    </p>
+  </div>
+
+  <!-- الحصص -->
+  <div class="bg-white rounded-2xl p-5 ring-1 ring-slate-200">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h3 class="font-bold">الحصص</h3>
+      <div class="flex items-center gap-2">
+        <button type="button" id="autoIndex"
+          class="px-3 py-1 rounded-lg bg-slate-700 text-white text-sm font-bold hover:bg-slate-800">
+          ترقيم تلقائي للحصص
+        </button>
+        <button type="button" id="addPeriod"
+          class="px-3 py-1 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            إضافة حصة
+          </span>
+        </button>
+      </div>
+    </div>
+
+    {{ p_formset.management_form }}
+    {% if p_formset.non_form_errors %}
+      <div class="text-sm text-red-600 mb-2">{{ p_formset.non_form_errors|join:" | " }}</div>
+    {% endif %}
+
+    <div id="periods" class="space-y-2">
+      {% for f in p_formset %}
+        <div class="grid grid-cols-12 gap-2 items-end border rounded-lg px-3 py-2 period-row hover:bg-slate-50 transition" data-row-kind="p">
+          {{ f.id }}
+          <div class="col-span-12 md:col-span-2">
+            <label class="block text-xs text-slate-500">رقم الحصّة</label>{{ f.index }}
+            {% if f.index.errors %}<p class="text-xs text-red-600 mt-1">{{ f.index.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="col-span-6 md:col-span-5">
+            <label class="block text-xs text-slate-500">يبدأ</label>{{ f.starts_at }}
+            {% if f.starts_at.errors %}<p class="text-xs text-red-600 mt-1">{{ f.starts_at.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="col-span-6 md:col-span-5">
+            <label class="block text-xs text-slate-500">ينتهي</label>{{ f.ends_at }}
+            {% if f.ends_at.errors %}<p class="text-xs text-red-600 mt-1">{{ f.ends_at.errors|join:", " }}</p>{% endif %}
+          </div>
+
+          <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+            <button type="button" class="row-delete px-2 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                    data-target="p">
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M9 6v12m6-12v12M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                حذف
+              </span>
+            </button>
+            <button type="button" class="row-undo hidden px-2 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600"
+                    data-target="p">
+              تراجع
+            </button>
+            <span class="hidden">{{ f.DELETE }}</span>
+          </div>
+
+          {% if f.non_field_errors %}
+            <div class="col-span-12 text-xs text-red-600">{{ f.non_field_errors|join:" | " }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <template id="period-empty">
+      <div class="grid grid-cols-12 gap-2 items-end border rounded-lg px-3 py-2 period-row hover:bg-slate-50 transition" data-row-kind="p">
+        __ID__
+        <div class="col-span-12 md:col-span-2">
+          <label class="block text-xs text-slate-500">رقم الحصّة</label>__INDEX__
+        </div>
+        <div class="col-span-6 md:col-span-5">
+          <label class="block text-xs text-slate-500">يبدأ</label>__STARTS__
+        </div>
+        <div class="col-span-6 md:col-span-5">
+          <label class="block text-xs text-slate-500">ينتهي</label>__ENDS__
+        </div>
+        <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+          <button type="button" class="row-delete px-2 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                  data-target="p">
+            <span class="inline-flex items-center gap-1">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M9 6v12m6-12v12M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              حذف
+            </span>
+          </button>
+          <button type="button" class="row-undo hidden px-2 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600"
+                  data-target="p">تراجع</button>
+          __DELETE__
+        </div>
+      </div>
+    </template>
+
+    <div id="period-empty-form" class="hidden">
+      {{ p_formset.empty_form.id }}
+      {{ p_formset.empty_form.index }}
+      {{ p_formset.empty_form.starts_at }}
+      {{ p_formset.empty_form.ends_at }}
+      {{ p_formset.empty_form.DELETE }}
+    </div>
+
+    <p class="text-xs text-slate-500 mt-2">الوقت بالدقائق فقط، والتلامس مسموح.</p>
+  </div>
+
+  <!-- الفسح -->
+  <div class="bg-white rounded-2xl p-5 ring-1 ring-slate-200">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-bold">الفسح</h3>
+      <button type="button" id="addBreak"
+        class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700">
+        <span class="inline-flex items-center gap-1">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          إضافة فسحة
+        </span>
+      </button>
+    </div>
+
+    {{ b_formset.management_form }}
+    {% if b_formset.non_form_errors %}
+      <div class="text-sm text-red-600 mb-2">{{ b_formset.non_form_errors|join:" | " }}</div>
+    {% endif %}
+
+    <div id="breaks" class="space-y-2">
+      {% for f in b_formset %}
+        <div class="grid grid-cols-12 gap-2 items-end border rounded-lg px-3 py-2 break-row hover:bg-slate-50 transition" data-row-kind="b">
+          {{ f.id }}
+          <div class="col-span-12 md:col-span-3">
+            <label class="block text-xs text-slate-500">الاسم</label>{{ f.label }}
+            {% if f.label.errors %}<p class="text-xs text-red-600 mt-1">{{ f.label.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="col-span-6 md:col-span-5">
+            <label class="block text-xs text-slate-500">يبدأ</label>{{ f.starts_at }}
+            {% if f.starts_at.errors %}<p class="text-xs text-red-600 mt-1">{{ f.starts_at.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="col-span-6 md:col-span-4">
+            <label class="block text-xs text-slate-500">المدة (دقائق)</label>{{ f.duration_min }}
+            {% if f.duration_min.errors %}<p class="text-xs text-red-600 mt-1">{{ f.duration_min.errors|join:", " }}</p>{% endif %}
+          </div>
+
+          <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+            <button type="button" class="row-delete px-2 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                    data-target="b">
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M9 6v12m6-12v12M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                حذف
+              </span>
+            </button>
+            <button type="button" class="row-undo hidden px-2 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600"
+                    data-target="b">
+              تراجع
+            </button>
+            <span class="hidden">{{ f.DELETE }}</span>
+          </div>
+
+          {% if f.non_field_errors %}
+            <div class="col-span-12 text-xs text-red-600">{{ f.non_field_errors|join:" | " }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <template id="break-empty">
+      <div class="grid grid-cols-12 gap-2 items-end border rounded-lg px-3 py-2 break-row hover:bg-slate-50 transition" data-row-kind="b">
+        __BID__
+        <div class="col-span-12 md:col-span-3">
+          <label class="block text-xs text-slate-500">الاسم</label>__LABEL__
+        </div>
+        <div class="col-span-6 md:col-span-5">
+          <label class="block text-xs text-slate-500">يبدأ</label>__BSTART__
+        </div>
+        <div class="col-span-6 md:col-span-4">
+          <label class="block text-xs text-slate-500">المدة (دقائق)</label>__BDUR__
+        </div>
+        <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+          <button type="button" class="row-delete px-2 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700"
+                  data-target="b">
+            <span class="inline-flex items-center gap-1">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M9 6v12m6-12v12M5 6ل1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2ل1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              حذف
+            </span>
+          </button>
+          <button type="button" class="row-undo hidden px-2 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600"
+                  data-target="ب">تراجع</button>
+          __BDELETE__
+        </div>
+      </div>
+    </template>
+
+    <div id="break-empty-form" class="hidden">
+      {{ b_formset.empty_form.id }}
+      {{ b_formset.empty_form.label }}
+      {{ b_formset.empty_form.starts_at }}
+      {{ b_formset.empty_form.duration_min }}
+      {{ b_formset.empty_form.DELETE }}
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <button class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700">حفظ</button>
+    <a class="px-4 py-2 rounded-lg ring-1 ring-slate-300 bg-white" href="{% url 'dashboard:days_list' %}">رجوع</a>
+  </div>
+</form>
+
+<script>
+  // فعّل زر حفظ عدد الحصص عند التغيير
+  (function(){
+    const cnt = document.getElementById('{{ form.periods_count.auto_id }}');
+    const btn = document.getElementById('saveCountBtn');
+    if (cnt && btn) {
+      cnt.addEventListener('input', () => btn.classList.remove('hidden'));
+      cnt.addEventListener('change', () => btn.classList.remove('hidden'));
+    }
+  })();
+
+  // استخراج عنصر بحسب name داخل HTML نصّي
+  function extractByName(html, fullName){
+    const re = new RegExp(`<[^>]+name="${fullName.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}"[^>]*>`, 'g');
+    const m = html.match(re);
+    return m ? m[0] : '';
+  }
+
+  // إضافة صف جديد من formset
+  function addForm(prefix, containerId, tmplId, emptyFormId) {
+    const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const idx = parseInt(total.value, 10);
+    const container = document.getElementById(containerId);
+
+    const holder = document.getElementById(emptyFormId).cloneNode(true);
+    holder.classList.remove("hidden");
+    let html = holder.innerHTML.replaceAll(/__prefix__/g, idx);
+
+    const tpl = document.getElementById(tmplId).innerHTML;
+
+    if(prefix === 'p'){
+      const idField   = extractByName(html, `p-${idx}-id`);
+      const indexFld  = extractByName(html, `p-${idx}-index`);
+      const startFld  = extractByName(html, `p-${idx}-starts_at`);
+      const endFld    = extractByName(html, `p-${idx}-ends_at`);
+      const delFld    = extractByName(html, `p-${idx}-DELETE`);
+      const row = tpl
+        .replace('__ID__', idField)
+        .replace('__INDEX__', indexFld)
+        .replace('__STARTS__', startFld)
+        .replace('__ENDS__', endFld)
+        .replace('__DELETE__', delFld);
+      container.insertAdjacentHTML('beforeend', row);
+    } else {
+      const idField   = extractByName(html, `b-${idx}-id`);
+      const labelFld  = extractByName(html, `b-${idx}-label`);
+      const startFld  = extractByName(html, `b-${idx}-starts_at`);
+      const durFld    = extractByName(html, `b-${idx}-duration_min`);
+      const delFld    = extractByName(html, `b-${idx}-DELETE`);
+      const row = tpl
+        .replace('__BID__', idField)
+        .replace('__LABEL__', labelFld)
+        .replace('__BSTART__', startFld)
+        .replace('__BDUR__', durFld)
+        .replace('__BDELETE__', delFld);
+      container.insertAdjacentHTML('beforeend', row);
+    }
+
+    total.value = idx + 1;
+  }
+
+  document.getElementById('addPeriod').addEventListener('click', function(){
+    addForm('p', 'periods', 'period-empty', 'period-empty-form');
+  });
+  document.getElementById('addBreak').addEventListener('click', function(){
+    addForm('b', 'breaks', 'break-empty', 'break-empty-form');
+  });
+
+  // زر حذف/تراجع (Soft Delete)
+  function bindRowDelete(container){
+    container.addEventListener('click', function(e){
+      const btn = e.target.closest('.row-delete, .row-undo');
+      if(!btn) return;
+      const row = btn.closest('[data-row-kind]');
+      const isPeriod = row.dataset.rowKind === 'p';
+
+      const delInput = row.querySelector(`input[name^="${isPeriod ? 'p' : 'b'}-"][name$="-DELETE"]`);
+      const delBtn = row.querySelector('.row-delete');
+      const undoBtn = row.querySelector('.row-undo');
+
+      if(btn.classList.contains('row-delete')){
+        delInput.checked = true;
+        row.classList.add('opacity-50', 'ring-2', 'ring-rose-200');
+        row.querySelectorAll('input,select,textarea').forEach(i => {
+          if(i !== delInput) i.setAttribute('disabled','disabled');
+        });
+        delBtn.classList.add('hidden');
+        undoBtn.classList.remove('hidden');
+      } else {
+        delInput.checked = false;
+        row.classList.remove('opacity-50', 'ring-2', 'ring-rose-200');
+        row.querySelectorAll('input,select,textarea').forEach(i => {
+          i.removeAttribute('disabled');
+        });
+        delBtn.classList.remove('hidden');
+        undoBtn.classList.add('hidden');
+      }
+    });
+  }
+  bindRowDelete(document);
+
+  // ترقيم تلقائي للحصص (يتجاهل المحذوف)
+  document.getElementById('autoIndex').addEventListener('click', function(){
+    const rows = document.querySelectorAll('#periods .period-row');
+    let i = 1;
+    rows.forEach(row => {
+      const delInput = row.querySelector('input[name^="p-"][name$="-DELETE"]');
+      if (delInput && delInput.checked) return;
+      const idxInput = row.querySelector('input[name^="p-"][name$="-index"]');
+      if (idxInput) idxInput.value = i++;
+    });
+  });
+</script>
+
+{% endblock %}

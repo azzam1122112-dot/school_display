@@ -1,0 +1,294 @@
+{% extends "dashboard/_base.html" %}
+{% load static %}
+
+{% block title %}قسم التميّز{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- رأس الصفحة -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">قسم التميّز</h1>
+                <p class="text-slate-600">إدارة بطاقات التميّز للمعلمين المتميزين وعرضها على شاشات العرض</p>
+            </div>
+            <a href="{% url 'dashboard:exc_create' %}" 
+               class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                <span>إضافة بطاقة تميّز</span>
+            </a>
+        </div>
+
+        <!-- شريط الإحصائيات -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-amber-100 text-sm">إجمالي البطاقات</p>
+                        <p class="text-2xl font-bold">{{ page.paginator.count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-emerald-100 text-sm">بطاقات نشطة</p>
+                        <p class="text-2xl font-bold">{{ active_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-purple-100 text-sm">بطاقات منتهية</p>
+                        <p class="text-2xl font-bold">{{ expired_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-rose-100 text-sm">أعلى أولوية</p>
+                        <p class="text-2xl font-bold">{{ max_priority }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- شبكة بطاقات التميّز -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for e in page.object_list %}
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <!-- شريط الأولوية -->
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-white text-sm font-semibold">بطاقة تميّز</span>
+                        <span class="bg-white/20 px-2 py-1 rounded-full text-xs text-white font-medium">
+                            الأولوية: {{ e.priority }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- محتوى البطاقة -->
+                <div class="p-5">
+                    <!-- معلومات المعلم -->
+                    <div class="flex items-center space-x-4 space-x-reverse mb-4">
+                        {% with src=e.image_src %}
+                            {% if src %}
+                                <div class="relative">
+                                    <img src="{{ src }}" class="h-16 w-16 rounded-full ring-2 ring-amber-200 object-cover" alt="{{ e.teacher_name }}"
+                                         onerror="this.style.display='none'; this.closest('.flex').querySelector('[data-fallback]').style.display='grid';">
+                                    <div class="absolute -inset-1 bg-amber-400 rounded-full blur-sm opacity-20 -z-10"></div>
+                                </div>
+                            {% else %}
+                                <!-- fallback below -->
+                            {% endif %}
+                        {% endwith %}
+
+                        <div data-fallback class="h-16 w-16 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 grid place-items-center text-white text-2xl ring-2 ring-amber-200" style="display:{% if e.image_src %}none{% else %}grid{% endif %};">
+                            🏅
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-slate-800">{{ e.teacher_name }}</h3>
+                            <p class="text-slate-600 text-sm mt-1">{{ e.reason }}</p>
+                        </div>
+                    </div>
+
+                    <!-- معلومات التوقيت -->
+                    <div class="space-y-2 text-sm text-slate-600 mb-4">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center space-x-1 space-x-reverse">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span>يبدأ:</span>
+                            </span>
+                            <span class="font-semibold text-slate-800">{{ e.start_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        {% if e.end_at %}
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center space-x-1 space-x-reverse">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>ينتهي:</span>
+                            </span>
+                            <span class="font-semibold text-slate-800">{{ e.end_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- حالة البطاقة -->
+                    <div class="mb-4">
+                        {% if e.active_now %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full ml-1"></span>
+                                نشطة
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                                <span class="w-2 h-2 bg-slate-500 rounded-full ml-1"></span>
+                                منتهية
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- أزرار الإجراءات -->
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+                        <a href="{% url 'dashboard:exc_edit' e.pk %}" 
+                           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            <span>تعديل</span>
+                        </a>
+                        
+                        <form method="post" action="{% url 'dashboard:exc_delete' e.pk %}" class="inline" onsubmit="return confirmDelete(this);">
+                            {% csrf_token %}
+                            <button type="submit" 
+                                    class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                <span>حذف</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <!-- حالة عدم وجود بطاقات -->
+            <div class="col-span-full">
+                <div class="text-center bg-white rounded-2xl shadow-lg border border-slate-200 p-12">
+                    <div class="w-24 h-24 mx-auto mb-6 bg-amber-100 rounded-full flex items-center justify-center">
+                        <svg class="w-12 h-12 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-700 mb-2">لا توجد بطاقات تميّز</h3>
+                    <p class="text-slate-500 mb-6">لم يتم إضافة أي بطاقات تميّز بعد</p>
+                    <a href="{% url 'dashboard:exc_create' %}" 
+                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-amber-500/25">
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        إضافة أول بطاقة تميّز
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- الترقيم -->
+    {% if page.paginator.num_pages > 1 %}
+    <div class="mt-8 flex items-center justify-between">
+        <div class="text-sm text-slate-600">
+            عرض <span class="font-semibold">{{ page.start_index }}-{{ page.end_index }}</span> من 
+            <span class="font-semibold">{{ page.paginator.count }}</span> بطاقة
+        </div>
+        <div class="flex items-center space-x-2 space-x-reverse">
+            {% if page.has_previous %}
+                <a href="?page={{ page.previous_page_number }}" 
+                   class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>السابق</span>
+                </a>
+            {% endif %}
+
+            <div class="flex items-center space-x-1 space-x-reverse">
+                {% for num in page.paginator.page_range %}
+                    {% if num == page.number %}
+                        <span class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl">{{ num }}</span>
+                    {% else %}
+                        <a href="?page={{ num }}" class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200">
+                            {{ num }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page.has_next %}
+                <a href="?page={{ page.next_page_number }}" 
+                   class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse">
+                    <span>التالي</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// تأكيد الحذف مع تفاصيل أكثر
+function confirmDelete(form) {
+    const teacherName = form.closest('.bg-white').querySelector('h3').textContent;
+    const reason = form.closest('.bg-white').querySelector('p').textContent;
+    
+    if (confirm(`هل أنت متأكد من أنك تريد حذف بطاقة التميّز للمعلم:\n\n"${teacherName}"\n${reason}\n\nهذا الإجراء لا يمكن التراجع عنه.`)) {
+        return true;
+    }
+    return false;
+}
+
+// تأثيرات تحميل البطاقات
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.bg-white.rounded-2xl');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = `opacity 0.6s ease, transform 0.6s ease`;
+        
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100 + (index * 100));
+    });
+});
+</script>
+
+<style>
+/* تأثيرات إضافية للبطاقات */
+.bg-white.rounded-2xl {
+    transition: all 0.3s ease;
+}
+.bg-white.rounded-2xl:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+/* تدرج لوني مختلف لكل بطاقة بناء على الأولوية */
+.bg-white.rounded-2xl:nth-child(3n+1) .bg-gradient-to-r { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.bg-white.rounded-2xl:nth-child(3n+2) .bg-gradient-to-r { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+.bg-white.rounded-2xl:nth-child(3n+3) .bg-gradient-to-r { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); }
+</style>
+{% endblock %}

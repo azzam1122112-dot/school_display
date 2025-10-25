@@ -1,0 +1,331 @@
+{% load static %}
+<!doctype html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{ school_name }} — لوحة العرض</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { cairo: ['Cairo','ui-sans-serif','system-ui'] },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html,body{height:100%;font-family:'Cairo',sans-serif}
+    :root{--edge:22px;--r:22px;--glass:rgba(255,255,255,.06)}
+    @media (min-width:1600px){:root{--edge:32px}}
+    .safe{padding:max(env(safe-area-inset-top),var(--edge)) max(env(safe-area-inset-right),var(--edge)) max(env(safe-area-inset-bottom),var(--edge)) max(env(safe-area-inset-left),var(--edge))}
+    .glass{backdrop-filter:saturate(140%) blur(10px);background:var(--glass)}
+    .tick{animation:fade 3s ease-in-out infinite}
+    @keyframes fade{0%,100%{opacity:.9}50%{opacity:1}}
+    .scrollbar-thin::-webkit-scrollbar{height:8px;width:8px}
+    .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9999px}
+    .snap-x{scroll-snap-type:x mandatory}
+    .snap-start{scroll-snap-align:start}
+    /* شرائح جدول اليوم الأفقية */
+    .mini-chip{display:inline-flex;flex-direction:column;gap:.15rem;padding:.55rem .7rem;border-radius:.9rem;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08)}
+    .mini-chip.now{background:rgba(255,255,255,.18)}
+    .mini-chip .t{font-size:.72rem;opacity:.9}
+    .mini-chip .v{font-weight:800;line-height:1.15;font-size:.95rem}
+    .mini-chip.break{background:rgba(16,185,129,.22);border-color:rgba(16,185,129,.35)}
+  </style>
+</head>
+<body class="min-h-full text-white safe" data-theme="{{ theme|default:'indigo' }}">
+  <!-- خلفية حسب الثيم -->
+  <div id="bg" class="fixed inset-0 -z-10"></div>
+  <script>
+    (function(){
+      const t=(document.body.dataset.theme||'indigo').toLowerCase();
+      const p={indigo:['#28328a','#6c8cff'],sky:['#0d3552','#52b6ff'],emerald:['#083b32','#45e0b5'],rose:['#4a0d2a','#ff6d9e'],amber:['#3b2b00','#ffb200'],slate:['#0b1023','#435a78']};
+      const [c1,c2]=(p[t]||p.indigo); const el=document.getElementById('bg');
+      el.style.background=`radial-gradient(1200px 600px at 85% 10%, ${c2}33, transparent 60%),radial-gradient(1000px 600px at 10% 80%, ${c1}66, transparent 60%),linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
+    })();
+  </script>
+
+  <div id="net" class="fixed top-3 left-3 z-50 hidden px-3 py-1 rounded-full text-sm bg-red-600/90">غير متصل</div>
+
+  <div class="mx-auto w-full max-w-[1920px] px-2 md:px-4">
+    <!-- الرأس -->
+    <header class="flex flex-wrap items-center gap-4">
+      {% if logo_url %}
+        <img src="{{ logo_url }}" alt="شعار" class="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1">
+      {% else %}
+        <div class="h-14 w-14 md:h-16 md:w-16 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10">🏫</div>
+      {% endif %}
+      <div class="flex-1 min-w-[40%]">
+        <h1 class="font-black drop-shadow-sm" style="font-size:clamp(24px,3.6vw,56px)">{{ school_name }}</h1>
+        <p id="dateLine" class="text-slate-200/90 text-sm md:text-base">—</p>
+      </div>
+      <div class="flex items-end gap-3">
+        <button id="modeBtn" class="text-xs md:text-sm px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/20 hover:bg-white/15 transition">تبديل نهاري/ليلي</button>
+        <div class="text-right">
+          <div id="clock" class="font-extrabold tabular-nums" style="font-size:clamp(20px,3vw,44px)">--:--:--</div>
+          <div id="dayState" class="text-slate-200/80 text-sm">جارِ التحديث…</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- المحتوى: عمود رئيسي واسع + جانبي -->
+    <main class="mt-4 grid grid-cols-12 gap-4 md:gap-6">
+      <!-- رئيسي -->
+      <section class="col-span-12 xl:col-span-8 2xl:col-span-9">
+        <div class="rounded-[var(--r)] p-4 md:p-6 xl:p-7 shadow-2xl glass ring-1 ring-white/10 h-full">
+          <!-- صف الحالة -->
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="heroTitle" class="font-extrabold" style="font-size:clamp(24px,3.2vw,50px)">—</h2>
+            <span id="heroRange" class="font-bold text-white/90" style="font-size:clamp(14px,2.2vw,24px)">--:-- → --:--</span>
+          </div>
+
+          <!-- بطاقة التقدم -->
+          <div class="rounded-xl p-4 md:p-5 ring-1 ring-white/10 bg-white/5">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <span id="badgeKind" class="px-3 py-1 rounded-full bg-black/25 ring-1 ring-white/10 text-sm md:text-base">—</span>
+                <span class="text-white/80 text-sm md:text-base" id="nextLabel">التالي: —</span>
+              </div>
+              <div class="text-right">
+                <div class="text-white/70 text-xs md:text-sm">المتبقي</div>
+                <div id="countdown" class="font-black tabular-nums" style="font-size:clamp(22px,4vw,58px)">--:--</div>
+              </div>
+            </div>
+            <div class="mt-4 h-3 w-full bg-white/10 rounded-full overflow-hidden">
+              <div id="progressBar" class="h-full bg-white/70 transition-[width] duration-500" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- شرائح جدول اليوم + شريط التميّز -->
+          <div class="mt-5 space-y-4">
+            <!-- جدول اليوم: شرائح أفقية -->
+            <div class="rounded-xl ring-1 ring-white/10 bg-white/5 p-3 md:p-4">
+              <div class="text-white/80 mb-2 font-semibold">جدول اليوم</div>
+              <div id="miniSchedule"
+                   class="flex gap-2 overflow-x-auto scrollbar-thin pb-1 snap-x">
+                <!-- تُحقن الشرائح عبر JS -->
+              </div>
+            </div>
+
+            <!-- شريط بطاقات التميز -->
+            <div class="rounded-xl ring-1 ring-white/10 bg-white/5 p-3 md:p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-white/80 font-semibold">المتميزون</div>
+                <div class="text-xs text-white/60" id="exCount">0</div>
+              </div>
+              <div id="exBar" class="flex gap-3 overflow-x-auto scrollbar-thin snap-x">
+                <!-- يُحقن عبر JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- جانبي -->
+      <aside class="col-span-12 xl:col-span-4 2xl:col-span-3 space-y-4 md:space-y-6">
+        <div class="rounded-2xl p-4 md:p-5 ring-1 ring-white/10 glass">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg md:text-xl font-bold">التنبيهات</h3>
+            <span id="annCount" class="text-slate-200/80 text-sm">0</span>
+          </div>
+          <div id="annList" class="space-y-3 max-h-[40vh] overflow-auto pr-1"></div>
+          <div id="annEmpty" class="text-slate-300/80 text-sm">لا توجد تنبيهات حالية.</div>
+        </div>
+
+        <div class="rounded-2xl p-4 md:p-5 ring-1 ring-white/10 glass">
+          <h3 class="text-lg md:text-xl font-bold mb-3">حصص الانتظار (اليوم)</h3>
+          <div id="standbyList" class="space-y-2 max-h-[32vh] overflow-auto pr-1"></div>
+          <div id="standbyEmpty" class="text-slate-300/80 text-sm">لا يوجد تكليفات انتظار اليوم.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const REFRESH_EVERY = {{ refresh_interval_sec|default:30 }};
+    const api = {
+      today: "/api/display/today/",
+      standby: "/api/standby/today/",
+      ann: "/api/announcements/active/",
+      exc: "/api/announcements/excellence/",
+    };
+
+    const $ = id => document.getElementById(id);
+    const fmt2 = n => String(n).padStart(2,'0');
+
+    function tickClock(dateInfo){
+      const now=new Date();
+      $("clock").textContent=`${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
+      if(dateInfo){
+        const g=dateInfo.gregorian, h=dateInfo.hijri;
+        $("dateLine").textContent=`${dateInfo.weekday} — ${g.year}/${fmt2(g.month)}/${fmt2(g.day)} (م) — ${h.year}/${fmt2(h.month)}/${fmt2(h.day)} (هـ)`;
+      }
+    }
+    function netBadge(ok){ $("net").classList.toggle('hidden', ok); }
+
+    (function setupMode(){
+      const key="display:manualDark", btn=$("modeBtn");
+      function apply(){ const v=localStorage.getItem(key);
+        document.documentElement.classList.toggle("dark", v==="1");
+        btn.textContent = v==="1" ? "إلغاء الوضع الليلي" : "تبديل نهاري/ليلي";
+      }
+      btn.addEventListener("click", ()=>{ const cur=localStorage.getItem(key); localStorage.setItem(key, cur==="1"?"0":"1"); apply(); });
+      const nowHour={{ now_hour|default:12 }}, autoAfter={{ auto_dark_after_hour|default:18 }};
+      if(localStorage.getItem(key)===null && nowHour>=autoAfter){ localStorage.setItem(key,"1"); }
+      apply();
+    })();
+
+    let countdownSeconds=null, progressRange={start:null,end:null};
+
+    function startTicker(){
+      setInterval(()=>{
+        netBadge(navigator.onLine);
+        tickClock();
+        if (typeof countdownSeconds==='number'){
+          if(countdownSeconds>0) countdownSeconds--;
+          const mm=Math.floor(countdownSeconds/60), ss=countdownSeconds%60;
+          $("countdown").textContent=`${fmt2(mm)}:${fmt2(ss)}`;
+        } else $("countdown").textContent="--:--";
+
+        if(progressRange.start && progressRange.end){
+          const now=Date.now();
+          const pct=Math.max(0,Math.min(100,((now-progressRange.start)/(progressRange.end-progressRange.start))*100));
+          $("progressBar").style.width=`${pct.toFixed(1)}%`;
+        } else $("progressBar").style.width="0%";
+      },1000);
+    }
+    function toTimeStr(t){ if(!t) return "--:--"; const [h,m]=String(t).split(":"); return `${h}:${m}`; }
+
+    function renderState(payload){
+      const s=payload.state, day=payload.day;
+      tickClock(payload.date_info);
+      let title="—", range="--:-- → --:--", badge="اليوم";
+      countdownSeconds=null; progressRange={start:null,end:null};
+
+      if(s.type==="before"){
+        title="قبل بداية الدوام"; badge="الحصة الأولى لاحقًا";
+        if(s.next?.type==="period"){ range=`تبدأ ${toTimeStr(s.next.starts_at)}`; }
+        if(typeof s.countdown_seconds==='number'){ countdownSeconds=s.countdown_seconds; }
+      }else if(s.type==="after"){
+        title="انتهى اليوم الدراسي"; badge="إلى اللقاء";
+      }else if(s.type==="break"){
+        title="فسحة"; badge="استراحة";
+        range=`${toTimeStr(s.current.starts_at)} → ${toTimeStr(s.current.ends_at)}`;
+        countdownSeconds=s.countdown_seconds??null;
+        const [sh,sm]=String(s.current.starts_at).split(":").map(Number);
+        const [eh,em]=String(s.current.ends_at).split(":").map(Number);
+        const d=new Date(); progressRange={start:new Date(d.getFullYear(),d.getMonth(),d.getDate(),sh,sm,0).getTime(),end:new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh,em,0).getTime()};
+      }else if(s.type==="period"){
+        title=`الحصّة ${s.current.index}`; badge="داخل الحصّة";
+        range=`${toTimeStr(s.current.starts_at)} → ${toTimeStr(s.current.ends_at)}`;
+        countdownSeconds=s.countdown_seconds??null;
+        const [sh,sm]=String(s.current.starts_at).split(":").map(Number);
+        const [eh,em]=String(s.current.ends_at).split(":").map(Number);
+        const d=new Date(); progressRange={start:new Date(d.getFullYear(),d.getMonth(),d.getDate(),sh,sm,0).getTime(),end:new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh,em,0).getTime()};
+      }
+      $("heroTitle").textContent=title; $("heroRange").textContent=range; $("badgeKind").textContent=badge;
+
+      $("nextLabel").textContent = s.next
+        ? (s.next.type==="period" ? `التالي: الحصّة ${s.next.index} — ${toTimeStr(s.next.starts_at)}` : `التالي: ${s.next.label||'فسحة'} — ${toTimeStr(s.next.starts_at)}`)
+        : "التالي: —";
+
+      // جدول اليوم: شرائح أفقية مضغوطة
+      const mini=$("miniSchedule"); mini.innerHTML="";
+      if(day?.periods){
+        day.periods.forEach(p=>{
+          const isNow=s.type==='period' && s.current?.index===p.index;
+          const chip=document.createElement('div');
+          chip.className="mini-chip"+(isNow?" now tick":"");
+          chip.style.minWidth="10.5rem";
+          chip.innerHTML = `<div class="t">الحصّة ${p.index}</div>
+                            <div class="v">${toTimeStr(p.starts_at)} — ${toTimeStr(p.ends_at)}</div>`;
+          mini.appendChild(chip);
+        });
+      }
+      if(day?.breaks?.length){
+        day.breaks.forEach(b=>{
+          const chip=document.createElement('div');
+          chip.className="mini-chip break";
+          chip.style.minWidth="10.5rem";
+          chip.innerHTML = `<div class="t">${b.label||'فسحة'}</div>
+                            <div class="v">${toTimeStr(b.starts_at)} — ${toTimeStr(b.ends_at)}</div>`;
+          mini.appendChild(chip);
+        });
+      }
+    }
+
+    function colorClass(level){
+      switch(level){
+        case 'urgent': return 'bg-red-600/20 ring-red-400/30 text-red-100';
+        case 'warning':return 'bg-amber-600/20 ring-amber-400/30 text-amber-100';
+        case 'success':return 'bg-emerald-600/20 ring-emerald-400/30 text-emerald-100';
+        default:       return 'bg-sky-600/20 ring-sky-400/30 text-sky-100';
+      }
+    }
+
+    function renderAnnouncements(items){
+      $("annCount").textContent=items.length;
+      $("annEmpty").classList.toggle('hidden', items.length>0);
+      const list=$("annList"); list.innerHTML="";
+      items.forEach(a=>{
+        const div=document.createElement('div');
+        div.className=`rounded-xl p-4 ring-1 ${colorClass(a.level)}`;
+        div.innerHTML=`<div class="font-semibold">${a.title}</div>${a.body?`<div class="text-sm opacity-90 mt-1">${a.body}</div>`:""}`;
+        list.appendChild(div);
+      });
+    }
+
+    function renderStandby(items){
+      $("standbyEmpty").classList.toggle('hidden', items.length>0);
+      const list=$("standbyList"); list.innerHTML="";
+      items.forEach(x=>{
+        const li=document.createElement('div');
+        li.className="rounded-xl px-3 py-2 bg-white/10 ring-1 ring-white/10";
+        li.innerHTML=`<div class="text-xs md:text-sm text-white/70">الحصّة ${x.period_index} — الفصل ${x.class_name}</div>
+                      <div class="font-semibold">${x.teacher_name}</div>`;
+        list.appendChild(li);
+      });
+    }
+
+    // شريط التميّز العريض
+    function renderExcellenceBar(items){
+      $("exCount").textContent = items.length;
+      const bar=$("exBar"); bar.innerHTML="";
+      items.forEach(e=>{
+        const src=e.image_src||e.photo_url||"";
+        const card=document.createElement('div');
+        card.className="snap-start shrink-0 w-[280px] md:w-[320px] rounded-xl glass ring-1 ring-white/10 p-3 flex items-center gap-3";
+        card.innerHTML=`
+          ${src?`<img src="${src}" class="h-16 w-16 md:h-20 md:w-20 rounded-full object-cover ring-2 ring-white/20 bg-white/10" alt="">`
+               :`<div class="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white/10 ring-2 ring-white/20 grid place-items-center text-xl">🏅</div>`}
+          <div class="min-w-0">
+            <div class="font-bold truncate" style="font-size:clamp(14px,1.6vw,18px)">${e.teacher_name}</div>
+            <div class="text-sm text-white/90 line-clamp-2">${e.reason||''}</div>
+          </div>`;
+        bar.appendChild(card);
+      });
+    }
+
+    async function safeFetch(url){
+      try{
+        const r=await fetch(url,{headers:{'Accept':'application/json'}});
+        if(!r.ok) throw new Error(r.status);
+        return await r.json();
+      }catch(e){ console.error('Fetch',url,e); netBadge(false); return null; }
+    }
+    async function refreshAll(){
+      const d=await safeFetch(api.today);   if(d) renderState(d);
+      const a=await safeFetch(api.ann);     if(a) renderAnnouncements(a.items||[]);
+      const s=await safeFetch(api.standby); if(s) renderStandby(s.items||[]);
+      const x=await safeFetch(api.exc);     if(x) renderExcellenceBar(x.items||[]);
+    }
+
+    (function init(){ startTicker(); refreshAll(); setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000); })();
+  </script>
+</body>
+</html>

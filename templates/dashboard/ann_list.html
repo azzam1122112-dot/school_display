@@ -1,0 +1,356 @@
+{% extends "dashboard/_base.html" %}
+{% load static %}
+
+{% block title %}التنبيهات{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- رأس الصفحة -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">التنبيهات والإشعارات</h1>
+                <p class="text-slate-600">إدارة التنبيهات المعروضة على شاشات العرض للمعلمين</p>
+            </div>
+            <a href="{% url 'dashboard:ann_create' %}" 
+               class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                <span>تنبيه جديد</span>
+            </a>
+        </div>
+
+        <!-- شريط الإحصائيات -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-100 text-sm">إجمالي التنبيهات</p>
+                        <p class="text-2xl font-bold">{{ page.paginator.count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-emerald-100 text-sm">تنبيهات نشطة</p>
+                        <p class="text-2xl font-bold">{{ active_count|default:0 }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-amber-100 text-sm">تنبيهات مستقبلية</p>
+                        <p class="text-2xl font-bold">{{ future_count|default:0 }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-rose-100 text-sm">تنبيهات منتهية</p>
+                        <p class="text-2xl font-bold">{{ expired_count|default:0 }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول التنبيهات -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <!-- رأس الجدول -->
+        <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-white">قائمة التنبيهات</h3>
+                <div class="bg-white/20 px-3 py-1 rounded-full">
+                    <span class="text-white text-sm font-medium">عرض {{ page.object_list|length }} من {{ page.paginator.count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- الجدول -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                    <tr>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">التنبيه</th>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">المستوى</th>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">يبدأ</th>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">ينتهي</th>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">الحالة</th>
+                        <th class="p-4 text-right font-semibold border-b border-slate-200">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    {% for a in page.object_list %}
+                    <tr class="hover:bg-slate-50 transition-all duration-200 group">
+                        <td class="p-4">
+                            <div class="flex items-start space-x-3 space-x-reverse">
+                                <div class="flex-shrink-0 mt-1">
+                                    {% if a.level == 'urgent' %}
+                                    <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                    {% elif a.level == 'warning' %}
+                                    <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                                    {% elif a.level == 'success' %}
+                                    <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                                    {% else %}
+                                    <div class="w-3 h-3 bg-sky-500 rounded-full"></div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-slate-800 text-base mb-1">{{ a.title }}</h4>
+                                    {% if a.body %}
+                                    <p class="text-slate-600 text-sm truncate">{{ a.body }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                {% if a.level == 'urgent' %}bg-red-100 text-red-800 border border-red-200
+                                {% elif a.level == 'warning' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif a.level == 'success' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% else %}bg-sky-100 text-sky-800 border border-sky-200{% endif %}">
+                                {% if a.level == 'urgent' %}
+                                <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                {% elif a.level == 'warning' %}
+                                <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                {% elif a.level == 'success' %}
+                                <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                {% else %}
+                                <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {% endif %}
+                                {{ a.get_level_display }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-slate-700">
+                            <div class="flex items-center space-x-1 space-x-reverse">
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span>{{ a.starts_at|date:"Y-m-d H:i" }}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-slate-700">
+                            <div class="flex items-center space-x-1 space-x-reverse">
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>{{ a.expires_at|date:"Y-m-d H:i" }}</span>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            {% if a.active_now %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full ml-1"></span>
+                                فعّال الآن
+                            </span>
+                            {% elif a.is_future %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full ml-1"></span>
+                                مستقبلي
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                                <span class="w-2 h-2 bg-slate-500 rounded-full ml-1"></span>
+                                منتهي
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4">
+                            <div class="flex items-center space-x-3 space-x-reverse opacity-70 group-hover:opacity-100 transition-opacity duration-200">
+                                <a href="{% url 'dashboard:ann_edit' a.pk %}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center space-x-1 space-x-reverse transition-all duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    <span>تعديل</span>
+                                </a>
+                                <form method="post" action="{% url 'dashboard:ann_delete' a.pk %}" 
+                                      onsubmit="return confirmDelete('{{ a.title }}');" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" 
+                                            class="text-rose-600 hover:text-rose-800 font-medium text-sm flex items-center space-x-1 space-x-reverse transition-all duration-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        <span>حذف</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-500">
+                            <div class="flex flex-col items-center justify-center space-y-4">
+                                <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-slate-700 mb-2">لا توجد تنبيهات</h4>
+                                    <p class="text-slate-500 mb-4">لم يتم إضافة أي تنبيهات بعد</p>
+                                    <a href="{% url 'dashboard:ann_create' %}" 
+                                       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200">
+                                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                        إضافة أول تنبيه
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- الترقيم -->
+    {% if page.paginator.num_pages > 1 %}
+    <div class="mt-8 flex items-center justify-between">
+        <div class="text-sm text-slate-600">
+            عرض <span class="font-semibold">{{ page.start_index }}-{{ page.end_index }}</span> من 
+            <span class="font-semibold">{{ page.paginator.count }}</span> تنبيه
+        </div>
+        <div class="flex items-center space-x-2 space-x-reverse">
+            {% if page.has_previous %}
+                <a href="?page={{ page.previous_page_number }}" 
+                   class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>السابق</span>
+                </a>
+            {% endif %}
+
+            <div class="flex items-center space-x-1 space-x-reverse">
+                {% for num in page.paginator.page_range %}
+                    {% if num == page.number %}
+                        <span class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl">{{ num }}</span>
+                    {% else %}
+                        <a href="?page={{ num }}" class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200">
+                            {{ num }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page.has_next %}
+                <a href="?page={{ page.next_page_number }}" 
+                   class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 space-x-reverse">
+                    <span>التالي</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// تأكيد الحذف مع تفاصيل أكثر
+function confirmDelete(title) {
+    const message = `هل أنت متأكد من أنك تريد حذف التنبيه التالي؟\n\n"${title}"\n\nهذا الإجراء لا يمكن التراجع عنه.`;
+    return confirm(message);
+}
+
+// تأثيرات تحميل الصفوف
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach((row, index) => {
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+        row.style.transition = `opacity 0.6s ease, transform 0.6s ease`;
+        
+        setTimeout(() => {
+            row.style.opacity = '1';
+            row.style.transform = 'translateX(0)';
+        }, 100 + (index * 50));
+    });
+});
+</script>
+
+<style>
+/* تخصيص إضافي للجدول */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th, td {
+    transition: all 0.3s ease;
+}
+
+/* تأثيرات للصفوف */
+tbody tr {
+    transition: all 0.3s ease;
+}
+
+tbody tr:hover {
+    background-color: #f8fafc;
+    transform: translateX(4px);
+}
+
+/* تأثير النبض للتنبيهات العاجلة */
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
+    }
+}
+
+/* تحسين المظهر على الشاشات الصغيرة */
+@media (max-width: 768px) {
+    .overflow-x-auto {
+        border-radius: 0.75rem;
+    }
+    
+    table {
+        min-width: 640px;
+    }
+}
+</style>
+{% endblock %}

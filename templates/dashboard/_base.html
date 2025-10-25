@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}لوحة التحكم{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      font-family: 'Cairo', sans-serif;
+    }
+    
+    /* تأثيرات التدرج والظلال */
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .nav-item {
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: right 0.5s;
+    }
+    
+    .nav-item:hover::before {
+      right: 100%;
+    }
+    
+    .active-nav {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 4px 15px 0 rgba(79, 70, 229, 0.3);
+    }
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900">
+  <!-- Header محسن -->
+  <header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3 space-x-reverse">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+          🏫
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+            لوحة الإدارة
+          </h1>
+          <p class="text-xs text-slate-500 mt-1">{{ school_name|default:"مدرستنا" }}</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-4 space-x-reverse">
+        <div class="text-sm bg-slate-100 px-3 py-1.5 rounded-full">
+          <span class="text-slate-700">مرحبًا،</span>
+          <span class="font-semibold text-slate-900">{{ request.user.get_short_name|default:request.user.username }}</span>
+        </div>
+        <a class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-1.5 rounded-full hover:shadow-lg transition-all duration-300 hover:scale-105" 
+           href="{% url 'dashboard:logout' %}">
+          تسجيل الخروج
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
+    <!-- الشريط الجانبي المحسن -->
+    <aside class="col-span-12 md:col-span-3">
+      <nav class="space-y-2 bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50">
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'index' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:index' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">📊</span>
+            <span class="font-medium">الصفحة الرئيسية</span>
+          </div>
+        </a>
+        
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'settings' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:settings' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">⚙️</span>
+            <span class="font-medium">إعدادات المدرسة</span>
+          </div>
+        </a>
+        
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'days_list' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:days_list' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">📅</span>
+            <span class="font-medium">جداول الأيام</span>
+          </div>
+        </a>
+        
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'ann_list' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:ann_list' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🔔</span>
+            <span class="font-medium">التنبيهات</span>
+          </div>
+        </a>
+        
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'exc_list' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:exc_list' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">⭐</span>
+            <span class="font-medium">قسم التميّز</span>
+          </div>
+        </a>
+        
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'standby_list' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:standby_list' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">⏳</span>
+            <span class="font-medium">حصص الانتظار</span>
+          </div>
+        </a>
+      </nav>
+      
+      <div class="mt-6 text-center">
+        <div class="text-xs text-slate-500 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-4 shadow border border-white/50">
+          <div class="font-medium text-slate-700 mb-1">© {{ school_name|default:"مدرستنا" }}</div>
+          <div class="text-slate-500">نظام إدارة العرض المدرسي</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- المحتوى الرئيسي المحسن -->
+    <main class="col-span-12 md:col-span-9">
+      {% if messages %}
+        <div class="space-y-3 mb-6">
+        {% for m in messages %}
+          <div class="px-5 py-3 rounded-xl backdrop-blur-sm border-l-4 
+            {% if m.tags == 'success' %} 
+              bg-emerald-50/80 border-emerald-500 text-emerald-700
+            {% elif m.tags == 'error' %}
+              bg-red-50/80 border-red-500 text-red-700
+            {% else %}
+              bg-sky-50/80 border-sky-500 text-sky-700
+            {% endif %} 
+            shadow-sm transition-all duration-300 hover:shadow-md">
+            <div class="flex items-center">
+              {% if m.tags == 'success' %}
+                <span class="ml-2 text-lg">✅</span>
+              {% elif m.tags == 'error' %}
+                <span class="ml-2 text-lg">❌</span>
+              {% else %}
+                <span class="ml-2 text-lg">ℹ️</span>
+              {% endif %}
+              <span class="font-medium">{{ m }}</span>
+            </div>
+          </div>
+        {% endfor %}
+        </div>
+      {% endif %}
+      
+      <!-- بطاقة المحتوى -->
+      <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden">
+        <div class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
+          <div class="px-6 py-4">
+            <h2 class="text-xl font-bold text-slate-800">
+              {% block page_title %}الصفحة الرئيسية{% endblock %}
+            </h2>
+            <p class="text-slate-600 text-sm mt-1">
+              {% block page_description %}إدارة النظام والعناصر المختلفة{% endblock %}
+            </p>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          {% block content %}
+          <!-- المحتوى الأساسي -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- بطاقة إحصائية -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-2xl font-bold">24</div>
+                  <div class="text-blue-100 text-sm mt-1">معلم نشط</div>
+                </div>
+                <div class="text-3xl">👨‍🏫</div>
+              </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-2xl font-bold">8</div>
+                  <div class="text-emerald-100 text-sm mt-1">حصص اليوم</div>
+                </div>
+                <div class="text-3xl">📚</div>
+              </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-5 text-white shadow-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-2xl font-bold">3</div>
+                  <div class="text-purple-100 text-sm mt-1">تنبيهات نشطة</div>
+                </div>
+                <div class="text-3xl">🔔</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- قسم سريع الإجراءات -->
+          <div class="mt-8">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">إجراءات سريعة</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <a href="{% url 'dashboard:ann_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1 group">
+                <div class="flex items-center">
+                  <div class="ml-3 text-2xl group-hover:scale-110 transition-transform">➕</div>
+                  <div>
+                    <div class="font-medium text-slate-800">إضافة تنبيه جديد</div>
+                    <div class="text-slate-600 text-sm mt-1">إنشاء تنبيه للمعلمين </div>
+                  </div>
+                </div>
+              </a>
+              
+              <a href="{% url 'dashboard:exc_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1 group">
+                <div class="flex items-center">
+                  <div class="ml-3 text-2xl group-hover:scale-110 transition-transform">⭐</div>
+                  <div>
+                    <div class="font-medium text-slate-800">تسجيل تميّز</div>
+                    <div class="text-slate-600 text-sm mt-1">إضافة معلم متميز للعرض</div>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </div>
+          {% endblock %}
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- تأثيرات إضافية -->
+  <script>
+    // إضافة تأثيرات تفاعلية بسيطة
+    document.addEventListener('DOMContentLoaded', function() {
+      // تأثيرات للبطاقات عند التمرير
+      const cards = document.querySelectorAll('.nav-item, [class*="bg-gradient"]');
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+          }
+        });
+      }, { threshold: 0.1 });
+      
+      cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+      });
+    });
+  </script>
+</body>
+</html>

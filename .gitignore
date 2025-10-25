@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Django
+staticfiles/
+media/
+*.log
+*.pot
+*.mo
+
+# Env / IDE
+.env
+.env.*
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DB (مستبعدة افتراضيًا)
+db.sqlite3
+*.sqlite3

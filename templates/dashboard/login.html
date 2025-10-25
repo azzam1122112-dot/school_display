@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>تسجيل الدخول - لوحة التحكم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- خلفية متحركة -->
+    <div class="fixed inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl floating"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl floating" style="animation-delay: 1.5s;"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-md mx-4">
+        <!-- بطاقة تسجيل الدخول -->
+        <div class="login-card rounded-2xl shadow-2xl overflow-hidden">
+            <!-- رأس البطاقة -->
+            <div class="bg-gradient-to-r from-blue-600 to-purple-700 p-6 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">لوحة التحكم</h1>
+                <p class="text-blue-100 text-sm">نظام إدارة المدرسة</p>
+            </div>
+
+            <!-- نموذج الدخول -->
+            <form method="post" class="p-8">
+                {% csrf_token %}
+                
+                <!-- رسائل الخطأ -->
+                {% for message in messages %}
+                <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2 space-x-reverse">
+                    <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- حقل اسم المستخدم -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                        <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        اسم المستخدم
+                    </label>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        required 
+                        class="w-full px-4 py-3 rounded-xl border border-slate-300 input-focus transition-all duration-200 bg-white text-slate-700 placeholder-slate-400"
+                        placeholder="أدخل اسم المستخدم"
+                    >
+                </div>
+
+                <!-- حقل كلمة المرور -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center">
+                        <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        كلمة المرور
+                    </label>
+                    <input 
+                        type="password" 
+                        name="password" 
+                        required 
+                        class="w-full px-4 py-3 rounded-xl border border-slate-300 input-focus transition-all duration-200 bg-white text-slate-700 placeholder-slate-400"
+                        placeholder="أدخل كلمة المرور"
+                    >
+                </div>
+
+                <!-- تذكرني (اختياري) -->
+                <div class="mb-6 flex items-center justify-between">
+                    <label class="flex items-center space-x-2 space-x-reverse text-sm text-slate-600 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                        <span>تذكرني</span>
+                    </label>
+                    <a href="#" class="text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200">
+                        نسيت كلمة المرور؟
+                    </a>
+                </div>
+
+                <!-- زر الدخول -->
+                <button 
+                    type="submit"
+                    class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center space-x-2 space-x-reverse"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    <span>تسجيل الدخول</span>
+                </button>
+            </form>
+
+            <!-- تذييل البطاقة -->
+            <div class="px-8 py-4 bg-slate-50 border-t border-slate-200 text-center">
+                <p class="text-sm text-slate-600">
+                    نظام إدارة المدرسة © 2024
+                    <span class="block text-xs text-slate-500 mt-1">جميع الحقوق محفوظة</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- معلومات إضافية -->
+        <div class="mt-6 text-center">
+            <div class="text-white/80 text-sm space-y-1">
+                <p>للحصول على مساعدة، يرجى التواصل مع مدير النظام</p>
+                <p class="text-white/60 text-xs">الإصدار 2.1.0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // إضافة تأثيرات تفاعلية
+        document.addEventListener('DOMContentLoaded', function() {
+            // تأثيرات عند تحميل الصفحة
+            const form = document.querySelector('form');
+            form.style.opacity = '0';
+            form.style.transform = 'translateY(20px)';
+            form.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            
+            setTimeout(() => {
+                form.style.opacity = '1';
+                form.style.transform = 'translateY(0)';
+            }, 200);
+
+            // تأثير focus للحقول
+            const inputs = document.querySelectorAll('input[type="text"], input[type="password"]');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.classList.add('ring-2', 'ring-blue-500/20');
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('ring-2', 'ring-blue-500/20');
+                });
+            });
+
+            // تأثير عند الضغط على زر الدخول
+            const loginBtn = document.querySelector('button[type="submit"]');
+            loginBtn.addEventListener('click', function(e) {
+                const username = document.querySelector('input[name="username"]').value;
+                const password = document.querySelector('input[name="password"]').value;
+                
+                if (!username || !password) {
+                    e.preventDefault();
+                    this.style.transform = 'translateX(10px)';
+                    setTimeout(() => {
+                        this.style.transform = 'translateX(-10px)';
+                        setTimeout(() => {
+                            this.style.transform = 'translateX(0)';
+                        }, 100);
+                    }, 100);
+                } else {
+                    this.innerHTML = `
+                        <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4m8-10h-4M6 12H2m15.364-7.364l-2.828 2.828M7.464 17.536L4.636 20.364M17.536 7.464l2.828-2.828M4.636 3.636l2.828 2.828"></path>
+                        </svg>
+                        <span>جاري الدخول...</span>
+                    `;
+                }
+            });
+        });
+
+        // إضافة تأثيرات للخلفية
+        document.addEventListener('mousemove', function(e) {
+            const cards = document.querySelectorAll('.floating');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            cards.forEach((card, index) => {
+                const speed = index === 0 ? 0.02 : 0.01;
+                const xMove = x * speed * 100;
+                const yMove = y * speed * 100;
+                
+                card.style.transform = `translate(${xMove}px, ${yMove}px)`;
+            });
+        });
+    </script>
+</body>
+</html>
