@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: school-display
+    env: python
+    plan: free  # غيّرها لاحقًا إلى starter/standard عند الحاجة
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi --log-file - --workers=3 --timeout=90
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "<your-service>.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://<your-service>.onrender.com"
+      - key: SITE_BASE_URL
+        value: "https://<your-service>.onrender.com"
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+    disks:
+      - name: media
+        mountPath: /opt/render/project/src/media
+        sizeGB: 1
+
+databases:
+  - name: school-display-db
+    plan: free
