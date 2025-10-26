@@ -19,3 +19,8 @@ def display(request):
         "theme": (settings_obj.theme if settings_obj else "indigo"),  # indigo, sky, emerald, rose ...
     }
     return render(request, "website/display.html", ctx)
+from django.shortcuts import render
+
+def home(request):
+    # ببساطة يعرض القالب display.html
+    return render(request, "website/display.html")
