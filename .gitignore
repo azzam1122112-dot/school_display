@@ -14,6 +14,7 @@ media/
 *.log
 *.pot
 *.mo
+.venv/
 
 # Env / IDE
 .env
