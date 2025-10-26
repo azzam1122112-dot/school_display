@@ -19,7 +19,12 @@ def active_announcements(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def active_excellence(request):
+    """
+    يعيد بطاقات التميّز النشطة.
+    يتأكد من تمرير request في السياق حتى تعمل روابط الصور.
+    """
     now = timezone.now()
     qs = Excellence.objects.order_by("priority", "-start_at")
     items = [e for e in qs if e.active_now]
-    return Response({"items": ExcellenceSerializer(items, many=True).data})
+    serializer = ExcellenceSerializer(items, many=True, context={"request": request})
+    return Response({"items": serializer.data})

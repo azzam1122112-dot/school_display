@@ -1,12 +1,10 @@
 # config/settings.py
-# إعدادات Django — نسخة احترافية آمنة ومرنة
-# - لغة عربية + منطقة زمنية الرياض
-# - قراءة الإعدادات من .env
-# - SQLite للتطوير وPostgreSQL للإنتاج (DATABASE_URL)
-# - ملفات ثابتة عبر WhiteNoise
-# - تشديد الأمان تلقائيًا عند DEBUG=False
-# - DRF مفعّل، وتنسيق الاستجابات حسب البيئة
-# - تحسينات: تحمّل غياب dj_database_url بأمان، ومسارات static مشروطة
+# إعدادات Django — نسخة احترافية آمنة ومرنة (Arabic / Asia/Riyadh)
+# - تحميل .env
+# - SQLite للتطوير وPostgreSQL عبر DATABASE_URL للإنتاج
+# - WhiteNoise للملفات الثابتة
+# - DRF مُفعّل مع مخرجات أخف بالإنتاج
+# - لوجينغ هادئ (إسكات django.utils.autoreload) مع إمكانية التحكم عبر متغيرات البيئة
 
 from pathlib import Path
 import os
@@ -16,12 +14,12 @@ from dotenv import load_dotenv
 try:
     import dj_database_url  # type: ignore
 except Exception:
-    dj_database_url = None  # سيتعامل الكود لاحقًا مع غيابها بشكل واضح
+    dj_database_url = None
 
-# تحميل متغيرات البيئة
+# تحميل متغيرات البيئة من .env (إن وُجد)
 load_dotenv()
 
-# المسار الجذري للمشروع
+# ----------------- المسارات -----------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ---- أدوات مساعدة ----
@@ -37,7 +35,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")  # غيّره
 DEBUG = env_bool("DEBUG", "True")  # محليًا True، بالإنتاج False
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost")
 
-# موثوقون للـ CSRF (يجب أن تتضمن البروتوكول)
+# موثوقون للـ CSRF (يجب أن تتضمن البروتوكول مثل https://example.com)
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 
 # ----------------- التطبيقات -----------------
@@ -65,7 +63,7 @@ INSTALLED_APPS = [
 # ----------------- الميدلوير -----------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # خدمة static في الإنتاج
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # خدمة static (وCDN-friendly) + ضغط
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -98,7 +96,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # ----------------- قاعدة البيانات -----------------
-# افتراضيًا SQLite (محلي). إذا ضُبط DATABASE_URL، نستخدمه (PostgreSQL عادةً).
+# افتراضيًا SQLite (محلي). إذا وُجد DATABASE_URL نستخدمه (PostgreSQL عادةً).
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 if DATABASE_URL:
@@ -137,21 +135,28 @@ USE_I18N = True
 USE_TZ = True  # احتفظ بها True لدقة التحويلات الزمنية
 
 # ----------------- الملفات الثابتة والوسائط -----------------
+# Static
 STATIC_URL = "/static/"
-
-# إضافة static المحلي فقط إذا المجلد موجود لتجنب تحذيرات غير ضرورية
 _static_dir = BASE_DIR / "static"
-STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
-
+STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []  # للتطوير (اختياري)
 STATIC_ROOT = BASE_DIR / "staticfiles"  # للإنتاج مع collectstatic
 
-# WhiteNoise (تخزين مضغوط + Manifest للنسخ المصدّرة)
-STORAGES = {
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-}
-
+# Media
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Django 5 STORAGES
+STORAGES = {
+    # تخزين افتراضي للملفات المرفوعة على النظام المحلي (development/بسيط)
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"base_url": MEDIA_URL, "location": str(MEDIA_ROOT)},
+    },
+    # ملفات ثابتة عبر WhiteNoise (ضغط + Manifest)
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # ----------------- نوع المفتاح الافتراضي -----------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -165,13 +170,14 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
-    # مخرجات أخف بالإنتاج
-    "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer",
-    ] if not DEBUG else [
-        "rest_framework.renderers.JSONRenderer",
-        "rest_framework.renderers.BrowsableAPIRenderer",
-    ],
+    "DEFAULT_RENDERER_CLASSES": (
+        ["rest_framework.renderers.JSONRenderer"]
+        if not DEBUG
+        else [
+            "rest_framework.renderers.JSONRenderer",
+            "rest_framework.renderers.BrowsableAPIRenderer",
+        ]
+    ),
 }
 
 # ----------------- الأمان -----------------
@@ -181,6 +187,8 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = True  # يمنع JavaScript من قراءة توكن CSRF
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+X_FRAME_OPTIONS = "DENY"
 
 if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
@@ -189,21 +197,61 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-X_FRAME_OPTIONS = "DENY"
-
 # ----------------- التسجيل (Logging) -----------------
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG" if DEBUG else "WARNING")
+# افتراضيًا: INFO حتى في التطوير، مع إسكات autoreload وثرثرة DRF
+DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+DJANGO_CONSOLE_LEVEL = os.getenv("DJANGO_CONSOLE_LEVEL", "INFO")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+
     "formatters": {
-        "verbose": {"format": "[{levelname}] {asctime} {name}: {message}", "style": "{"},
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name}: {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
         "simple": {"format": "[{levelname}] {message}", "style": "{"},
     },
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
-    "root": {"handlers": ["console"], "level": LOG_LEVEL},
-    "loggers": {"django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": True}},
+
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "level": DJANGO_CONSOLE_LEVEL,  # لا تطبع DEBUG على الكونسول افتراضيًا
+        },
+    },
+
+    # اجعل الجذر INFO
+    "root": {"handlers": ["console"], "level": DJANGO_LOG_LEVEL},
+
+    "loggers": {
+        # إسكات رسائل أوتولود المزعجة
+        "django.utils.autoreload": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # تقليل الضجيج من خادم التطوير
+        "django.server": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # تقليل ثرثرة DRF
+        "rest_framework": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # لوجات Django العامة
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
 }
 
 # ----------------- المصادقة وتوجيهات لوحة التحكم -----------------
@@ -213,43 +261,6 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 
 # ----------------- عنوان الموقع (اختياري للتطبيقات) -----------------
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://127.0.0.1:8000")
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"   # اختر مسارًا مناسبًا
-
-
-# settings.py
-from pathlib import Path
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# --------- ملفات الميديا (رفع المستخدم) ---------
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-# --------- الملفات الثابتة ---------
-STATIC_URL = "/static/"
-# لو عندك مجلد static للتطوير:
-STATICFILES_DIRS = [BASE_DIR / "static"]
-# ولو تستخدم مجلد تجميع للإنتاج:
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# --------- Django 5: STORAGES ---------
-# تخزين افتراضي للملفات المرفوعة على نظام الملفات المحلي (development)
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-        "OPTIONS": {
-            # مهمّة لاحتساب url الصحيح (تساوي MEDIA_URL)
-            "base_url": MEDIA_URL,
-            # موقع الحفظ الفعلي (تساوي MEDIA_ROOT)
-            "location": str(MEDIA_ROOT),
-        },
-    },
-    "staticfiles": {
-        # للتطوير؛ للإنتاج قد تستخدم ManifestStaticFilesStorage أو WhiteNoise
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
 
 # ----------------- ملاحظات تشغيلية -----------------
 # 1) .env (إنتاج):
@@ -266,5 +277,4 @@ STORAGES = {
 # 3) خلف Proxy (Cloudflare/Nginx):
 #    تأكد من تمكين X-Forwarded-Proto (ضبطناه في SECURE_PROXY_SSL_HEADER)
 #
-# 4) للتقويم الهجري:
-#    hijri-converter مثبت ويمكن استدعاؤه داخل views/templatetags.
+# 4) DRF: عند DEBUG=False يلغى Browsable API تلقائيًا لإخراج أخف وأأمن

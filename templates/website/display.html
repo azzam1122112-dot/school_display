@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{{ school_name }} — لوحة العرض</title>
 
+  <!-- خط + Tailwind -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -13,6 +15,25 @@
       theme: {
         extend: {
           fontFamily: { cairo: ['Cairo','ui-sans-serif','system-ui'] },
+          colors:{ glass: 'rgba(255,255,255,.06)' },
+          boxShadow:{
+            'glass-lg':'0 10px 35px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06)'
+          },
+          keyframes:{
+            fadeIn:{'0%':{opacity:0,transform:'translateY(8px)'},
+                    '100%':{opacity:1,transform:'translateY(0)'}},
+            pulseSoft:{'0%,100%':{opacity:.75},'50%':{opacity:1}},
+            floatY:{'0%':{transform:'translateY(0)'},
+                    '50%':{transform:'translateY(-6px)'},
+                    '100%':{transform:'translateY(0)'}},
+            spin:{to:{transform:'rotate(360deg)'}}
+          },
+          animation:{
+            'fade-in':'fadeIn .35s ease-out',
+            'pulse-soft':'pulseSoft 2s ease-in-out infinite',
+            'float-y':'floatY 10s ease-in-out infinite',
+            'spin-slow':'spin 14s linear infinite'
+          }
         }
       }
     }
@@ -20,126 +41,232 @@
 
   <style>
     html,body{height:100%;font-family:'Cairo',sans-serif}
-    :root{--edge:22px;--r:22px;--glass:rgba(255,255,255,.06)}
+    :root{
+      --edge:22px; --r:22px; --glass:rgba(255,255,255,.06);
+      --ring: rgba(255,255,255,.12); --ring-strong: rgba(255,255,255,.22);
+    }
     @media (min-width:1600px){:root{--edge:32px}}
     .safe{padding:max(env(safe-area-inset-top),var(--edge)) max(env(safe-area-inset-right),var(--edge)) max(env(safe-area-inset-bottom),var(--edge)) max(env(safe-area-inset-left),var(--edge))}
     .glass{backdrop-filter:saturate(140%) blur(10px);background:var(--glass)}
-    .tick{animation:fade 3s ease-in-out infinite}
-    @keyframes fade{0%,100%{opacity:.9}50%{opacity:1}}
+    .ring-soft{box-shadow: inset 0 0 0 1px var(--ring);}
+    .ring-strong{box-shadow: inset 0 0 0 1px var(--ring-strong);}
     .scrollbar-thin::-webkit-scrollbar{height:8px;width:8px}
     .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9999px}
-    .snap-x{scroll-snap-type:x mandatory}
-    .snap-start{scroll-snap-align:start}
-    /* شرائح جدول اليوم الأفقية */
-    .mini-chip{display:inline-flex;flex-direction:column;gap:.15rem;padding:.55rem .7rem;border-radius:.9rem;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08)}
-    .mini-chip.now{background:rgba(255,255,255,.18)}
-    .mini-chip .t{font-size:.72rem;opacity:.9}
-    .mini-chip .v{font-weight:800;line-height:1.15;font-size:.95rem}
-    .mini-chip.break{background:rgba(16,185,129,.22);border-color:rgba(16,185,129,.35)}
+
+    /* خلفية مزخرفة */
+    #bg::before, #bg::after{content:""; position:absolute; inset:0; pointer-events:none;}
+    #bg::before{
+      background:
+        radial-gradient(800px 400px at 85% 10%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(1000px 500px at 10% 80%, rgba(0,0,0,.15), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 40px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 1px, transparent 1px 40px);
+      mask-image: radial-gradient(1800px 900px at 50% 50%, #000 70%, transparent 100%);
+    }
+    #bg::after{
+      background:
+        radial-gradient(140px 140px at 75% 30%, rgba(255,255,255,.12), transparent 60%),
+        radial-gradient(120px 120px at 20% 70%, rgba(255,255,255,.09), transparent 60%),
+        radial-gradient(160px 160px at 40% 50%, rgba(255,255,255,.07), transparent 60%);
+      animation: float-y 24s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation: none !important; transition: none !important}
+    }
+
+    /* شرائح جدول اليوم */
+    .mini-chip{display:inline-flex;flex-direction:column;gap:.15rem;padding:.6rem .8rem;border-radius:1rem;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08)}
+    .mini-chip .t{font-size:.72rem;opacity:.95;letter-spacing:.02em}
+    .mini-chip .v{font-weight:800;line-height:1.15;font-size:.98rem}
+    .mini-chip.now{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.55);box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.2)}
+    .mini-chip.break{background:linear-gradient(135deg, rgba(16,185,129,.25), rgba(16,185,129,.12));border-color:rgba(16,185,129,.45)}
+    .mini-chip.break .t::before{content:"🍃 ";}
+
+    /* التنبيهات — ارتفاع تلقائي + بادج عربي */
+    .ann-card{border-radius:18px;padding:14px;position:relative;overflow:visible}
+    .ann-slide{position:static;padding:16px;display:none;flex-direction:column;gap:.6rem;opacity:1}
+    .ann-slide.active{display:block}
+    .ann-badge{align-self:flex-start;font-size:.75rem;padding:.15rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.14)}
+    .ann-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px}
+    .ann-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25)}
+    .ann-dot.active{background:#fff}
+    /* تلوين حسب النوع */
+    .ann-badge[data-level="عاجل"]   { background:rgba(220,38,38,.25);  border-color:rgba(220,38,38,.45); }
+    .ann-badge[data-level="تنبيه"] { background:rgba(245,158,11,.25); border-color:rgba(245,158,11,.45); }
+    .ann-badge[data-level="معلومة"]{ background:rgba(59,130,246,.25); border-color:rgba(59,130,246,.45); }
+    .ann-badge[data-level="تهنئة"] { background:rgba(16,185,129,.25); border-color:rgba(16,185,129,.45); }
+
+    /* قسم المتميزين — تصميم مختلف ولافت */
+    .ex-wrap{position:relative;border-radius:22px;padding:18px;background:
+      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));}
+    .ex-hero{
+      position:relative; overflow:hidden; border-radius:20px;
+      padding:16px;
+      background: radial-gradient(400px 160px at 90% 10%, rgba(123,97,255,.28), transparent 60%),
+                  radial-gradient(300px 180px at 10% 80%, rgba(59,130,246,.25), transparent 60%),
+                  linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+      box-shadow:0 12px 32px rgba(0,0,0,.28);
+      border:1px solid rgba(123,97,255,.35);
+    }
+    .ex-avatar{position:relative;width:96px;height:96px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.1)}
+    .ex-avatar::after{content:"";position:absolute;inset:-8px;border-radius:999px;border:2px dashed rgba(123,97,255,.45);animation:spin 14s linear infinite}
+    .ex-img{width:100%;height:100%;object-fit:cover;border-radius:999px}
+    .ex-ribbon{position:absolute;top:12px;left:12px;background:linear-gradient(90deg,#f0b,#70f);padding:.25rem .6rem;border-radius:999px;font-weight:800;font-size:.75rem}
+
+    /* الانتظار — ألوان متناوبة */
+    .standby-viewport{max-height:42vh;overflow:hidden;position:relative}
+    .standby-track{will-change:transform}
+    .sb-blue   { background:linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.10)); border:1px solid rgba(59,130,246,.35); }
+    .sb-emerald{ background:linear-gradient(180deg, rgba(16,185,129,.20), rgba(16,185,129,.10)); border:1px solid rgba(16,185,129,.40); }
+    .sb-amber  { background:linear-gradient(180deg, rgba(245,158,11,.22),  rgba(245,158,11,.10));  border:1px solid rgba(245,158,11,.40); }
+    .sb-rose   { background:linear-gradient(180deg, rgba(244,63,94,.18),  rgba(244,63,94,.10));   border:1px solid rgba(244,63,94,.35); }
+
+    /* Skeleton */
+    .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
+    .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);animation:sk 1.2s infinite}
+    @keyframes sk{to{transform:translateX(100%)}}
   </style>
 </head>
-<body class="min-h-full text-white safe" data-theme="{{ theme|default:'indigo' }}">
-  <!-- خلفية حسب الثيم -->
+<body class="min-h-full text-white safe" data-theme="{{ theme|default:'indigo' }}" data-media-prefix="{{ MEDIA_URL|default:'/media/' }}">
+  <!-- خلفية -->
   <div id="bg" class="fixed inset-0 -z-10"></div>
   <script>
     (function(){
       const t=(document.body.dataset.theme||'indigo').toLowerCase();
-      const p={indigo:['#28328a','#6c8cff'],sky:['#0d3552','#52b6ff'],emerald:['#083b32','#45e0b5'],rose:['#4a0d2a','#ff6d9e'],amber:['#3b2b00','#ffb200'],slate:['#0b1023','#435a78']};
-      const [c1,c2]=(p[t]||p.indigo); const el=document.getElementById('bg');
-      el.style.background=`radial-gradient(1200px 600px at 85% 10%, ${c2}33, transparent 60%),radial-gradient(1000px 600px at 10% 80%, ${c1}66, transparent 60%),linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
+      const p={indigo:['#1c266f','#6c8cff'],sky:['#0d3552','#52b6ff'],emerald:['#083b32','#45e0b5'],rose:['#4a0d2a','#ff6d9e'],amber:['#3b2b00','#ffb200'],slate:['#0b1023','#435a78']};
+      const [c1,c2]=(p[t]||p.indigo);
+      const el=document.getElementById('bg');
+      el.style.background=`linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
     })();
   </script>
 
-  <div id="net" class="fixed top-3 left-3 z-50 hidden px-3 py-1 rounded-full text-sm bg-red-600/90">غير متصل</div>
+  <!-- شارة الشبكة -->
+  <div id="net" class="fixed top-3 left-3 z-50 hidden px-3 py-1 rounded-full text-sm bg-red-600/90 shadow-lg ring-1 ring-white/20">غير متصل</div>
 
   <div class="mx-auto w-full max-w-[1920px] px-2 md:px-4">
     <!-- الرأس -->
-    <header class="flex flex-wrap items-center gap-4">
+    <header class="flex flex-wrap items-center gap-4 py-4">
       {% if logo_url %}
-        <img src="{{ logo_url }}" alt="شعار" class="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1">
+        <img src="{{ logo_url }}" alt="شعار" class="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1 shadow-glass-lg">
       {% else %}
-        <div class="h-14 w-14 md:h-16 md:w-16 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10">🏫</div>
+        <div class="h-14 w-14 md:h-16 md:w-16 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10 shadow-glass-lg">🏫</div>
       {% endif %}
       <div class="flex-1 min-w-[40%]">
-        <h1 class="font-black drop-shadow-sm" style="font-size:clamp(24px,3.6vw,56px)">{{ school_name }}</h1>
-        <p id="dateLine" class="text-slate-200/90 text-sm md:text-base">—</p>
+        <h1 class="font-black drop-shadow-sm" style="font-size:clamp(26px,3.8vw,58px)">{{ school_name }}</h1>
+        <div id="dateLine" class="inline-block mt-1 px-3 py-1 rounded-lg bg-white/10 ring-1 ring-white/20 text-slate-100 text-sm md:text-base">—</div>
       </div>
-      <div class="flex items-end gap-3">
-        <button id="modeBtn" class="text-xs md:text-sm px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/20 hover:bg-white/15 transition">تبديل نهاري/ليلي</button>
-        <div class="text-right">
-          <div id="clock" class="font-extrabold tabular-nums" style="font-size:clamp(20px,3vw,44px)">--:--:--</div>
-          <div id="dayState" class="text-slate-200/80 text-sm">جارِ التحديث…</div>
-        </div>
+      <div class="text-right">
+        <div id="clock" class="font-extrabold tabular-nums" style="font-size:clamp(20px,3vw,46px)">--:--:--</div>
+        <div id="dayState" class="text-slate-200/80 text-sm">جارِ التحديث…</div>
       </div>
     </header>
 
-    <!-- المحتوى: عمود رئيسي واسع + جانبي -->
+    <!-- المحتوى -->
     <main class="mt-4 grid grid-cols-12 gap-4 md:gap-6">
       <!-- رئيسي -->
       <section class="col-span-12 xl:col-span-8 2xl:col-span-9">
-        <div class="rounded-[var(--r)] p-4 md:p-6 xl:p-7 shadow-2xl glass ring-1 ring-white/10 h-full">
-          <!-- صف الحالة -->
+        <div class="rounded-[var(--r)] p-4 md:p-6 xl:p-7 shadow-2xl glass ring-soft h-full">
           <div class="flex items-center justify-between mb-4">
             <h2 id="heroTitle" class="font-extrabold" style="font-size:clamp(24px,3.2vw,50px)">—</h2>
             <span id="heroRange" class="font-bold text-white/90" style="font-size:clamp(14px,2.2vw,24px)">--:-- → --:--</span>
           </div>
 
-          <!-- بطاقة التقدم -->
-          <div class="rounded-xl p-4 md:p-5 ring-1 ring-white/10 bg-white/5">
-            <div class="flex items-center justify-between gap-3">
+          <!-- بطاقة التقدّم -->
+          <div class="rounded-xl p-4 md:p-5 ring-soft bg-white/5 shadow-glass-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
               <div class="flex items-center gap-3">
-                <span id="badgeKind" class="px-3 py-1 rounded-full bg-black/25 ring-1 ring-white/10 text-sm md:text-base">—</span>
+                <span id="badgeKind" class="px-3 py-1 rounded-full bg-black/25 ring-soft text-sm md:text-base">—</span>
                 <span class="text-white/80 text-sm md:text-base" id="nextLabel">التالي: —</span>
               </div>
-              <div class="text-right">
-                <div class="text-white/70 text-xs md:text-sm">المتبقي</div>
-                <div id="countdown" class="font-black tabular-nums" style="font-size:clamp(22px,4vw,58px)">--:--</div>
+
+              <div class="relative h-24 w-24 md:h-28 md:w-28 shrink-0">
+                <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r="54" stroke-width="12" fill="none" class="stroke-white/15"></circle>
+                  <circle id="circleProgress" cx="60" cy="60" r="54" stroke-linecap="round" stroke-width="12" fill="none" class="transition-all duration-500"></circle>
+                </svg>
+                <div class="absolute inset-0 grid place-items-center">
+                  <div class="text-center leading-tight">
+                    <div class="text-xs md:text-sm text-white/70">المتبقي</div>
+                    <div id="countdown" class="font-black tabular-nums text-xl md:text-2xl">--:--</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="mt-4 h-3 w-full bg-white/10 rounded-full overflow-hidden">
+            <div class="mt-4 h-2 w-full bg-white/10 rounded-full overflow-hidden">
               <div id="progressBar" class="h-full bg-white/70 transition-[width] duration-500" style="width:0%"></div>
             </div>
           </div>
 
-          <!-- شرائح جدول اليوم + شريط التميّز -->
-          <div class="mt-5 space-y-4">
-            <!-- جدول اليوم: شرائح أفقية -->
-            <div class="rounded-xl ring-1 ring-white/10 bg-white/5 p-3 md:p-4">
-              <div class="text-white/80 mb-2 font-semibold">جدول اليوم</div>
-              <div id="miniSchedule"
-                   class="flex gap-2 overflow-x-auto scrollbar-thin pb-1 snap-x">
-                <!-- تُحقن الشرائح عبر JS -->
-              </div>
+          <!-- شرائح جدول اليوم -->
+          <div class="mt-5 rounded-xl ring-soft bg-white/5 p-3 md:p-4 shadow-glass-lg">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-white/90 font-semibold">جدول اليوم</div>
+              <div class="text-xs text-white/70">تتحدث تلقائيًا</div>
             </div>
+            <div id="miniSchedule" class="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
+              <!-- Skeleton أثناء التحميل -->
+              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
+              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
+              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
+            </div>
+          </div>
 
-            <!-- شريط بطاقات التميز -->
-            <div class="rounded-xl ring-1 ring-white/10 bg-white/5 p-3 md:p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-white/80 font-semibold">المتميزون</div>
-                <div class="text-xs text-white/60" id="exCount">0</div>
-              </div>
-              <div id="exBar" class="flex gap-3 overflow-x-auto scrollbar-thin snap-x">
-                <!-- يُحقن عبر JS -->
+          <!-- قسم المتميزون (تصميم مختلف) -->
+          <div class="mt-4 ex-wrap ring-soft shadow-glass-lg">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-lg font-extrabold tracking-wide">🎖️ السجل الشرفي </div>
+              <div class="text-sm text-white/90"><span id="exIndex">0</span> / <span id="exTotal">0</span></div>
+            </div>
+            <div id="exSlot" class="min-h-[180px]">
+              <!-- Skeleton -->
+              <div class="ex-hero">
+                <span class="ex-ribbon">نجم اليوم</span>
+                <div class="flex items-center gap-5">
+                  <div class="ex-avatar skeleton"></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="h-6 w-56 rounded skeleton mb-3"></div>
+                    <div class="h-4 w-80 rounded skeleton"></div>
+                  </div>
+                </div>
               </div>
             </div>
+            <div id="exEmpty" class="text-sm text-white/70 mt-2 hidden text-center">لا يوجد متميزون حاليًا.</div>
           </div>
         </div>
       </section>
 
       <!-- جانبي -->
       <aside class="col-span-12 xl:col-span-4 2xl:col-span-3 space-y-4 md:space-y-6">
-        <div class="rounded-2xl p-4 md:p-5 ring-1 ring-white/10 glass">
+        <!-- التنبيهات -->
+        <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-lg md:text-xl font-bold">التنبيهات</h3>
             <span id="annCount" class="text-slate-200/80 text-sm">0</span>
           </div>
-          <div id="annList" class="space-y-3 max-h-[40vh] overflow-auto pr-1"></div>
-          <div id="annEmpty" class="text-slate-300/80 text-sm">لا توجد تنبيهات حالية.</div>
+          <div class="ann-card ring-soft" id="annCarousel">
+            <!-- Skeleton -->
+            <div class="w-full h-24 skeleton rounded-xl"></div>
+          </div>
+          <div class="ann-dots" id="annDots"></div>
+          <div id="annEmpty" class="text-slate-300/80 text-sm mt-2">لا توجد تنبيهات حالية.</div>
         </div>
 
-        <div class="rounded-2xl p-4 md:p-5 ring-1 ring-white/10 glass">
-          <h3 class="text-lg md:text-xl font-bold mb-3">حصص الانتظار (اليوم)</h3>
-          <div id="standbyList" class="space-y-2 max-h-[32vh] overflow-auto pr-1"></div>
+        <!-- حصص الانتظار -->
+        <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg md:text-xl font-bold mb-3">حصص الانتظار (اليوم)</h3>
+            <span class="text-xs text-white/70">يُفلتر حسب الحالة الحالية</span>
+          </div>
+          <div class="standby-viewport">
+            <div id="standbyTrack" class="standby-track">
+              <!-- Skeleton -->
+              <div class="space-y-2">
+                <div class="rounded-xl h-12 skeleton"></div>
+                <div class="rounded-xl h-12 skeleton"></div>
+                <div class="rounded-xl h-12 skeleton"></div>
+              </div>
+            </div>
+          </div>
           <div id="standbyEmpty" class="text-slate-300/80 text-sm">لا يوجد تكليفات انتظار اليوم.</div>
         </div>
       </aside>
@@ -154,33 +281,32 @@
       ann: "/api/announcements/active/",
       exc: "/api/announcements/excellence/",
     };
-
     const $ = id => document.getElementById(id);
     const fmt2 = n => String(n).padStart(2,'0');
 
+    /* ساعة + تاريخ */
     function tickClock(dateInfo){
       const now=new Date();
+      const arWeek = new Intl.DateTimeFormat('ar-SA',{weekday:'long'}).format(now);
       $("clock").textContent=`${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
       if(dateInfo){
         const g=dateInfo.gregorian, h=dateInfo.hijri;
-        $("dateLine").textContent=`${dateInfo.weekday} — ${g.year}/${fmt2(g.month)}/${fmt2(g.day)} (م) — ${h.year}/${fmt2(h.month)}/${fmt2(h.day)} (هـ)`;
+        $("dateLine").textContent=`${arWeek} — ${g.year}/${fmt2(g.month)}/${fmt2(g.day)} (م) — ${h.year}/${fmt2(h.month)}/${fmt2(h.day)} (هـ)`;
       }
     }
     function netBadge(ok){ $("net").classList.toggle('hidden', ok); }
 
-    (function setupMode(){
-      const key="display:manualDark", btn=$("modeBtn");
-      function apply(){ const v=localStorage.getItem(key);
-        document.documentElement.classList.toggle("dark", v==="1");
-        btn.textContent = v==="1" ? "إلغاء الوضع الليلي" : "تبديل نهاري/ليلي";
-      }
-      btn.addEventListener("click", ()=>{ const cur=localStorage.getItem(key); localStorage.setItem(key, cur==="1"?"0":"1"); apply(); });
-      const nowHour={{ now_hour|default:12 }}, autoAfter={{ auto_dark_after_hour|default:18 }};
-      if(localStorage.getItem(key)===null && nowHour>=autoAfter){ localStorage.setItem(key,"1"); }
-      apply();
-    })();
+    /* أدوات وقت */
+    function hmToDate(hm){ if(!hm) return null; const [h,m]=String(hm).split(':').map(Number); const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0); }
+    function isEnded(endHM){ const end=hmToDate(endHM); return end ? (Date.now() >= end.getTime()) : false; }
+    function isNowBetween(startHM, endHM){ const s=hmToDate(startHM), e=hmToDate(endHM), n=Date.now(); return (s && e) ? (n>=s.getTime() && n<e.getTime()) : false; }
 
+    /* عدّاد الدائرة */
     let countdownSeconds=null, progressRange={start:null,end:null};
+    const circle = $("circleProgress"); let CIRC_TOTAL = 0;
+    function setupCircle(){ if(!circle) return; const r = circle.r?.baseVal?.value || 54; CIRC_TOTAL = 2*Math.PI*r; circle.style.strokeDasharray = CIRC_TOTAL.toFixed(3); circle.style.strokeDashoffset = CIRC_TOTAL.toFixed(3); circle.style.stroke = "#ffffff"; circle.style.filter = "drop-shadow(0 0 6px rgba(255,255,255,.25))"; }
+    function ringColor(pct){ if(pct>66) return "#10b981"; if(pct>33) return "#f59e0b"; return "#ef4444"; }
+    function setRing(pct){ if(!circle || !CIRC_TOTAL) return; const clamped = Math.max(0, Math.min(100, pct)); const off = CIRC_TOTAL * (1 - clamped/100); circle.style.strokeDashoffset = off; circle.style.stroke = ringColor(clamped); }
 
     function startTicker(){
       setInterval(()=>{
@@ -195,15 +321,18 @@
         if(progressRange.start && progressRange.end){
           const now=Date.now();
           const pct=Math.max(0,Math.min(100,((now-progressRange.start)/(progressRange.end-progressRange.start))*100));
-          $("progressBar").style.width=`${pct.toFixed(1)}%`;
-        } else $("progressBar").style.width="0%";
+          $("progressBar").style.width=`${pct.toFixed(1)}%`; setRing(pct);
+        } else { $("progressBar").style.width="0%"; setRing(0); }
       },1000);
     }
     function toTimeStr(t){ if(!t) return "--:--"; const [h,m]=String(t).split(":"); return `${h}:${m}`; }
 
+    /* ===== الحالة + جدول اليوم ===== */
+    let _stateCache=null;
     function renderState(payload){
       const s=payload.state, day=payload.day;
       tickClock(payload.date_info);
+
       let title="—", range="--:-- → --:--", badge="اليوم";
       countdownSeconds=null; progressRange={start:null,end:null};
 
@@ -234,83 +363,212 @@
         ? (s.next.type==="period" ? `التالي: الحصّة ${s.next.index} — ${toTimeStr(s.next.starts_at)}` : `التالي: ${s.next.label||'فسحة'} — ${toTimeStr(s.next.starts_at)}`)
         : "التالي: —";
 
-      // جدول اليوم: شرائح أفقية مضغوطة
+      // جدول اليوم
       const mini=$("miniSchedule"); mini.innerHTML="";
-      if(day?.periods){
-        day.periods.forEach(p=>{
-          const isNow=s.type==='period' && s.current?.index===p.index;
-          const chip=document.createElement('div');
-          chip.className="mini-chip"+(isNow?" now tick":"");
-          chip.style.minWidth="10.5rem";
-          chip.innerHTML = `<div class="t">الحصّة ${p.index}</div>
-                            <div class="v">${toTimeStr(p.starts_at)} — ${toTimeStr(p.ends_at)}</div>`;
-          mini.appendChild(chip);
-        });
-      }
-      if(day?.breaks?.length){
-        day.breaks.forEach(b=>{
-          const chip=document.createElement('div');
-          chip.className="mini-chip break";
-          chip.style.minWidth="10.5rem";
-          chip.innerHTML = `<div class="t">${b.label||'فسحة'}</div>
-                            <div class="v">${toTimeStr(b.starts_at)} — ${toTimeStr(b.ends_at)}</div>`;
-          mini.appendChild(chip);
-        });
-      }
-    }
+      const timeline=[];
+      (day?.periods||[]).forEach(p=>timeline.push({kind:"period", start:p.starts_at, end:p.ends_at, label:`الحصّة ${p.index}`}));
+      (day?.breaks||[]).forEach(b=>timeline.push({kind:"break", start:b.starts_at, end:b.ends_at, label:b.label||"فسحة"}));
+      timeline.sort((a,b)=>hmToDate(a.start)-hmToDate(b.start) || (a.kind==="period"?-1:1));
 
-    function colorClass(level){
-      switch(level){
-        case 'urgent': return 'bg-red-600/20 ring-red-400/30 text-red-100';
-        case 'warning':return 'bg-amber-600/20 ring-amber-400/30 text-amber-100';
-        case 'success':return 'bg-emerald-600/20 ring-emerald-400/30 text-emerald-100';
-        default:       return 'bg-sky-600/20 ring-sky-400/30 text-sky-100';
-      }
-    }
-
-    function renderAnnouncements(items){
-      $("annCount").textContent=items.length;
-      $("annEmpty").classList.toggle('hidden', items.length>0);
-      const list=$("annList"); list.innerHTML="";
-      items.forEach(a=>{
-        const div=document.createElement('div');
-        div.className=`rounded-xl p-4 ring-1 ${colorClass(a.level)}`;
-        div.innerHTML=`<div class="font-semibold">${a.title}</div>${a.body?`<div class="text-sm opacity-90 mt-1">${a.body}</div>`:""}`;
-        list.appendChild(div);
+      const shown = s.type==="before" ? timeline : timeline.filter(x=>!isEnded(x.end));
+      shown.forEach(x=>{
+        const now = isNowBetween(x.start,x.end) ||
+          (x.kind==="period" && s.type==="period" && s.current?.starts_at===x.start) ||
+          (x.kind==="break"  && s.type==="break"  && s.current?.starts_at===x.start);
+        const chip=document.createElement('div');
+        chip.className="mini-chip"+(x.kind==="break"?" break":"")+(now?" now":"");
+        chip.style.minWidth="10.5rem";
+        chip.innerHTML=`<div class="t">${x.label}</div><div class="v">${toTimeStr(x.start)} — ${toTimeStr(x.end)}</div>`;
+        mini.appendChild(chip);
       });
+
+      _stateCache = s||{};
     }
 
+    /* ===== التنبيهات ===== */
+    const ANN_KEY="display:ann:v1", ANN_INT=6000;
+    let annList=[], annIdx=0, annTimer=null;
+    function annMakeKey(a){ return String(a.id ?? (a.level||'')+'|'+(a.title||'')+'|'+(a.body||'')).slice(0,200); }
+    function annLoadState(){ try{ return JSON.parse(localStorage.getItem(ANN_KEY)||"null"); }catch(_){ return null; } }
+    function annSaveState(){ try{ localStorage.setItem(ANN_KEY, JSON.stringify({idx:annIdx,at:Date.now(),interval:ANN_INT,keys:annList.map(annMakeKey)})); }catch(_){} }
+    function levelAr(level){
+      switch((level||'').toLowerCase()){
+        case 'urgent':  return 'عاجل';
+        case 'warning': return 'تنبيه';
+        case 'success': return 'تهنئة';
+        case 'info':
+        default:        return 'معلومة';
+      }
+    }
+    function mountAnnouncements(items){
+      annList = Array.isArray(items)? items : [];
+      $("annCount").textContent = annList.length;
+      $("annEmpty").classList.toggle('hidden', annList.length>0);
+      const car=$("annCarousel"), dots=$("annDots");
+      car.innerHTML=""; dots.innerHTML="";
+      if(!annList.length){ if(annTimer) clearInterval(annTimer); return; }
+
+      annList.forEach((a)=> {
+        const s=document.createElement('div'); s.className='ann-slide';
+        const lvl = levelAr(a.level);
+        s.innerHTML= `
+          <div class="ann-badge" data-level="${lvl}">${lvl}</div>
+          <div class="font-bold text-[clamp(16px,1.6vw,22px)]">${a.title||''}</div>
+          ${a.body?`<div class="text-sm opacity-95 leading-6 whitespace-pre-line">${a.body}</div>`:''}
+        `;
+        car.appendChild(s);
+        const d=document.createElement('div'); d.className='ann-dot'; dots.appendChild(d);
+      });
+
+      function show(i){
+        const slides=[...car.children], ds=[...dots.children];
+        annIdx=(i+slides.length)%slides.length;
+        slides.forEach((el,k)=>el.classList.toggle('active',k===annIdx));
+        ds.forEach((el,k)=>el.classList.toggle('active',k===annIdx));
+        annSaveState();
+      }
+
+      const st=annLoadState();
+      if(st && st.keys?.length){
+        const wantKey=st.keys[st.idx??0];
+        const keysNow=annList.map(annMakeKey);
+        let base = keysNow.indexOf(wantKey);
+        base = base>=0 ? base : (st.idx||0)%keysNow.length;
+        const elapsed = Math.max(0, Date.now() - Number(st.at||Date.now()));
+        const steps = Math.floor(elapsed / Number(st.interval||ANN_INT));
+        annIdx = (base + steps) % keysNow.length;
+      } else annIdx=0;
+
+      show(annIdx);
+      if(annTimer) clearInterval(annTimer);
+      annTimer=setInterval(()=>show(annIdx+1), ANN_INT);
+    }
+
+    /* ===== المتميزون (تصميم مختلف) ===== */
+    const EX_INT=8000, EX_KEY="display:ex:v2";
+    let exList=[], exPtr=0, exTimer=null;
+    function resolveImageURL(raw){
+      if(!raw) return ""; const s=String(raw).trim(); if(!s) return "";
+      if(/^data:image\//i.test(s)||/^blob:/i.test(s)) return s;
+      if(/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i,"//");
+      if(s.startsWith('//')) return s;
+      if(s.startsWith('/')) return s;
+      const pref=document.body.dataset.mediaPrefix||'/media/'; return (pref.endsWith('/')?pref:pref+'/')+s.replace(/^\.?\/*/,'');
+    }
+    function pickImage(e){
+      const t=e.teacher||{};
+      const c=[e.image_src,e.photo_url,e.image_url,e.photo,e.image,e.avatar,t.photo_url,t.image_url,t.photo,t.image];
+      for(const v of c){ const u=resolveImageURL(v); if(u) return u; }
+      return "";
+    }
+    function exKey(it){ return String(it.id ?? it.teacher_id ?? it.teacher_name ?? it.name ?? it.teacher?.name ?? JSON.stringify(it)).trim(); }
+    function exCardHTML(e){
+      const src=pickImage(e);
+      const name=(e.teacher_name||e.name||(e.teacher&&e.teacher.name)||'—');
+      const reason=(e.reason||'').slice(0,240);
+      const img = src
+        ? `<img class="ex-img" src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer"
+             onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ex-img grid place-items-center text-2xl',textContent:'🎖️'}))">`
+        : `<div class="ex-img grid place-items-center text-2xl">🎖️</div>`;
+      return `
+      <div class="ex-hero animate-fade-in">
+        <span class="ex-ribbon">نجم اليوم</span>
+        <div class="flex items-center gap-5">
+          <div class="ex-avatar">${img}</div>
+          <div class="min-w-0 flex-1">
+            <div class="font-black text-[clamp(18px,1.9vw,26px)] truncate">${name}</div>
+            ${reason?`<div class="text-sm opacity-95 leading-6 line-clamp-2">${reason}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }
+    function exLoad(){ try{ return JSON.parse(localStorage.getItem(EX_KEY)||"null"); }catch(_){ return null; } }
+    function exSave(){ try{ localStorage.setItem(EX_KEY, JSON.stringify({ptr:exPtr, at:Date.now(), interval:EX_INT, keys:exList.map(exKey)})); }catch(_){ } }
+    function renderExcellence(items){
+      exList=(Array.isArray(items)?items:[]).filter(x=> (x.teacher_name||x.name||x.teacher?.name));
+      $("exTotal").textContent=exList.length;
+      $("exEmpty").classList.toggle('hidden', exList.length>0);
+      const slot=$("exSlot"); slot.innerHTML="";
+      if(!exList.length){ if(exTimer) clearInterval(exTimer); $("exIndex").textContent="0"; return; }
+
+      const st=exLoad();
+      if(st && st.keys?.length){
+        const keysNow=exList.map(exKey);
+        const want=st.keys[st.ptr??0];
+        let base = keysNow.indexOf(want); if(base<0) base = (st.ptr||0)%keysNow.length;
+        const elapsed = Math.max(0, Date.now()-Number(st.at||Date.now()));
+        const steps = Math.floor(elapsed / Number(st.interval||EX_INT));
+        exPtr = (base + steps) % keysNow.length;
+      } else exPtr=0;
+
+      function show(i){
+        if(!exList.length) return;
+        exPtr = (i+exList.length)%exList.length;
+        $("exIndex").textContent = exPtr+1;
+        slot.innerHTML = exCardHTML(exList[exPtr]);
+        exSave();
+      }
+      show(exPtr);
+      if(exTimer) clearInterval(exTimer);
+      exTimer=setInterval(()=>show(exPtr+1), EX_INT);
+    }
+
+    /* ===== الانتظار ===== */
+    const SB_KEY="display:standby:v1";
+    let sbList=[], sbSpeed=16; // px/sec
+    let sbRAF=null, sbStartTime=0, sbBaseOffset=0, sbHeight=0;
+    function sbLoad(){ try{ return JSON.parse(localStorage.getItem(SB_KEY)||"null"); }catch(_){ return null; } }
+    function sbSave(){ try{ localStorage.setItem(SB_KEY, JSON.stringify({at:Date.now(), base:sbBaseOffset})); }catch(_){} }
+    function standbyVisible(x){
+      const s=_stateCache||{}; const p=Number(x.period_index||0);
+      if(s.type==="after") return false;
+      if(s.type==="before") return true;
+      if(s.type==="period") return p>=Number(s.current?.index||0);
+      if(s.type==="break")  return p>=Number(s.next?.index||0);
+      return true;
+    }
     function renderStandby(items){
-      $("standbyEmpty").classList.toggle('hidden', items.length>0);
-      const list=$("standbyList"); list.innerHTML="";
-      items.forEach(x=>{
-        const li=document.createElement('div');
-        li.className="rounded-xl px-3 py-2 bg-white/10 ring-1 ring-white/10";
-        li.innerHTML=`<div class="text-xs md:text-sm text-white/70">الحصّة ${x.period_index} — الفصل ${x.class_name}</div>
-                      <div class="font-semibold">${x.teacher_name}</div>`;
-        list.appendChild(li);
-      });
+      sbList=(Array.isArray(items)?items:[]).filter(standbyVisible);
+      $("standbyEmpty").classList.toggle('hidden', sbList.length>0);
+      const track=$("standbyTrack"); track.innerHTML="";
+      if(!sbList.length){ cancelAnimationFrame(sbRAF); sbRAF=null; return; }
+
+      const palette = ['sb-blue','sb-emerald','sb-amber','sb-rose'];
+      const block = (x,i)=>`<div class="rounded-xl px-3 py-2 ring-soft ${palette[i % palette.length]}">
+        <div class="text-xs md:text-sm text-white/80">الحصّة ${x.period_index} — الفصل ${x.class_name}</div>
+        <div class="font-semibold">${x.teacher_name}</div>
+      </div>`;
+
+      const html = sbList.map((x,i)=>block(x,i)).join('');
+      track.innerHTML = `<div id="sbSetA" class="space-y-2">${html}</div><div id="sbSetB" class="space-y-2">${html}</div>`;
+
+      const setA = document.getElementById('sbSetA');
+      sbHeight = setA.getBoundingClientRect().height + 8;
+
+      const st = sbLoad();
+      if(st && Number.isFinite(st.base)){ sbBaseOffset = st.base % sbHeight; } else sbBaseOffset = 0;
+      sbStartTime = performance.now();
+
+      cancelAnimationFrame(sbRAF);
+      function loop(t){
+        const dt = (t - sbStartTime)/1000;
+        const offset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
+        track.style.transform = `translateY(-${offset}px)`;
+        sbRAF = requestAnimationFrame(loop);
+      }
+      sbRAF = requestAnimationFrame(loop);
+
+      if(window._sbSaver) clearInterval(window._sbSaver);
+      window._sbSaver = setInterval(()=>{
+        const now = performance.now();
+        const dt = (now - sbStartTime)/1000;
+        sbBaseOffset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
+        sbStartTime = now;
+        sbSave();
+      }, 5000);
     }
 
-    // شريط التميّز العريض
-    function renderExcellenceBar(items){
-      $("exCount").textContent = items.length;
-      const bar=$("exBar"); bar.innerHTML="";
-      items.forEach(e=>{
-        const src=e.image_src||e.photo_url||"";
-        const card=document.createElement('div');
-        card.className="snap-start shrink-0 w-[280px] md:w-[320px] rounded-xl glass ring-1 ring-white/10 p-3 flex items-center gap-3";
-        card.innerHTML=`
-          ${src?`<img src="${src}" class="h-16 w-16 md:h-20 md:w-20 rounded-full object-cover ring-2 ring-white/20 bg-white/10" alt="">`
-               :`<div class="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white/10 ring-2 ring-white/20 grid place-items-center text-xl">🏅</div>`}
-          <div class="min-w-0">
-            <div class="font-bold truncate" style="font-size:clamp(14px,1.6vw,18px)">${e.teacher_name}</div>
-            <div class="text-sm text-white/90 line-clamp-2">${e.reason||''}</div>
-          </div>`;
-        bar.appendChild(card);
-      });
-    }
-
+    /* جلب البيانات */
     async function safeFetch(url){
       try{
         const r=await fetch(url,{headers:{'Accept':'application/json'}});
@@ -319,13 +577,16 @@
       }catch(e){ console.error('Fetch',url,e); netBadge(false); return null; }
     }
     async function refreshAll(){
-      const d=await safeFetch(api.today);   if(d) renderState(d);
-      const a=await safeFetch(api.ann);     if(a) renderAnnouncements(a.items||[]);
+      const d=await safeFetch(api.today);   if(d){ renderState(d); }
+      const a=await safeFetch(api.ann);     if(a) mountAnnouncements(a.items||[]);
       const s=await safeFetch(api.standby); if(s) renderStandby(s.items||[]);
-      const x=await safeFetch(api.exc);     if(x) renderExcellenceBar(x.items||[]);
+      const x=await safeFetch(api.exc);     if(x) renderExcellence(x.items||[]);
     }
 
-    (function init(){ startTicker(); refreshAll(); setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000); })();
+    (function init(){
+      setupCircle(); startTicker(); refreshAll();
+      setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000);
+    })();
   </script>
 </body>
 </html>
