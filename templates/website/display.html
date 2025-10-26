@@ -16,21 +16,14 @@
         extend: {
           fontFamily: { cairo: ['Cairo','ui-sans-serif','system-ui'] },
           colors:{ glass: 'rgba(255,255,255,.06)' },
-          boxShadow:{
-            'glass-lg':'0 10px 35px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06)'
-          },
+          boxShadow:{ 'glass-lg':'0 10px 35px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06)' },
           keyframes:{
-            fadeIn:{'0%':{opacity:0,transform:'translateY(8px)'},
-                    '100%':{opacity:1,transform:'translateY(0)'}},
-            pulseSoft:{'0%,100%':{opacity:.75},'50%':{opacity:1}},
-            floatY:{'0%':{transform:'translateY(0)'},
-                    '50%':{transform:'translateY(-6px)'},
-                    '100%':{transform:'translateY(0)'}},
+            fadeIn:{'0%':{opacity:0,transform:'translateY(8px)'},'100%':{opacity:1,transform:'translateY(0)'}},
+            floatY:{'0%':{transform:'translateY(0)'},'50%':{transform:'translateY(-6px)'},'100%':{transform:'translateY(0)'}},
             spin:{to:{transform:'rotate(360deg)'}}
           },
           animation:{
             'fade-in':'fadeIn .35s ease-out',
-            'pulse-soft':'pulseSoft 2s ease-in-out infinite',
             'float-y':'floatY 10s ease-in-out infinite',
             'spin-slow':'spin 14s linear infinite'
           }
@@ -49,11 +42,10 @@
     .safe{padding:max(env(safe-area-inset-top),var(--edge)) max(env(safe-area-inset-right),var(--edge)) max(env(safe-area-inset-bottom),var(--edge)) max(env(safe-area-inset-left),var(--edge))}
     .glass{backdrop-filter:saturate(140%) blur(10px);background:var(--glass)}
     .ring-soft{box-shadow: inset 0 0 0 1px var(--ring);}
-    .ring-strong{box-shadow: inset 0 0 0 1px var(--ring-strong);}
     .scrollbar-thin::-webkit-scrollbar{height:8px;width:8px}
     .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9999px}
 
-    /* خلفية مزخرفة */
+    /* خلفية */
     #bg::before, #bg::after{content:""; position:absolute; inset:0; pointer-events:none;}
     #bg::before{
       background:
@@ -70,9 +62,12 @@
         radial-gradient(160px 160px at 40% 50%, rgba(255,255,255,.07), transparent 60%);
       animation: float-y 24s ease-in-out infinite;
     }
-    @media (prefers-reduced-motion: reduce){
-      *{animation: none !important; transition: none !important}
-    }
+    @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important} }
+
+    /* أحجام عناوين أهدأ */
+    .title-xl{font-size:clamp(22px,3.2vw,48px)}
+    .title-lg{font-size:clamp(20px,2.6vw,40px)}
+    .title-md{font-size:clamp(14px,1.4vw,20px)}
 
     /* شرائح جدول اليوم */
     .mini-chip{display:inline-flex;flex-direction:column;gap:.15rem;padding:.6rem .8rem;border-radius:1rem;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08)}
@@ -82,38 +77,32 @@
     .mini-chip.break{background:linear-gradient(135deg, rgba(16,185,129,.25), rgba(16,185,129,.12));border-color:rgba(16,185,129,.45)}
     .mini-chip.break .t::before{content:"🍃 ";}
 
-    /* التنبيهات — ارتفاع تلقائي + بادج عربي */
+    /* التنبيهات */
     .ann-card{border-radius:18px;padding:14px;position:relative;overflow:visible}
-    .ann-slide{position:static;padding:16px;display:none;flex-direction:column;gap:.6rem;opacity:1}
+    .ann-slide{position:static;padding:16px;display:none;flex-direction:column;gap:.6rem}
     .ann-slide.active{display:block}
     .ann-badge{align-self:flex-start;font-size:.75rem;padding:.15rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.14)}
     .ann-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px}
     .ann-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25)}
     .ann-dot.active{background:#fff}
-    /* تلوين حسب النوع */
     .ann-badge[data-level="عاجل"]   { background:rgba(220,38,38,.25);  border-color:rgba(220,38,38,.45); }
     .ann-badge[data-level="تنبيه"] { background:rgba(245,158,11,.25); border-color:rgba(245,158,11,.45); }
     .ann-badge[data-level="معلومة"]{ background:rgba(59,130,246,.25); border-color:rgba(59,130,246,.45); }
     .ann-badge[data-level="تهنئة"] { background:rgba(16,185,129,.25); border-color:rgba(16,185,129,.45); }
 
-    /* قسم المتميزين — تصميم مختلف ولافت */
-    .ex-wrap{position:relative;border-radius:22px;padding:18px;background:
-      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));}
-    .ex-hero{
-      position:relative; overflow:hidden; border-radius:20px;
-      padding:16px;
-      background: radial-gradient(400px 160px at 90% 10%, rgba(123,97,255,.28), transparent 60%),
-                  radial-gradient(300px 180px at 10% 80%, rgba(59,130,246,.25), transparent 60%),
-                  linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-      box-shadow:0 12px 32px rgba(0,0,0,.28);
-      border:1px solid rgba(123,97,255,.35);
-    }
+    /* المتميزون */
+    .ex-wrap{position:relative;border-radius:22px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));}
+    .ex-hero{position:relative;overflow:hidden;border-radius:20px;padding:16px;background:
+      radial-gradient(400px 160px at 90% 10%, rgba(123,97,255,.28), transparent 60%),
+      radial-gradient(300px 180px at 10% 80%, rgba(59,130,246,.25), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+      box-shadow:0 12px 32px rgba(0,0,0,.28);border:1px solid rgba(123,97,255,.35);}
     .ex-avatar{position:relative;width:96px;height:96px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.1)}
     .ex-avatar::after{content:"";position:absolute;inset:-8px;border-radius:999px;border:2px dashed rgba(123,97,255,.45);animation:spin 14s linear infinite}
     .ex-img{width:100%;height:100%;object-fit:cover;border-radius:999px}
     .ex-ribbon{position:absolute;top:12px;left:12px;background:linear-gradient(90deg,#f0b,#70f);padding:.25rem .6rem;border-radius:999px;font-weight:800;font-size:.75rem}
 
-    /* الانتظار — ألوان متناوبة */
+    /* الانتظار — ألوان متناوبة + تمرير مستمر */
     .standby-viewport{max-height:42vh;overflow:hidden;position:relative}
     .standby-track{will-change:transform}
     .sb-blue   { background:linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.10)); border:1px solid rgba(59,130,246,.35); }
@@ -135,8 +124,7 @@
       const t=(document.body.dataset.theme||'indigo').toLowerCase();
       const p={indigo:['#1c266f','#6c8cff'],sky:['#0d3552','#52b6ff'],emerald:['#083b32','#45e0b5'],rose:['#4a0d2a','#ff6d9e'],amber:['#3b2b00','#ffb200'],slate:['#0b1023','#435a78']};
       const [c1,c2]=(p[t]||p.indigo);
-      const el=document.getElementById('bg');
-      el.style.background=`linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
+      document.getElementById('bg').style.background=`linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
     })();
   </script>
 
@@ -147,16 +135,16 @@
     <!-- الرأس -->
     <header class="flex flex-wrap items-center gap-4 py-4">
       {% if logo_url %}
-        <img src="{{ logo_url }}" alt="شعار" class="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1 shadow-glass-lg">
+        <img src="{{ logo_url }}" alt="شعار" class="h-12 w-12 md:h-14 md:w-14 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1 shadow-glass-lg">
       {% else %}
-        <div class="h-14 w-14 md:h-16 md:w-16 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10 shadow-glass-lg">🏫</div>
+        <div class="h-12 w-12 md:h-14 md:w-14 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10 shadow-glass-lg">🏫</div>
       {% endif %}
       <div class="flex-1 min-w-[40%]">
-        <h1 class="font-black drop-shadow-sm" style="font-size:clamp(26px,3.8vw,58px)">{{ school_name }}</h1>
+        <h1 class="font-black drop-shadow-sm title-xl">{{ school_name }}</h1>
         <div id="dateLine" class="inline-block mt-1 px-3 py-1 rounded-lg bg-white/10 ring-1 ring-white/20 text-slate-100 text-sm md:text-base">—</div>
       </div>
       <div class="text-right">
-        <div id="clock" class="font-extrabold tabular-nums" style="font-size:clamp(20px,3vw,46px)">--:--:--</div>
+        <div id="clock" class="font-extrabold tabular-nums title-md">--:--:--</div>
         <div id="dayState" class="text-slate-200/80 text-sm">جارِ التحديث…</div>
       </div>
     </header>
@@ -167,8 +155,8 @@
       <section class="col-span-12 xl:col-span-8 2xl:col-span-9">
         <div class="rounded-[var(--r)] p-4 md:p-6 xl:p-7 shadow-2xl glass ring-soft h-full">
           <div class="flex items-center justify-between mb-4">
-            <h2 id="heroTitle" class="font-extrabold" style="font-size:clamp(24px,3.2vw,50px)">—</h2>
-            <span id="heroRange" class="font-bold text-white/90" style="font-size:clamp(14px,2.2vw,24px)">--:-- → --:--</span>
+            <h2 id="heroTitle" class="font-extrabold title-lg">—</h2>
+            <span id="heroRange" class="font-bold text-white/90 text-sm md:text-base">--:-- → --:--</span>
           </div>
 
           <!-- بطاقة التقدّم -->
@@ -179,7 +167,7 @@
                 <span class="text-white/80 text-sm md:text-base" id="nextLabel">التالي: —</span>
               </div>
 
-              <div class="relative h-24 w-24 md:h-28 md:w-28 shrink-0">
+              <div class="relative h-20 w-20 md:h-24 md:w-24 shrink-0">
                 <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
                   <circle cx="60" cy="60" r="54" stroke-width="12" fill="none" class="stroke-white/15"></circle>
                   <circle id="circleProgress" cx="60" cy="60" r="54" stroke-linecap="round" stroke-width="12" fill="none" class="transition-all duration-500"></circle>
@@ -187,7 +175,7 @@
                 <div class="absolute inset-0 grid place-items-center">
                   <div class="text-center leading-tight">
                     <div class="text-xs md:text-sm text-white/70">المتبقي</div>
-                    <div id="countdown" class="font-black tabular-nums text-xl md:text-2xl">--:--</div>
+                    <div id="countdown" class="font-black tabular-nums text-lg md:text-xl">--:--</div>
                   </div>
                 </div>
               </div>
@@ -204,7 +192,6 @@
               <div class="text-xs text-white/70">تتحدث تلقائيًا</div>
             </div>
             <div id="miniSchedule" class="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
-              <!-- Skeleton أثناء التحميل -->
               <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
               <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
               <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
@@ -214,17 +201,15 @@
           <!-- قسم المتميزون (تصميم مختلف) -->
           <div class="mt-4 ex-wrap ring-soft shadow-glass-lg">
             <div class="flex items-center justify-between mb-3">
-              <div class="text-lg font-extrabold tracking-wide">🎖️ السجل الشرفي </div>
-              <div class="text-sm text-white/90"><span id="exIndex">0</span> / <span id="exTotal">0</span></div>
+              <div class="text-base md:text-lg font-extrabold tracking-wide">🎖️ السجل الشرفي</div>
+              <div class="text-xs md:text-sm text-white/90"><span id="exIndex">0</span> / <span id="exTotal">0</span></div>
             </div>
-            <div id="exSlot" class="min-h-[180px]">
-              <!-- Skeleton -->
+            <div id="exSlot" class="min-h-[170px]">
               <div class="ex-hero">
-                <span class="ex-ribbon">نجم اليوم</span>
                 <div class="flex items-center gap-5">
                   <div class="ex-avatar skeleton"></div>
                   <div class="min-w-0 flex-1">
-                    <div class="h-6 w-56 rounded skeleton mb-3"></div>
+                    <div class="h-5 w-56 rounded skeleton mb-3"></div>
                     <div class="h-4 w-80 rounded skeleton"></div>
                   </div>
                 </div>
@@ -240,11 +225,10 @@
         <!-- التنبيهات -->
         <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg md:text-xl font-bold">التنبيهات</h3>
+            <h3 class="text-base md:text-lg font-bold">التنبيهات</h3>
             <span id="annCount" class="text-slate-200/80 text-sm">0</span>
           </div>
           <div class="ann-card ring-soft" id="annCarousel">
-            <!-- Skeleton -->
             <div class="w-full h-24 skeleton rounded-xl"></div>
           </div>
           <div class="ann-dots" id="annDots"></div>
@@ -254,12 +238,11 @@
         <!-- حصص الانتظار -->
         <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
           <div class="flex items-center justify-between">
-            <h3 class="text-lg md:text-xl font-bold mb-3">حصص الانتظار (اليوم)</h3>
-            <span class="text-xs text-white/70">يُفلتر حسب الحالة الحالية</span>
+            <h3 class="text-base md:text-lg font-bold mb-3">حصص الانتظار (اليوم)</h3>
+            <span class="text-xs text-white/70">مرتّبة حسب الحصة</span>
           </div>
           <div class="standby-viewport">
             <div id="standbyTrack" class="standby-track">
-              <!-- Skeleton -->
               <div class="space-y-2">
                 <div class="rounded-xl h-12 skeleton"></div>
                 <div class="rounded-xl h-12 skeleton"></div>
@@ -391,15 +374,9 @@
     function annMakeKey(a){ return String(a.id ?? (a.level||'')+'|'+(a.title||'')+'|'+(a.body||'')).slice(0,200); }
     function annLoadState(){ try{ return JSON.parse(localStorage.getItem(ANN_KEY)||"null"); }catch(_){ return null; } }
     function annSaveState(){ try{ localStorage.setItem(ANN_KEY, JSON.stringify({idx:annIdx,at:Date.now(),interval:ANN_INT,keys:annList.map(annMakeKey)})); }catch(_){} }
-    function levelAr(level){
-      switch((level||'').toLowerCase()){
-        case 'urgent':  return 'عاجل';
-        case 'warning': return 'تنبيه';
-        case 'success': return 'تهنئة';
-        case 'info':
-        default:        return 'معلومة';
-      }
-    }
+    function levelAr(level){ switch((level||'').toLowerCase()){
+      case 'urgent':  return 'عاجل'; case 'warning': return 'تنبيه';
+      case 'success': return 'تهنئة'; default: return 'معلومة'; } }
     function mountAnnouncements(items){
       annList = Array.isArray(items)? items : [];
       $("annCount").textContent = annList.length;
@@ -413,7 +390,7 @@
         const lvl = levelAr(a.level);
         s.innerHTML= `
           <div class="ann-badge" data-level="${lvl}">${lvl}</div>
-          <div class="font-bold text-[clamp(16px,1.6vw,22px)]">${a.title||''}</div>
+          <div class="font-bold text-[clamp(15px,1.5vw,20px)]">${a.title||''}</div>
           ${a.body?`<div class="text-sm opacity-95 leading-6 whitespace-pre-line">${a.body}</div>`:''}
         `;
         car.appendChild(s);
@@ -444,7 +421,7 @@
       annTimer=setInterval(()=>show(annIdx+1), ANN_INT);
     }
 
-    /* ===== المتميزون (تصميم مختلف) ===== */
+    /* ===== المتميزون ===== */
     const EX_INT=8000, EX_KEY="display:ex:v2";
     let exList=[], exPtr=0, exTimer=null;
     function resolveImageURL(raw){
@@ -472,11 +449,10 @@
         : `<div class="ex-img grid place-items-center text-2xl">🎖️</div>`;
       return `
       <div class="ex-hero animate-fade-in">
-        <span class="ex-ribbon">نجم اليوم</span>
         <div class="flex items-center gap-5">
           <div class="ex-avatar">${img}</div>
           <div class="min-w-0 flex-1">
-            <div class="font-black text-[clamp(18px,1.9vw,26px)] truncate">${name}</div>
+            <div class="font-black text-[clamp(16px,1.6vw,22px)] truncate">${name}</div>
             ${reason?`<div class="text-sm opacity-95 leading-6 line-clamp-2">${reason}</div>`:''}
           </div>
         </div>
@@ -513,12 +489,14 @@
       exTimer=setInterval(()=>show(exPtr+1), EX_INT);
     }
 
-    /* ===== الانتظار ===== */
+    /* ===== الانتظار — ترتيب + تمرير مستمر بلا انقطاع ===== */
     const SB_KEY="display:standby:v1";
-    let sbList=[], sbSpeed=16; // px/sec
+    let sbList=[], sbSpeed=16; // سيتم ضبطها ديناميكياً
     let sbRAF=null, sbStartTime=0, sbBaseOffset=0, sbHeight=0;
+
     function sbLoad(){ try{ return JSON.parse(localStorage.getItem(SB_KEY)||"null"); }catch(_){ return null; } }
     function sbSave(){ try{ localStorage.setItem(SB_KEY, JSON.stringify({at:Date.now(), base:sbBaseOffset})); }catch(_){} }
+
     function standbyVisible(x){
       const s=_stateCache||{}; const p=Number(x.period_index||0);
       if(s.type==="after") return false;
@@ -527,8 +505,19 @@
       if(s.type==="break")  return p>=Number(s.next?.index||0);
       return true;
     }
+
     function renderStandby(items){
-      sbList=(Array.isArray(items)?items:[]).filter(standbyVisible);
+      // 1) ترتيب حسب الحصص، ثم الفصل، ثم الاسم
+      const sorted = (Array.isArray(items)?items:[]).slice().sort((a,b)=>{
+        const pa = Number(a.period_index||0), pb = Number(b.period_index||0);
+        if (pa !== pb) return pa - pb;
+        const ca = (a.class_name||'').toString().localeCompare((b.class_name||'').toString(), 'ar');
+        if (ca !== 0) return ca;
+        return (a.teacher_name||'').toString().localeCompare((b.teacher_name||'').toString(), 'ar');
+      });
+
+      sbList = sorted.filter(standbyVisible);
+
       $("standbyEmpty").classList.toggle('hidden', sbList.length>0);
       const track=$("standbyTrack"); track.innerHTML="";
       if(!sbList.length){ cancelAnimationFrame(sbRAF); sbRAF=null; return; }
@@ -540,24 +529,32 @@
       </div>`;
 
       const html = sbList.map((x,i)=>block(x,i)).join('');
+      // مساران لتحقيق حلقة لا نهائية بلا انقطاع
       track.innerHTML = `<div id="sbSetA" class="space-y-2">${html}</div><div id="sbSetB" class="space-y-2">${html}</div>`;
 
       const setA = document.getElementById('sbSetA');
+      const viewport = document.querySelector('.standby-viewport');
       sbHeight = setA.getBoundingClientRect().height + 8;
 
+      // 2) سرعة متكيّفة: كلما زاد المحتوى نسبتُه للحاوية زادت السرعة قليلًا
+      const vpH = viewport ? viewport.getBoundingClientRect().height : 300;
+      sbSpeed = Math.min(26, Math.max(12, (sbHeight / Math.max(120, vpH)) * 10 ));
+
+      // 3) استئناف الموضع لحركة مستمرة عبر التحديثات
       const st = sbLoad();
-      if(st && Number.isFinite(st.base)){ sbBaseOffset = st.base % sbHeight; } else sbBaseOffset = 0;
+      if(st && Number.isFinite(st.base)){ sbBaseOffset = ((st.base % sbHeight)+sbHeight)%sbHeight; } else sbBaseOffset = 0;
       sbStartTime = performance.now();
 
       cancelAnimationFrame(sbRAF);
-      function loop(t){
+      const loop = (t)=>{
         const dt = (t - sbStartTime)/1000;
         const offset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
         track.style.transform = `translateY(-${offset}px)`;
         sbRAF = requestAnimationFrame(loop);
-      }
+      };
       sbRAF = requestAnimationFrame(loop);
 
+      // حفظ الموضع دوريًا لضمان عدم الانقطاع بعد أي refresh
       if(window._sbSaver) clearInterval(window._sbSaver);
       window._sbSaver = setInterval(()=>{
         const now = performance.now();
@@ -565,7 +562,7 @@
         sbBaseOffset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
         sbStartTime = now;
         sbSave();
-      }, 5000);
+      }, 4000);
     }
 
     /* جلب البيانات */
@@ -586,6 +583,8 @@
     (function init(){
       setupCircle(); startTicker(); refreshAll();
       setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000);
+      // إعادة حساب سرعة/ارتفاع التمرير عند تغيير الحجم للحفاظ على السلاسة
+      window.addEventListener('resize', ()=> { if(sbList.length){ renderStandby(sbList); } });
     })();
   </script>
 </body>
