@@ -6,7 +6,10 @@ services:
     buildCommand: |
       pip install -r requirements.txt && \
       python manage.py collectstatic --noinput && \
-      python manage.py migrate --noinput
+      python manage.py migrate --noinput && \
+      python manage.py createsuperuser --noinput \
+        --username "$DJANGO_SUPERUSER_USERNAME" \
+        --email "$DJANGO_SUPERUSER_EMAIL" || true
     startCommand: gunicorn config.wsgi --log-file - --workers=3 --timeout=90
     envVars:
       - key: DJANGO_SETTINGS_MODULE
@@ -27,6 +30,13 @@ services:
         fromDatabase:
           name: school-display-db
           property: connectionString
+      # ===== Superuser (املأ هذه المتغيرات من لوحة Render → Environment) =====
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@example.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false   # أدخل القيمة يدويًا من Environment، لا تُرفع من الملف
     disks:
       - name: media
         mountPath: /opt/render/project/src/media

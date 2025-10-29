@@ -114,6 +114,28 @@
     .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
     .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);animation:sk 1.2s infinite}
     @keyframes sk{to{transform:translateX(100%)}}
+
+    /* زر ملء الشاشة — صغير وغير مزعج */
+    .fs-btn{position:fixed;inset-inline-start:12px;inset-block-start:12px;z-index:60}
+    @media print{ .fs-btn{display:none} }
+
+    /* ودجت الطقس (صغير) */
+    .wx-chip{
+      display:inline-flex;align-items:center;gap:.5rem;
+      padding:.35rem .6rem;border-radius:9999px;
+      background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18);
+      font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,.15);
+    }
+    .wx-chip .i{font-size:1.05rem;line-height:1}
+    .wx-chip .t{font-size:.95rem;letter-spacing:.01em}
+    .wx-chip small{opacity:.85;font-weight:600}
+    @media (forced-colors: active){ .wx-chip{outline:1px solid CanvasText} }
+
+    /* وضع تباين قسري (وصولية) */
+    @media (forced-colors: active){
+      .glass, .ring-soft { outline: 1px solid CanvasText; }
+      .text-white\/70, .text-white\/80, .text-slate-300\/80 { color: CanvasText !important; }
+    }
   </style>
 </head>
 <body class="min-h-full text-white safe" data-theme="{{ theme|default:'indigo' }}" data-media-prefix="{{ MEDIA_URL|default:'/media/' }}">
@@ -131,6 +153,18 @@
   <!-- شارة الشبكة -->
   <div id="net" class="fixed top-3 left-3 z-50 hidden px-3 py-1 rounded-full text-sm bg-red-600/90 shadow-lg ring-1 ring-white/20">غير متصل</div>
 
+  <!-- زر ملء الشاشة (صغير ثابت) -->
+  <button id="fsBtn" type="button" class="fs-btn group rounded-xl bg-white/10 ring-1 ring-white/20 p-2 backdrop-blur
+         text-white/90 hover:bg-white/20 hover:text-white transition shadow-md"
+         aria-label="تبديل ملء الشاشة" title="ملء الشاشة (F)">
+    <svg id="fsIconEnter" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M3 15v4a2 2 0 0 0 2 2h4M21 15v4a2 2 0 0 1-2 2h-4"/>
+    </svg>
+    <svg id="fsIconExit" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/>
+    </svg>
+  </button>
+
   <div class="mx-auto w-full max-w-[1920px] px-2 md:px-4">
     <!-- الرأس -->
     <header class="flex flex-wrap items-center gap-4 py-4">
@@ -141,11 +175,15 @@
       {% endif %}
       <div class="flex-1 min-w-[40%]">
         <h1 class="font-black drop-shadow-sm title-xl">{{ school_name }}</h1>
-        <div id="dateLine" class="inline-block mt-1 px-3 py-1 rounded-lg bg-white/10 ring-1 ring-white/20 text-slate-100 text-sm md:text-base">—</div>
+        <div id="dateLine" class="inline-block mt-1 px-3 py-1 rounded-lg bg-white/10 ring-1 ring-white/20 text-slate-100 text-sm md:text-base" aria-live="polite">—</div>
       </div>
+
+      <!-- يمين الهيدر: الساعة + حالة اليوم + ودجت الطقس -->
       <div class="text-right">
-        <div id="clock" class="font-extrabold tabular-nums title-md">--:--:--</div>
-        <div id="dayState" class="text-slate-200/80 text-sm">جارِ التحديث…</div>
+        <div id="clock" class="font-extrabold tabular-nums title-md" aria-live="polite">--:--:--</div>
+        <div id="dayState" class="text-slate-200/80 text-sm" aria-live="polite">جارِ التحديث…</div>
+        <!-- ودجت الطقس (الرياض) -->
+        <div id="wxChip" class="wx-chip mt-2 inline-flex" title="طقس الرياض">—</div>
       </div>
     </header>
 
@@ -198,7 +236,7 @@
             </div>
           </div>
 
-          <!-- قسم المتميزون (تصميم مختلف) -->
+          <!-- قسم المتميزون -->
           <div class="mt-4 ex-wrap ring-soft shadow-glass-lg">
             <div class="flex items-center justify-between mb-3">
               <div class="text-base md:text-lg font-extrabold tracking-wide">🎖️ السجل الشرفي</div>
@@ -228,7 +266,7 @@
             <h3 class="text-base md:text-lg font-bold">التنبيهات</h3>
             <span id="annCount" class="text-slate-200/80 text-sm">0</span>
           </div>
-          <div class="ann-card ring-soft" id="annCarousel">
+          <div class="ann-card ring-soft" id="annCarousel" role="region" aria-live="polite">
             <div class="w-full h-24 skeleton rounded-xl"></div>
           </div>
           <div class="ann-dots" id="annDots"></div>
@@ -289,7 +327,15 @@
     const circle = $("circleProgress"); let CIRC_TOTAL = 0;
     function setupCircle(){ if(!circle) return; const r = circle.r?.baseVal?.value || 54; CIRC_TOTAL = 2*Math.PI*r; circle.style.strokeDasharray = CIRC_TOTAL.toFixed(3); circle.style.strokeDashoffset = CIRC_TOTAL.toFixed(3); circle.style.stroke = "#ffffff"; circle.style.filter = "drop-shadow(0 0 6px rgba(255,255,255,.25))"; }
     function ringColor(pct){ if(pct>66) return "#10b981"; if(pct>33) return "#f59e0b"; return "#ef4444"; }
-    function setRing(pct){ if(!circle || !CIRC_TOTAL) return; const clamped = Math.max(0, Math.min(100, pct)); const off = CIRC_TOTAL * (1 - clamped/100); circle.style.strokeDashoffset = off; circle.style.stroke = ringColor(clamped); }
+    function setRing(pct){
+      if(!circle || !CIRC_TOTAL) return;
+      const clamped = Math.max(0, Math.min(100, pct));
+      const off = CIRC_TOTAL * (1 - clamped/100);
+      circle.style.strokeDashoffset = off;
+      const col = ringColor(clamped);
+      circle.style.stroke = col;
+      circle.style.filter = `drop-shadow(0 0 6px ${col}55)`;
+    }
 
     function startTicker(){
       setInterval(()=>{
@@ -489,9 +535,9 @@
       exTimer=setInterval(()=>show(exPtr+1), EX_INT);
     }
 
-    /* ===== الانتظار — ترتيب + تمرير مستمر بلا انقطاع ===== */
+    /* ===== الانتظار — ترتيب + تمرير مستمر ===== */
     const SB_KEY="display:standby:v1";
-    let sbList=[], sbSpeed=16; // سيتم ضبطها ديناميكياً
+    let sbList=[], sbSpeed=16;
     let sbRAF=null, sbStartTime=0, sbBaseOffset=0, sbHeight=0;
 
     function sbLoad(){ try{ return JSON.parse(localStorage.getItem(SB_KEY)||"null"); }catch(_){ return null; } }
@@ -507,7 +553,6 @@
     }
 
     function renderStandby(items){
-      // 1) ترتيب حسب الحصص، ثم الفصل، ثم الاسم
       const sorted = (Array.isArray(items)?items:[]).slice().sort((a,b)=>{
         const pa = Number(a.period_index||0), pb = Number(b.period_index||0);
         if (pa !== pb) return pa - pb;
@@ -529,18 +574,15 @@
       </div>`;
 
       const html = sbList.map((x,i)=>block(x,i)).join('');
-      // مساران لتحقيق حلقة لا نهائية بلا انقطاع
       track.innerHTML = `<div id="sbSetA" class="space-y-2">${html}</div><div id="sbSetB" class="space-y-2">${html}</div>`;
 
       const setA = document.getElementById('sbSetA');
       const viewport = document.querySelector('.standby-viewport');
       sbHeight = setA.getBoundingClientRect().height + 8;
 
-      // 2) سرعة متكيّفة: كلما زاد المحتوى نسبتُه للحاوية زادت السرعة قليلًا
       const vpH = viewport ? viewport.getBoundingClientRect().height : 300;
       sbSpeed = Math.min(26, Math.max(12, (sbHeight / Math.max(120, vpH)) * 10 ));
 
-      // 3) استئناف الموضع لحركة مستمرة عبر التحديثات
       const st = sbLoad();
       if(st && Number.isFinite(st.base)){ sbBaseOffset = ((st.base % sbHeight)+sbHeight)%sbHeight; } else sbBaseOffset = 0;
       sbStartTime = performance.now();
@@ -554,7 +596,6 @@
       };
       sbRAF = requestAnimationFrame(loop);
 
-      // حفظ الموضع دوريًا لضمان عدم الانقطاع بعد أي refresh
       if(window._sbSaver) clearInterval(window._sbSaver);
       window._sbSaver = setInterval(()=>{
         const now = performance.now();
@@ -565,26 +606,147 @@
       }, 4000);
     }
 
-    /* جلب البيانات */
+    /* ===== جلب البيانات — إلغاء السباقات ===== */
+    let _refreshCtl = null;
+
     async function safeFetch(url){
       try{
-        const r=await fetch(url,{headers:{'Accept':'application/json'}});
+        if(!_refreshCtl) _refreshCtl = new AbortController();
+        const r=await fetch(url,{headers:{'Accept':'application/json'}, signal:_refreshCtl.signal});
         if(!r.ok) throw new Error(r.status);
         return await r.json();
       }catch(e){ console.error('Fetch',url,e); netBadge(false); return null; }
     }
+
     async function refreshAll(){
-      const d=await safeFetch(api.today);   if(d){ renderState(d); }
-      const a=await safeFetch(api.ann);     if(a) mountAnnouncements(a.items||[]);
-      const s=await safeFetch(api.standby); if(s) renderStandby(s.items||[]);
-      const x=await safeFetch(api.exc);     if(x) renderExcellence(x.items||[]);
+      if(_refreshCtl){ try{ _refreshCtl.abort(); }catch(_){} }
+      _refreshCtl = new AbortController();
+
+      const [d,a,s,x] = await Promise.all([
+        safeFetch(api.today),
+        safeFetch(api.ann),
+        safeFetch(api.standby),
+        safeFetch(api.exc),
+      ]);
+      if(d) renderState(d);
+      if(a) mountAnnouncements(a.items||[]);
+      if(s) renderStandby(s.items||[]);
+      if(x) renderExcellence(x.items||[]);
     }
 
+    /* ===== الطقس — الرياض ===== */
+    const WX_KEY='display:wx:v1';
+    const WX_TTL=10*60*1000; // 10 دقائق
+    const RIYADH = { lat: 24.7136, lon: 46.6753, tz: 'Asia/Riyadh' };
+
+    const wxMap = {
+      0:['صحو','☀️'], 1:['غائم جزئيًا','🌤️'], 2:['غائم','⛅'], 3:['غائم كليًا','☁️'],
+      45:['ضباب','🌫️'], 48:['ضباب','🌫️'],
+      51:['رذاذ','🌦️'], 53:['رذاذ','🌦️'], 55:['رذاذ','🌦️'],
+      61:['مطر خفيف','🌧️'], 63:['مطر','🌧️'], 65:['مطر غزير','🌧️'],
+      71:['ثلوج خفيفة','🌨️'], 73:['ثلوج','🌨️'], 75:['ثلوج غزيرة','🌨️'],
+      95:['عواصف رعدية','⛈️'], 96:['عواصف + برد','⛈️'], 99:['عواصف شديدة','⛈️']
+    };
+
+    function wxFromCache(){
+      try{
+        const raw = localStorage.getItem(WX_KEY);
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(Date.now() - obj.at > WX_TTL) return null;
+        return obj.data;
+      }catch(_){ return null; }
+    }
+    function wxSave(data){
+      try{ localStorage.setItem(WX_KEY, JSON.stringify({at: Date.now(), data})); }catch(_){}
+    }
+    function wxRender(d){
+      const el = $('wxChip');
+      if(!d){ el.textContent='—'; return; }
+      const code = Number(d.weather_code);
+      const [label, icon] = wxMap[code] || ['الطقس', '🌡️'];
+      const t = Math.round(d.temperature_2m);
+      const w = Math.round(d.wind_speed_10m);
+      el.innerHTML = `<span class="i">${icon}</span><span class="t">${t}°</span><small>الرياض • ${label} • ${w} كم/س</small>`;
+    }
+    async function wxFetch(){
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${RIYADH.lat}&longitude=${RIYADH.lon}&current=temperature_2m,wind_speed_10m,weather_code&timezone=${encodeURIComponent(RIYADH.tz)}`;
+      try{
+        const r = await fetch(url, { headers: {'Accept':'application/json'} });
+        if(!r.ok) throw new Error('wx '+r.status);
+        const j = await r.json();
+        const cur = j?.current || null;
+        if(cur){ wxSave(cur); wxRender(cur); }
+      }catch(e){
+        console.warn('weather error', e);
+        wxRender(wxFromCache());
+      }
+    }
+
+    /* ===== تهيئة ===== */
     (function init(){
       setupCircle(); startTicker(); refreshAll();
       setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000);
-      // إعادة حساب سرعة/ارتفاع التمرير عند تغيير الحجم للحفاظ على السلاسة
-      window.addEventListener('resize', ()=> { if(sbList.length){ renderStandby(sbList); } });
+
+      // طقس: اظهر الكاش فورًا ثم حدّث من الشبكة
+      const cached = wxFromCache(); if(cached) wxRender(cached); else $('wxChip').textContent='—';
+      wxFetch();
+      setInterval(wxFetch, WX_TTL);
+
+      // مهدِّئ لإعادة بناء الانتظار عند تغيير الحجم
+      let rzT=null;
+      window.addEventListener('resize', ()=>{
+        if(rzT) clearTimeout(rzT);
+        rzT = setTimeout(()=>{ if(sbList.length){ renderStandby(sbList); } }, 200);
+      });
+    })();
+
+    /* ===== ملء الشاشة ===== */
+    (function fullscreenInit(){
+      const fsBtn = document.getElementById('fsBtn');
+      const iconEnter = document.getElementById('fsIconEnter');
+      const iconExit  = document.getElementById('fsIconExit');
+
+      function fsEnabled(){ return document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled; }
+      function isFs(){
+        return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      }
+      async function enterFs(el){
+        try{
+          if(el.requestFullscreen) await el.requestFullscreen();
+          else if(el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+          else if(el.msRequestFullscreen) await el.msRequestFullscreen();
+        }catch(e){ console.warn('Fullscreen enter error', e); }
+      }
+      async function exitFs(){
+        try{
+          if(document.exitFullscreen) await document.exitFullscreen();
+          else if(document.webkitExitFullscreen) await document.webkitExitFullscreen();
+          else if(document.msExitFullscreen) await document.msExitFullscreen();
+        }catch(e){ console.warn('Fullscreen exit error', e); }
+      }
+      function updateIcon(){
+        const on = !!isFs();
+        iconEnter.classList.toggle('hidden', on);
+        iconExit.classList.toggle('hidden', !on);
+      }
+
+      if(!fsEnabled()){ fsBtn.style.display='none'; return; }
+      fsBtn.addEventListener('click', ()=>{
+        if(isFs()) exitFs(); else enterFs(document.documentElement);
+      });
+      document.addEventListener('fullscreenchange', updateIcon);
+      document.addEventListener('webkitfullscreenchange', updateIcon);
+      document.addEventListener('msfullscreenchange', updateIcon);
+      updateIcon();
+
+      // اختصار لوحة المفاتيح: F
+      window.addEventListener('keydown', (e)=>{
+        if(e.key && e.key.toLowerCase()==='f'){
+          e.preventDefault();
+          if(isFs()) exitFs(); else enterFs(document.documentElement);
+        }
+      });
     })();
   </script>
 </body>
