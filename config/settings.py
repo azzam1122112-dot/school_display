@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "core",
     "schedule",
     "standby",
-    "notices",
+    "notices.apps.NoticesConfig",
     "website",
     "dashboard",
 ]
