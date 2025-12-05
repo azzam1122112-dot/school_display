@@ -931,6 +931,10 @@
 
         if(token) {
             urlObj.searchParams.append('token', token);
+        } else {
+            // No token available -> Skip fetch to avoid 403
+            console.warn("Skipping fetch (no token):", url);
+            return null;
         }
 
         const r=await fetch(urlObj.toString(),{headers:{'Accept':'application/json'}});

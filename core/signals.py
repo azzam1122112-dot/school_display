@@ -9,28 +9,29 @@ from schedule.models import SchoolSettings, DaySchedule, Period, Break
 
 logger = logging.getLogger(__name__)
 
-def sync_to_firestore(collection, doc_id, data):
-    """Helper to sync data to Firestore"""
+def sync_to_firestore(school_id, collection, doc_id, data):
+    """Helper to sync data to Firestore under a specific school"""
     if not getattr(settings, 'USE_FIREBASE', False):
         return
 
     try:
         db = get_db()
-        doc_ref = db.collection(collection).document(str(doc_id))
+        # Structure: schools/{school_id}/{collection}/{doc_id}
+        doc_ref = db.collection('schools').document(str(school_id)).collection(collection).document(str(doc_id))
         doc_ref.set(data)
-        logger.info(f"Synced {collection}/{doc_id} to Firestore.")
+        logger.info(f"Synced schools/{school_id}/{collection}/{doc_id} to Firestore.")
     except Exception as e:
         logger.error(f"Error syncing to Firestore: {e}")
 
-def delete_from_firestore(collection, doc_id):
-    """Helper to delete data from Firestore"""
+def delete_from_firestore(school_id, collection, doc_id):
+    """Helper to delete data from Firestore under a specific school"""
     if not getattr(settings, 'USE_FIREBASE', False):
         return
 
     try:
         db = get_db()
-        db.collection(collection).document(str(doc_id)).delete()
-        logger.info(f"Deleted {collection}/{doc_id} from Firestore.")
+        db.collection('schools').document(str(school_id)).collection(collection).document(str(doc_id)).delete()
+        logger.info(f"Deleted schools/{school_id}/{collection}/{doc_id} from Firestore.")
     except Exception as e:
         logger.error(f"Error deleting from Firestore: {e}")
 
@@ -39,6 +40,9 @@ def delete_from_firestore(collection, doc_id):
 # ---------------------------------------------------------
 @receiver(post_save, sender=Announcement)
 def sync_announcement(sender, instance, **kwargs):
+    if not instance.school:
+        return
+        
     data = {
         "title": instance.title,
         "body": instance.body,
@@ -48,17 +52,22 @@ def sync_announcement(sender, instance, **kwargs):
         "is_active": instance.is_active,
         "active_now": instance.active_now,  # Computed property
     }
-    sync_to_firestore("announcements", instance.pk, data)
+    sync_to_firestore(instance.school.id, "announcements", instance.pk, data)
 
 @receiver(post_delete, sender=Announcement)
 def delete_announcement(sender, instance, **kwargs):
-    delete_from_firestore("announcements", instance.pk)
+    if not instance.school:
+        return
+    delete_from_firestore(instance.school.id, "announcements", instance.pk)
 
 # ---------------------------------------------------------
 # 2. Excellence Sync
 # ---------------------------------------------------------
 @receiver(post_save, sender=Excellence)
 def sync_excellence(sender, instance, **kwargs):
+    if not instance.school:
+        return
+
     data = {
         "teacher_name": instance.teacher_name,
         "reason": instance.reason,
@@ -68,17 +77,22 @@ def sync_excellence(sender, instance, **kwargs):
         "priority": instance.priority,
         "active_now": instance.active_now,
     }
-    sync_to_firestore("excellence", instance.pk, data)
+    sync_to_firestore(instance.school.id, "excellence", instance.pk, data)
 
 @receiver(post_delete, sender=Excellence)
 def delete_excellence(sender, instance, **kwargs):
-    delete_from_firestore("excellence", instance.pk)
+    if not instance.school:
+        return
+    delete_from_firestore(instance.school.id, "excellence", instance.pk)
 
 # ---------------------------------------------------------
 # 3. School Settings Sync
 # ---------------------------------------------------------
 @receiver(post_save, sender=SchoolSettings)
 def sync_settings(sender, instance, **kwargs):
+    if not instance.school:
+        return
+
     data = {
         "name": instance.name,
         "logo_url": instance.logo_url,
@@ -87,8 +101,8 @@ def sync_settings(sender, instance, **kwargs):
         "refresh_interval_sec": instance.refresh_interval_sec,
         "standby_scroll_speed": instance.standby_scroll_speed,
     }
-    # We use a fixed ID 'main' or the PK if multiple settings are allowed (usually one)
-    sync_to_firestore("settings", "school_config", data)
+    # We use a fixed ID 'config' for the main settings document
+    sync_to_firestore(instance.school.id, "settings", "config", data)
 
 # ---------------------------------------------------------
 # 4. Schedule Sync (Complex)
@@ -96,9 +110,9 @@ def sync_settings(sender, instance, **kwargs):
 def sync_day_schedule(day_instance):
     """
     Syncs a full day schedule including its periods and breaks.
-    Structure in Firestore: schedule/{weekday_number}
+    Structure in Firestore: schools/{school_id}/schedule/{weekday_number}
     """
-    if not day_instance:
+    if not day_instance or not day_instance.settings.school:
         return
 
     # Prepare Periods
@@ -129,7 +143,7 @@ def sync_day_schedule(day_instance):
         "breaks": breaks,
     }
     
-    sync_to_firestore("schedule", str(day_instance.weekday), data)
+    sync_to_firestore(day_instance.settings.school.id, "schedule", str(day_instance.weekday), data)
 
 @receiver(post_save, sender=DaySchedule)
 def on_day_save(sender, instance, **kwargs):

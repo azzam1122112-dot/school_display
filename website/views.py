@@ -25,10 +25,12 @@ def home(request):
 
     # Fallback: If no token or invalid, try to get the first school (Legacy/Dev mode)
     if not settings_obj:
-        settings_obj = SchoolSettings.objects.first()
+        # Only consider settings that are properly linked to a school
+        settings_obj = SchoolSettings.objects.filter(school__isnull=False).first()
+        
         # If we found a default school but have no token, try to find a valid token for it
         if settings_obj and not effective_token:
-            # Find a screen for this school (or global screen if school is None)
+            # Find a screen for this school
             screen = DisplayScreen.objects.filter(school=settings_obj.school, is_active=True).first()
             if screen:
                 effective_token = screen.token
