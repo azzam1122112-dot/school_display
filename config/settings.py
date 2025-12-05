@@ -268,3 +268,20 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 
 # ----------------- الموقع الأساسي -----------------
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://127.0.0.1:8000")
+
+# ----------------- إعدادات الأمان (Security Hardening) -----------------
+if not DEBUG:
+    # 1. فرض HTTPS
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # 2. تفعيل HSTS (يخبر المتصفح برفض أي اتصال غير مشفر لمدة سنة)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # 3. تأمين الكوكيز
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # 4. منع تشغيل الموقع داخل IFrame (إلا من نفس الدومين)
+    X_FRAME_OPTIONS = "SAMEORIGIN"
+    # 5. منع المتصفح من تخمين نوع الملفات
+    SECURE_CONTENT_TYPE_NOSNIFF = True
