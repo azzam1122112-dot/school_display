@@ -1,17 +1,19 @@
 # schedule/api_views.py
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.utils import timezone
 
 from hijri_converter import convert
+from core.utils import validate_display_token
 
 from .models import SchoolSettings
-from .api_serializers import SchoolSettingsSerializer, DayScheduleSerializer
+from .api_serializers import SchoolSettingsSerializer
 from .services import compute_today_state
 
 @api_view(["GET"])
-@permission_classes([AllowAny])  # القراءة عامة لواجهة الشاشة
+@authentication_classes([])
+@permission_classes([AllowAny])
 def today_display(request):
     """
     يُرجع:
@@ -20,14 +22,11 @@ def today_display(request):
       state        — حالة اليوم (before/period/break/after + العدّاد)
       day          — periods/breaks
     """
-    # التحقق من وجود مدرسة مرتبطة بالطلب (عبر التوكن)
-    if not hasattr(request, 'school') or not request.school:
-        return Response(
-            {"detail": "لم يتم تحديد المدرسة (Token مفقود أو غير صالح)."},
-            status=403,
-        )
+    screen = validate_display_token(request)
+    if not screen:
+        return Response({"detail": "Invalid token"}, status=403)
 
-    settings_obj = SchoolSettings.objects.filter(school=request.school).first()
+    settings_obj = SchoolSettings.objects.filter(school=screen.school).first()
     if not settings_obj:
         return Response(
             {"detail": "لم يتم ضبط إعدادات المدرسة بعد."},
@@ -47,15 +46,17 @@ def today_display(request):
         },
     }
     payload.update(compute_today_state(settings_obj))
-    return Response(payload)
+    return Response(payload, status=200)
 
 @api_view(["GET"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def get_settings(request):
-    if not hasattr(request, 'school') or not request.school:
-        return Response({"detail": "Unauthorized"}, status=403)
+    screen = validate_display_token(request)
+    if not screen:
+        return Response({"detail": "Invalid token"}, status=403)
 
-    settings_obj = SchoolSettings.objects.filter(school=request.school).first()
+    settings_obj = SchoolSettings.objects.filter(school=screen.school).first()
     if not settings_obj:
         return Response({})
-    return Response(SchoolSettingsSerializer(settings_obj).data)
+    return Response(SchoolSettingsSerializer(settings_obj).data, status=200)
