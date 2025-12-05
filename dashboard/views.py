@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Q, Max
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -28,13 +29,15 @@ from standby.models import StandbyAssignment
 # ثوابت ومساعدات
 # =========================
 
-# أيام الأسبوع الدراسي فقط (الأحد → الخميس)
+# أيام الأسبوع (الأحد → السبت)
 SCHOOL_WEEK = [
     (0, "الأحد"),
     (1, "الاثنين"),
     (2, "الثلاثاء"),
     (3, "الأربعاء"),
     (4, "الخميس"),
+    (5, "الجمعة"),
+    (6, "السبت"),
 ]
 WEEKDAY_MAP = dict(SCHOOL_WEEK)  # {0: "الأحد", ...}
 
@@ -214,19 +217,57 @@ def days_list(request):
         DaySchedule.objects
         .filter(settings=settings_obj, weekday__in=WEEKDAY_MAP.keys())
         .order_by("weekday")
+        .prefetch_related("periods", "breaks")
     )
+    
+    total_periods = 0
     for d in days:
         d.day_name = WEEKDAY_MAP.get(d.weekday, str(d.weekday))
+        
+        # Annotations for card
+        d.breaks_count = d.breaks.count()
+        
+        periods = sorted(d.periods.all(), key=lambda p: p.starts_at)
+        if periods:
+            d.first_period_time = periods[0].starts_at.strftime("%H:%M")
+            d.last_period_time = periods[-1].ends_at.strftime("%H:%M")
+            
+            # Calculate duration
+            start_dt = datetime.combine(date.today(), periods[0].starts_at)
+            end_dt = datetime.combine(date.today(), periods[-1].ends_at)
+            diff = end_dt - start_dt
+            hours, remainder = divmod(diff.seconds, 3600)
+            minutes = remainder // 60
+            d.total_duration = f"{hours}س {minutes}د"
+            d.is_active = True
+        else:
+            d.first_period_time = "--:--"
+            d.last_period_time = "--:--"
+            d.total_duration = "--:--"
+            d.is_active = False
+            
+        total_periods += d.periods_count
 
-    return render(request, "dashboard/days_list.html", {"days": days})
+    avg_periods = total_periods / len(days) if days else 0
+    max_periods_day = max(days, key=lambda d: d.periods_count) if days else None
+    min_periods_day = min(days, key=lambda d: d.periods_count) if days else None
+
+    ctx = {
+        "days": days,
+        "total_periods": total_periods,
+        "avg_periods": avg_periods,
+        "max_periods_day": max_periods_day,
+        "min_periods_day": min_periods_day,
+    }
+    return render(request, "dashboard/days_list.html", ctx)
 
 
 @manager_required
 @transaction.atomic
 def day_edit(request, weekday: int):
-    # السماح فقط بالأحد..الخميس
+    # السماح فقط بالأيام المعرفة
     if weekday not in WEEKDAY_MAP:
-        messages.error(request, "اليوم خارج أيام الأسبوع الدراسي (الأحد → الخميس).")
+        messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
         return redirect("dashboard:days_list")
 
     settings_obj = SchoolSettings.objects.first()
@@ -436,8 +477,28 @@ from .forms import ExcellenceForm  # تأكد أنك تستخدم النموذج
 @manager_required
 def exc_list(request):
     qs = Excellence.objects.order_by("priority", "-start_at")
+    
+    now = timezone.now()
+    # Active: start_at <= now AND (end_at IS NULL OR end_at > now)
+    active_count = Excellence.objects.filter(
+        Q(start_at__lte=now) & (Q(end_at__isnull=True) | Q(end_at__gt=now))
+    ).count()
+    
+    # Expired: end_at <= now
+    expired_count = Excellence.objects.filter(end_at__lte=now).count()
+    
+    # Max priority
+    max_p = Excellence.objects.aggregate(m=Max("priority"))["m"] or 0
+
     page = Paginator(qs, 12).get_page(request.GET.get("page"))
-    return render(request, "dashboard/exc_list.html", {"page": page})
+    
+    context = {
+        "page": page,
+        "active_count": active_count,
+        "expired_count": expired_count,
+        "max_priority": max_p,
+    }
+    return render(request, "dashboard/exc_list.html", context)
 
 @manager_required
 def exc_create(request):
@@ -484,8 +545,22 @@ def exc_delete(request, pk: int):
 @manager_required
 def standby_list(request):
     qs = StandbyAssignment.objects.order_by("-date", "period_index")
+    
+    # إحصائيات
+    today = timezone.localdate()
+    today_count = StandbyAssignment.objects.filter(date=today).count()
+    teachers_count = StandbyAssignment.objects.values("teacher_name").distinct().count()
+    classes_count = StandbyAssignment.objects.values("class_name").distinct().count()
+
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
-    return render(request, "dashboard/standby_list.html", {"page": page})
+    
+    context = {
+        "page": page,
+        "today_count": today_count,
+        "teachers_count": teachers_count,
+        "classes_count": classes_count,
+    }
+    return render(request, "dashboard/standby_list.html", context)
 
 
 @manager_required
@@ -527,7 +602,23 @@ def standby_import(request):
             messages.error(request, "فضلاً أرفق ملف CSV صحيح.")
             return redirect("dashboard:standby_list")
 
-        data = io.TextIOWrapper(f.file, encoding="utf-8")
+        # قراءة الملف بالكامل كمصفوفة بايتات
+        raw_data = f.read()
+        decoded_file = None
+
+        # محاولة فك التشفير بعدة صيغ شائعة (UTF-8, Windows-1256 للعربية, ISO-8859-1)
+        for enc in ['utf-8-sig', 'windows-1256', 'iso-8859-1']:
+            try:
+                decoded_file = raw_data.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        # إذا فشلت كل المحاولات، نستخدم utf-8 مع تجاهل الأخطاء
+        if decoded_file is None:
+             decoded_file = raw_data.decode('utf-8', errors='replace')
+
+        data = io.StringIO(decoded_file)
         reader = csv.DictReader(data)
         count = 0
         for row in reader:

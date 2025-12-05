@@ -9,6 +9,9 @@ def health(request):
     return HttpResponse("School Display is running. 👍")
 
 def display(request):
+    return home(request)
+
+def home(request):
     settings_obj = SchoolSettings.objects.first()
     ctx = {
         "school_name": settings_obj.name if settings_obj else "مدرستنا",
@@ -19,8 +22,3 @@ def display(request):
         "theme": (settings_obj.theme if settings_obj else "indigo"),  # indigo, sky, emerald, rose ...
     }
     return render(request, "website/display.html", ctx)
-from django.shortcuts import render
-
-def home(request):
-    # ببساطة يعرض القالب display.html
-    return render(request, "website/display.html")

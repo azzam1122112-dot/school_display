@@ -1,23 +1,27 @@
 # config/settings.py
-# إعدادات Django — نسخة احترافية آمنة ومرنة (Arabic / Asia/Riyadh)
-# - تحميل .env
+# إعدادات Django — نسخة احترافية/آمنة (Arabic / Asia/Riyadh)
+# - تحميل .env (اختياري)
 # - SQLite للتطوير وPostgreSQL عبر DATABASE_URL للإنتاج
-# - WhiteNoise للملفات الثابتة
-# - DRF مُفعّل مع مخرجات أخف بالإنتاج
-# - لوجينغ هادئ (إسكات django.utils.autoreload) مع إمكانية التحكم عبر متغيرات البيئة
+# - WhiteNoise للملفات الثابتة مع تحسينات
+# - DRF مُفعّل مع إخراج أخف في الإنتاج
+# - Logging هادئ مع تحكم عبر متغيرات البيئة
+# - رؤوس أمان/HTTPS/Cookies مضبوطة للإنتاج
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
 
-# محاولة استيراد dj_database_url بشكل آمن
+# ----------------- تحميل .env (اختياري) -----------------
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
+
+# ----------------- dj_database_url -----------------
 try:
     import dj_database_url  # type: ignore
 except Exception:
-    dj_database_url = None
-
-# تحميل متغيرات البيئة من .env (إن وُجد)
-load_dotenv()
+    dj_database_url = None  # سنفحصه لاحقًا عند وجود DATABASE_URL
 
 # ----------------- المسارات -----------------
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,13 +34,31 @@ def env_list(key: str, default: str = "") -> list[str]:
     raw = os.getenv(key, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
 
-# ----------------- مفاتيح أساسية -----------------
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")  # غيّرها بالإنتاج
-DEBUG = env_bool("DEBUG", "True")  # محليًا True، بالإنتاج False
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost")
+def env_int(key: str, default: str) -> int:
+    try:
+        return int(os.getenv(key, default))
+    except Exception:
+        return int(default)
 
-# موثوقون للـ CSRF (يجب أن تتضمن البروتوكول مثل https://example.com)
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+# ----------------- مفاتيح/وضع التشغيل -----------------
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")  # غيّرها بالإنتاج فورًا
+DEBUG = env_bool("DEBUG", "True")  # True محليًا / اضبط False بالإنتاج
+
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost,.onrender.com")
+# مثال إنتاج: ALLOWED_HOSTS=your-domain.com,.onrender.com
+
+# CSRF_TRUSTED_ORIGINS يجب أن تحتوي بروتوكول (https://)
+_csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS = _csrf_env
+else:
+    # توليد افتراضي من ALLOWED_HOSTS لبيئات مثل Render
+    CSRF_TRUSTED_ORIGINS = []
+    for host in ALLOWED_HOSTS:
+        h = host.lstrip(".")
+        if h and h not in {"127.0.0.1", "localhost"}:
+            CSRF_TRUSTED_ORIGINS.append(f"https://{h}")
+            CSRF_TRUSTED_ORIGINS.append(f"https://*.{h}")
 
 # ----------------- التطبيقات -----------------
 INSTALLED_APPS = [
@@ -63,7 +85,7 @@ INSTALLED_APPS = [
 # ----------------- الميدلوير -----------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # خدمة static (وCDN-friendly) + ضغط
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # خدمة static + ضغط/Manifest
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -78,7 +100,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # تأكد من وجود مجلد templates
+        "DIRS": [BASE_DIR / "templates"],  # أنشئ المجلد إن لم يكن موجودًا
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -96,22 +118,26 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # ----------------- قاعدة البيانات -----------------
-# افتراضيًا SQLite (محلي). إذا وُجد DATABASE_URL نستخدمه (PostgreSQL عادةً).
+# افتراضيًا SQLite. إذا وُجد DATABASE_URL نستخدمه (PostgreSQL عادة).
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 if DATABASE_URL:
     if dj_database_url is None:
         raise RuntimeError(
             "تم ضبط DATABASE_URL لكن الحزمة dj-database-url غير مثبتة. "
-            "ثبّت الحزمة: pip install dj-database-url"
+            "ثبّت: pip install dj-database-url"
         )
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=env_bool("DB_SSL_REQUIRE", "False"),
+            conn_max_age=600,  # إبقاء الاتصال لتحسين الأداء
         )
     }
+    # فرض SSL لبوستجرس عند الحاجة (غالب مزودي الخدمة يتطلبون ذلك)
+    if DATABASES["default"]["ENGINE"].endswith("postgresql"):
+        DATABASES["default"].setdefault("OPTIONS", {})
+        if env_bool("DB_SSL_REQUIRE", "True" if not DEBUG else "False"):
+            DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
 else:
     DATABASES = {
         "default": {
@@ -130,35 +156,36 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ----------------- الترجمة والمنطقة الزمنية -----------------
 LANGUAGE_CODE = "ar"
-TIME_ZONE = "Asia/Riyadh"
+TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Riyadh")
 USE_I18N = True
-USE_TZ = True  # احتفظ بها True لدقة التحويلات الزمنية
+USE_TZ = True  # مهم لدقة التحويلات الزمنية
 
 # ----------------- الملفات الثابتة والوسائط -----------------
-# Static
 STATIC_URL = "/static/"
-_static_dir = BASE_DIR / "static"
-STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []  # للتطوير (اختياري)
 STATIC_ROOT = BASE_DIR / "staticfiles"  # للإنتاج مع collectstatic
+# للتطوير فقط: إن كان لديك مجلد static في الجذر
+_static_dir = BASE_DIR / "static"
+STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
 
-# Media
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Django 5 STORAGES
+# Django 5 STORAGES + WhiteNoise
 STORAGES = {
-    # تخزين افتراضي للملفات المرفوعة على النظام المحلي (development/بسيط)
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
         "OPTIONS": {"base_url": MEDIA_URL, "location": str(MEDIA_ROOT)},
     },
-    # ملفات ثابتة عبر WhiteNoise (ضغط + Manifest)
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
-# ----------------- نوع المفتاح الافتراضي -----------------
+# تحسينات WhiteNoise (تلقائية حسب DEBUG)
+WHITENOISE_AUTOREFRESH = DEBUG         # إعادة تحميل أثناء التطوير
+WHITENOISE_USE_FINDERS = DEBUG         # استخدام finders في التطوير فقط
+# (يمكن ضبط WHITENOISE_MAX_AGE في الإنتاج عبر متغيّر بيئة إن رغبت)
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ----------------- DRF إعدادات -----------------
@@ -171,86 +198,63 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.BasicAuthentication",
     ],
     "DEFAULT_RENDERER_CLASSES": (
-        ["rest_framework.renderers.JSONRenderer"]
+        ("rest_framework.renderers.JSONRenderer",)
         if not DEBUG
-        else [
+        else (
             "rest_framework.renderers.JSONRenderer",
             "rest_framework.renderers.BrowsableAPIRenderer",
-        ]
+        )
     ),
 }
 
 # ----------------- الأمان -----------------
-SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "False")
+# خلف Proxy (Render/Nginx/Cloudflare)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+# HTTPS & Cookies
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "False" if DEBUG else "True")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_HTTPONLY = True  # يمنع JavaScript من قراءة توكن CSRF
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# مهم: إبقاءه False ليسمح لواجهة JS بقراءة الكوكي وإرسال رأس X-CSRFToken
+CSRF_COOKIE_HTTPONLY = False
+
+# رؤوس أمان إضافية
+SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 if not DEBUG:
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", "31536000")
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", "True")
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", "True")
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "strict-origin-when-cross-origin")
 
 # ----------------- التسجيل (Logging) -----------------
-# افتراضيًا: INFO حتى في التطوير، مع إسكات autoreload وثرثرة DRF
 DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
 DJANGO_CONSOLE_LEVEL = os.getenv("DJANGO_CONSOLE_LEVEL", "INFO")
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-
     "formatters": {
-        "verbose": {
-            "format": "[{levelname}] {asctime} {name}: {message}",
-            "style": "{",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
+        "verbose": {"format": "[{levelname}] {asctime} {name}: {message}", "style": "{", "datefmt": "%Y-%m-%d %H:%M:%S"},
         "simple": {"format": "[{levelname}] {message}", "style": "{"},
     },
-
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-            "level": DJANGO_CONSOLE_LEVEL,  # لا تطبع DEBUG على الكونسول افتراضيًا
+            "level": DJANGO_CONSOLE_LEVEL,
         },
     },
-
-    # اجعل الجذر INFO
     "root": {"handlers": ["console"], "level": DJANGO_LOG_LEVEL},
-
     "loggers": {
-        # إسكات رسائل أوتولود المزعجة
-        "django.utils.autoreload": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # تقليل الضجيج من خادم التطوير
-        "django.server": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # تقليل ثرثرة DRF
-        "rest_framework": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # لوجات Django العامة
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
+        "django.utils.autoreload": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "rest_framework": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
 
@@ -261,20 +265,3 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 
 # ----------------- عنوان الموقع (اختياري للتطبيقات) -----------------
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://127.0.0.1:8000")
-
-# ----------------- ملاحظات تشغيلية -----------------
-# 1) .env (إنتاج):
-#    DEBUG=False
-#    SECRET_KEY=قيمة-قوية-طويلة
-#    ALLOWED_HOSTS=example.com,www.example.com
-#    CSRF_TRUSTED_ORIGINS=https://example.com,https://www.example.com
-#    DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DB
-#    SECURE_SSL_REDIRECT=True
-#
-# 2) قبل الإنتاج:
-#    python manage.py collectstatic
-#
-# 3) خلف Proxy (Cloudflare/Nginx):
-#    تأكد من تمكين X-Forwarded-Proto (ضبطناه في SECURE_PROXY_SSL_HEADER)
-#
-# 4) DRF: عند DEBUG=False يلغى Browsable API تلقائيًا لإخراج أخف وأأمن

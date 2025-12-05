@@ -1,31 +1,52 @@
 {% load static %}
 <!doctype html>
-<html lang="ar" dir="rtl" class="h-full">
+<html lang="ar" dir="rtl" class="h-full antialiased">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>{{ school_name }} — لوحة العرض</title>
+  <title>{{ school_name }} — لوحة العرض الذكية</title>
 
-  <!-- خط + Tailwind -->
+  <!-- Fonts & Tailwind -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { cairo: ['Cairo','ui-sans-serif','system-ui'] },
-          colors:{ glass: 'rgba(255,255,255,.06)' },
-          boxShadow:{ 'glass-lg':'0 10px 35px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06)' },
-          keyframes:{
-            fadeIn:{'0%':{opacity:0,transform:'translateY(8px)'},'100%':{opacity:1,transform:'translateY(0)'}},
-            floatY:{'0%':{transform:'translateY(0)'},'50%':{transform:'translateY(-6px)'},'100%':{transform:'translateY(0)'}},
-            spin:{to:{transform:'rotate(360deg)'}}
+          fontFamily: { sans: ['IBM Plex Sans Arabic', 'ui-sans-serif', 'system-ui'] },
+          colors: {
+            glass: 'rgba(255, 255, 255, 0.08)',
+            'glass-border': 'rgba(255, 255, 255, 0.15)',
+            theme: {
+                primary: 'var(--c-primary)',
+                secondary: 'var(--c-secondary)',
+                soft: 'var(--c-bg-soft)',
+                text: 'var(--c-text)',
+                border: 'var(--c-border)',
+            }
           },
-          animation:{
-            'fade-in':'fadeIn .35s ease-out',
-            'float-y':'floatY 10s ease-in-out infinite',
-            'spin-slow':'spin 14s linear infinite'
+          animation: {
+            'blob': 'blob 20s infinite',
+            'fade-in': 'fadeIn 0.5s ease-out',
+            'slide-up': 'slideUp 0.5s ease-out',
+          },
+          keyframes: {
+            blob: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+              '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              '100%': { transform: 'translate(0px, 0px) scale(1)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            }
           }
         }
       }
@@ -33,269 +54,209 @@
   </script>
 
   <style>
-    html,body{height:100%;font-family:'Cairo',sans-serif}
-    :root{
-      --edge:22px; --r:22px; --glass:rgba(255,255,255,.06);
-      --ring: rgba(255,255,255,.12); --ring-strong: rgba(255,255,255,.22);
+    :root {
+        /* Default Indigo Theme */
+        --c-primary: #6366f1;
+        --c-secondary: #a855f7;
+        --c-bg-soft: rgba(99, 102, 241, 0.2);
+        --c-text: #c7d2fe;
+        --c-border: rgba(129, 140, 248, 0.3);
     }
-    @media (min-width:1600px){:root{--edge:32px}}
-    .safe{padding:max(env(safe-area-inset-top),var(--edge)) max(env(safe-area-inset-right),var(--edge)) max(env(safe-area-inset-bottom),var(--edge)) max(env(safe-area-inset-left),var(--edge))}
-    .glass{backdrop-filter:saturate(140%) blur(10px);background:var(--glass)}
-    .ring-soft{box-shadow: inset 0 0 0 1px var(--ring);}
-    .scrollbar-thin::-webkit-scrollbar{height:8px;width:8px}
-    .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9999px}
 
-    /* خلفية */
-    #bg::before, #bg::after{content:""; position:absolute; inset:0; pointer-events:none;}
-    #bg::before{
-      background:
-        radial-gradient(800px 400px at 85% 10%, rgba(255,255,255,.10), transparent 60%),
-        radial-gradient(1000px 500px at 10% 80%, rgba(0,0,0,.15), transparent 60%),
-        repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 40px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 1px, transparent 1px 40px);
-      mask-image: radial-gradient(1800px 900px at 50% 50%, #000 70%, transparent 100%);
+    body { background-color: #0f172a; color: #f8fafc; overflow: hidden; }
+    
+    /* Aurora Background */
+    .aurora-bg { position: fixed; inset: 0; z-index: -10; background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%); }
+    .blob { position: absolute; filter: blur(80px); opacity: 0.4; animation: blob 20s infinite alternate; }
+    .blob-1 { top: 0; left: 0; width: 50vw; height: 50vw; background: #4f46e5; animation-delay: 0s; }
+    .blob-2 { bottom: 0; right: 0; width: 50vw; height: 50vw; background: #0ea5e9; animation-delay: -5s; }
+    .blob-3 { top: 50%; left: 50%; width: 40vw; height: 40vw; background: #8b5cf6; transform: translate(-50%, -50%); animation-delay: -10s; }
+
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
-    #bg::after{
-      background:
-        radial-gradient(140px 140px at 75% 30%, rgba(255,255,255,.12), transparent 60%),
-        radial-gradient(120px 120px at 20% 70%, rgba(255,255,255,.09), transparent 60%),
-        radial-gradient(160px 160px at 40% 50%, rgba(255,255,255,.07), transparent 60%);
-      animation: float-y 24s ease-in-out infinite;
-    }
-    @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important} }
 
-    /* أحجام عناوين أهدأ */
-    .title-xl{font-size:clamp(22px,3.2vw,48px)}
-    .title-lg{font-size:clamp(20px,2.6vw,40px)}
-    .title-md{font-size:clamp(14px,1.4vw,20px)}
-
-    /* شرائح جدول اليوم */
-    .mini-chip{display:inline-flex;flex-direction:column;gap:.15rem;padding:.6rem .8rem;border-radius:1rem;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08)}
-    .mini-chip .t{font-size:.72rem;opacity:.95;letter-spacing:.02em}
-    .mini-chip .v{font-weight:800;line-height:1.15;font-size:.98rem}
-    .mini-chip.now{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.55);box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.2)}
-    .mini-chip.break{background:linear-gradient(135deg, rgba(16,185,129,.25), rgba(16,185,129,.12));border-color:rgba(16,185,129,.45)}
-    .mini-chip.break .t::before{content:"🍃 ";}
-
-    /* التنبيهات */
-    .ann-card{border-radius:18px;padding:14px;position:relative;overflow:visible}
-    .ann-slide{position:static;padding:16px;display:none;flex-direction:column;gap:.6rem}
-    .ann-slide.active{display:block}
-    .ann-badge{align-self:flex-start;font-size:.75rem;padding:.15rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.14)}
-    .ann-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px}
-    .ann-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.25)}
-    .ann-dot.active{background:#fff}
-    .ann-badge[data-level="عاجل"]   { background:rgba(220,38,38,.25);  border-color:rgba(220,38,38,.45); }
-    .ann-badge[data-level="تنبيه"] { background:rgba(245,158,11,.25); border-color:rgba(245,158,11,.45); }
-    .ann-badge[data-level="معلومة"]{ background:rgba(59,130,246,.25); border-color:rgba(59,130,246,.45); }
-    .ann-badge[data-level="تهنئة"] { background:rgba(16,185,129,.25); border-color:rgba(16,185,129,.45); }
-
-    /* المتميزون */
-    .ex-wrap{position:relative;border-radius:22px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));}
-    .ex-hero{position:relative;overflow:hidden;border-radius:20px;padding:16px;background:
-      radial-gradient(400px 160px at 90% 10%, rgba(123,97,255,.28), transparent 60%),
-      radial-gradient(300px 180px at 10% 80%, rgba(59,130,246,.25), transparent 60%),
-      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-      box-shadow:0 12px 32px rgba(0,0,0,.28);border:1px solid rgba(123,97,255,.35);}
-    .ex-avatar{position:relative;width:96px;height:96px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.1)}
-    .ex-avatar::after{content:"";position:absolute;inset:-8px;border-radius:999px;border:2px dashed rgba(123,97,255,.45);animation:spin 14s linear infinite}
-    .ex-img{width:100%;height:100%;object-fit:cover;border-radius:999px}
-    .ex-ribbon{position:absolute;top:12px;left:12px;background:linear-gradient(90deg,#f0b,#70f);padding:.25rem .6rem;border-radius:999px;font-weight:800;font-size:.75rem}
-
-    /* الانتظار — ألوان متناوبة + تمرير مستمر */
-    .standby-viewport{max-height:42vh;overflow:hidden;position:relative}
-    .standby-track{will-change:transform}
-    .sb-blue   { background:linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.10)); border:1px solid rgba(59,130,246,.35); }
-    .sb-emerald{ background:linear-gradient(180deg, rgba(16,185,129,.20), rgba(16,185,129,.10)); border:1px solid rgba(16,185,129,.40); }
-    .sb-amber  { background:linear-gradient(180deg, rgba(245,158,11,.22),  rgba(245,158,11,.10));  border:1px solid rgba(245,158,11,.40); }
-    .sb-rose   { background:linear-gradient(180deg, rgba(244,63,94,.18),  rgba(244,63,94,.10));   border:1px solid rgba(244,63,94,.35); }
-
-    /* Skeleton */
-    .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
-    .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);animation:sk 1.2s infinite}
-    @keyframes sk{to{transform:translateX(100%)}}
-
-    /* زر ملء الشاشة — صغير وغير مزعج */
-    .fs-btn{position:fixed;inset-inline-start:12px;inset-block-start:12px;z-index:60}
-    @media print{ .fs-btn{display:none} }
-
-    /* ودجت الطقس (صغير) */
-    .wx-chip{
-      display:inline-flex;align-items:center;gap:.5rem;
-      padding:.35rem .6rem;border-radius:9999px;
-      background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18);
-      font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,.15);
-    }
-    .wx-chip .i{font-size:1.05rem;line-height:1}
-    .wx-chip .t{font-size:.95rem;letter-spacing:.01em}
-    .wx-chip small{opacity:.85;font-weight:600}
-    @media (forced-colors: active){ .wx-chip{outline:1px solid CanvasText} }
-
-    /* وضع تباين قسري (وصولية) */
-    @media (forced-colors: active){
-      .glass, .ring-soft { outline: 1px solid CanvasText; }
-      .text-white\/70, .text-white\/80, .text-slate-300\/80 { color: CanvasText !important; }
-    }
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+    
+    .text-glow { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+    .num-font { font-family: 'ui-monospace', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace; font-variant-numeric: tabular-nums; }
+    
+    /* Standby Grid */
+    .standby-viewport { overflow: hidden; position: relative; mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent); }
+    .standby-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+    
+    /* Alert Transition */
+    .alert-enter { opacity: 0; transform: translateY(10px); }
+    .alert-enter-active { opacity: 1; transform: translateY(0); transition: all 0.5s ease; }
+    .alert-exit { opacity: 1; transform: translateY(0); }
+    .alert-exit-active { opacity: 0; transform: translateY(-10px); transition: all 0.5s ease; }
   </style>
 </head>
-<body class="min-h-full text-white safe" data-theme="{{ theme|default:'indigo' }}" data-media-prefix="{{ MEDIA_URL|default:'/media/' }}">
-  <!-- خلفية -->
-  <div id="bg" class="fixed inset-0 -z-10"></div>
-  <script>
-    (function(){
-      const t=(document.body.dataset.theme||'indigo').toLowerCase();
-      const p={indigo:['#1c266f','#6c8cff'],sky:['#0d3552','#52b6ff'],emerald:['#083b32','#45e0b5'],rose:['#4a0d2a','#ff6d9e'],amber:['#3b2b00','#ffb200'],slate:['#0b1023','#435a78']};
-      const [c1,c2]=(p[t]||p.indigo);
-      document.getElementById('bg').style.background=`linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
-    })();
-  </script>
+<body class="flex flex-col h-screen p-4 md:p-6 gap-4 md:gap-6 selection:bg-indigo-500 selection:text-white">
 
-  <!-- شارة الشبكة -->
-  <div id="net" class="fixed top-3 left-3 z-50 hidden px-3 py-1 rounded-full text-sm bg-red-600/90 shadow-lg ring-1 ring-white/20">غير متصل</div>
-
-  <!-- زر ملء الشاشة (صغير ثابت) -->
-  <button id="fsBtn" type="button" class="fs-btn group rounded-xl bg-white/10 ring-1 ring-white/20 p-2 backdrop-blur
-         text-white/90 hover:bg-white/20 hover:text-white transition shadow-md"
-         aria-label="تبديل ملء الشاشة" title="ملء الشاشة (F)">
-    <svg id="fsIconEnter" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M3 15v4a2 2 0 0 0 2 2h4M21 15v4a2 2 0 0 1-2 2h-4"/>
-    </svg>
-    <svg id="fsIconExit" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/>
-    </svg>
-  </button>
-
-  <div class="mx-auto w-full max-w-[1920px] px-2 md:px-4">
-    <!-- الرأس -->
-    <header class="flex flex-wrap items-center gap-4 py-4">
-      {% if logo_url %}
-        <img src="{{ logo_url }}" alt="شعار" class="h-12 w-12 md:h-14 md:w-14 object-contain rounded-xl ring-1 ring-white/10 bg-white/5 p-1 shadow-glass-lg">
-      {% else %}
-        <div class="h-12 w-12 md:h-14 md:w-14 grid place-items-center rounded-xl bg-white/5 ring-1 ring-white/10 shadow-glass-lg">🏫</div>
-      {% endif %}
-      <div class="flex-1 min-w-[40%]">
-        <h1 class="font-black drop-shadow-sm title-xl">{{ school_name }}</h1>
-        <div id="dateLine" class="inline-block mt-1 px-3 py-1 rounded-lg bg-white/10 ring-1 ring-white/20 text-slate-100 text-sm md:text-base" aria-live="polite">—</div>
-      </div>
-
-      <!-- يمين الهيدر: الساعة + حالة اليوم + ودجت الطقس -->
-      <div class="text-right">
-        <div id="clock" class="font-extrabold tabular-nums title-md" aria-live="polite">--:--:--</div>
-        <div id="dayState" class="text-slate-200/80 text-sm" aria-live="polite">جارِ التحديث…</div>
-        <!-- ودجت الطقس (الرياض) -->
-        <div id="wxChip" class="wx-chip mt-2 inline-flex" title="طقس الرياض">—</div>
-      </div>
-    </header>
-
-    <!-- المحتوى -->
-    <main class="mt-4 grid grid-cols-12 gap-4 md:gap-6">
-      <!-- رئيسي -->
-      <section class="col-span-12 xl:col-span-8 2xl:col-span-9">
-        <div class="rounded-[var(--r)] p-4 md:p-6 xl:p-7 shadow-2xl glass ring-soft h-full">
-          <div class="flex items-center justify-between mb-4">
-            <h2 id="heroTitle" class="font-extrabold title-lg">—</h2>
-            <span id="heroRange" class="font-bold text-white/90 text-sm md:text-base">--:-- → --:--</span>
-          </div>
-
-          <!-- بطاقة التقدّم -->
-          <div class="rounded-xl p-4 md:p-5 ring-soft bg-white/5 shadow-glass-lg">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex items-center gap-3">
-                <span id="badgeKind" class="px-3 py-1 rounded-full bg-black/25 ring-soft text-sm md:text-base">—</span>
-                <span class="text-white/80 text-sm md:text-base" id="nextLabel">التالي: —</span>
-              </div>
-
-              <div class="relative h-20 w-20 md:h-24 md:w-24 shrink-0">
-                <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
-                  <circle cx="60" cy="60" r="54" stroke-width="12" fill="none" class="stroke-white/15"></circle>
-                  <circle id="circleProgress" cx="60" cy="60" r="54" stroke-linecap="round" stroke-width="12" fill="none" class="transition-all duration-500"></circle>
-                </svg>
-                <div class="absolute inset-0 grid place-items-center">
-                  <div class="text-center leading-tight">
-                    <div class="text-xs md:text-sm text-white/70">المتبقي</div>
-                    <div id="countdown" class="font-black tabular-nums text-lg md:text-xl">--:--</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="mt-4 h-2 w-full bg-white/10 rounded-full overflow-hidden">
-              <div id="progressBar" class="h-full bg-white/70 transition-[width] duration-500" style="width:0%"></div>
-            </div>
-          </div>
-
-          <!-- شرائح جدول اليوم -->
-          <div class="mt-5 rounded-xl ring-soft bg-white/5 p-3 md:p-4 shadow-glass-lg">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-white/90 font-semibold">جدول اليوم</div>
-              <div class="text-xs text-white/70">تتحدث تلقائيًا</div>
-            </div>
-            <div id="miniSchedule" class="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
-              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
-              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
-              <div class="mini-chip skeleton" style="min-width:10.5rem"></div>
-            </div>
-          </div>
-
-          <!-- قسم المتميزون -->
-          <div class="mt-4 ex-wrap ring-soft shadow-glass-lg">
-            <div class="flex items-center justify-between mb-3">
-              <div class="text-base md:text-lg font-extrabold tracking-wide">🎖️ السجل الشرفي</div>
-              <div class="text-xs md:text-sm text-white/90"><span id="exIndex">0</span> / <span id="exTotal">0</span></div>
-            </div>
-            <div id="exSlot" class="min-h-[170px]">
-              <div class="ex-hero">
-                <div class="flex items-center gap-5">
-                  <div class="ex-avatar skeleton"></div>
-                  <div class="min-w-0 flex-1">
-                    <div class="h-5 w-56 rounded skeleton mb-3"></div>
-                    <div class="h-4 w-80 rounded skeleton"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div id="exEmpty" class="text-sm text-white/70 mt-2 hidden text-center">لا يوجد متميزون حاليًا.</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- جانبي -->
-      <aside class="col-span-12 xl:col-span-4 2xl:col-span-3 space-y-4 md:space-y-6">
-        <!-- التنبيهات -->
-        <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base md:text-lg font-bold">التنبيهات</h3>
-            <span id="annCount" class="text-slate-200/80 text-sm">0</span>
-          </div>
-          <div class="ann-card ring-soft" id="annCarousel" role="region" aria-live="polite">
-            <div class="w-full h-24 skeleton rounded-xl"></div>
-          </div>
-          <div class="ann-dots" id="annDots"></div>
-          <div id="annEmpty" class="text-slate-300/80 text-sm mt-2">لا توجد تنبيهات حالية.</div>
-        </div>
-
-        <!-- حصص الانتظار -->
-        <div class="rounded-2xl p-4 md:p-5 ring-soft glass shadow-2xl">
-          <div class="flex items-center justify-between">
-            <h3 class="text-base md:text-lg font-bold mb-3">حصص الانتظار (اليوم)</h3>
-            <span class="text-xs text-white/70">مرتّبة حسب الحصة</span>
-          </div>
-          <div class="standby-viewport">
-            <div id="standbyTrack" class="standby-track">
-              <div class="space-y-2">
-                <div class="rounded-xl h-12 skeleton"></div>
-                <div class="rounded-xl h-12 skeleton"></div>
-                <div class="rounded-xl h-12 skeleton"></div>
-              </div>
-            </div>
-          </div>
-          <div id="standbyEmpty" class="text-slate-300/80 text-sm">لا يوجد تكليفات انتظار اليوم.</div>
-        </div>
-      </aside>
-    </main>
+  <!-- Background -->
+  <div class="aurora-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-30"></div>
   </div>
 
+  <!-- Header -->
+  <header class="flex items-center justify-between glass-panel rounded-2xl p-4 shrink-0 z-10">
+    <div class="flex items-center gap-4">
+      {% if logo_url %}
+        <img src="{{ logo_url }}" alt="Logo" class="h-16 w-16 object-contain drop-shadow-lg bg-white/5 rounded-xl p-1">
+      {% else %}
+        <div class="h-16 w-16 grid place-items-center bg-theme-soft rounded-xl border border-theme-border text-3xl">🏫</div>
+      {% endif %}
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white text-glow">{{ school_name }}</h1>
+        <div class="relative h-7 mt-1 overflow-hidden min-w-[200px]">
+            <div id="dateGregorian" class="absolute top-0 right-0 transition-all duration-700 ease-out transform translate-y-0 opacity-100 text-slate-300 text-sm md:text-base font-medium whitespace-nowrap"></div>
+            <div id="dateHijri" class="absolute top-0 right-0 transition-all duration-700 ease-out transform translate-y-8 opacity-0 text-slate-300 text-sm md:text-base font-medium whitespace-nowrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts Carousel -->
+    <div id="alertContainer" class="hidden flex-1 mx-8 h-16 relative overflow-hidden">
+        <!-- Alerts injected here -->
+    </div>
+
+    <div class="text-left flex flex-col items-end">
+      <div id="clock" class="text-4xl md:text-5xl font-bold text-white num-font tracking-tight leading-none drop-shadow-glow">--:--</div>
+      <div class="flex items-center gap-3 mt-2">
+        <div id="wxChip" class="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/10">
+          <span class="animate-pulse">📡</span> ...
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main class="flex-1 grid grid-cols-12 gap-4 md:gap-6 min-h-0">
+    
+    <!-- Left Column: Excellence + Standby -->
+    <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4 md:gap-6 min-h-0 order-2 lg:order-1">
+      
+      <!-- Excellence Card (Animated) -->
+      <div class="glass-panel rounded-2xl p-0 overflow-hidden shrink-0 h-56 relative group shadow-lg ring-1 ring-amber-500/20">
+        <div id="exSlot" class="h-full bg-gradient-to-br from-slate-800 to-slate-900 relative">
+          <div class="h-full flex items-center justify-center text-slate-400 text-sm">
+            جاري تحميل لوحة الشرف...
+          </div>
+        </div>
+        <!-- Badge -->
+        <div class="absolute top-3 right-3 z-10">
+            <span class="bg-amber-500/90 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg backdrop-blur-md flex items-center gap-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                نجم الأسبوع
+            </span>
+        </div>
+        <!-- Counter -->
+        <div class="absolute top-3 left-3 z-10 bg-black/40 px-2 py-1 rounded text-[10px] text-white/80">
+            <span id="exIndex">1</span>/<span id="exTotal">1</span>
+        </div>
+      </div>
+
+      <!-- Standby List (Scrolling Grid) -->
+      <div class="glass-panel rounded-2xl p-4 flex-1 flex flex-col min-h-0 relative">
+        <div class="flex items-center justify-between mb-3 shrink-0 border-b border-white/5 pb-3">
+          <h3 class="font-bold text-lg flex items-center gap-2 text-theme-text">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            حصص الانتظار
+          </h3>
+          <span id="sbCount" class="text-xs text-slate-400 bg-white/5 px-2 py-1 rounded">0 حصة</span>
+        </div>
+        
+        <div class="standby-viewport flex-1 relative">
+          <div id="standbyTrack" class="will-change-transform">
+            <!-- Content injected here -->
+            <div class="text-center text-slate-400 py-12 text-sm">لا توجد حصص انتظار مسجلة اليوم.</div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Right Column: Hero + Schedule -->
+    <section class="col-span-12 lg:col-span-8 flex flex-col gap-4 md:gap-6 min-h-0 order-1 lg:order-2">
+      
+      <!-- Hero Card (Dynamic Color) -->
+      <div id="heroCard" class="glass-panel rounded-3xl p-6 md:p-8 flex-1 flex flex-col justify-center relative overflow-hidden group transition-colors duration-1000">
+        <!-- Dynamic Background Glow -->
+        <div id="heroGlow" class="absolute top-0 right-0 w-64 h-64 bg-theme-soft blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2 transition-colors duration-1000"></div>
+
+        <div class="flex items-center justify-between relative z-10">
+          <div class="space-y-3">
+            <div class="flex items-center gap-3">
+              <span id="badgeKind" class="px-3 py-1 rounded-lg bg-theme-soft border border-theme-border text-theme-text text-sm font-semibold transition-colors duration-500">—</span>
+              <span id="heroRange" class="text-slate-400 font-medium num-font text-lg">--:-- → --:--</span>
+            </div>
+            <h2 id="heroTitle" class="text-4xl md:text-6xl font-black text-white tracking-tight leading-tight text-glow transition-all duration-500">—</h2>
+            <p id="nextLabel" class="text-xl text-slate-300 font-medium mt-2 flex items-center gap-2">
+              <span>التالي: —</span>
+            </p>
+          </div>
+
+          <!-- Countdown Circle -->
+          <div class="relative w-32 h-32 md:w-44 md:h-44 flex-shrink-0">
+            <svg class="w-full h-full -rotate-90 transform drop-shadow-2xl" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none" />
+              <circle id="circleProgress" cx="60" cy="60" r="54" stroke="url(#grad1)" stroke-width="8" fill="none" stroke-linecap="round" class="transition-all duration-1000 ease-linear" style="stroke-dasharray: 339.292; stroke-dashoffset: 339.292;" />
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop id="gradStart" offset="0%" style="stop-color:var(--c-primary);stop-opacity:1" />
+                  <stop id="gradEnd" offset="100%" style="stop-color:var(--c-secondary);stop-opacity:1" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-slate-400 text-sm font-medium uppercase tracking-wider">المتبقي</span>
+              <span id="countdown" class="text-3xl md:text-4xl font-bold text-white num-font">--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-white/5">
+          <div id="progressBar" class="h-full bg-gradient-to-r from-theme-primary to-theme-secondary shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all duration-1000 ease-linear" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Schedule Strip -->
+      <div class="glass-panel rounded-2xl p-4 overflow-hidden h-32 shrink-0 flex flex-col justify-center">
+        <div class="flex items-center gap-2 mb-2 opacity-70 text-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <span class="font-semibold">جدول اليوم</span>
+        </div>
+        <div id="miniSchedule" class="flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x items-center h-full">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Fullscreen Button -->
+  <button id="fsBtn" class="fixed bottom-4 left-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white/50 hover:text-white transition z-50">
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+  </button>
+
   <script>
-    const REFRESH_EVERY = {{ refresh_interval_sec|default:30 }};
+    let REFRESH_EVERY = {{ refresh_interval_sec|default:30 }};
+    let mainTimer = null;
+    let finishedPeriodIndices = new Set();
+    
     const api = {
       today: "/api/display/today/",
       standby: "/api/standby/today/",
@@ -305,42 +266,119 @@
     const $ = id => document.getElementById(id);
     const fmt2 = n => String(n).padStart(2,'0');
 
-    /* ساعة + تاريخ */
+    // --- Theme Logic ---
+    const THEMES = {
+        indigo: { p: '#6366f1', s: '#a855f7', soft: 'rgba(99, 102, 241, 0.2)', text: '#c7d2fe', b: 'rgba(129, 140, 248, 0.3)' },
+        sky:    { p: '#0ea5e9', s: '#3b82f6', soft: 'rgba(14, 165, 233, 0.2)', text: '#bae6fd', b: 'rgba(56, 189, 248, 0.3)' },
+        emerald:{ p: '#10b981', s: '#14b8a6', soft: 'rgba(16, 185, 129, 0.2)', text: '#a7f3d0', b: 'rgba(52, 211, 153, 0.3)' },
+        rose:   { p: '#f43f5e', s: '#ec4899', soft: 'rgba(244, 63, 94, 0.2)',  text: '#fecdd3', b: 'rgba(251, 113, 133, 0.3)' },
+        amber:  { p: '#f59e0b', s: '#f97316', soft: 'rgba(245, 158, 11, 0.2)',  text: '#fde68a', b: 'rgba(251, 191, 36, 0.3)' },
+    };
+
+    function applyTheme(name){
+        const t = THEMES[name] || THEMES['indigo'];
+        const r = document.documentElement.style;
+        r.setProperty('--c-primary', t.p);
+        r.setProperty('--c-secondary', t.s);
+        r.setProperty('--c-bg-soft', t.soft);
+        r.setProperty('--c-text', t.text);
+        r.setProperty('--c-border', t.b);
+    }
+
+    // Persistence for rotation state
+    const STATE_KEY = 'school_display_state';
+    function saveState(){
+        try { localStorage.setItem(STATE_KEY, JSON.stringify({annIdx, exPtr})); } catch(e){}
+    }
+    function loadState(){
+        try{
+            const s = JSON.parse(localStorage.getItem(STATE_KEY));
+            if(s){
+                if(Number.isInteger(s.annIdx)) annIdx = s.annIdx;
+                if(Number.isInteger(s.exPtr)) exPtr = s.exPtr;
+            }
+        }catch(e){}
+    }
+
+    // Date Fix
+    const AR_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    const HIJRI_MONTHS = ["محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"];
+
+    /* --- Clock & Date --- */
+    let showHijri = false;
+    let cachedDateInfo = null;
+    
+    function toggleDateDisplay(){
+        showHijri = !showHijri;
+        const g = $("dateGregorian");
+        const h = $("dateHijri");
+        if(!g || !h) return;
+        
+        if(showHijri){
+            // Show Hijri, Hide Gregorian (Slide Up)
+            g.classList.remove('translate-y-0', 'opacity-100');
+            g.classList.add('-translate-y-8', 'opacity-0');
+            
+            h.classList.remove('translate-y-8', 'opacity-0');
+            h.classList.add('translate-y-0', 'opacity-100');
+        } else {
+            // Show Gregorian, Hide Hijri (Slide Down)
+            g.classList.remove('-translate-y-8', 'opacity-0');
+            g.classList.add('translate-y-0', 'opacity-100');
+            
+            h.classList.remove('translate-y-0', 'opacity-100');
+            h.classList.add('translate-y-8', 'opacity-0');
+        }
+    }
+
     function tickClock(dateInfo){
       const now=new Date();
       const arWeek = new Intl.DateTimeFormat('ar-SA',{weekday:'long'}).format(now);
-      $("clock").textContent=`${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
-      if(dateInfo){
-        const g=dateInfo.gregorian, h=dateInfo.hijri;
-        $("dateLine").textContent=`${arWeek} — ${g.year}/${fmt2(g.month)}/${fmt2(g.day)} (م) — ${h.year}/${fmt2(h.month)}/${fmt2(h.day)} (هـ)`;
+      $("clock").textContent=`${fmt2(now.getHours())}:${fmt2(now.getMinutes())}`;
+      
+      if(dateInfo) cachedDateInfo = dateInfo;
+      
+      if(cachedDateInfo){
+        const g = cachedDateInfo.gregorian || {};
+        const h = cachedDateInfo.hijri || {};
+        const gMonth = g.month_name || AR_MONTHS[now.getMonth()] || g.month;
+        const hMonth = h.month_name || (h.month ? HIJRI_MONTHS[h.month-1] : '') || h.month;
+        
+        const gText = `${arWeek} ، ${g.day||now.getDate()} ${gMonth} ${g.year||now.getFullYear()}م`;
+        const hText = `${arWeek} ، ${h.day||''} ${hMonth} ${h.year||''}هـ`;
+        
+        if($("dateGregorian")) $("dateGregorian").textContent = gText;
+        if($("dateHijri")) $("dateHijri").textContent = hText;
+      } else {
+        const gMonth = AR_MONTHS[now.getMonth()];
+        const gText = `${arWeek} ، ${now.getDate()} ${gMonth} ${now.getFullYear()}م`;
+        if($("dateGregorian")) $("dateGregorian").textContent = gText;
       }
     }
-    function netBadge(ok){ $("net").classList.toggle('hidden', ok); }
+    function netBadge(ok){ $("wxChip").style.opacity = ok ? 1 : 0.5; }
 
-    /* أدوات وقت */
+    /* --- Time Utils --- */
     function hmToDate(hm){ if(!hm) return null; const [h,m]=String(hm).split(':').map(Number); const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0); }
     function isEnded(endHM){ const end=hmToDate(endHM); return end ? (Date.now() >= end.getTime()) : false; }
     function isNowBetween(startHM, endHM){ const s=hmToDate(startHM), e=hmToDate(endHM), n=Date.now(); return (s && e) ? (n>=s.getTime() && n<e.getTime()) : false; }
+    function toTimeStr(t){ if(!t) return "--:--"; const [h,m]=String(t).split(":"); return `${h}:${m}`; }
 
-    /* عدّاد الدائرة */
+    /* --- Progress Circle --- */
     let countdownSeconds=null, progressRange={start:null,end:null};
-    const circle = $("circleProgress"); let CIRC_TOTAL = 0;
-    function setupCircle(){ if(!circle) return; const r = circle.r?.baseVal?.value || 54; CIRC_TOTAL = 2*Math.PI*r; circle.style.strokeDasharray = CIRC_TOTAL.toFixed(3); circle.style.strokeDashoffset = CIRC_TOTAL.toFixed(3); circle.style.stroke = "#ffffff"; circle.style.filter = "drop-shadow(0 0 6px rgba(255,255,255,.25))"; }
-    function ringColor(pct){ if(pct>66) return "#10b981"; if(pct>33) return "#f59e0b"; return "#ef4444"; }
+    const circle = $("circleProgress"); let CIRC_TOTAL = 339.292;
+    
     function setRing(pct){
-      if(!circle || !CIRC_TOTAL) return;
+      if(!circle) return;
       const clamped = Math.max(0, Math.min(100, pct));
       const off = CIRC_TOTAL * (1 - clamped/100);
       circle.style.strokeDashoffset = off;
-      const col = ringColor(clamped);
-      circle.style.stroke = col;
-      circle.style.filter = `drop-shadow(0 0 6px ${col}55)`;
     }
 
     function startTicker(){
       setInterval(()=>{
         netBadge(navigator.onLine);
         tickClock();
+        
         if (typeof countdownSeconds==='number'){
           if(countdownSeconds>0) countdownSeconds--;
           const mm=Math.floor(countdownSeconds/60), ss=countdownSeconds%60;
@@ -350,278 +388,382 @@
         if(progressRange.start && progressRange.end){
           const now=Date.now();
           const pct=Math.max(0,Math.min(100,((now-progressRange.start)/(progressRange.end-progressRange.start))*100));
-          $("progressBar").style.width=`${pct.toFixed(1)}%`; setRing(pct);
-        } else { $("progressBar").style.width="0%"; setRing(0); }
+          $("progressBar").style.width=`${pct.toFixed(1)}%`; 
+          setRing(pct);
+        } else { 
+          $("progressBar").style.width="0%"; 
+          setRing(0); 
+        }
       },1000);
     }
-    function toTimeStr(t){ if(!t) return "--:--"; const [h,m]=String(t).split(":"); return `${h}:${m}`; }
 
-    /* ===== الحالة + جدول اليوم ===== */
-    let _stateCache=null;
+    /* --- State Renderer (With Break Colors) --- */
+    let lastScheduleJSON = "";
+
     function renderState(payload){
       const s=payload.state, day=payload.day;
+      const settings = payload.settings || {};
+      
+      // 1. Apply Theme
+      if(settings.theme) applyTheme(settings.theme);
+
+      // 2. Update Refresh Interval
+      if(settings.refresh_interval_sec && settings.refresh_interval_sec !== REFRESH_EVERY){
+          REFRESH_EVERY = settings.refresh_interval_sec;
+          if(mainTimer) clearInterval(mainTimer);
+          mainTimer = setInterval(refreshAll, Math.max(10, REFRESH_EVERY) * 1000);
+      }
+
       tickClock(payload.date_info);
 
+      // Populate finished periods for Standby filtering
+      finishedPeriodIndices.clear();
+      if(day && day.periods){
+          day.periods.forEach(p => {
+              if(isEnded(p.ends_at)) finishedPeriodIndices.add(Number(p.index));
+          });
+      }
+
       let title="—", range="--:-- → --:--", badge="اليوم";
+      let isBreak = false;
       countdownSeconds=null; progressRange={start:null,end:null};
 
       if(s.type==="before"){
-        title="قبل بداية الدوام"; badge="الحصة الأولى لاحقًا";
+        title="صباح الخير"; badge="قبل الطابور";
         if(s.next?.type==="period"){ range=`تبدأ ${toTimeStr(s.next.starts_at)}`; }
         if(typeof s.countdown_seconds==='number'){ countdownSeconds=s.countdown_seconds; }
       }else if(s.type==="after"){
-        title="انتهى اليوم الدراسي"; badge="إلى اللقاء";
+        title="انتهى الدوام"; badge="في أمان الله";
       }else if(s.type==="break"){
-        title="فسحة"; badge="استراحة";
+        isBreak = true;
+        title=s.current.label || "فسحة / صلاة"; badge="استراحة";
         range=`${toTimeStr(s.current.starts_at)} → ${toTimeStr(s.current.ends_at)}`;
         countdownSeconds=s.countdown_seconds??null;
         const [sh,sm]=String(s.current.starts_at).split(":").map(Number);
         const [eh,em]=String(s.current.ends_at).split(":").map(Number);
         const d=new Date(); progressRange={start:new Date(d.getFullYear(),d.getMonth(),d.getDate(),sh,sm,0).getTime(),end:new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh,em,0).getTime()};
       }else if(s.type==="period"){
-        title=`الحصّة ${s.current.index}`; badge="داخل الحصّة";
+        title=`الحصّة ${s.current.index}`; badge="درس";
         range=`${toTimeStr(s.current.starts_at)} → ${toTimeStr(s.current.ends_at)}`;
         countdownSeconds=s.countdown_seconds??null;
         const [sh,sm]=String(s.current.starts_at).split(":").map(Number);
         const [eh,em]=String(s.current.ends_at).split(":").map(Number);
         const d=new Date(); progressRange={start:new Date(d.getFullYear(),d.getMonth(),d.getDate(),sh,sm,0).getTime(),end:new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh,em,0).getTime()};
       }
+      
+      // Update Text
       $("heroTitle").textContent=title; $("heroRange").textContent=range; $("badgeKind").textContent=badge;
-
-      $("nextLabel").textContent = s.next
-        ? (s.next.type==="period" ? `التالي: الحصّة ${s.next.index} — ${toTimeStr(s.next.starts_at)}` : `التالي: ${s.next.label||'فسحة'} — ${toTimeStr(s.next.starts_at)}`)
+      $("nextLabel").innerHTML = s.next
+        ? `<span class="opacity-70">التالي:</span> <span class="font-bold text-white">${s.next.type==="period" ? `الحصّة ${s.next.index}` : (s.next.label||'فسحة')}</span> <span class="bg-white/10 px-1.5 rounded text-sm num-font">${toTimeStr(s.next.starts_at)}</span>`
         : "التالي: —";
 
-      // جدول اليوم
-      const mini=$("miniSchedule"); mini.innerHTML="";
+      // Apply Break Colors (Override Theme if Break)
+      // REMOVED: We now respect the user's selected theme even during breaks.
+      // If you want to force green for breaks, uncomment the block below.
+      /*
+      const r = document.documentElement.style;
+      if(isBreak){
+        // Force Emerald for Break
+        r.setProperty('--c-primary', '#10b981');
+        r.setProperty('--c-secondary', '#14b8a6');
+        r.setProperty('--c-bg-soft', 'rgba(16, 185, 129, 0.2)');
+        r.setProperty('--c-text', '#a7f3d0');
+        r.setProperty('--c-border', 'rgba(52, 211, 153, 0.3)');
+      } else {
+        if(settings.theme) applyTheme(settings.theme);
+      }
+      */
+      // Ensure theme is applied (it's already applied at start of renderState, but just in case)
+      if(settings.theme) applyTheme(settings.theme);
+
+      // Mini Schedule (Optimized)
       const timeline=[];
-      (day?.periods||[]).forEach(p=>timeline.push({kind:"period", start:p.starts_at, end:p.ends_at, label:`الحصّة ${p.index}`}));
+      (day?.periods||[]).forEach(p=>timeline.push({kind:"period", start:p.starts_at, end:p.ends_at, label:`${p.index}`}));
       (day?.breaks||[]).forEach(b=>timeline.push({kind:"break", start:b.starts_at, end:b.ends_at, label:b.label||"فسحة"}));
       timeline.sort((a,b)=>hmToDate(a.start)-hmToDate(b.start) || (a.kind==="period"?-1:1));
 
-      const shown = s.type==="before" ? timeline : timeline.filter(x=>!isEnded(x.end));
-      shown.forEach(x=>{
-        const now = isNowBetween(x.start,x.end) ||
-          (x.kind==="period" && s.type==="period" && s.current?.starts_at===x.start) ||
-          (x.kind==="break"  && s.type==="break"  && s.current?.starts_at===x.start);
-        const chip=document.createElement('div');
-        chip.className="mini-chip"+(x.kind==="break"?" break":"")+(now?" now":"");
-        chip.style.minWidth="10.5rem";
-        chip.innerHTML=`<div class="t">${x.label}</div><div class="v">${toTimeStr(x.start)} — ${toTimeStr(x.end)}</div>`;
-        mini.appendChild(chip);
-      });
+      const shown = timeline.filter(x=>!isEnded(x.end));
+      const currentScheduleJSON = JSON.stringify(shown);
+      const mini=$("miniSchedule");
 
-      _stateCache = s||{};
-    }
-
-    /* ===== التنبيهات ===== */
-    const ANN_KEY="display:ann:v1", ANN_INT=6000;
-    let annList=[], annIdx=0, annTimer=null;
-    function annMakeKey(a){ return String(a.id ?? (a.level||'')+'|'+(a.title||'')+'|'+(a.body||'')).slice(0,200); }
-    function annLoadState(){ try{ return JSON.parse(localStorage.getItem(ANN_KEY)||"null"); }catch(_){ return null; } }
-    function annSaveState(){ try{ localStorage.setItem(ANN_KEY, JSON.stringify({idx:annIdx,at:Date.now(),interval:ANN_INT,keys:annList.map(annMakeKey)})); }catch(_){} }
-    function levelAr(level){ switch((level||'').toLowerCase()){
-      case 'urgent':  return 'عاجل'; case 'warning': return 'تنبيه';
-      case 'success': return 'تهنئة'; default: return 'معلومة'; } }
-    function mountAnnouncements(items){
-      annList = Array.isArray(items)? items : [];
-      $("annCount").textContent = annList.length;
-      $("annEmpty").classList.toggle('hidden', annList.length>0);
-      const car=$("annCarousel"), dots=$("annDots");
-      car.innerHTML=""; dots.innerHTML="";
-      if(!annList.length){ if(annTimer) clearInterval(annTimer); return; }
-
-      annList.forEach((a)=> {
-        const s=document.createElement('div'); s.className='ann-slide';
-        const lvl = levelAr(a.level);
-        s.innerHTML= `
-          <div class="ann-badge" data-level="${lvl}">${lvl}</div>
-          <div class="font-bold text-[clamp(15px,1.5vw,20px)]">${a.title||''}</div>
-          ${a.body?`<div class="text-sm opacity-95 leading-6 whitespace-pre-line">${a.body}</div>`:''}
-        `;
-        car.appendChild(s);
-        const d=document.createElement('div'); d.className='ann-dot'; dots.appendChild(d);
-      });
-
-      function show(i){
-        const slides=[...car.children], ds=[...dots.children];
-        annIdx=(i+slides.length)%slides.length;
-        slides.forEach((el,k)=>el.classList.toggle('active',k===annIdx));
-        ds.forEach((el,k)=>el.classList.toggle('active',k===annIdx));
-        annSaveState();
+      // Rebuild only if structure changed
+      if(currentScheduleJSON !== lastScheduleJSON){
+          lastScheduleJSON = currentScheduleJSON;
+          mini.innerHTML="";
+          
+          if(shown.length === 0) {
+             mini.innerHTML = '<div class="text-white/50 text-sm p-2">انتهى جدول اليوم</div>';
+          } else {
+            shown.forEach((x, i) => {
+                const chip = document.createElement('div');
+                chip.id = `sched-item-${i}`;
+                chip.className = `flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] h-20 transition-all duration-300 bg-white/5 text-slate-300 border border-white/10`;
+                chip.innerHTML = `
+                <span class="text-[10px] opacity-70 mb-1">${toTimeStr(x.start)}</span>
+                <span class="font-bold text-lg leading-none">${x.kind === 'period' ? `ح ${x.label}` : x.label}</span>
+                `;
+                mini.appendChild(chip);
+            });
+          }
       }
 
-      const st=annLoadState();
-      if(st && st.keys?.length){
-        const wantKey=st.keys[st.idx??0];
-        const keysNow=annList.map(annMakeKey);
-        let base = keysNow.indexOf(wantKey);
-        base = base>=0 ? base : (st.idx||0)%keysNow.length;
-        const elapsed = Math.max(0, Date.now() - Number(st.at||Date.now()));
-        const steps = Math.floor(elapsed / Number(st.interval||ANN_INT));
-        annIdx = (base + steps) % keysNow.length;
-      } else annIdx=0;
+      // Update active state
+      if(shown.length > 0){
+          shown.forEach((x, i) => {
+            const el = document.getElementById(`sched-item-${i}`);
+            if(!el) return;
 
-      show(annIdx);
-      if(annTimer) clearInterval(annTimer);
-      annTimer=setInterval(()=>show(annIdx+1), ANN_INT);
+            const isCurrent = isNowBetween(x.start,x.end);
+            
+            let cls = "flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] h-20 transition-all duration-300 ";
+            if(isCurrent){
+                // Active item: Pulse animation + Theme colors + Glow
+                cls += "bg-theme-primary text-white ring-4 ring-theme-secondary/50 shadow-[0_0_20px_rgba(var(--c-primary),0.6)] scale-110 z-10";
+            } else {
+                cls += "bg-white/5 text-slate-300 border border-white/10 opacity-60";
+            }
+            
+            if(el.className !== cls) el.className = cls;
+          });
+      }
     }
 
-    /* ===== المتميزون ===== */
-    const EX_INT=8000, EX_KEY="display:ex:v2";
+    /* --- Announcements (Rotating) --- */
+    let annList=[], annIdx=0, annTimer=null;
+    
+    function mountAnnouncements(items){
+      const newItems = Array.isArray(items)? items : [];
+      if(JSON.stringify(newItems) === JSON.stringify(annList)) return;
+      
+      annList = newItems;
+      const container = $("alertContainer");
+      
+      if(!annList.length){ 
+        container.classList.add('hidden');
+        if(annTimer) { clearInterval(annTimer); annTimer=null; }
+        return; 
+      }
+      
+      container.classList.remove('hidden');
+      
+      if(!annTimer){
+        showNextAnn();
+        if(annList.length > 1){
+            annTimer = setInterval(showNextAnn, 5000);
+        }
+      } else {
+        if(annList.length <= 1){
+            clearInterval(annTimer); annTimer=null;
+            showNextAnn();
+        }
+      }
+    }
+
+    function showNextAnn(){
+        if(!annList.length) return;
+        annIdx = annIdx % annList.length; 
+        const item = annList[annIdx];
+        
+        const container = $("alertContainer");
+        const el = document.createElement('div');
+        el.className = "absolute inset-0 flex items-center justify-center px-4 bg-red-500/10 border border-red-500/20 rounded-lg alert-enter";
+        el.innerHTML = `<span class="text-red-200 font-bold text-xl flex items-center gap-2">⚠️ ${item.title} <span class="font-normal opacity-80 text-base hidden md:inline"> - ${item.body||''}</span></span>`;
+        
+        if(container.firstElementChild){
+            const old = container.firstElementChild;
+            old.classList.remove('alert-enter', 'alert-enter-active');
+            old.classList.add('alert-exit', 'alert-exit-active');
+            setTimeout(()=>old.remove(), 500);
+        }
+        
+        container.appendChild(el);
+        void el.offsetWidth;
+        el.classList.add('alert-enter-active');
+        el.classList.remove('alert-enter');
+
+        annIdx = (annIdx + 1) % annList.length;
+        saveState();
+    }
+
+    /* --- Excellence --- */
+    const EX_INT=8000;
     let exList=[], exPtr=0, exTimer=null;
+    
     function resolveImageURL(raw){
       if(!raw) return ""; const s=String(raw).trim(); if(!s) return "";
       if(/^data:image\//i.test(s)||/^blob:/i.test(s)) return s;
       if(/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i,"//");
-      if(s.startsWith('//')) return s;
-      if(s.startsWith('/')) return s;
       const pref=document.body.dataset.mediaPrefix||'/media/'; return (pref.endsWith('/')?pref:pref+'/')+s.replace(/^\.?\/*/,'');
     }
-    function pickImage(e){
-      const t=e.teacher||{};
-      const c=[e.image_src,e.photo_url,e.image_url,e.photo,e.image,e.avatar,t.photo_url,t.image_url,t.photo,t.image];
-      for(const v of c){ const u=resolveImageURL(v); if(u) return u; }
-      return "";
-    }
-    function exKey(it){ return String(it.id ?? it.teacher_id ?? it.teacher_name ?? it.name ?? it.teacher?.name ?? JSON.stringify(it)).trim(); }
-    function exCardHTML(e){
-      const src=pickImage(e);
-      const name=(e.teacher_name||e.name||(e.teacher&&e.teacher.name)||'—');
-      const reason=(e.reason||'').slice(0,240);
-      const img = src
-        ? `<img class="ex-img" src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer"
-             onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ex-img grid place-items-center text-2xl',textContent:'🎖️'}))">`
-        : `<div class="ex-img grid place-items-center text-2xl">🎖️</div>`;
-      return `
-      <div class="ex-hero animate-fade-in">
-        <div class="flex items-center gap-5">
-          <div class="ex-avatar">${img}</div>
-          <div class="min-w-0 flex-1">
-            <div class="font-black text-[clamp(16px,1.6vw,22px)] truncate">${name}</div>
-            ${reason?`<div class="text-sm opacity-95 leading-6 line-clamp-2">${reason}</div>`:''}
-          </div>
-        </div>
-      </div>`;
-    }
-    function exLoad(){ try{ return JSON.parse(localStorage.getItem(EX_KEY)||"null"); }catch(_){ return null; } }
-    function exSave(){ try{ localStorage.setItem(EX_KEY, JSON.stringify({ptr:exPtr, at:Date.now(), interval:EX_INT, keys:exList.map(exKey)})); }catch(_){ } }
+
     function renderExcellence(items){
-      exList=(Array.isArray(items)?items:[]).filter(x=> (x.teacher_name||x.name||x.teacher?.name));
+      const newItems = (Array.isArray(items)?items:[]).filter(x=> (x.teacher_name||x.name||x.teacher?.name));
+      if(JSON.stringify(newItems) === JSON.stringify(exList)) return;
+
+      exList = newItems;
       $("exTotal").textContent=exList.length;
-      $("exEmpty").classList.toggle('hidden', exList.length>0);
-      const slot=$("exSlot"); slot.innerHTML="";
-      if(!exList.length){ if(exTimer) clearInterval(exTimer); $("exIndex").textContent="0"; return; }
+      const slot=$("exSlot"); 
+      
+      if(!exList.length){ 
+        if(exTimer) { clearInterval(exTimer); exTimer=null; }
+        slot.innerHTML = '<div class="h-full flex items-center justify-center text-slate-500 text-sm">لا يوجد متميزون حالياً</div>';
+        return; 
+      }
 
-      const st=exLoad();
-      if(st && st.keys?.length){
-        const keysNow=exList.map(exKey);
-        const want=st.keys[st.ptr??0];
-        let base = keysNow.indexOf(want); if(base<0) base = (st.ptr||0)%keysNow.length;
-        const elapsed = Math.max(0, Date.now()-Number(st.at||Date.now()));
-        const steps = Math.floor(elapsed / Number(st.interval||EX_INT));
-        exPtr = (base + steps) % keysNow.length;
-      } else exPtr=0;
+      if(!exTimer){
+        showExcellence(exPtr); 
+        exTimer=setInterval(()=>showExcellence(exPtr+1), EX_INT);
+      }
+    }
 
-      function show(i){
+    function showExcellence(i){
         if(!exList.length) return;
         exPtr = (i+exList.length)%exList.length;
         $("exIndex").textContent = exPtr+1;
-        slot.innerHTML = exCardHTML(exList[exPtr]);
-        exSave();
-      }
-      show(exPtr);
-      if(exTimer) clearInterval(exTimer);
-      exTimer=setInterval(()=>show(exPtr+1), EX_INT);
+        const e = exList[exPtr];
+        const slot=$("exSlot");
+        
+        const t=e.teacher||{};
+        const rawSrc=[e.image_src,e.photo_url,e.image_url,e.photo,e.image,e.avatar,t.photo_url,t.image_url,t.photo,t.image].find(v => v);
+        const src = resolveImageURL(rawSrc);
+        const name=(e.teacher_name||e.name||(e.teacher&&e.teacher.name)||'—');
+        const reason=(e.reason||'').slice(0,100);
+
+        slot.style.opacity = 0;
+        setTimeout(() => {
+            slot.innerHTML = `
+            <div class="relative h-full w-full bg-slate-900">
+                ${src ? `
+                    <!-- Blurred Background -->
+                    <div class="absolute inset-0 overflow-hidden">
+                        <img src="${src}" class="w-full h-full object-cover opacity-30 blur-xl scale-110">
+                    </div>
+                    <!-- Main Image -->
+                    <img src="${src}" class="absolute inset-0 w-full h-full object-contain z-10" alt="${name}">
+                ` : '<div class="absolute inset-0 bg-gradient-to-br from-indigo-900 to-purple-900"></div>'}
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20"></div>
+                <div class="absolute bottom-0 left-0 right-0 p-4 z-30">
+                    <div class="font-bold text-white text-xl leading-tight mb-1 drop-shadow-md">${name}</div>
+                    ${reason ? `<div class="text-xs text-slate-200 line-clamp-2 drop-shadow">${reason}</div>` : ''}
+                </div>
+            </div>
+            `;
+            slot.style.opacity = 1;
+        }, 300);
+        saveState();
     }
 
-    /* ===== الانتظار — ترتيب + تمرير مستمر ===== */
-    const SB_KEY="display:standby:v1";
-    let sbList=[], sbSpeed=16;
-    let sbRAF=null, sbStartTime=0, sbBaseOffset=0, sbHeight=0;
+    /* --- Standby (Grid + Scroll) --- */
+    let sbAnimFrame = null;
+    let lastStandbyJSON = "";
+    let standbyItemsCache = [];
 
-    function sbLoad(){ try{ return JSON.parse(localStorage.getItem(SB_KEY)||"null"); }catch(_){ return null; } }
-    function sbSave(){ try{ localStorage.setItem(SB_KEY, JSON.stringify({at:Date.now(), base:sbBaseOffset})); }catch(_){} }
+    function startStandbyScroll(){
+        const track = $("standbyTrack");
+        const viewport = document.querySelector('.standby-viewport');
+        if(!track || !viewport) return;
 
-    function standbyVisible(x){
-      const s=_stateCache||{}; const p=Number(x.period_index||0);
-      if(s.type==="after") return false;
-      if(s.type==="before") return true;
-      if(s.type==="period") return p>=Number(s.current?.index||0);
-      if(s.type==="break")  return p>=Number(s.next?.index||0);
-      return true;
+        // Stop existing
+        if(sbAnimFrame) cancelAnimationFrame(sbAnimFrame);
+        sbAnimFrame = null;
+        track.style.transform = 'translateY(0)';
+        
+        // Reset to single copy to measure
+        while(track.children.length > 1){
+            track.removeChild(track.lastElementChild);
+        }
+        
+        const contentDiv = track.firstElementChild;
+        if(!contentDiv) return;
+
+        // Force layout update
+        const contentHeight = contentDiv.offsetHeight;
+        const viewHeight = viewport.offsetHeight;
+
+        if(contentHeight > viewHeight){
+            // Add clone for seamless loop
+            const clone = contentDiv.cloneNode(true);
+            clone.setAttribute('aria-hidden', 'true');
+            track.appendChild(clone);
+
+            let y = 0;
+            const speed = 0.8; // Pixels per frame
+
+            function loop(){
+                y += speed;
+                if(y >= contentHeight){
+                    y = 0; // Seamless reset
+                }
+                track.style.transform = `translateY(-${y}px)`;
+                sbAnimFrame = requestAnimationFrame(loop);
+            }
+            sbAnimFrame = requestAnimationFrame(loop);
+        }
     }
 
     function renderStandby(items){
-      const sorted = (Array.isArray(items)?items:[]).slice().sort((a,b)=>{
-        const pa = Number(a.period_index||0), pb = Number(b.period_index||0);
-        if (pa !== pb) return pa - pb;
-        const ca = (a.class_name||'').toString().localeCompare((b.class_name||'').toString(), 'ar');
-        if (ca !== 0) return ca;
-        return (a.teacher_name||'').toString().localeCompare((b.teacher_name||'').toString(), 'ar');
+      const activeItems = (Array.isArray(items)?items:[]).filter(x => {
+          if(!x.period_index) return true;
+          return !finishedPeriodIndices.has(Number(x.period_index));
       });
 
-      sbList = sorted.filter(standbyVisible);
+      const sorted = activeItems.slice().sort((a,b)=>{
+        const pa = Number(a.period_index||0), pb = Number(b.period_index||0);
+        if (pa !== pb) return pa - pb;
+        return (a.teacher_name||'').localeCompare((b.teacher_name||''));
+      });
 
-      $("standbyEmpty").classList.toggle('hidden', sbList.length>0);
-      const track=$("standbyTrack"); track.innerHTML="";
-      if(!sbList.length){ cancelAnimationFrame(sbRAF); sbRAF=null; return; }
+      const currentJSON = JSON.stringify(sorted);
+      if(currentJSON === lastStandbyJSON) return;
+      lastStandbyJSON = currentJSON;
+      standbyItemsCache = sorted;
 
-      const palette = ['sb-blue','sb-emerald','sb-amber','sb-rose'];
-      const block = (x,i)=>`<div class="rounded-xl px-3 py-2 ring-soft ${palette[i % palette.length]}">
-        <div class="text-xs md:text-sm text-white/80">الحصّة ${x.period_index} — الفصل ${x.class_name}</div>
-        <div class="font-semibold">${x.teacher_name}</div>
+      $("sbCount").textContent = `${sorted.length} حصة`;
+      const track = $("standbyTrack");
+      
+      // Clear
+      if(sbAnimFrame) cancelAnimationFrame(sbAnimFrame);
+      track.innerHTML = '';
+      track.style.transform = 'translateY(0)';
+
+      if(!sorted.length){ 
+        track.innerHTML = '<div class="text-center text-slate-500 py-12 text-sm">لا توجد حصص انتظار مسجلة اليوم.</div>';
+        return; 
+      }
+
+      const block = (x)=>`
+      <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col justify-between backdrop-blur-sm hover:bg-white/10 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+            <div class="bg-theme-soft text-theme-text font-bold px-2 py-0.5 rounded text-sm num-font">ح ${x.period_index}</div>
+            <div class="text-[10px] text-slate-400 bg-black/20 px-2 py-0.5 rounded">${x.class_name}</div>
+        </div>
+        <div class="font-semibold text-white text-sm truncate">${x.teacher_name}</div>
       </div>`;
 
-      const html = sbList.map((x,i)=>block(x,i)).join('');
-      track.innerHTML = `<div id="sbSetA" class="space-y-2">${html}</div><div id="sbSetB" class="space-y-2">${html}</div>`;
+      const contentDiv = document.createElement('div');
+      contentDiv.className = "standby-grid pb-4";
+      contentDiv.innerHTML = sorted.map(block).join('');
+      track.appendChild(contentDiv);
 
-      const setA = document.getElementById('sbSetA');
-      const viewport = document.querySelector('.standby-viewport');
-      sbHeight = setA.getBoundingClientRect().height + 8;
-
-      const vpH = viewport ? viewport.getBoundingClientRect().height : 300;
-      sbSpeed = Math.min(26, Math.max(12, (sbHeight / Math.max(120, vpH)) * 10 ));
-
-      const st = sbLoad();
-      if(st && Number.isFinite(st.base)){ sbBaseOffset = ((st.base % sbHeight)+sbHeight)%sbHeight; } else sbBaseOffset = 0;
-      sbStartTime = performance.now();
-
-      cancelAnimationFrame(sbRAF);
-      const loop = (t)=>{
-        const dt = (t - sbStartTime)/1000;
-        const offset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
-        track.style.transform = `translateY(-${offset}px)`;
-        sbRAF = requestAnimationFrame(loop);
-      };
-      sbRAF = requestAnimationFrame(loop);
-
-      if(window._sbSaver) clearInterval(window._sbSaver);
-      window._sbSaver = setInterval(()=>{
-        const now = performance.now();
-        const dt = (now - sbStartTime)/1000;
-        sbBaseOffset = (sbBaseOffset + sbSpeed*dt) % sbHeight;
-        sbStartTime = now;
-        sbSave();
-      }, 4000);
+      // Start scroll after a brief delay to ensure layout
+      setTimeout(startStandbyScroll, 100);
     }
+    
+    window.addEventListener('resize', () => {
+        if(standbyItemsCache.length) startStandbyScroll();
+    });
 
-    /* ===== جلب البيانات — إلغاء السباقات ===== */
-    let _refreshCtl = null;
-
+    /* --- Fetch & Init --- */
     async function safeFetch(url){
       try{
-        if(!_refreshCtl) _refreshCtl = new AbortController();
-        const r=await fetch(url,{headers:{'Accept':'application/json'}, signal:_refreshCtl.signal});
+        const r=await fetch(url,{headers:{'Accept':'application/json'}});
         if(!r.ok) throw new Error(r.status);
         return await r.json();
-      }catch(e){ console.error('Fetch',url,e); netBadge(false); return null; }
+      }catch(e){ console.error(e); netBadge(false); return null; }
     }
 
     async function refreshAll(){
-      if(_refreshCtl){ try{ _refreshCtl.abort(); }catch(_){} }
-      _refreshCtl = new AbortController();
-
       const [d,a,s,x] = await Promise.all([
         safeFetch(api.today),
         safeFetch(api.ann),
@@ -634,119 +776,29 @@
       if(x) renderExcellence(x.items||[]);
     }
 
-    /* ===== الطقس — الرياض ===== */
-    const WX_KEY='display:wx:v1';
-    const WX_TTL=10*60*1000; // 10 دقائق
-    const RIYADH = { lat: 24.7136, lon: 46.6753, tz: 'Asia/Riyadh' };
-
-    const wxMap = {
-      0:['صحو','☀️'], 1:['غائم جزئيًا','🌤️'], 2:['غائم','⛅'], 3:['غائم كليًا','☁️'],
-      45:['ضباب','🌫️'], 48:['ضباب','🌫️'],
-      51:['رذاذ','🌦️'], 53:['رذاذ','🌦️'], 55:['رذاذ','🌦️'],
-      61:['مطر خفيف','🌧️'], 63:['مطر','🌧️'], 65:['مطر غزير','🌧️'],
-      71:['ثلوج خفيفة','🌨️'], 73:['ثلوج','🌨️'], 75:['ثلوج غزيرة','🌨️'],
-      95:['عواصف رعدية','⛈️'], 96:['عواصف + برد','⛈️'], 99:['عواصف شديدة','⛈️']
-    };
-
-    function wxFromCache(){
-      try{
-        const raw = localStorage.getItem(WX_KEY);
-        if(!raw) return null;
-        const obj = JSON.parse(raw);
-        if(Date.now() - obj.at > WX_TTL) return null;
-        return obj.data;
-      }catch(_){ return null; }
-    }
-    function wxSave(data){
-      try{ localStorage.setItem(WX_KEY, JSON.stringify({at: Date.now(), data})); }catch(_){}
-    }
-    function wxRender(d){
-      const el = $('wxChip');
-      if(!d){ el.textContent='—'; return; }
-      const code = Number(d.weather_code);
-      const [label, icon] = wxMap[code] || ['الطقس', '🌡️'];
-      const t = Math.round(d.temperature_2m);
-      const w = Math.round(d.wind_speed_10m);
-      el.innerHTML = `<span class="i">${icon}</span><span class="t">${t}°</span><small>الرياض • ${label} • ${w} كم/س</small>`;
-    }
+    /* --- Weather --- */
+    const RIYADH = { lat: 24.7136, lon: 46.6753 };
+    const wxMap = { 0:'☀️', 1:'🌤️', 2:'⛅', 3:'☁️', 45:'🌫️', 61:'🌧️', 95:'⛈️' };
     async function wxFetch(){
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${RIYADH.lat}&longitude=${RIYADH.lon}&current=temperature_2m,wind_speed_10m,weather_code&timezone=${encodeURIComponent(RIYADH.tz)}`;
       try{
-        const r = await fetch(url, { headers: {'Accept':'application/json'} });
-        if(!r.ok) throw new Error('wx '+r.status);
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${RIYADH.lat}&longitude=${RIYADH.lon}&current=temperature_2m,weather_code&timezone=auto`);
         const j = await r.json();
-        const cur = j?.current || null;
-        if(cur){ wxSave(cur); wxRender(cur); }
-      }catch(e){
-        console.warn('weather error', e);
-        wxRender(wxFromCache());
-      }
+        const cur = j.current;
+        const icon = wxMap[cur.weather_code] || '🌡️';
+        $('wxChip').innerHTML = `<span class="text-lg">${icon}</span> <span class="font-bold num-font">${Math.round(cur.temperature_2m)}°</span> <span class="text-xs opacity-70">الرياض</span>`;
+      }catch(e){ $('wxChip').textContent = '—'; }
     }
 
-    /* ===== تهيئة ===== */
     (function init(){
-      setupCircle(); startTicker(); refreshAll();
-      setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000);
-
-      // طقس: اظهر الكاش فورًا ثم حدّث من الشبكة
-      const cached = wxFromCache(); if(cached) wxRender(cached); else $('wxChip').textContent='—';
-      wxFetch();
-      setInterval(wxFetch, WX_TTL);
-
-      // مهدِّئ لإعادة بناء الانتظار عند تغيير الحجم
-      let rzT=null;
-      window.addEventListener('resize', ()=>{
-        if(rzT) clearTimeout(rzT);
-        rzT = setTimeout(()=>{ if(sbList.length){ renderStandby(sbList); } }, 200);
-      });
-    })();
-
-    /* ===== ملء الشاشة ===== */
-    (function fullscreenInit(){
-      const fsBtn = document.getElementById('fsBtn');
-      const iconEnter = document.getElementById('fsIconEnter');
-      const iconExit  = document.getElementById('fsIconExit');
-
-      function fsEnabled(){ return document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled; }
-      function isFs(){
-        return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-      }
-      async function enterFs(el){
-        try{
-          if(el.requestFullscreen) await el.requestFullscreen();
-          else if(el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-          else if(el.msRequestFullscreen) await el.msRequestFullscreen();
-        }catch(e){ console.warn('Fullscreen enter error', e); }
-      }
-      async function exitFs(){
-        try{
-          if(document.exitFullscreen) await document.exitFullscreen();
-          else if(document.webkitExitFullscreen) await document.webkitExitFullscreen();
-          else if(document.msExitFullscreen) await document.msExitFullscreen();
-        }catch(e){ console.warn('Fullscreen exit error', e); }
-      }
-      function updateIcon(){
-        const on = !!isFs();
-        iconEnter.classList.toggle('hidden', on);
-        iconExit.classList.toggle('hidden', !on);
-      }
-
-      if(!fsEnabled()){ fsBtn.style.display='none'; return; }
-      fsBtn.addEventListener('click', ()=>{
-        if(isFs()) exitFs(); else enterFs(document.documentElement);
-      });
-      document.addEventListener('fullscreenchange', updateIcon);
-      document.addEventListener('webkitfullscreenchange', updateIcon);
-      document.addEventListener('msfullscreenchange', updateIcon);
-      updateIcon();
-
-      // اختصار لوحة المفاتيح: F
-      window.addEventListener('keydown', (e)=>{
-        if(e.key && e.key.toLowerCase()==='f'){
-          e.preventDefault();
-          if(isFs()) exitFs(); else enterFs(document.documentElement);
-        }
-      });
+      loadState();
+      startTicker(); refreshAll(); wxFetch();
+      mainTimer = setInterval(refreshAll, Math.max(10,REFRESH_EVERY)*1000);
+      setInterval(wxFetch, 600000);
+      setInterval(toggleDateDisplay, 5000);
+      $('fsBtn').onclick = () => {
+        if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      };
     })();
   </script>
 </body>

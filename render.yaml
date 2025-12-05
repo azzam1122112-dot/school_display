@@ -2,15 +2,31 @@ services:
   - type: web
     name: school-display
     env: python
-    plan: free
+    plan: starter
+
     buildCommand: |
-      pip install -r requirements.txt && \
-      python manage.py collectstatic --noinput && \
-      python manage.py migrate --noinput && \
-      python manage.py createsuperuser --noinput \
-        --username "$DJANGO_SUPERUSER_USERNAME" \
-        --email "$DJANGO_SUPERUSER_EMAIL" || true
-    startCommand: gunicorn config.wsgi --log-file - --workers=3 --timeout=90
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+      # إنشاء سوبر يوزر تلقائيًا إذا توفرت المتغيرات (اختياري)
+      if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+        python manage.py createsuperuser \
+          --noinput \
+          --username "$DJANGO_SUPERUSER_USERNAME" \
+          --email "${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" || true
+      fi
+
+    startCommand: >
+      gunicorn config.asgi:application
+      -k uvicorn.workers.UvicornWorker
+      --bind 0.0.0.0:$PORT
+      --workers=3
+      --timeout=120
+      --log-file -
+
+    healthCheckPath: /api/ping/
+
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
@@ -21,27 +37,23 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://<your-service>.onrender.com"
-      - key: SITE_BASE_URL
-        value: "https://<your-service>.onrender.com"
-      - key: SECURE_SSL_REDIRECT
-        value: "True"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: school-display-db
-          property: connectionString
-      # ===== Superuser (املأ هذه المتغيرات من لوحة Render → Environment) =====
-      - key: DJANGO_SUPERUSER_USERNAME
-        value: admin
-      - key: DJANGO_SUPERUSER_EMAIL
-        value: admin@example.com
-      - key: DJANGO_SUPERUSER_PASSWORD
-        sync: false   # أدخل القيمة يدويًا من Environment، لا تُرفع من الملف
-    disks:
-      - name: media
-        mountPath: /opt/render/project/src/media
-        sizeGB: 1
+        value: "https://*.onrender.com"
+      - key: TIME_ZONE
+        value: "Asia/Riyadh"
+      # ملاحظة: اربط قاعدة البيانات من لوحة Render أو حدّدها يدويًا:
+      # - key: DATABASE_URL
+      #   sync: false
 
-databases:
-  - name: school-display-db
-    plan: free
+      # اختيارية لإنشاء سوبر يوزر في خطوة البناء:
+      # - key: DJANGO_SUPERUSER_USERNAME
+      #   value: "admin"
+      # - key: DJANGO_SUPERUSER_EMAIL
+      #   value: "admin@example.com"
+      # - key: DJANGO_SUPERUSER_PASSWORD
+      #   sync: false
+
+    disk:
+      name: media
+      mountPath: /opt/render/project/src/media
+
+    autoDeploy: true

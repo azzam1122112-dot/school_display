@@ -1,31 +1,136 @@
-# Python
+# =========================
+# Python / أدوات البناء
+# =========================
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.so
 *.egg-info/
+.eggs/
 dist/
 build/
+wheels/
+pip-wheel-metadata/
+*.manifest
+*.spec
 
+# =========================
+# بيئات افتراضية / إدارة الحزم
+# =========================
+.venv/
+venv/
+env/
+ENV/
+.python-version
+# Pipenv
+Pipfile.lock
+# Poetry (احتفظ بالملفات نفسها لكن تجاهل مجلدات العمل المؤقت)
+poetry.toml
+# Rye / Hatch قد تنتج ملفات مؤقتة
+.hatch/
+.rye/
+
+# =========================
 # Django
+# =========================
+# مجلدات التجميع
 staticfiles/
+staticfiles.json
 media/
+# ملفات الترجمة واللوج
 *.log
 *.pot
 *.mo
-.venv/
+# مخرجات collectstatic المختلفة
+static/
+# تحذير: لا تتجاهل migrations؛ ضرورية للتاريخ الهيكلي
+# **لا تضف**: */migrations/**
 
-# Env / IDE
-.env
-.env.*
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# DB (مستبعدة افتراضيًا)
+# =========================
+# قواعد بيانات محلية / نسخ احتياطية
+# =========================
 db.sqlite3
 *.sqlite3
+*.sqlite
+*.db
+*.bak
+*.sql
+*.dump
+
+# =========================
+# بيئة التشغيل / أسرار
+# =========================
+.env
+.env.*
+!.env.example
+!.env.sample
+# مفاتيح وأسرار شائعة الأسماء
+*.pem
+*.key
+*.crt
+*.pfx
+
+# =========================
+# أدوات الاختبار والجودة
+# =========================
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+.pyre/
+.ruff_cache/
+pytestdebug.log
+
+# =========================
+# محررات/IDE وأنظمة تشغيل
+# =========================
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Node / Frontend (في حال استخدام Tailwind/Build لاحقًا)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+# أُطر شائعة
+.next/
+.nuxt/
+.svelte-kit/
+vite.config.*.timestamp-*
+.vite/
+
+# =========================
+# Docker / حاويات (إن وُجدت)
+# =========================
+.docker/
+docker-compose.override.yml
+docker-compose.local.yml
+*.tar
+
+# =========================
+# أنظمة أخرى محتملة
+# =========================
+# celery
+celerybeat-schedule
+celerybeat.pid
+# Heroku
+*.profile.d/
+# JetBrains
+out/
