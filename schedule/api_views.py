@@ -20,8 +20,14 @@ def today_display(request):
       state        — حالة اليوم (before/period/break/after + العدّاد)
       day          — periods/breaks
     """
-    # نفترض مدرسة واحدة — إن وُجد أكثر، يمكن إضافة اختيار عبر query param لاحقًا.
-    settings_obj = SchoolSettings.objects.first()
+    # التحقق من وجود مدرسة مرتبطة بالطلب (عبر التوكن)
+    if not hasattr(request, 'school') or not request.school:
+        return Response(
+            {"detail": "لم يتم تحديد المدرسة (Token مفقود أو غير صالح)."},
+            status=403,
+        )
+
+    settings_obj = SchoolSettings.objects.filter(school=request.school).first()
     if not settings_obj:
         return Response(
             {"detail": "لم يتم ضبط إعدادات المدرسة بعد."},
@@ -46,7 +52,10 @@ def today_display(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_settings(request):
-    settings_obj = SchoolSettings.objects.first()
+    if not hasattr(request, 'school') or not request.school:
+        return Response({"detail": "Unauthorized"}, status=403)
+
+    settings_obj = SchoolSettings.objects.filter(school=request.school).first()
     if not settings_obj:
         return Response({})
     return Response(SchoolSettingsSerializer(settings_obj).data)

@@ -1,10 +1,11 @@
 # schedule/admin.py
 from django.contrib import admin
 from .models import SchoolSettings, DaySchedule, Period, Break
+from core.admin import SchoolScopedAdmin
 
 @admin.register(SchoolSettings)
-class SchoolSettingsAdmin(admin.ModelAdmin):
-    list_display = ("name", "timezone_name", "refresh_interval_sec")
+class SchoolSettingsAdmin(SchoolScopedAdmin):
+    list_display = ("name", "school", "timezone_name", "refresh_interval_sec")
     search_fields = ("name",)
 
 class PeriodInline(admin.TabularInline):
@@ -20,7 +21,7 @@ class BreakInline(admin.TabularInline):
     ordering = ("starts_at",)
 
 @admin.register(DaySchedule)
-class DayScheduleAdmin(admin.ModelAdmin):
+class DayScheduleAdmin(SchoolScopedAdmin):
     list_display = ("settings", "weekday", "periods_count")
     list_filter = ("settings", "weekday")
     inlines = [PeriodInline, BreakInline]

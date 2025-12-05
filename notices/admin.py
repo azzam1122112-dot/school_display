@@ -1,16 +1,17 @@
 # notices/admin.py
 from django.contrib import admin
 from .models import Announcement, Excellence
+from core.admin import SchoolScopedAdmin
 
 @admin.register(Announcement)
-class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ("title", "level", "starts_at", "expires_at", "is_active", "active_now")
-    list_filter = ("level", "is_active")
+class AnnouncementAdmin(SchoolScopedAdmin):
+    list_display = ("title", "school", "level", "starts_at", "expires_at", "is_active", "active_now")
+    list_filter = ("school", "level", "is_active")
     search_fields = ("title", "body")
 
 from django.utils.html import format_html
 @admin.register(Excellence)
-class ExcellenceAdmin(admin.ModelAdmin):
+class ExcellenceAdmin(SchoolScopedAdmin):
     list_display = ("teacher_name", "priority", "start_at", "end_at", "preview")
     fields = ("teacher_name", "reason", "photo", "photo_url", "start_at", "end_at", "priority")
     readonly_fields = ("preview",)

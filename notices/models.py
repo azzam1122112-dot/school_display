@@ -7,6 +7,7 @@ from datetime import datetime
 from django.db import models
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
+from core.models import School
 
 ANNOUNCEMENT_LEVELS = (
     ("urgent", "عاجل"),
@@ -27,6 +28,7 @@ def _excellence_upload_to(instance: "Excellence", filename: str) -> str:
 
 
 class Announcement(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="announcements", verbose_name="المدرسة", null=True, blank=True)
     title = models.CharField("العنوان", max_length=120)
     body = models.CharField("النص", max_length=280, blank=True)
     level = models.CharField("المستوى", max_length=10, choices=ANNOUNCEMENT_LEVELS, default="info")
@@ -55,6 +57,7 @@ class Announcement(models.Model):
 
 
 class Excellence(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="excellence_records", verbose_name="المدرسة", null=True, blank=True)
     teacher_name = models.CharField("اسم المعلم", max_length=100)
     reason = models.CharField("سبب التميّز", max_length=200)
 

@@ -21,10 +21,11 @@ class DisplayTokenMiddleware:
                 return JsonResponse({'error': 'Missing authentication token'}, status=403)
 
             try:
-                screen = DisplayScreen.objects.get(token=token, is_active=True)
-                # Update last_seen occasionally (e.g., not every request to save DB hits, but here we do it simply)
-                # To avoid too many writes, maybe only update if > 1 min passed? 
-                # For now, let's just update it.
+                screen = DisplayScreen.objects.select_related('school').get(token=token, is_active=True)
+                # Attach school to request for easy access in views
+                request.school = screen.school
+                
+                # Update last_seen occasionally
                 screen.last_seen = timezone.now()
                 screen.save(update_fields=['last_seen'])
             except DisplayScreen.DoesNotExist:

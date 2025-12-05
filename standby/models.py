@@ -1,8 +1,10 @@
 # standby/models.py
 from django.db import models
 from django.utils import timezone
+from core.models import School
 
 class StandbyAssignment(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="standby_assignments", verbose_name="المدرسة", null=True, blank=True)
     date = models.DateField("التاريخ")
     period_index = models.PositiveSmallIntegerField("رقم الحصة")
     class_name = models.CharField("الفصل", max_length=50)

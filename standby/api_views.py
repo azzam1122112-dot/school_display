@@ -10,6 +10,9 @@ from .api_serializers import StandbySerializer
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def today_standby(request):
+    if not hasattr(request, 'school') or not request.school:
+        return Response({"detail": "Unauthorized"}, status=403)
+
     today = timezone.localdate()
-    qs = StandbyAssignment.objects.filter(date=today).order_by("period_index", "teacher_name")
+    qs = StandbyAssignment.objects.filter(school=request.school, date=today).order_by("period_index", "teacher_name")
     return Response({"date": str(today), "items": StandbySerializer(qs, many=True).data})

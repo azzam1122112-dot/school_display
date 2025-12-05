@@ -6,6 +6,7 @@ from datetime import date, datetime, time, timedelta
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from core.models import School
 
 # ----------------------------
 # ثوابت وأدوات مساعدة
@@ -46,6 +47,7 @@ def _to_dt(t: time) -> datetime:
 # ----------------------------
 
 class SchoolSettings(models.Model):
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name="schedule_settings", verbose_name="المدرسة", null=True, blank=True)
     name = models.CharField("اسم المدرسة", max_length=150)
     logo_url = models.URLField("رابط الشعار", blank=True, null=True)
     theme = models.CharField("الثيم/اللون", max_length=50, default="default")
