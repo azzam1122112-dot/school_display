@@ -51,7 +51,7 @@ class SchoolSettings(models.Model):
     theme = models.CharField("الثيم/اللون", max_length=50, default="default")
     timezone_name = models.CharField("المنطقة الزمنية", max_length=64, default="Asia/Riyadh")
     refresh_interval_sec = models.PositiveIntegerField("فاصل تحديث الشاشة (ث)", default=60)
-    auto_dark_after_hour = models.PositiveSmallIntegerField("تفعيل الوضع الليلي بعد الساعة", default=15)
+    standby_scroll_speed = models.FloatField("سرعة تمرير الانتظار", default=0.8, help_text="القيمة الافتراضية 0.8. كلما زاد الرقم زادت السرعة.")
 
     class Meta:
         verbose_name = "إعداد المدرسة"
@@ -66,6 +66,7 @@ class DaySchedule(models.Model):
         SchoolSettings, on_delete=models.CASCADE, related_name="day_schedules"
     )
     weekday = models.PositiveSmallIntegerField("اليوم", choices=WEEKDAYS)
+    is_active = models.BooleanField("يوم دراسي", default=True)
     periods_count = models.PositiveSmallIntegerField("عدد الحصص", default=6)
 
     class Meta:

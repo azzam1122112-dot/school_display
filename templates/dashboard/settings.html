@@ -41,8 +41,8 @@
             <!-- مجموعة الإعدادات الأساسية -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {% for field in form %}
-                    {% if field.name != 'theme' and field.name != 'auto_dark_after_hour' and field.name != 'refresh_interval_sec' %}
-                    <div class="space-y-2 {% if forloop.counter0|add:1 > form.fields|length|add:-3 %}md:col-span-2{% endif %}">
+                    {% if field.name != 'theme' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' %}
+                    <div class="space-y-2 {% if forloop.counter0|add:1 > form.fields|length|add:-4 %}md:col-span-2{% endif %}">
                         <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">
                             {{ field.label }}
                             {% if field.field.required %}
@@ -174,19 +174,19 @@
                         {% endif %}
                     </div>
 
-                    <!-- الوضع الليلي التلقائي -->
+                    <!-- سرعة تمرير الانتظار -->
                     <div class="space-y-2">
-                        <label for="{{ form.auto_dark_after_hour.id_for_label }}" class="block text-sm font-medium text-slate-700">
-                            {{ form.auto_dark_after_hour.label }}
+                        <label for="{{ form.standby_scroll_speed.id_for_label }}" class="block text-sm font-medium text-slate-700">
+                            {{ form.standby_scroll_speed.label }}
                         </label>
                         <div class="relative">
-                            {{ form.auto_dark_after_hour }}
+                            {{ form.standby_scroll_speed }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">مساءً</span>
+                                <span class="text-slate-500 text-sm">px/frame</span>
                             </div>
                         </div>
-                        {% if form.auto_dark_after_hour.help_text %}
-                            <p class="text-xs text-slate-500">{{ form.auto_dark_after_hour.help_text }}</p>
+                        {% if form.standby_scroll_speed.help_text %}
+                            <p class="text-xs text-slate-500">{{ form.standby_scroll_speed.help_text }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -218,30 +218,6 @@
     </div>
 
     <!-- بطاقة المعاينة -->
-    <div class="mt-8 bg-slate-50 rounded-2xl p-6 border border-slate-200">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-800">معاينة الإعدادات</h3>
-            <span class="text-sm text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">عرض حي</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-            <div class="bg-white p-4 rounded-xl border border-slate-200">
-                <div class="text-2xl font-bold text-emerald-600">{{ school_name.value|default:"اسم المدرسة"|truncatechars:15 }}</div>
-                <div class="text-sm text-slate-600 mt-1">اسم المدرسة</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200">
-                <div class="text-2xl font-bold text-sky-600">{{ form.theme.value|default:"indigo"|title }}</div>
-                <div class="text-sm text-slate-600 mt-1">الثيم المختار</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200">
-                <div class="text-2xl font-bold text-purple-600">{{ form.refresh_interval_sec.value|default:30 }}</div>
-                <div class="text-sm text-slate-600 mt-1">فترة التحديث</div>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200">
-                <div class="text-2xl font-bold text-amber-600">{{ form.auto_dark_after_hour.value|default:18 }}</div>
-                <div class="text-sm text-slate-600 mt-1">الوضع الليلي</div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>

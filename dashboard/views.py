@@ -239,12 +239,10 @@ def days_list(request):
             hours, remainder = divmod(diff.seconds, 3600)
             minutes = remainder // 60
             d.total_duration = f"{hours}س {minutes}د"
-            d.is_active = True
         else:
             d.first_period_time = "--:--"
             d.last_period_time = "--:--"
             d.total_duration = "--:--"
-            d.is_active = False
             
         total_periods += d.periods_count
 
@@ -415,6 +413,27 @@ def day_autofill(request, weekday: int):
         # نجمع رسالة واضحة للمستخدم (من غير الكشف عن stacktrace)
         messages.error(request, f"تعذّر تنفيذ التعبئة: {e}")
         return redirect("dashboard:day_edit", weekday=weekday)
+
+
+@manager_required
+@transaction.atomic
+def day_toggle(request, weekday: int):
+    if request.method != "POST":
+        return HttpResponseBadRequest("طريقة غير مدعومة.")
+    
+    if weekday not in WEEKDAY_MAP:
+        messages.error(request, "اليوم غير صالح.")
+        return redirect("dashboard:days_list")
+
+    settings_obj = SchoolSettings.objects.first()
+    day, _ = DaySchedule.objects.get_or_create(settings=settings_obj, weekday=weekday)
+    
+    day.is_active = not day.is_active
+    day.save()
+    
+    status = "تفعيل" if day.is_active else "تعطيل"
+    messages.success(request, f"تم {status} يوم {day.get_weekday_display()}.")
+    return redirect("dashboard:days_list")
 
 
 # =========================

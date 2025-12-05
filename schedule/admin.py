@@ -4,7 +4,7 @@ from .models import SchoolSettings, DaySchedule, Period, Break
 
 @admin.register(SchoolSettings)
 class SchoolSettingsAdmin(admin.ModelAdmin):
-    list_display = ("name", "timezone_name", "refresh_interval_sec", "auto_dark_after_hour")
+    list_display = ("name", "timezone_name", "refresh_interval_sec")
     search_fields = ("name",)
 
 class PeriodInline(admin.TabularInline):

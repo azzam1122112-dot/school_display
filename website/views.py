@@ -17,7 +17,7 @@ def home(request):
         "school_name": settings_obj.name if settings_obj else "مدرستنا",
         "logo_url": settings_obj.logo_url if settings_obj else None,
         "refresh_interval_sec": settings_obj.refresh_interval_sec if settings_obj else 30,
-        "auto_dark_after_hour": settings_obj.auto_dark_after_hour if settings_obj else 18,
+        "standby_scroll_speed": settings_obj.standby_scroll_speed if settings_obj else 0.8,
         "now_hour": timezone.localtime().hour,
         "theme": (settings_obj.theme if settings_obj else "indigo"),  # indigo, sky, emerald, rose ...
     }

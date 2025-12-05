@@ -12,6 +12,7 @@ urlpatterns = [
 
     path("days/", views.days_list, name="days_list"),
     path("days/<int:weekday>/", views.day_edit, name="day_edit"),
+    path("days/<int:weekday>/toggle/", views.day_toggle, name="day_toggle"),
     # ⬅️ جديد: تعبئة تلقائية
     path("days/<int:weekday>/autofill/", views.day_autofill, name="day_autofill"),
 

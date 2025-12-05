@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from .models import SchoolSettings, DaySchedule, Period, Break
 
-StateType = Literal["before", "period", "break", "after"]
+StateType = Literal["before", "period", "break", "after", "off"]
 
 
 @dataclass
@@ -69,6 +69,10 @@ def compute_today_state(settings_obj: SchoolSettings) -> dict:
     except DaySchedule.DoesNotExist:
         # لا يوجد ضبط لليوم — نرجع before بدون أحداث
         return {"state": State(type="before").__dict__, "day": None}
+
+    if not day.is_active:
+        # اليوم معطل (إجازة)
+        return {"state": State(type="off").__dict__, "day": None}
 
     periods: List[Period] = list(day.periods.order_by("index", "starts_at"))
     breaks: List[Break] = list(day.breaks.order_by("starts_at"))

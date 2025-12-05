@@ -25,4 +25,4 @@ class DayScheduleSerializer(serializers.ModelSerializer):
 class SchoolSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolSettings
-        fields = ("name", "logo_url", "theme", "timezone_name", "refresh_interval_sec", "auto_dark_after_hour")
+        fields = ("name", "logo_url", "theme", "timezone_name", "refresh_interval_sec", "standby_scroll_speed")

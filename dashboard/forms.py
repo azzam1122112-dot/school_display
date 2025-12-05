@@ -50,7 +50,7 @@ class SchoolSettingsForm(forms.ModelForm):
             "theme",
             "timezone_name",
             "refresh_interval_sec",
-            "auto_dark_after_hour",
+            "standby_scroll_speed",
         ]
         widgets = {
             "theme": forms.TextInput(
