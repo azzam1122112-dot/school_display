@@ -18,11 +18,12 @@ from django.utils import timezone
 from .permissions import manager_required
 from .forms import (
     SchoolSettingsForm, DayScheduleForm, PeriodFormSet, BreakFormSet,
-    AnnouncementForm, ExcellenceForm, StandbyForm
+    AnnouncementForm, ExcellenceForm, StandbyForm, DisplayScreenForm
 )
 from schedule.models import SchoolSettings, DaySchedule
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
+from core.models import DisplayScreen
 
 
 # =========================
@@ -161,22 +162,26 @@ def logout_view(request):
 
 @manager_required
 def index(request):
+    school = request.user.profile.school
     today = timezone.localdate()
     stats = {
-        "ann_count": Announcement.objects.count(),
-        "exc_count": Excellence.objects.count(),
+        "ann_count": Announcement.objects.filter(school=school).count(),
+        "exc_count": Excellence.objects.filter(school=school).count(),
         # عدّاد اليوم فقط (كان يحسب الكل سابقًا)
-        "standby_today": StandbyAssignment.objects.filter(date=today).count(),
+        "standby_today": StandbyAssignment.objects.filter(school=school, date=today).count(),
     }
-    settings_obj = SchoolSettings.objects.first()
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     return render(request, "dashboard/index.html", {"stats": stats, "settings": settings_obj})
 
 
 @manager_required
 def school_settings(request):
-    obj = SchoolSettings.objects.first()
-    if not obj:
-        obj = SchoolSettings.objects.create(name="مدرستنا")
+    school = request.user.profile.school
+    obj, created = SchoolSettings.objects.get_or_create(
+        school=school,
+        defaults={"name": school.name}
+    )
+    
     if request.method == "POST":
         form = SchoolSettingsForm(request.POST, instance=obj)
         if form.is_valid():
@@ -195,7 +200,8 @@ def school_settings(request):
 
 @manager_required
 def days_list(request):
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     if not settings_obj:
         messages.warning(request, "فضلاً أضف إعدادات المدرسة أولاً.")
         return redirect("dashboard:settings")
@@ -268,7 +274,8 @@ def day_edit(request, weekday: int):
         messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
         return redirect("dashboard:days_list")
 
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     if not settings_obj:
         messages.warning(request, "فضلاً أضف إعدادات المدرسة أولاً.")
         return redirect("dashboard:settings")
@@ -332,7 +339,8 @@ def day_autofill(request, weekday: int):
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
         return redirect("dashboard:days_list")
 
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     if not settings_obj:
         messages.error(request, "فضلاً أضف إعدادات المدرسة أولاً.")
         return redirect("dashboard:settings")
@@ -425,7 +433,8 @@ def day_toggle(request, weekday: int):
         messages.error(request, "اليوم غير صالح.")
         return redirect("dashboard:days_list")
 
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     day, _ = DaySchedule.objects.get_or_create(settings=settings_obj, weekday=weekday)
     
     day.is_active = not day.is_active
@@ -442,17 +451,21 @@ def day_toggle(request, weekday: int):
 
 @manager_required
 def ann_list(request):
-    qs = Announcement.objects.order_by("-starts_at")
+    school = request.user.profile.school
+    qs = Announcement.objects.filter(school=school).order_by("-starts_at")
     page = Paginator(qs, 10).get_page(request.GET.get("page"))
     return render(request, "dashboard/ann_list.html", {"page": page})
 
 
 @manager_required
 def ann_create(request):
+    school = request.user.profile.school
     if request.method == "POST":
         form = AnnouncementForm(request.POST)
         if form.is_valid():
-            form.save()
+            ann = form.save(commit=False)
+            ann.school = school
+            ann.save()
             messages.success(request, "تم إنشاء التنبيه.")
             return redirect("dashboard:ann_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -463,7 +476,8 @@ def ann_create(request):
 
 @manager_required
 def ann_edit(request, pk: int):
-    obj = get_object_or_404(Announcement, pk=pk)
+    school = request.user.profile.school
+    obj = get_object_or_404(Announcement, pk=pk, school=school)
     if request.method == "POST":
         form = AnnouncementForm(request.POST, instance=obj)
         if form.is_valid():
@@ -478,7 +492,8 @@ def ann_edit(request, pk: int):
 
 @manager_required
 def ann_delete(request, pk: int):
-    obj = get_object_or_404(Announcement, pk=pk)
+    school = request.user.profile.school
+    obj = get_object_or_404(Announcement, pk=pk, school=school)
     if request.method == "POST":
         obj.delete()
         messages.success(request, "تم حذف التنبيه.")
@@ -495,19 +510,20 @@ from .forms import ExcellenceForm  # تأكد أنك تستخدم النموذج
 
 @manager_required
 def exc_list(request):
-    qs = Excellence.objects.order_by("priority", "-start_at")
+    school = request.user.profile.school
+    qs = Excellence.objects.filter(school=school).order_by("priority", "-start_at")
     
     now = timezone.now()
     # Active: start_at <= now AND (end_at IS NULL OR end_at > now)
     active_count = Excellence.objects.filter(
-        Q(start_at__lte=now) & (Q(end_at__isnull=True) | Q(end_at__gt=now))
+        Q(school=school) & Q(start_at__lte=now) & (Q(end_at__isnull=True) | Q(end_at__gt=now))
     ).count()
     
     # Expired: end_at <= now
-    expired_count = Excellence.objects.filter(end_at__lte=now).count()
+    expired_count = Excellence.objects.filter(school=school, end_at__lte=now).count()
     
     # Max priority
-    max_p = Excellence.objects.aggregate(m=Max("priority"))["m"] or 0
+    max_p = Excellence.objects.filter(school=school).aggregate(m=Max("priority"))["m"] or 0
 
     page = Paginator(qs, 12).get_page(request.GET.get("page"))
     
@@ -521,10 +537,13 @@ def exc_list(request):
 
 @manager_required
 def exc_create(request):
+    school = request.user.profile.school
     if request.method == "POST":
         form = ExcellenceForm(request.POST, request.FILES)  # ← مهم
         if form.is_valid():
-            form.save()
+            exc = form.save(commit=False)
+            exc.school = school
+            exc.save()
             messages.success(request, "تم إضافة بطاقة التميز.")
             return redirect("dashboard:exc_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -534,7 +553,8 @@ def exc_create(request):
 
 @manager_required
 def exc_edit(request, pk: int):
-    obj = get_object_or_404(Excellence, pk=pk)
+    school = request.user.profile.school
+    obj = get_object_or_404(Excellence, pk=pk, school=school)
     if request.method == "POST":
         form = ExcellenceForm(request.POST, request.FILES, instance=obj)  # ← مهم
         if form.is_valid():
@@ -549,7 +569,8 @@ def exc_edit(request, pk: int):
 
 @manager_required
 def exc_delete(request, pk: int):
-    obj = get_object_or_404(Excellence, pk=pk)
+    school = request.user.profile.school
+    obj = get_object_or_404(Excellence, pk=pk, school=school)
     if request.method == "POST":
         obj.delete()
         messages.success(request, "تم حذف البطاقة.")
@@ -563,13 +584,14 @@ def exc_delete(request, pk: int):
 
 @manager_required
 def standby_list(request):
-    qs = StandbyAssignment.objects.order_by("-date", "period_index")
+    school = request.user.profile.school
+    qs = StandbyAssignment.objects.filter(school=school).order_by("-date", "period_index")
     
     # إحصائيات
     today = timezone.localdate()
-    today_count = StandbyAssignment.objects.filter(date=today).count()
-    teachers_count = StandbyAssignment.objects.values("teacher_name").distinct().count()
-    classes_count = StandbyAssignment.objects.values("class_name").distinct().count()
+    today_count = StandbyAssignment.objects.filter(school=school, date=today).count()
+    teachers_count = StandbyAssignment.objects.filter(school=school).values("teacher_name").distinct().count()
+    classes_count = StandbyAssignment.objects.filter(school=school).values("class_name").distinct().count()
 
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
     
@@ -584,10 +606,13 @@ def standby_list(request):
 
 @manager_required
 def standby_create(request):
+    school = request.user.profile.school
     if request.method == "POST":
         form = StandbyForm(request.POST)
         if form.is_valid():
-            form.save()
+            standby = form.save(commit=False)
+            standby.school = school
+            standby.save()
             messages.success(request, "تم إضافة تكليف الانتظار.")
             return redirect("dashboard:standby_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -598,7 +623,8 @@ def standby_create(request):
 
 @manager_required
 def standby_delete(request, pk: int):
-    obj = get_object_or_404(StandbyAssignment, pk=pk)
+    school = request.user.profile.school
+    obj = get_object_or_404(StandbyAssignment, pk=pk, school=school)
     if request.method == "POST":
         obj.delete()
         messages.success(request, "تم الحذف.")
@@ -615,6 +641,7 @@ def standby_import(request):
     - يتجاهل السجلات المعيبة بدل كسر العملية كاملة
     الأعمدة المتوقعة: date,period_index,class_name,teacher_name,notes
     """
+    school = request.user.profile.school
     if request.method == "POST":
         f = request.FILES.get("file")
         if not f or not f.name.lower().endswith(".csv"):
@@ -656,6 +683,7 @@ def standby_import(request):
                     raise ValueError("period_index غير صالح")
 
                 StandbyAssignment.objects.create(
+                    school=school,
                     date=parsed_date,
                     period_index=period_index,
                     class_name=row.get("class_name", ""),
@@ -680,7 +708,8 @@ def day_clear(request, weekday: int):
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
         return redirect("dashboard:days_list")
 
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     day = get_object_or_404(DaySchedule, settings=settings_obj, weekday=weekday)
 
     # يدعم related_name المختلفة
@@ -702,7 +731,8 @@ def day_reindex(request, weekday: int):
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
         return redirect("dashboard:days_list")
 
-    settings_obj = SchoolSettings.objects.first()
+    school = request.user.profile.school
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
     day = get_object_or_404(DaySchedule, settings=settings_obj, weekday=weekday)
 
     periods_mgr = getattr(day, "periods", getattr(day, "period_set"))
@@ -716,3 +746,42 @@ def day_reindex(request, weekday: int):
 
     messages.success(request, "تمت إعادة ترقيم الحصص حسب الترتيب الزمني (1..ن).")
     return redirect("dashboard:day_edit", weekday=weekday)
+
+
+# =========================
+# شاشات العرض
+# =========================
+
+@manager_required
+def screen_list(request):
+    school = request.user.profile.school
+    qs = DisplayScreen.objects.filter(school=school).order_by("-created_at")
+    return render(request, "dashboard/screen_list.html", {"screens": qs})
+
+
+@manager_required
+def screen_create(request):
+    school = request.user.profile.school
+    if request.method == "POST":
+        form = DisplayScreenForm(request.POST)
+        if form.is_valid():
+            screen = form.save(commit=False)
+            screen.school = school
+            screen.save()
+            messages.success(request, "تم إضافة شاشة جديدة.")
+            return redirect("dashboard:screen_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = DisplayScreenForm()
+    return render(request, "dashboard/screen_form.html", {"form": form, "title": "إضافة شاشة"})
+
+
+@manager_required
+def screen_delete(request, pk: int):
+    school = request.user.profile.school
+    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
+    if request.method == "POST":
+        obj.delete()
+        messages.success(request, "تم حذف الشاشة.")
+        return redirect("dashboard:screen_list")
+    return HttpResponseBadRequest("طريقة غير مدعومة.")

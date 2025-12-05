@@ -33,4 +33,7 @@ urlpatterns = [
     path("days/<int:weekday>/clear/", views.day_clear, name="day_clear"),
     path("days/<int:weekday>/reindex/", views.day_reindex, name="day_reindex"),
 
+    path("screens/", views.screen_list, name="screen_list"),
+    path("screens/new/", views.screen_create, name="screen_create"),
+    path("screens/<int:pk>/delete/", views.screen_delete, name="screen_delete"),
 ]

@@ -1,0 +1,116 @@
+{% extends "dashboard/_base.html" %}
+{% load static %}
+
+{% block title %}شاشات العرض{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- رأس الصفحة -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
+                <p class="text-slate-600">إدارة شاشات العرض وروابط الوصول</p>
+            </div>
+            <a href="{% url 'dashboard:screen_create' %}" 
+               class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                <span>شاشة جديدة</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- قائمة الشاشات -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {% if screens %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">اسم الشاشة</th>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الحالة</th>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">آخر ظهور</th>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">رابط العرض</th>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    {% for screen in screens %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-semibold text-slate-800">{{ screen.name }}</div>
+                            <div class="text-xs text-slate-500 font-mono mt-1">{{ screen.token|truncatechars:10 }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if screen.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                نشط
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                                غير نشط
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {% if screen.last_seen %}
+                            {{ screen.last_seen|timesince }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-2 space-x-reverse">
+                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}" 
+                                       class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-48 text-slate-600 select-all"
+                                       id="link-{{ screen.id }}">
+                                <button onclick="copyLink('link-{{ screen.id }}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                                    نسخ
+                                </button>
+                                <a href="/?token={{ screen.token }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
+                                    فتح
+                                </a>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}" onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-medium">
+                                    حذف
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-12 text-center">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-slate-900 mb-1">لا توجد شاشات</h3>
+            <p class="text-slate-500 mb-6">قم بإضافة شاشة جديدة للحصول على رابط العرض</p>
+            <a href="{% url 'dashboard:screen_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                إضافة شاشة
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function copyLink(id) {
+    var copyText = document.getElementById(id);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); 
+    navigator.clipboard.writeText(copyText.value);
+    alert("تم نسخ الرابط: " + copyText.value);
+}
+</script>
+{% endblock %}

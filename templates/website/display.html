@@ -913,6 +913,8 @@
     });
 
     /* --- Fetch & Init --- */
+    const SERVER_TOKEN = "{{ api_token|default:'' }}";
+
     async function safeFetch(url){
       try{
         const urlObj = new URL(url, window.location.origin);
@@ -920,7 +922,13 @@
         
         // Add Token if present in current URL
         const currentParams = new URLSearchParams(window.location.search);
-        const token = currentParams.get('token');
+        let token = currentParams.get('token');
+
+        // Fallback to server-provided token
+        if (!token && SERVER_TOKEN) {
+            token = SERVER_TOKEN;
+        }
+
         if(token) {
             urlObj.searchParams.append('token', token);
         }

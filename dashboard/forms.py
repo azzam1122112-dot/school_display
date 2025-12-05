@@ -10,6 +10,7 @@ from django.forms import inlineformset_factory, BaseInlineFormSet
 from schedule.models import SchoolSettings, DaySchedule, Period, Break
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
+from core.models import DisplayScreen
 
 
 # ========= أدوات مساعدة =========
@@ -356,3 +357,9 @@ class StandbyForm(forms.ModelForm):
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
         }
+
+
+class DisplayScreenForm(forms.ModelForm):
+    class Meta:
+        model = DisplayScreen
+        fields = ["name", "is_active"]
