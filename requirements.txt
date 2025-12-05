@@ -17,3 +17,6 @@ gunicorn>=22,<23
 Pillow
 cloudinary
 django-cloudinary-storage
+firebase-admin
+google-cloud-firestore
+uvicorn

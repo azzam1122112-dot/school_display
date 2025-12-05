@@ -40,6 +40,19 @@ services:
         value: "https://*.onrender.com"
       - key: TIME_ZONE
         value: "Asia/Riyadh"
+      
+      # Cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # Firebase
+      - key: FIREBASE_CREDENTIALS_BASE64
+        sync: false
+
       # ملاحظة: اربط قاعدة البيانات من لوحة Render أو حدّدها يدويًا:
       # - key: DATABASE_URL
       #   sync: false

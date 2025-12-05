@@ -179,15 +179,27 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET')
 }
 
+# تحديد البيئة (تطوير أم إنتاج)
+# إذا كان DEBUG=True (تطوير)، نستخدم التخزين المحلي ولا نستخدم Firebase
+# إذا كان DEBUG=False (إنتاج)، نستخدم Cloudinary و Firebase
+USE_CLOUD_STORAGE = not DEBUG
+USE_FIREBASE = not DEBUG
+
 # Django 5 STORAGES + WhiteNoise
 STORAGES = {
     "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage" if USE_CLOUD_STORAGE else "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+if not USE_CLOUD_STORAGE:
+    STORAGES["default"]["OPTIONS"] = {
+        "base_url": MEDIA_URL,
+        "location": str(MEDIA_ROOT),
+    }
 
 # تحسينات WhiteNoise (تلقائية حسب DEBUG)
 WHITENOISE_AUTOREFRESH = DEBUG         # إعادة تحميل أثناء التطوير
