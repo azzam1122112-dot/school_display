@@ -9,7 +9,8 @@ services:
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
       python manage.py migrate --noinput
-      # إنشاء سوبر يوزر تلقائيًا إذا توفرت المتغيرات (اختياري)
+
+      # إنشاء سوبر يوزر تلقائيًا (اختياري)
       if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
         python manage.py createsuperuser \
           --noinput \
@@ -25,7 +26,7 @@ services:
       --timeout=120
       --log-file -
 
-    healthCheckPath: /api/ping/
+    healthCheckPath: /
 
     envVars:
       - key: DJANGO_SETTINGS_MODULE
@@ -40,7 +41,7 @@ services:
         value: "https://*.onrender.com"
       - key: TIME_ZONE
         value: "Asia/Riyadh"
-      
+
       # Cloudinary
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
@@ -53,20 +54,16 @@ services:
       - key: FIREBASE_CREDENTIALS_BASE64
         sync: false
 
-      # ملاحظة: اربط قاعدة البيانات من لوحة Render أو حدّدها يدويًا:
-      # - key: DATABASE_URL
-      #   sync: false
+      # PostgreSQL Database URL (ضروري)
+      - key: DATABASE_URL
+        sync: false
 
-      # اختيارية لإنشاء سوبر يوزر في خطوة البناء:
+      # إنشاء سوبر يوزر تلقائيًا (اختياري)
       # - key: DJANGO_SUPERUSER_USERNAME
       #   value: "admin"
       # - key: DJANGO_SUPERUSER_EMAIL
       #   value: "admin@example.com"
       # - key: DJANGO_SUPERUSER_PASSWORD
       #   sync: false
-
-    disk:
-      name: media
-      mountPath: /opt/render/project/src/media
 
     autoDeploy: true

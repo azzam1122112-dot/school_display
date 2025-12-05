@@ -1,14 +1,19 @@
-# config/settings.py
-# إعدادات Django — نسخة احترافية/آمنة (Arabic / Asia/Riyadh)
-# - تحميل .env (اختياري)
-# - SQLite للتطوير وPostgreSQL عبر DATABASE_URL للإنتاج
-# - WhiteNoise للملفات الثابتة مع تحسينات
-# - DRF مُفعّل مع إخراج أخف في الإنتاج
-# - Logging هادئ مع تحكم عبر متغيرات البيئة
-# - رؤوس أمان/HTTPS/Cookies مضبوطة للإنتاج
+# -------------------------------------------------------
+#  Django Settings (Arabic / Asia/Riyadh) — نسخة احترافية
+# -------------------------------------------------------
+#  ✔ يدعم تشغيل محلي (SQLite)
+#  ✔ يدعم تشغيل إنتاج (Render/PostgreSQL)
+#  ✔ يدعم Cloudinary
+#  ✔ يدعم Firebase عبر USE_FIREBASE
+#  ✔ WhiteNoise للـ static
+#  ✔ DRF محسّن
+#  ✔ Logging متقدم
+#  ✔ CSRF/SECURITY مضبوط للإنتاج
+# -------------------------------------------------------
 
-from pathlib import Path
 import os
+from pathlib import Path
+import dj_database_url
 
 # ----------------- تحميل .env (اختياري) -----------------
 try:
@@ -17,16 +22,10 @@ try:
 except Exception:
     pass
 
-# ----------------- dj_database_url -----------------
-try:
-    import dj_database_url  # type: ignore
-except Exception:
-    dj_database_url = None  # سنفحصه لاحقًا عند وجود DATABASE_URL
-
 # ----------------- المسارات -----------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ---- أدوات مساعدة ----
+# ---- أدوات بيئة ----
 def env_bool(key: str, default: str = "False") -> bool:
     return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -40,19 +39,17 @@ def env_int(key: str, default: str) -> int:
     except Exception:
         return int(default)
 
-# ----------------- مفاتيح/وضع التشغيل -----------------
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")  # غيّرها بالإنتاج فورًا
-DEBUG = env_bool("DEBUG", "True")  # True محليًا / اضبط False بالإنتاج
+# ----------------- وضع التشغيل -----------------
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")  # غيّرها بالإنتاج
+DEBUG = env_bool("DEBUG", "True")
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost,.onrender.com")
-# مثال إنتاج: ALLOWED_HOSTS=your-domain.com,.onrender.com
 
-# CSRF_TRUSTED_ORIGINS يجب أن تحتوي بروتوكول (https://)
+# ----------------- CSRF -----------------
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = _csrf_env
 else:
-    # توليد افتراضي من ALLOWED_HOSTS لبيئات مثل Render
     CSRF_TRUSTED_ORIGINS = []
     for host in ALLOWED_HOSTS:
         h = host.lstrip(".")
@@ -70,12 +67,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # طرف ثالث
+    # Third Party
     "cloudinary_storage",
     "cloudinary",
     "rest_framework",
 
-    # تطبيقات المشروع
+    # Project Apps
     "core",
     "schedule",
     "standby",
@@ -87,7 +84,7 @@ INSTALLED_APPS = [
 # ----------------- الميدلوير -----------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # خدمة static + ضغط/Manifest
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -102,7 +99,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # أنشئ المجلد إن لم يكن موجودًا
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -115,37 +112,27 @@ TEMPLATES = [
     },
 ]
 
-# ----------------- WSGI/ASGI -----------------
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # ----------------- قاعدة البيانات -----------------
-# افتراضيًا SQLite. إذا وُجد DATABASE_URL نستخدمه (PostgreSQL عادة).
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-if DATABASE_URL:
-    if dj_database_url is None:
-        raise RuntimeError(
-            "تم ضبط DATABASE_URL لكن الحزمة dj-database-url غير مثبتة. "
-            "ثبّت: pip install dj-database-url"
-        )
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,  # إبقاء الاتصال لتحسين الأداء
-        )
-    }
-    # فرض SSL لبوستجرس عند الحاجة (غالب مزودي الخدمة يتطلبون ذلك)
-    if DATABASES["default"]["ENGINE"].endswith("postgresql"):
-        DATABASES["default"].setdefault("OPTIONS", {})
-        if env_bool("DB_SSL_REQUIRE", "True" if not DEBUG else "False"):
-            DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
-else:
+if DEBUG:
+    # تشغيل محليًا — SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
+    }
+else:
+    # تشغيل في Render — PostgreSQL
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ.get("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=True
+        )
     }
 
 # ----------------- كلمات المرور -----------------
@@ -156,39 +143,39 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ----------------- الترجمة والمنطقة الزمنية -----------------
+# ----------------- المنطقة الزمنية -----------------
 LANGUAGE_CODE = "ar"
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Riyadh")
 USE_I18N = True
-USE_TZ = True  # مهم لدقة التحويلات الزمنية
+USE_TZ = True
 
-# ----------------- الملفات الثابتة والوسائط -----------------
+# ----------------- الملفات الثابتة -----------------
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # للإنتاج مع collectstatic
-# للتطوير فقط: إن كان لديك مجلد static في الجذر
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 _static_dir = BASE_DIR / "static"
 STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Cloudinary Configuration
+# Cloudinary
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
     'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET')
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
 }
 
-# تحديد البيئة (تطوير أم إنتاج)
-# إذا كان DEBUG=True (تطوير)، نستخدم التخزين المحلي ولا نستخدم Firebase
-# إذا كان DEBUG=False (إنتاج)، نستخدم Cloudinary و Firebase
 USE_CLOUD_STORAGE = not DEBUG
 USE_FIREBASE = not DEBUG
 
-# Django 5 STORAGES + WhiteNoise
 STORAGES = {
     "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage" if USE_CLOUD_STORAGE else "django.core.files.storage.FileSystemStorage",
+        "BACKEND": (
+            "cloudinary_storage.storage.MediaCloudinaryStorage"
+            if USE_CLOUD_STORAGE else
+            "django.core.files.storage.FileSystemStorage"
+        ),
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -201,14 +188,13 @@ if not USE_CLOUD_STORAGE:
         "location": str(MEDIA_ROOT),
     }
 
-# تحسينات WhiteNoise (تلقائية حسب DEBUG)
-WHITENOISE_AUTOREFRESH = DEBUG         # إعادة تحميل أثناء التطوير
-WHITENOISE_USE_FINDERS = DEBUG         # استخدام finders في التطوير فقط
-# (يمكن ضبط WHITENOISE_MAX_AGE في الإنتاج عبر متغيّر بيئة إن رغبت)
+# WhiteNoise
+WHITENOISE_AUTOREFRESH = DEBUG
+WHITENOISE_USE_FINDERS = DEBUG
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ----------------- DRF إعدادات -----------------
+# ----------------- DRF -----------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -219,8 +205,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_RENDERER_CLASSES": (
         ("rest_framework.renderers.JSONRenderer",)
-        if not DEBUG
-        else (
+        if not DEBUG else (
             "rest_framework.renderers.JSONRenderer",
             "rest_framework.renderers.BrowsableAPIRenderer",
         )
@@ -228,20 +213,18 @@ REST_FRAMEWORK = {
 }
 
 # ----------------- الأمان -----------------
-# خلف Proxy (Render/Nginx/Cloudflare)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
-# HTTPS & Cookies
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "False" if DEBUG else "True")
+
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
-# مهم: إبقاءه False ليسمح لواجهة JS بقراءة الكوكي وإرسال رأس X-CSRFToken
 CSRF_COOKIE_HTTPONLY = False
 
-# رؤوس أمان إضافية
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
@@ -251,7 +234,7 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", "True")
     SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "strict-origin-when-cross-origin")
 
-# ----------------- التسجيل (Logging) -----------------
+# ----------------- Logging -----------------
 DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
 DJANGO_CONSOLE_LEVEL = os.getenv("DJANGO_CONSOLE_LEVEL", "INFO")
 
@@ -278,10 +261,10 @@ LOGGING = {
     },
 }
 
-# ----------------- المصادقة وتوجيهات لوحة التحكم -----------------
+# ----------------- Auth Redirects -----------------
 LOGIN_URL = "dashboard:login"
 LOGIN_REDIRECT_URL = "dashboard:index"
 LOGOUT_REDIRECT_URL = "dashboard:login"
 
-# ----------------- عنوان الموقع (اختياري للتطبيقات) -----------------
+# ----------------- الموقع الأساسي -----------------
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://127.0.0.1:8000")
