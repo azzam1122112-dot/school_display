@@ -23,6 +23,13 @@ class DayScheduleSerializer(serializers.ModelSerializer):
         fields = ("weekday", "weekday_display", "periods_count", "periods", "breaks")
 
 class SchoolSettingsSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = SchoolSettings
         fields = ("name", "logo_url", "theme", "timezone_name", "refresh_interval_sec", "standby_scroll_speed")
+
+    def get_logo_url(self, obj):
+        if obj.school and obj.school.logo:
+            return obj.school.logo.url
+        return obj.logo_url

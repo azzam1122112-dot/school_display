@@ -43,11 +43,13 @@ def _is_blank_break_fields(label, st, dur) -> bool:
 
 # ========= نماذج الإعدادات/اليوم =========
 class SchoolSettingsForm(forms.ModelForm):
+    logo = forms.ImageField(label="شعار المدرسة", required=False)
+
     class Meta:
         model = SchoolSettings
         fields = [
             "name",
-            "logo_url",
+            # "logo_url",  # Removed in favor of file upload
             "theme",
             "timezone_name",
             "refresh_interval_sec",
@@ -58,6 +60,18 @@ class SchoolSettingsForm(forms.ModelForm):
                 attrs={"placeholder": "indigo / emerald / rose / sky / amber"}
             ),
         }
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        logo_file = self.cleaned_data.get("logo")
+        
+        if logo_file and instance.school:
+            instance.school.logo = logo_file
+            instance.school.save()
+            
+        if commit:
+            instance.save()
+        return instance
 
 
 class DayScheduleForm(forms.ModelForm):

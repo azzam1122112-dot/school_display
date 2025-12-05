@@ -183,7 +183,7 @@ def school_settings(request):
     )
     
     if request.method == "POST":
-        form = SchoolSettingsForm(request.POST, instance=obj)
+        form = SchoolSettingsForm(request.POST, request.FILES, instance=obj)
         if form.is_valid():
             form.save()
             messages.success(request, "تم حفظ إعدادات المدرسة.")
