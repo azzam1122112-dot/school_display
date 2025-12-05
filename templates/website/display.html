@@ -473,9 +473,27 @@
       
       // Update Text
       $("heroTitle").textContent=title; $("heroRange").textContent=range; $("badgeKind").textContent=badge;
-      $("nextLabel").innerHTML = s.next
-        ? `<span class="opacity-70">التالي:</span> <span class="font-bold text-white">${s.next.type==="period" ? `الحصّة ${s.next.index}` : (s.next.label||'فسحة')}</span> <span class="bg-white/10 px-1.5 rounded text-sm num-font">${toTimeStr(s.next.starts_at)}</span>`
-        : "التالي: —";
+      
+      const nextLabel = $("nextLabel");
+      nextLabel.innerHTML = "";
+      if (s.next) {
+          const span1 = document.createElement("span");
+          span1.className = "opacity-70";
+          span1.textContent = "التالي: ";
+          nextLabel.appendChild(span1);
+
+          const span2 = document.createElement("span");
+          span2.className = "font-bold text-white mx-1";
+          span2.textContent = s.next.type === "period" ? `الحصّة ${s.next.index}` : (s.next.label || 'فسحة');
+          nextLabel.appendChild(span2);
+
+          const span3 = document.createElement("span");
+          span3.className = "bg-white/10 px-1.5 rounded text-sm num-font";
+          span3.textContent = toTimeStr(s.next.starts_at);
+          nextLabel.appendChild(span3);
+      } else {
+          nextLabel.textContent = "التالي: —";
+      }
 
       // Apply Break Colors (Override Theme if Break)
       // REMOVED: We now respect the user's selected theme even during breaks.
@@ -518,10 +536,17 @@
                 const chip = document.createElement('div');
                 chip.id = `sched-item-${i}`;
                 chip.className = `flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] h-20 transition-all duration-300 bg-white/5 text-slate-300 border border-white/10`;
-                chip.innerHTML = `
-                <span class="text-[10px] opacity-70 mb-1">${toTimeStr(x.start)}</span>
-                <span class="font-bold text-lg leading-none">${x.kind === 'period' ? `ح ${x.label}` : x.label}</span>
-                `;
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = "text-[10px] opacity-70 mb-1";
+                timeSpan.textContent = toTimeStr(x.start);
+                chip.appendChild(timeSpan);
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = "font-bold text-lg leading-none";
+                labelSpan.textContent = x.kind === 'period' ? `ح ${x.label}` : x.label;
+                chip.appendChild(labelSpan);
+
                 mini.appendChild(chip);
             });
           }
@@ -892,6 +917,14 @@
       try{
         const urlObj = new URL(url, window.location.origin);
         urlObj.searchParams.append('_t', Date.now());
+        
+        // Add Token if present in current URL
+        const currentParams = new URLSearchParams(window.location.search);
+        const token = currentParams.get('token');
+        if(token) {
+            urlObj.searchParams.append('token', token);
+        }
+
         const r=await fetch(urlObj.toString(),{headers:{'Accept':'application/json'}});
         if(!r.ok) throw new Error(r.status);
         return await r.json();
