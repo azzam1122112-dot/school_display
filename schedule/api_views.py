@@ -42,3 +42,11 @@ def today_display(request):
     }
     payload.update(compute_today_state(settings_obj))
     return Response(payload)
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_settings(request):
+    settings_obj = SchoolSettings.objects.first()
+    if not settings_obj:
+        return Response({})
+    return Response(SchoolSettingsSerializer(settings_obj).data)

@@ -270,6 +270,7 @@
       standby: "/api/standby/today/",
       ann: "/api/announcements/active/",
       exc: "/api/announcements/excellence/",
+      settings: "/api/display/settings/",
     };
     const $ = id => document.getElementById(id);
     const fmt2 = n => String(n).padStart(2,'0');
@@ -811,13 +812,44 @@
     /* --- Fetch & Init --- */
     async function safeFetch(url){
       try{
-        const r=await fetch(url,{headers:{'Accept':'application/json'}});
+        const urlObj = new URL(url, window.location.origin);
+        urlObj.searchParams.append('_t', Date.now());
+        const r=await fetch(urlObj.toString(),{headers:{'Accept':'application/json'}});
         if(!r.ok) throw new Error(r.status);
         return await r.json();
       }catch(e){ console.error(e); netBadge(false); return null; }
     }
 
+    let lastSettingsJSON = "";
+    async function checkSettings(){
+        const s = await safeFetch(api.settings);
+        if(!s) return;
+        // We only care about visual settings that require reload
+        const relevant = {
+            name: s.name,
+            theme: s.theme,
+            logo_url: s.logo_url,
+            refresh_interval_sec: s.refresh_interval_sec,
+            standby_scroll_speed: s.standby_scroll_speed
+        };
+        const current = JSON.stringify(relevant);
+        
+        // First run, just store
+        if(!lastSettingsJSON){
+            lastSettingsJSON = current;
+            // Also apply theme dynamically if possible, but reload is safer for everything
+            if(s.theme) applyTheme(s.theme);
+            return;
+        }
+
+        if(current !== lastSettingsJSON){
+            console.log("Settings changed, reloading...");
+            window.location.reload();
+        }
+    }
+
     async function refreshAll(){
+      await checkSettings();
       const [d,a,s,x] = await Promise.all([
         safeFetch(api.today),
         safeFetch(api.ann),
