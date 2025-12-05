@@ -71,6 +71,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     # طرف ثالث
+    "cloudinary_storage",
+    "cloudinary",
     "rest_framework",
 
     # تطبيقات المشروع
@@ -170,11 +172,17 @@ STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Cloudinary Configuration
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET')
+}
+
 # Django 5 STORAGES + WhiteNoise
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-        "OPTIONS": {"base_url": MEDIA_URL, "location": str(MEDIA_ROOT)},
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
