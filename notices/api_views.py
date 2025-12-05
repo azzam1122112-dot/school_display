@@ -14,7 +14,7 @@ from .api_serializers import AnnouncementSerializer, ExcellenceSerializer
 def active_announcements(request):
     screen = validate_display_token(request)
     if not screen:
-        return Response({"detail": "Invalid token"}, status=403)
+        return Response({"detail": "Forbidden"}, status=403)
 
     now = timezone.now()
     qs = Announcement.objects.filter(school=screen.school, is_active=True).order_by("-starts_at")
@@ -32,7 +32,7 @@ def active_excellence(request):
     """
     screen = validate_display_token(request)
     if not screen:
-        return Response({"detail": "Invalid token"}, status=403)
+        return Response({"detail": "Forbidden"}, status=403)
 
     now = timezone.now()
     qs = Excellence.objects.filter(school=screen.school).order_by("priority", "-start_at")

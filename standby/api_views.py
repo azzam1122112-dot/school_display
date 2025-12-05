@@ -14,7 +14,7 @@ from .api_serializers import StandbySerializer
 def today_standby(request):
     screen = validate_display_token(request)
     if not screen:
-        return Response({"detail": "Invalid token"}, status=403)
+        return Response({"detail": "Forbidden"}, status=403)
 
     today = timezone.localdate()
     qs = StandbyAssignment.objects.filter(school=screen.school, date=today).order_by("period_index", "teacher_name")

@@ -24,7 +24,7 @@ def today_display(request):
     """
     screen = validate_display_token(request)
     if not screen:
-        return Response({"detail": "Invalid token"}, status=403)
+        return Response({"detail": "Forbidden"}, status=403)
 
     settings_obj = SchoolSettings.objects.filter(school=screen.school).first()
     if not settings_obj:
@@ -54,7 +54,7 @@ def today_display(request):
 def get_settings(request):
     screen = validate_display_token(request)
     if not screen:
-        return Response({"detail": "Invalid token"}, status=403)
+        return Response({"detail": "Forbidden"}, status=403)
 
     settings_obj = SchoolSettings.objects.filter(school=screen.school).first()
     if not settings_obj:
