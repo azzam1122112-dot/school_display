@@ -104,6 +104,14 @@
           </div>
         </a>
 
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'change_password' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:change_password' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🔒</span>
+            <span class="font-medium">تغيير كلمة المرور</span>
+          </div>
+        </a>
+
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'screen_list' %}active-nav{% else %}bg-white/80{% endif %}" 
            href="{% url 'dashboard:screen_list' %}">
           <div class="flex items-center">

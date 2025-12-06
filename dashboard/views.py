@@ -7,7 +7,8 @@ import io
 import math
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -171,6 +172,22 @@ def demo_login(request):
 def logout_view(request):
     logout(request)
     return redirect("dashboard:login")
+
+
+@manager_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, 'تم تغيير كلمة المرور بنجاح!')
+            return redirect('dashboard:index')
+        else:
+            messages.error(request, 'الرجاء تصحيح الأخطاء أدناه.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'dashboard/change_password.html', {'form': form})
 
 
 # =========================
