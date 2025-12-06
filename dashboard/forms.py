@@ -51,7 +51,7 @@ class SchoolSettingsForm(forms.ModelForm):
             "name",
             # "logo_url",  # Removed in favor of file upload
             "theme",
-            "timezone_name",
+            # "timezone_name", # Hidden
             "refresh_interval_sec",
             "standby_scroll_speed",
         ]
