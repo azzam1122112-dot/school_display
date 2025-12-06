@@ -47,9 +47,17 @@ def home(request):
                 except Exception:
                     pass
 
+    # Determine logo URL
+    logo_url = None
+    if settings_obj:
+        if settings_obj.school and settings_obj.school.logo:
+            logo_url = settings_obj.school.logo.url
+        else:
+            logo_url = settings_obj.logo_url
+
     ctx = {
         "school_name": settings_obj.name if settings_obj else "مدرستنا",
-        "logo_url": settings_obj.logo_url if settings_obj else None,
+        "logo_url": logo_url,
         "refresh_interval_sec": settings_obj.refresh_interval_sec if settings_obj else 30,
         "standby_scroll_speed": settings_obj.standby_scroll_speed if settings_obj else 0.8,
         "now_hour": timezone.localtime().hour,
