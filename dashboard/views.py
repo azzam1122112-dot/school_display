@@ -8,6 +8,7 @@ import math
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Max
@@ -149,6 +150,22 @@ def login_view(request):
             return redirect("dashboard:index")
         messages.error(request, "بيانات الدخول غير صحيحة.")
     return render(request, "dashboard/login.html")
+
+
+def demo_login(request):
+    """تسجيل دخول سريع للحساب التجريبي"""
+    try:
+        # البحث عن مستخدم الديمو
+        user = User.objects.get(username="demo_user")
+        
+        # تسجيل الدخول يدوياً (Backend bypass)
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        
+        messages.success(request, "مرحباً بك في النسخة التجريبية! يمكنك استكشاف النظام بحرية.")
+        return redirect("dashboard:index")
+    except User.DoesNotExist:
+        messages.error(request, "الحساب التجريبي غير مفعل حالياً.")
+        return redirect("dashboard:login")
 
 
 def logout_view(request):
