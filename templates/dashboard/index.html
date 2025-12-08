@@ -67,7 +67,7 @@
 
             <a href="{% url 'dashboard:timetable_day' %}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/70 border border-slate-700 text-sm font-semibold text-slate-100 hover:bg-slate-800 transition">
-              <span>📊 إدارة الجدول العام لليوم</span>
+              <span>📊 إدارة الحصص المجدولة</span>
             </a>
 
             <a href="{% url 'dashboard:screen_list' %}"
@@ -124,12 +124,12 @@
 
   <!-- إجراءات سريعة / أقسام الإدارة -->
   <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <a href="{% url 'dashboard:lessons_list' %}"
+    <a href="{% url 'dashboard:timetable_day' %}"
        class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2 text-slate-800">
           <span class="text-lg">📚</span>
-          <span class="font-semibold text-sm md:text-base">إدارة الحصص المجدولة</span>
+          <span class="font-semibold text-sm md:text-base">  إدارة الجدول اليومي للفصل</span>
         </div>
         <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
       </div>

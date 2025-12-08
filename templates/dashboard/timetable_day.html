@@ -1,242 +1,88 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>إدارة الجدول اليومي للفصل</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "dashboard/_base.html" %}
 
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background-color: #f3f4f6;
-            color: #111827;
-            direction: rtl;
-            text-align: right;
-        }
-        .page-container {
-            max-width: 1200px;
-            margin: 1.5rem auto;
-            padding: 1rem;
-        }
-        .card {
-            background-color: #ffffff;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
-            padding: 1.5rem;
-        }
-        .card-header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            align-items: center;
-        }
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-        .muted {
-            font-size: 0.875rem;
-            color: #6b7280;
-        }
-        .controls-row {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        select,
-        button {
-            font-size: 0.875rem;
-        }
-        select {
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            padding: 0.35rem 0.9rem;
-            background-color: #ffffff;
-        }
-        button.save-btn {
-            border-radius: 999px;
-            border: none;
-            padding: 0.5rem 1.4rem;
-            background: linear-gradient(to left, #2563eb, #4f46e5);
-            color: #ffffff;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        button.save-btn:hover {
-            opacity: 0.95;
-        }
-        button.save-btn:disabled {
-            opacity: 0.5;
-            cursor: default;
-        }
-        .table-wrapper {
-            margin-top: 1rem;
-            overflow-x: auto;
-        }
-        table.timetable-grid {
-            width: 100%;
-            min-width: 500px;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        table.timetable-grid thead {
-            background-color: #f9fafb;
-        }
-        table.timetable-grid th,
-        table.timetable-grid td {
-            border: 1px solid #e5e7eb;
-            padding: 0.4rem 0.5rem;
-            vertical-align: top;
-        }
-        table.timetable-grid th {
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .period-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            border-radius: 999px;
-            padding: 0.2rem 0.7rem;
-            background-color: #eff6ff;
-            color: #1d4ed8;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        .period-time {
-            display: block;
-            margin-top: 0.15rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-        .cell-inner {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            padding: 0.35rem 0.9rem;
-            border-radius: 999px;
-            background-color: #f3f4f6;
-            color: #111827;
-            text-decoration: none;
-            font-size: 0.8rem;
-        }
-        .back-link:hover {
-            background-color: #e5e7eb;
-        }
-        .secondary-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            padding: 0.35rem 0.9rem;
-            background-color: #ffffff;
-            color: #111827;
-            text-decoration: none;
-            font-size: 0.8rem;
-        }
-        .secondary-btn:hover {
-            background-color: #f9fafb;
-        }
-        .subject-select,
-        .teacher-select {
-            width: 100%;
-            border-radius: 0.5rem;
-            padding: 0.2rem 0.5rem;
-            border: 1px solid #e5e7eb;
-            font-size: 0.8rem;
-        }
-        .subject-select {
-            background-color: #f9fafb;
-        }
-        .teacher-select {
-            background-color: #ffffff;
-        }
-        .help-text {
-            margin-top: 0.75rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            padding: 0.1rem 0.6rem;
-            font-size: 0.7rem;
-            background-color: #f3f4f6;
-            color: #374151;
-        }
-        .badge-dot {
-            width: 0.45rem;
-            height: 0.45rem;
-            border-radius: 999px;
-            margin-left: 0.2rem;
-        }
-        .badge-dot-subject {
-            background-color: #3b82f6;
-        }
-        .badge-dot-teacher {
-            background-color: #22c55e;
-        }
-        @media (max-width: 768px) {
-            .card-header {
-                align-items: flex-start;
-            }
-            .card-title {
-                font-size: 1.1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-<div class="page-container">
-    <div class="card">
-        <div class="card-header">
-            <div class="controls-row" style="justify-content: space-between; margin-bottom: 1rem;">
-                <div>
-                    <a href="{% url 'dashboard:index' %}" class="back-link">
-                        ← الرجوع للوحة التحكم
-                    </a>
-                </div>
+{% block title %}إدارة الجدول اليومي للفصول{% endblock %}
 
-                {% if selected_class %}
-                    <div class="controls-row">
-                        <a
-                            href="{% url 'dashboard:timetable_week' %}?class_id={{ selected_class.id }}"
-                            class="secondary-btn"
-                        >
-                            📅 جدول الأسبوع للفصل
-                        </a>
-                        <a
-                            href="{% url 'dashboard:timetable_export_csv' %}?class_id={{ selected_class.id }}"
-                            class="secondary-btn"
-                        >
-                            ⬇️ تصدير CSV
-                        </a>
-                    </div>
-                {% endif %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- رأس الصفحة -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-start gap-3">
+            <div
+                class="inline-flex h-11 w-11 items-center justify-center rounded-2xl
+                       bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-400
+                       shadow-lg shadow-indigo-500/40 text-xl"
+            >
+                📚
             </div>
             <div>
-                <div class="card-title">إدارة الجدول اليومي للفصل</div>
-                <div class="muted">
-                    اختر الفصل واليوم، ثم عدّل المواد والمعلمين لكل حصة واضغط حفظ لتطبيق التعديلات.
-                </div>
+                <h1 class="text-2xl font-bold text-blue-900 tracking-tight">
+ إدارة الجدول اليومي للفصول 
+                </h1>
+                <p class="mt-1 text-sm text-slate-400">
+                    اختر الفصل واليوم ثم عدّل المواد والمعلمين لكل حصة، وسيتم تطبيق التعديلات مباشرة على شاشة العرض.
+                </p>
             </div>
+        </div>
 
-            <form method="get" class="controls-row" style="margin-top: 0.75rem;">
-                <label for="class-select">الفصل:</label>
-                <select id="class-select" name="class_id" onchange="this.form.submit()">
+        <div class="flex items-center gap-2">
+            <span
+                class="inline-flex items-center gap-1 rounded-full border border-emerald-500/60
+                       bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200"
+            >
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                وضع الإدارة النشط
+            </span>
+        </div>
+    </div>
+
+    <!-- شريط علوي للأزرار العامة -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <a href="{% url 'dashboard:index' %}"
+           class="inline-flex items-center gap-1.5 rounded-full border border-slate-600/70
+                  bg-slate-900/70 px-4 py-1.5 text-xs md:text-sm text-slate-100
+                  hover:bg-slate-900 hover:border-slate-500 transition shadow-sm">
+            <span class="text-lg leading-none">←</span>
+            الرجوع للوحة التحكم
+        </a>
+
+        {% if selected_class %}
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'dashboard:timetable_week' %}?class_id={{ selected_class.id }}"
+               class="inline-flex items-center gap-1.5 rounded-full border border-slate-600/70
+                      bg-slate-900/70 px-3.5 py-1.5 text-xs md:text-sm text-slate-100
+                      hover:bg-slate-900 hover:border-slate-400 transition">
+                📅
+                <span>جدول الأسبوع للفصل</span>
+            </a>
+            <a href="{% url 'dashboard:timetable_export_csv' %}?class_id={{ selected_class.id }}"
+               class="inline-flex items-center gap-1.5 rounded-full border border-slate-600/70
+                      bg-slate-900/70 px-3.5 py-1.5 text-xs md:text-sm text-slate-100
+                      hover:bg-slate-900 hover:border-slate-400 transition">
+                ⬇️
+                <span>تصدير CSV</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- فلاتر الفصل / اليوم -->
+    <form method="get"
+          class="rounded-2xl border border-slate-700/80 bg-slate-900/80
+                 px-4 py-3.5 md:px-5 md:py-4 shadow-inner shadow-slate-900/60
+                 flex flex-wrap items-center gap-3 md:gap-4">
+        <div class="flex items-center gap-2">
+            <label for="class-select" class="text-xs text-slate-300">الفصل</label>
+            <div class="relative">
+                <select id="class-select" name="class_id"
+                        onchange="this.form.submit()"
+                        class="appearance-none rounded-full border border-slate-700 bg-slate-950/80
+                               px-4 py-1.5 pr-4 text-xs md:text-sm text-slate-100
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     {% if classes %}
                         {% for c in classes %}
-                            <option value="{{ c.id }}" {% if selected_class and c.id == selected_class.id %}selected{% endif %}>
+                            <option value="{{ c.id }}"
+                                    {% if selected_class and c.id == selected_class.id %}selected{% endif %}>
                                 {{ c.name }}
                             </option>
                         {% endfor %}
@@ -244,128 +90,171 @@
                         <option value="">لا توجد فصول</option>
                     {% endif %}
                 </select>
+                <span class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">▾</span>
+            </div>
+        </div>
 
-                <label for="weekday-select">اليوم:</label>
-                <select id="weekday-select" name="weekday" onchange="this.form.submit()">
+        <div class="flex items-center gap-2">
+            <label for="weekday-select" class="text-xs text-slate-300">اليوم</label>
+            <div class="relative">
+                <select id="weekday-select" name="weekday"
+                        onchange="this.form.submit()"
+                        class="appearance-none rounded-full border border-slate-700 bg-slate-950/80
+                               px-4 py-1.5 pr-4 text-xs md:text-sm text-slate-100
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     {% for code,label in weekdays %}
                         <option value="{{ code }}" {% if code == weekday %}selected{% endif %}>
                             {{ label }}
                         </option>
                     {% endfor %}
                 </select>
-
-                <button type="submit" class="secondary-btn">
-                    عرض
-                </button>
-            </form>
+                <span class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">▾</span>
+            </div>
         </div>
 
-        {% if not periods %}
-            <p class="muted">
-                لا توجد حصص مسجَّلة لهذا اليوم بعد. يرجى ضبط أوقات الحصص من إعدادات الجدول أولاً.
-            </p>
-        {% elif not classes %}
-            <p class="muted">
-                لا توجد فصول مسجَّلة بعد. يرجى إضافة الفصول من إعدادات المدرسة.
-            </p>
-        {% elif not selected_class %}
-            <p class="muted">
-                يرجى اختيار فصل لعرض الجدول.
-            </p>
-        {% else %}
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="weekday" value="{{ weekday }}">
-                <input type="hidden" name="class_id" value="{{ selected_class.id }}">
 
-                <div class="controls-row" style="margin-bottom: 0.75rem;">
-                    <div class="badge">
-                        <span class="badge-dot badge-dot-subject"></span>
-                        المادة
-                    </div>
-                    <div class="badge">
-                        <span class="badge-dot badge-dot-teacher"></span>
-                        المعلم
-                    </div>
-                    <span class="muted">
-                        ترك الحصة بدون مادة ومعلم يعني عدم وجود حصة في هذا التوقيت لهذا الفصل.
-                    </span>
-                </div>
+    </form>
 
-                <div class="table-wrapper">
-                    <table class="timetable-grid">
-                        <thead>
-                        <tr>
-                            <th>الحصة</th>
-                            <th>
-                                جدول الفصل
-                                {% if selected_class %}
-                                    {{ selected_class.name }}
-                                {% endif %}
-                            </th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for row in rows %}
-                            <tr>
-                                <td>
-                                    <span class="period-badge">
+    <!-- رسائل الحالة -->
+    {% if not periods %}
+        <p class="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-xs md:text-sm text-amber-100">
+            لا توجد حصص مسجَّلة لهذا اليوم بعد. يرجى ضبط أوقات الحصص من إعدادات الجدول أولاً.
+        </p>
+    {% elif not classes %}
+        <p class="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-xs md:text-sm text-amber-100">
+            لا توجد فصول مسجَّلة بعد. يرجى إضافة الفصول من إعدادات المدرسة.
+        </p>
+    {% elif not selected_class %}
+        <p class="rounded-xl border border-sky-500/40 bg-sky-500/5 px-4 py-3 text-xs md:text-sm text-sky-100">
+            يرجى اختيار فصل لعرض الجدول.
+        </p>
+    {% else %}
+
+        <!-- نموذج تعديل الجدول -->
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="weekday" value="{{ weekday }}">
+            <input type="hidden" name="class_id" value="{{ selected_class.id }}">
+
+            <!-- مفتاح الألوان -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span
+                    class="inline-flex items-center gap-1 rounded-full border border-slate-600/80
+                           bg-slate-900/80 px-2.5 py-1 text-slate-100">
+                    <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                    المادة
+                </span>
+                <span
+                    class="inline-flex items-center gap-1 rounded-full border border-slate-600/80
+                           bg-slate-900/80 px-2.5 py-1 text-slate-100">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                    المعلم
+                </span>
+                <span class="text-[11px] text-slate-400">
+                    ترك الحصة بدون مادة ومعلم يعني عدم وجود حصة في هذا التوقيت لهذا الفصل.
+                </span>
+            </div>
+
+            <!-- الجدول -->
+            <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 shadow-inner shadow-black/60">
+                <table class="w-full min-w-[520px] border-collapse text-xs md:text-sm">
+                    <thead class="bg-gradient-to-l from-slate-950 to-slate-900">
+                    <tr class="text-slate-100">
+                        <th class="border-b border-slate-800 px-4 py-3 text-right w-48">
+                            الحصة
+                        </th>
+                        <th class="border-b border-slate-800 px-4 py-3 text-right">
+                            جدول الفصل
+                            {% if selected_class %}
+                                {{ selected_class.name }}
+                            {% endif %}
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in rows %}
+                        <tr class="{% cycle 'bg-slate-900/70' 'bg-slate-900/40' %} hover:bg-slate-800/90 transition">
+                            <td class="border-t border-slate-800 px-4 py-3 align-top">
+                                <div class="flex flex-col gap-1">
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded-full bg-indigo-500/10
+                                               px-3 py-1 text-[11px] font-semibold text-indigo-100">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
                                         الحصة {{ row.period.index }}
                                     </span>
                                     {% if row.period.starts_at %}
-                                        <span class="period-time">
+                                        <span class="text-[11px] text-slate-400">
                                             {{ row.period.starts_at }} – {{ row.period.ends_at }}
                                         </span>
                                     {% endif %}
-                                </td>
-                                <td>
-                                    <div class="cell-inner">
-                                        <select
-                                            class="subject-select"
-                                            name="subject-{{ selected_class.id }}-{{ row.period.index }}"
-                                        >
-                                            <option value="">— مادة —</option>
-                                            {% for subj in subjects %}
-                                                <option value="{{ subj.id }}"
-                                                    {% if row.subject_id == subj.id %}selected{% endif %}
-                                                >
-                                                    {{ subj.name }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
+                                </div>
+                            </td>
+                            <td class="border-t border-slate-800 px-4 py-3 align-top">
+                                <div class="flex flex-col gap-2">
+                                    <!-- المادة -->
+                                    <select
+                                        name="subject-{{ selected_class.id }}-{{ row.period.index }}"
+                                        class="timetable-select w-full rounded-lg border border-slate-700 bg-gradient-to-l
+                                               from-indigo-950 to-slate-950 px-3 py-1.5 text-xs md:text-sm
+                                               text-slate-100 focus:outline-none focus:ring-1
+                                               focus:ring-indigo-400 focus:border-indigo-400"
+                                    >
+                                        <option value="">— مادة —</option>
+                                        {% for subj in subjects %}
+                                            <option value="{{ subj.id }}"
+                                                {% if row.subject_id == subj.id %}selected{% endif %}>
+                                                {{ subj.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
 
-                                        <select
-                                            class="teacher-select"
-                                            name="teacher-{{ selected_class.id }}-{{ row.period.index }}"
-                                        >
-                                            <option value="">— معلم —</option>
-                                            {% for teacher in teachers %}
-                                                <option value="{{ teacher.id }}"
-                                                    {% if row.teacher_id == teacher.id %}selected{% endif %}
-                                                >
-                                                    {{ teacher.name }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                    <!-- المعلم -->
+                                    <select
+                                        name="teacher-{{ selected_class.id }}-{{ row.period.index }}"
+                                        class="timetable-select w-full rounded-lg border border-slate-700 bg-gradient-to-l
+                                               from-emerald-950 to-slate-950 px-3 py-1.5 text-xs md:text-sm
+                                               text-slate-100 focus:outline-none focus:ring-1
+                                               focus:ring-emerald-400 focus:border-emerald-400"
+                                    >
+                                        <option value="">— معلم —</option>
+                                        {% for teacher in teachers %}
+                                            <option value="{{ teacher.id }}"
+                                                {% if row.teacher_id == teacher.id %}selected{% endif %}>
+                                                {{ teacher.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
-                <div style="margin-top: 1.25rem; display: flex; justify-content: flex-start; gap: 0.75rem; flex-wrap: wrap;">
-                    <button type="submit" class="save-btn">
-                        💾 حفظ جدول الفصل لليوم المحدد
-                    </button>
-                    <div class="help-text">
-                        يتم تطبيق أي تعديل على شاشة العرض وصفحة الحصة الحالية مباشرة بعد الحفظ.
-                    </div>
-                </div>
-            </form>
-        {% endif %}
-    </div>
+            <!-- أزرار الحفظ -->
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-full bg-gradient-to-l
+                               from-emerald-500 to-emerald-600 px-6 py-2.5 text-xs md:text-sm
+                               font-semibold text-emerald-50 shadow-lg shadow-emerald-500/40
+                               hover:from-emerald-600 hover:to-emerald-700 transition">
+                    💾
+                    <span>حفظ جدول الفصل لليوم المحدد</span>
+                </button>
+                <p class="text-[11px] md:text-xs text-slate-400">
+                    يتم تطبيق أي تعديل على شاشة العرض وصفحة الحصة الحالية مباشرة بعد الحفظ.
+                </p>
+            </div>
+        </form>
+    {% endif %}
 </div>
-</body>
-</html>
+
+<!-- ضبط ألوان قائمة الخيارات داخل السلكت حتى لا يكون النص أبيض على خلفية بيضاء -->
+<style>
+  select.timetable-select option {
+      color: #020617;         /* نص داكن */
+      background-color: #ffffff; /* خلفية بيضاء لقائمة الاختيارات */
+  }
+</style>
+{% endblock %}

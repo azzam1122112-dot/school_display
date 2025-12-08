@@ -9,16 +9,26 @@
   <div class="mb-8">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-slate-800 mb-2">جداول الأيام الدراسية</h1>
-        <p class="text-slate-600">إدارة جداول الحصص والفسح للأسبوع الدراسي (الأحد → الخميس)</p>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100 mb-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          لوحة الجداول الأسبوعية
+        </div>
+        <h1 class="text-3xl font-black text-slate-900 mb-1 tracking-tight">
+          جداول الأيام الدراسية
+        </h1>
+        <p class="text-slate-600 text-sm md:text-base">
+          إدارة جداول الحصص والفسح للأسبوع الدراسي <span class="font-semibold">(الأحد → الخميس)</span>
+        </p>
       </div>
-      <div class="flex items-center space-x-3 space-x-reverse">
-        <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
-          <div class="flex items-center space-x-2 space-x-reverse">
-            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+
+      <div class="hidden md:flex items-center gap-3">
+        <div class="px-4 py-2 rounded-2xl bg-slate-900 text-slate-50 text-sm shadow-lg shadow-slate-900/30 border border-slate-700">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            <span class="text-amber-700 font-medium">الأسبوع الدراسي</span>
+            <span>الأسبوع الحالي مُفعّل على شاشات العرض</span>
           </div>
         </div>
       </div>
@@ -26,67 +36,81 @@
 
     <!-- شريط الإحصائيات -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
-        <div class="flex items-center justify-between">
+      <!-- إجمالي الأيام -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4 shadow-lg shadow-slate-900/40">
+        <div class="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#22c55e33,_transparent_60%),radial-gradient(circle_at_bottom,_#0ea5e933,_transparent_55%)] pointer-events-none"></div>
+        <div class="relative flex items-center justify-between">
           <div>
-            <p class="text-blue-100 text-sm">إجمالي الأيام</p>
-            <p class="text-2xl font-bold">{{ days|length|default:0 }}</p>
+            <p class="text-xs uppercase tracking-wide text-slate-300 mb-1">إجمالي الأيام</p>
+            <p class="text-3xl font-extrabold num-font">{{ days|length|default:0 }}</p>
           </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          <div class="p-3 bg-white/10 rounded-2xl border border-white/20">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
           </div>
         </div>
       </div>
 
-      <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white">
-        <div class="flex items-center justify-between">
+      <!-- متوسط الحصص -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-white p-4 shadow-lg shadow-emerald-600/40">
+        <div class="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-white/10 blur-3xl"></div>
+        <div class="relative flex items-center justify-between">
           <div>
-            <p class="text-emerald-100 text-sm">متوسط الحصص/يوم</p>
-            <p class="text-2xl font-bold">
+            <p class="text-xs uppercase tracking-wide text-emerald-100 mb-1">متوسط الحصص / يوم</p>
+            <p class="text-3xl font-extrabold num-font">
               {% with dcount=days|length %}
                 {% if dcount %}
-                  {% if avg_periods %}{{ avg_periods|floatformat:1 }}
+                  {% if avg_periods %}
+                    {{ avg_periods|floatformat:1 }}
                   {% else %}
-                    {# تقريب بالـ widthratio إن لم يُمرر avg_periods من الـ view #}
                     {% widthratio total_periods dcount 1 %}
                   {% endif %}
-                {% else %}0{% endif %}
+                {% else %}
+                  0
+                {% endif %}
               {% endwith %}
             </p>
           </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          <div class="p-3 bg-white/15 rounded-2xl border border-white/20">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
             </svg>
           </div>
         </div>
       </div>
 
-      <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white">
-        <div class="flex items-center justify-between">
+      <!-- أكثر يوم حصص -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white p-4 shadow-lg shadow-purple-600/40">
+        <div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="relative flex items-center justify-between">
           <div>
-            <p class="text-purple-100 text-sm">أكثر يوم حصص</p>
-            <p class="text-2xl font-bold">{{ max_periods_day.day_name|default:"-" }}</p>
+            <p class="text-xs uppercase tracking-wide text-purple-100 mb-1">أكثر يوم حصص</p>
+            <p class="text-lg font-semibold">{{ max_periods_day.day_name|default:"-" }}</p>
           </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          <div class="p-3 bg-white/15 rounded-2xl border border-white/20">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
             </svg>
           </div>
         </div>
       </div>
 
-      <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 text-white">
-        <div class="flex items-center justify-between">
+      <!-- أقل يوم حصص -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-orange-500 text-white p-4 shadow-lg shadow-rose-600/40">
+        <div class="absolute -left-10 -top-8 w-28 h-28 rounded-full bg-white/15 blur-2xl"></div>
+        <div class="relative flex items-center justify-between">
           <div>
-            <p class="text-rose-100 text-sm">أقل يوم حصص</p>
-            <p class="text-2xl font-bold">{{ min_periods_day.day_name|default:"-" }}</p>
+            <p class="text-xs uppercase tracking-wide text-rose-100 mb-1">أقل يوم حصص</p>
+            <p class="text-lg font-semibold">{{ min_periods_day.day_name|default:"-" }}</p>
           </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+          <div class="p-3 bg-white/15 rounded-2xl border border-white/20">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
             </svg>
           </div>
         </div>
@@ -97,100 +121,126 @@
   <!-- شبكة الأيام -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
     {% for d in days %}
-      <div class="day-card bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+      <div class="day-card bg-white/90 backdrop-blur rounded-2xl shadow-md border border-slate-100 overflow-hidden hover:shadow-2xl hover:border-slate-200 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer group">
         
-        <!-- الجزء العلوي (يتأثر بالتعطيل) -->
+        <!-- الجزء الذي يتأثر بحالة التفعيل -->
         <div class="{% if not d.is_active %}opacity-60 grayscale{% endif %} transition-all duration-300">
-            <!-- رأس البطاقة -->
-            <div class="card-header bg-gradient-to-r {% if d.is_active %}from-slate-800 to-slate-700{% else %}from-slate-600 to-slate-500{% endif %} px-5 py-4">
+          <!-- رأس البطاقة -->
+          <div class="card-header px-5 py-4 text-white">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold tracking-tight">{{ d.day_name }}</h3>
+                <p class="text-xs text-white/80 mt-0.5">
+                  {% if d.is_active %}اليوم مُدرج في العرض{% else %}اليوم مُعطّل (إجازة){% endif %}
+                </p>
+              </div>
+              <div class="flex flex-col items-end gap-1">
+                <span class="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-medium bg-black/15 border border-white/20">
+                  اليوم {{ forloop.counter }}
+                </span>
+                <span class="inline-flex items-center gap-1 text-[11px] text-white/80">
+                  <span class="w-1.5 h-1.5 rounded-full {% if d.is_active %}bg-emerald-300{% else %}bg-slate-300{% endif %}"></span>
+                  {% if d.is_active %}مُفعّل{% else %}مُعطّل{% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- محتوى البطاقة -->
+          <div class="p-5 pb-3">
+            <!-- إحصائيات سريعة -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div class="text-center rounded-xl p-3 border bg-slate-50 border-slate-100 group-hover:border-blue-200">
+                <div class="text-2xl font-bold text-slate-900 num-font">{{ d.periods_count|default:0 }}</div>
+                <div class="text-xs text-slate-600 font-medium">الحصص</div>
+              </div>
+              <div class="text-center rounded-xl p-3 border bg-slate-50 border-slate-100 group-hover:border-emerald-200">
+                <div class="text-2xl font-bold text-slate-900 num-font">{{ d.breaks_count|default:0 }}</div>
+                <div class="text-xs text-slate-600 font-medium">الفسح</div>
+              </div>
+            </div>
+
+            <!-- معلومات إضافية -->
+            <div class="space-y-2 text-xs md:text-sm text-slate-600 mb-4">
               <div class="flex items-center justify-between">
-                <h3 class="text-xl font-bold text-white">{{ d.day_name }}</h3>
-                <div class="bg-white/20 px-3 py-1 rounded-full">
-                  <span class="text-white text-sm font-medium">اليوم {{ forloop.counter }}</span>
-                </div>
+                <span class="flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  الحصة الأولى
+                </span>
+                <span class="font-semibold text-slate-900 num-font">{{ d.first_period_time|default:"--:--" }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                  الحصة الأخيرة
+                </span>
+                <span class="font-semibold text-slate-900 num-font">{{ d.last_period_time|default:"--:--" }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                  مدة اليوم
+                </span>
+                <span class="font-semibold text-slate-900 num-font">{{ d.total_duration|default:"--:--" }}</span>
               </div>
             </div>
 
-            <!-- محتوى البطاقة -->
-            <div class="p-5 pb-2">
-              <!-- إحصائيات سريعة -->
-              <div class="grid grid-cols-2 gap-4 mb-4">
-                <div class="text-center bg-blue-50 rounded-xl p-3 border border-blue-100">
-                  <div class="text-2xl font-bold text-blue-600">{{ d.periods_count|default:0 }}</div>
-                  <div class="text-xs text-blue-700 font-medium">الحصص</div>
-                </div>
-                <div class="text-center bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                  <div class="text-2xl font-bold text-emerald-600">{{ d.breaks_count|default:0 }}</div>
-                  <div class="text-xs text-emerald-700 font-medium">الفسح</div>
-                </div>
-              </div>
-
-              <!-- معلومات إضافية -->
-              <div class="space-y-2 text-sm text-slate-600 mb-4">
-                <div class="flex items-center justify-between">
-                  <span>الحصة الأولى:</span>
-                  <span class="font-semibold text-slate-800">{{ d.first_period_time|default:"--:--" }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span>الحصة الأخيرة:</span>
-                  <span class="font-semibold text-slate-800">{{ d.last_period_time|default:"--:--" }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span>مدة اليوم:</span>
-                  <span class="font-semibold text-slate-800">{{ d.total_duration|default:"--:--" }}</span>
-                </div>
-              </div>
-
-              <!-- حالة الجدول -->
-              <div class="mb-2">
-                {% if d.is_active %}
-                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    <span class="w-2 h-2 bg-emerald-500 rounded-full ml-1"></span>
-                    مفعل
-                  </span>
-                {% else %}
-                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                    <span class="w-2 h-2 bg-slate-500 rounded-full ml-1"></span>
-                    معطل (إجازة)
-                  </span>
-                {% endif %}
-              </div>
+            <!-- حالة الجدول (شريط صغير أسفل المحتوى) -->
+            <div class="mb-1">
+              {% if d.is_active %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  <span class="w-2 h-2 bg-emerald-500 rounded-full ml-1"></span>
+                  اليوم مفعّل في شاشة العرض
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  <span class="w-2 h-2 bg-slate-500 rounded-full ml-1"></span>
+                  معطل (لن يظهر في الشاشة)
+                </span>
+              {% endif %}
             </div>
+          </div>
         </div>
 
-        <!-- أزرار الإجراءات (منفصلة لتكون واضحة دائماً) -->
-        <div class="p-5 pt-2 border-t border-slate-50">
+        <!-- أزرار الإجراءات -->
+        <div class="p-4 pt-2 border-t border-slate-100 bg-slate-50/60">
           <div class="flex items-center gap-3">
             <a href="{% url 'dashboard:day_edit' d.weekday %}"
-               class="edit-link flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 space-x-reverse shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40">
+               class="edit-link flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-blue-600/30">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
-              <span>تحرير</span>
+              <span>تحرير اليوم</span>
             </a>
             
             <form method="post" action="{% url 'dashboard:day_toggle' d.weekday %}" class="inline">
-                {% csrf_token %}
-                <button type="submit" 
-                        class="w-12 h-11 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm
-                        {% if d.is_active %}
-                            bg-white border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600
-                        {% else %}
-                            bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 hover:border-emerald-700 shadow-emerald-500/30
-                        {% endif %}"
-                        title="{% if d.is_active %}تعطيل هذا اليوم{% else %}تفعيل هذا اليوم{% endif %}">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {% if d.is_active %}
-                        <!-- Icon for Disable (Power Off / Stop) -->
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                        {% else %}
-                        <!-- Icon for Enable (Check / Power On) -->
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        {% endif %}
-                    </svg>
-                </button>
+              {% csrf_token %}
+              <button type="submit"
+                      class="w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm
+                      {% if d.is_active %}
+                        bg-white border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600
+                      {% else %}
+                        bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 hover:border-emerald-700 shadow-emerald-500/30
+                      {% endif %}"
+                      title="{% if d.is_active %}تعطيل هذا اليوم{% else %}تفعيل هذا اليوم{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {% if d.is_active %}
+                    <!-- تعطيل -->
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"/>
+                  {% else %}
+                    <!-- تفعيل -->
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M5 13l4 4L19 7"/>
+                  {% endif %}
+                </svg>
+              </button>
             </form>
           </div>
+          <p class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>انقر على البطاقة لفتح التحرير السريع.</span>
+          </p>
         </div>
       </div>
     {% empty %}
@@ -199,14 +249,17 @@
         <div class="text-center bg-white rounded-2xl shadow-lg border border-slate-200 p-12">
           <div class="w-24 h-24 mx-auto mb-6 bg-slate-100 rounded-full flex items-center justify-center">
             <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-slate-700 mb-2">لا توجد جداول أيام</h3>
-          <p class="text-slate-500 mb-6">لم يتم إعداد الجداول الدراسية بعد</p>
-          <a href="{% url 'dashboard:days_list' %}" class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25">
-            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          <p class="text-slate-500 mb-6">لم يتم إعداد الجداول الدراسية بعد.</p>
+          <a href="{% url 'dashboard:days_list' %}"
+             class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
             إضافة جدول جديد
           </a>
@@ -218,27 +271,41 @@
   <!-- تذييل الصفحة -->
   {% if days %}
     <div class="mt-8 bg-slate-50 rounded-2xl p-6 border border-slate-200">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h3 class="text-lg font-semibold text-slate-800 mb-2">ملاحظات هامة</h3>
           <ul class="text-slate-600 space-y-1 text-sm">
-            <li class="flex items-center space-x-2 space-x-reverse">
-              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-              <span>يمكنك تعديل جدول كل يوم بشكل منفصل</span>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"/>
+              </svg>
+              <span>يمكنك تعديل جدول كل يوم بشكل منفصل عن الأيام الأخرى.</span>
             </li>
-            <li class="flex items-center space-x-2 space-x-reverse">
-              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-              <span>التغييرات تُطبَّق فورًا على شاشات العرض</span>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"/>
+              </svg>
+              <span>أي تغيير يتم حفظه ينعكس مباشرة على شاشة العرض الرئيسية.</span>
             </li>
-            <li class="flex items-center space-x-2 space-x-reverse">
-              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-              <span>يُفضّل مراجعة التوقيتات قبل الحفظ</span>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"/>
+              </svg>
+              <span>يُفضّل مراجعة توقيتات البداية والنهاية قبل اعتماد الجدول.</span>
             </li>
           </ul>
         </div>
         <div class="text-right">
-          <div class="text-sm text-slate-500 mb-2">آخر تحديث</div>
-          <div class="text-lg font-semibold text-slate-800">{{ last_updated|default:"--" }}</div>
+          <div class="text-xs text-slate-500 mb-1">آخر تحديث للجدول</div>
+          <div class="text-lg font-semibold text-slate-900">
+            {{ last_updated|default:"--" }}
+          </div>
         </div>
       </div>
     </div>
@@ -246,46 +313,56 @@
 </div>
 
 <style>
-/* تأثيرات إضافية للبطاقات */
-.card-hover{transition:all .3s ease}
-.card-hover:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.1)}
-/* تدرجات مخصّصة لكل يوم */
-.day-card:nth-child(1) .card-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
-.day-card:nth-child(2) .card-header{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%)}
-.day-card:nth-child(3) .card-header{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%)}
-.day-card:nth-child(4) .card-header{background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)}
-.day-card:nth-child(5) .card-header{background:linear-gradient(135deg,#fa709a 0%,#fee140 100%)}
+  .num-font {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* تدرجات مخصّصة لكل بطاقة يوم (ترتيب الأحد → الخميس) */
+  .day-card:nth-child(1) .card-header{
+    background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+  }
+  .day-card:nth-child(2) .card-header{
+    background:linear-gradient(135deg,#f97316 0%,#fb7185 100%);
+  }
+  .day-card:nth-child(3) .card-header{
+    background:linear-gradient(135deg,#22c55e 0%,#14b8a6 100%);
+  }
+  .day-card:nth-child(4) .card-header{
+    background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);
+  }
+  .day-card:nth-child(5) .card-header{
+    background:linear-gradient(135deg,#e11d48 0%,#f97316 100%);
+  }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // تأثير hover + click
-  document.querySelectorAll('.day-card').forEach(card => {
-    card.classList.add('card-hover');
+  // جعل البطاقة بالكامل تفتح صفحة التحرير
+  document.querySelectorAll('.day-card').forEach(function (card) {
     card.addEventListener('click', function (e) {
-      // منع التفعيل عند النقر على الأزرار أو الروابط
       if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
         return;
       }
-      const a = this.querySelector('a.edit-link');
-      if (a) a.click();
+      var link = card.querySelector('a.edit-link');
+      if (link) { link.click(); }
     });
   });
 
-  // دخول لطيف
-  const observer = new IntersectionObserver((entries)=>{
-    entries.forEach(en=>{
-      if(en.isIntersecting){
-        en.target.style.opacity='1';
-        en.target.style.transform='translateY(0)';
+  // أنيميشن دخول الكروت
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        en.target.style.opacity = '1';
+        en.target.style.transform = 'translateY(0)';
       }
     });
-  },{threshold:.1, rootMargin:'0px 0px -50px 0px'});
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-  document.querySelectorAll('.day-card').forEach(card=>{
-    card.style.opacity='0';
-    card.style.transform='translateY(20px)';
-    card.style.transition='opacity .6s ease, transform .6s ease';
+  document.querySelectorAll('.day-card').forEach(function (card) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(16px)';
+    card.style.transition = 'opacity .5s ease, transform .5s ease';
     observer.observe(card);
   });
 });
