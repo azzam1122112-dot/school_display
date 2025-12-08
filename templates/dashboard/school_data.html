@@ -1,0 +1,78 @@
+{% extends "dashboard/_base.html" %}
+{% block title %}إدارة الفصول والمواد والمعلمين{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- الفصول -->
+  <div class="card">
+    <div class="card-header font-bold text-lg">الفصول</div>
+    <div class="card-body">
+      <form method="post" action="{% url 'dashboard:add_class' %}" class="mb-4">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="اسم الفصل" class="input input-bordered w-full mb-2">
+        <button type="submit" class="btn btn-primary w-full">إضافة فصل</button>
+      </form>
+      <ul class="space-y-2">
+        {% for c in classes %}
+        <li class="flex justify-between items-center bg-slate-50 rounded px-3 py-2">
+          <span>{{ c.name }}</span>
+          <form method="post" action="{% url 'dashboard:delete_class' c.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+          </form>
+        </li>
+        {% empty %}
+        <li class="text-slate-400">لا توجد فصول بعد</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <!-- المواد -->
+  <div class="card">
+    <div class="card-header font-bold text-lg">المواد</div>
+    <div class="card-body">
+      <form method="post" action="{% url 'dashboard:add_subject' %}" class="mb-4">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="اسم المادة" class="input input-bordered w-full mb-2">
+        <button type="submit" class="btn btn-primary w-full">إضافة مادة</button>
+      </form>
+      <ul class="space-y-2">
+        {% for s in subjects %}
+        <li class="flex justify-between items-center bg-slate-50 rounded px-3 py-2">
+          <span>{{ s.name }}</span>
+          <form method="post" action="{% url 'dashboard:delete_subject' s.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+          </form>
+        </li>
+        {% empty %}
+        <li class="text-slate-400">لا توجد مواد بعد</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <!-- المعلمون -->
+  <div class="card">
+    <div class="card-header font-bold text-lg">المعلمون</div>
+    <div class="card-body">
+      <form method="post" action="{% url 'dashboard:add_teacher' %}" class="mb-4">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="اسم المعلم" class="input input-bordered w-full mb-2">
+        <button type="submit" class="btn btn-primary w-full">إضافة معلم</button>
+      </form>
+      <ul class="space-y-2">
+        {% for t in teachers %}
+        <li class="flex justify-between items-center bg-slate-50 rounded px-3 py-2">
+          <span>{{ t.name }}</span>
+          <form method="post" action="{% url 'dashboard:delete_teacher' t.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+          </form>
+        </li>
+        {% empty %}
+        <li class="text-slate-400">لا يوجد معلمون بعد</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

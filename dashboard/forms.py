@@ -1,4 +1,3 @@
-# dashboard/forms.py
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta
@@ -7,15 +6,22 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory, BaseInlineFormSet
 
-from schedule.models import SchoolSettings, DaySchedule, Period, Break
+from schedule.models import (
+    SchoolSettings,
+    DaySchedule,
+    Period,
+    Break,
+    ClassLesson,
+    WEEKDAYS,
+    SchoolClass,
+    Teacher,
+)
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
 from core.models import DisplayScreen
 
 
-# ========= أدوات مساعدة =========
 def _parse_hhmm(value: str | None):
-    """يحاول تحويل نص وقت من نموذج HTML إلى time (HH:MM أو HH:MM:SS)."""
     if not value:
         return None
     for fmt in ("%H:%M:%S", "%H:%M"):
@@ -27,21 +33,17 @@ def _parse_hhmm(value: str | None):
 
 
 def _is_checked(raw) -> bool:
-    """تحويل قيمة خانة حذف من POST إلى Boolean."""
     return str(raw).lower() in {"1", "true", "on", "yes"}
 
 
 def _is_blank_period_fields(idx, st, en) -> bool:
-    """يُعتبر صف الحصة فارغًا إذا *جميع* الحقول الأساسية فارغة."""
     return (idx in (None, "")) and (st is None) and (en is None)
 
 
 def _is_blank_break_fields(label, st, dur) -> bool:
-    """يُعتبر صف الفسحة فارغًا إذا وقت البداية والمدة فارغان (الليبل لا يهم)."""
     return (st is None) and (dur in (None, ""))
 
 
-# ========= نماذج الإعدادات/اليوم =========
 class SchoolSettingsForm(forms.ModelForm):
     logo = forms.ImageField(label="شعار المدرسة", required=False)
 
@@ -49,26 +51,24 @@ class SchoolSettingsForm(forms.ModelForm):
         model = SchoolSettings
         fields = [
             "name",
-            # "logo_url",  # Removed in favor of file upload
             "theme",
-            # "timezone_name", # Hidden
             "refresh_interval_sec",
             "standby_scroll_speed",
+            "periods_scroll_speed",
         ]
         widgets = {
-            "theme": forms.TextInput(
-                attrs={"placeholder": "indigo / emerald / rose / sky / amber"}
-            ),
+            "theme": forms.Select(),
+            "refresh_interval_sec": forms.NumberInput(attrs={"min": 5, "step": 5}),
+            "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.05, "max": 5.0, "step": 0.05}),
+            "periods_scroll_speed": forms.NumberInput(attrs={"min": 0.05, "max": 5.0, "step": 0.05}),
         }
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         logo_file = self.cleaned_data.get("logo")
-        
         if logo_file and instance.school:
             instance.school.logo = logo_file
             instance.school.save()
-            
         if commit:
             instance.save()
         return instance
@@ -86,20 +86,18 @@ class DayScheduleForm(forms.ModelForm):
         return v
 
 
-# ========= نماذج الحصص/الفسح =========
 class PeriodForm(forms.ModelForm):
     class Meta:
         model = Period
         fields = ["index", "starts_at", "ends_at"]
         widgets = {
             "starts_at": forms.TimeInput(attrs={"type": "time", "step": 60}),
-            "ends_at":   forms.TimeInput(attrs={"type": "time", "step": 60}),
+            "ends_at": forms.TimeInput(attrs={"type": "time", "step": 60}),
         }
 
     def clean(self):
         cleaned = super().clean()
 
-        # 1) لو مُعلَّم للحذف → تخطَّ تمامًا
         if _is_checked(self.data.get(f"{self.prefix}-DELETE")):
             self._is_marked_delete = True
             self.instance._skip_cross_validation = True
@@ -109,13 +107,11 @@ class PeriodForm(forms.ModelForm):
         en = cleaned.get("ends_at")
         idx = cleaned.get("index")
 
-        # 2) صف فارغ تمامًا → تجاهله
         if _is_blank_period_fields(idx, st, en):
             self._is_blank_row = True
             self.instance._skip_cross_validation = True
             return cleaned
 
-        # 3) حقول مطلوبة
         if st is None:
             self.add_error("starts_at", "هذا الحقل مطلوب.")
         if en is None:
@@ -125,11 +121,9 @@ class PeriodForm(forms.ModelForm):
         elif isinstance(idx, int) and idx < 1:
             self.add_error("index", "رقم الحصة يجب أن يبدأ من 1.")
 
-        # 4) ترتيب زمني صحيح
         if st is not None and en is not None and en <= st:
             self.add_error("ends_at", "وقت نهاية الحصة يجب أن يكون بعد وقت بدايتها.")
 
-        # 5) لو هناك أي أخطاء، لا تدع model.clean() يجري فحوص التداخل
         if self.errors:
             self.instance._skip_cross_validation = True
 
@@ -147,7 +141,6 @@ class BreakForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
-        # 1) لو مُعلَّم للحذف → تخطَّ تمامًا
         if _is_checked(self.data.get(f"{self.prefix}-DELETE")):
             self._is_marked_delete = True
             self.instance._skip_cross_validation = True
@@ -157,13 +150,11 @@ class BreakForm(forms.ModelForm):
         st = cleaned.get("starts_at")
         dur = cleaned.get("duration_min")
 
-        # 2) صف فسحة فارغ؟ تجاهله
         if _is_blank_break_fields(label, st, dur):
             self._is_blank_row = True
             self.instance._skip_cross_validation = True
             return cleaned
 
-        # 3) تحققات الحقول
         if st is None:
             self.add_error("starts_at", "هذا الحقل مطلوب.")
         if dur is None or dur <= 0:
@@ -175,17 +166,7 @@ class BreakForm(forms.ModelForm):
         return cleaned
 
 
-# ========= فاحص التداخل داخل FormSet الحصص =========
 class PeriodInlineFormSet(BaseInlineFormSet):
-    """
-    تحقّق جماعي داخل نفس اليوم (حصص + فسح):
-    - تجاهل الصفوف الفارغة
-    - احترام الحذف
-    - منع تكرار index
-    - منع التداخل (مع السماح بالتلامس)
-    - عدم رفع خطأ عام إلا عند وجود أخطاء فعلية مُضافة
-    - منع الزيادة عن DaySchedule.periods_count (وعدم منع الأقل لتسهيل الحذف)
-    """
     def clean(self):
         super().clean()
 
@@ -196,31 +177,26 @@ class PeriodInlineFormSet(BaseInlineFormSet):
         periods = []
         seen_indexes: dict[int, forms.ModelForm] = {}
 
-        # -------- حصص صالحة فقط --------
         for form in self.forms:
             if not hasattr(form, "cleaned_data"):
                 continue
             cd = form.cleaned_data
 
-            # احترم الحذف
             if cd.get("DELETE") or getattr(form, "_is_marked_delete", False):
                 form.instance._skip_cross_validation = True
                 continue
 
             st, en, idx = cd.get("starts_at"), cd.get("ends_at"), cd.get("index")
 
-            # تجاهل الصف الفارغ
             if getattr(form, "_is_blank_row", False) or _is_blank_period_fields(idx, st, en):
                 form.instance._skip_cross_validation = True
                 continue
 
-            # لو لدى الفورم أخطاء مسبقة، لا ندخله في التحقق الجماعي
             if form.errors:
                 form.instance._skip_cross_validation = True
                 errors_added += sum(len(v) for v in form.errors.values())
                 continue
 
-            # تكرار index
             if idx in seen_indexes:
                 form.add_error("index", "رقم الحصة مكرر لهذا اليوم.")
                 seen_indexes[idx].add_error("index", "رقم الحصة مكرر لهذا اليوم.")
@@ -232,7 +208,6 @@ class PeriodInlineFormSet(BaseInlineFormSet):
             seen_indexes[idx] = form
             periods.append({"label": f"الحصة {idx}", "start": st, "end": en, "form": form})
 
-        # -------- فسح (للاطلاع على التداخل فقط) --------
         breaks = []
         total_b = int(self.data.get("b-TOTAL_FORMS", 0) or 0)
         for i in range(total_b):
@@ -246,7 +221,6 @@ class PeriodInlineFormSet(BaseInlineFormSet):
             except ValueError:
                 dur = None
 
-            # تجاهل صف فسحة فارغ/غير مكتمل
             if _is_blank_break_fields(label, st, dur):
                 continue
 
@@ -254,7 +228,6 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                 end = (datetime.combine(datetime.today(), st) + timedelta(minutes=dur)).time()
                 breaks.append({"label": f"الفسحة ({label})", "start": st, "end": end})
 
-        # -------- منع الزيادة عن العدد المحدد --------
         count_periods = len(periods)
         if target_count > 0 and count_periods > target_count:
             raise ValidationError(
@@ -262,15 +235,13 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                 f"رجاءً احذف/عدّل الحصص الزائدة."
             )
 
-        # -------- فحص التداخلات (التلامس مسموح) --------
         items = [{"kind": "p", **p} for p in periods] + [{"kind": "b", **b} for b in breaks]
         items.sort(key=lambda x: x["start"])
 
         for i in range(1, len(items)):
             prev, cur = items[i - 1], items[i]
             if cur["start"] < prev["end"]:
-                # أضف الأخطاء على الحصص فقط (الفسح تُستخدم للمرجعية)
-                msg_cur  = f"تداخل مع {prev['label']} ({prev['start']}-{prev['end']})."
+                msg_cur = f"تداخل مع {prev['label']} ({prev['start']}-{prev['end']})."
                 msg_prev = f"يتداخل مع {cur['label']} ({cur['start']}-{cur['end']})."
                 if cur["kind"] == "p":
                     cur["form"].add_error("starts_at", msg_cur)
@@ -281,19 +252,17 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                     prev["form"].instance._skip_cross_validation = True
                     errors_added += 1
 
-        # لا نرفع الخطأ العام إلا إذا وُجدت أخطاء بالفعل
         if errors_added > 0:
             raise ValidationError("تحقق من الأوقات: يوجد حقول ناقصة/مكررة أو تداخلات زمنية.")
 
 
-# ========= FormSets =========
 PeriodFormSet = inlineformset_factory(
     parent_model=DaySchedule,
     model=Period,
     form=PeriodForm,
     formset=PeriodInlineFormSet,
-    extra=0,            # لا صفوف إضافية تلقائيًا
-    can_delete=True,    # تمكين الحذف
+    extra=0,
+    can_delete=True,
     min_num=0,
     validate_min=True,
 )
@@ -303,13 +272,12 @@ BreakFormSet = inlineformset_factory(
     model=Break,
     form=BreakForm,
     extra=0,
-    can_delete=True,    # تمكين الحذف
+    can_delete=True,
     min_num=0,
     validate_min=True,
 )
 
 
-# ========= بقية النماذج =========
 class AnnouncementForm(forms.ModelForm):
     class Meta:
         model = Announcement
@@ -321,13 +289,7 @@ class AnnouncementForm(forms.ModelForm):
 
 
 class ExcellenceForm(forms.ModelForm):
-    """
-    نموذج بطاقة التميّز مع دعم رفع الصورة.
-    - photo: ملف صورة اختياري (الأولوية في العرض)
-    - photo_url: رابط صورة اختياري (يُستخدم إذا لا يوجد ملف)
-    """
-
-    MAX_PHOTO_MB = 5  # حد الحجم التقريبي
+    MAX_PHOTO_MB = 5
 
     class Meta:
         model = Excellence
@@ -341,7 +303,6 @@ class ExcellenceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # تأكد من أن حقل الملف يقبل الصور فقط في المتصفح
         if hasattr(self.fields.get("photo"), "widget"):
             self.fields["photo"].widget.attrs.setdefault("accept", "image/*")
 
@@ -365,6 +326,9 @@ class ExcellenceForm(forms.ModelForm):
 
 
 class StandbyForm(forms.ModelForm):
+    class_name = forms.ModelChoiceField(queryset=SchoolClass.objects.all(), label="الفصل")
+    teacher_name = forms.ModelChoiceField(queryset=Teacher.objects.all(), label="اسم المعلم")
+
     class Meta:
         model = StandbyAssignment
         fields = ["date", "period_index", "class_name", "teacher_name", "notes"]
@@ -372,8 +336,25 @@ class StandbyForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
         }
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.class_name = self.cleaned_data["class_name"].name
+        instance.teacher_name = self.cleaned_data["teacher_name"].name
+        if commit:
+            instance.save()
+        return instance
+
 
 class DisplayScreenForm(forms.ModelForm):
     class Meta:
         model = DisplayScreen
         fields = ["name", "is_active"]
+
+
+class LessonForm(forms.ModelForm):
+    class Meta:
+        model = ClassLesson
+        fields = ["school_class", "weekday", "period_index", "subject", "teacher", "is_active"]
+        widgets = {
+            "weekday": forms.Select(choices=WEEKDAYS),
+        }

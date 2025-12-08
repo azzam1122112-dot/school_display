@@ -89,7 +89,7 @@
     <aside class="col-span-12 md:col-span-3">
       <nav class="space-y-2 bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50">
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'index' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:index' %}">
+           href="{% url 'dashboard:index' %}" {% if not request.user.profile.school.schedule_settings.show_home %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">📊</span>
             <span class="font-medium">الصفحة الرئيسية</span>
@@ -97,7 +97,7 @@
         </a>
         
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'settings' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:settings' %}">
+           href="{% url 'dashboard:settings' %}" {% if not request.user.profile.school.schedule_settings.show_settings %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">⚙️</span>
             <span class="font-medium">إعدادات المدرسة</span>
@@ -105,7 +105,7 @@
         </a>
 
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'change_password' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:change_password' %}">
+           href="{% url 'dashboard:change_password' %}" {% if not request.user.profile.school.schedule_settings.show_change_password %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">🔒</span>
             <span class="font-medium">تغيير كلمة المرور</span>
@@ -113,7 +113,7 @@
         </a>
 
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'screen_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:screen_list' %}">
+           href="{% url 'dashboard:screen_list' %}" {% if not request.user.profile.school.schedule_settings.show_screens %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">🖥️</span>
             <span class="font-medium">شاشات العرض</span>
@@ -121,15 +121,24 @@
         </a>
         
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'days_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:days_list' %}">
+           href="{% url 'dashboard:days_list' %}" {% if not request.user.profile.school.schedule_settings.show_days %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">📅</span>
             <span class="font-medium">جداول الأيام</span>
           </div>
         </a>
         
+        <!-- رابط إدارة الجدول اليومي (Grid) -->
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'timetable_day' %}active-nav{% else %}bg-white/80{% endif %}" 
+           href="{% url 'dashboard:timetable_day' %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🗓️</span>
+            <span class="font-medium">إدارة الجدول اليومي</span>
+          </div>
+        </a>
+        
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'ann_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:ann_list' %}">
+           href="{% url 'dashboard:ann_list' %}" {% if not request.user.profile.school.schedule_settings.show_announcements %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">🔔</span>
             <span class="font-medium">التنبيهات</span>
@@ -137,7 +146,7 @@
         </a>
         
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'exc_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:exc_list' %}">
+           href="{% url 'dashboard:exc_list' %}" {% if not request.user.profile.school.schedule_settings.show_excellence %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">⭐</span>
             <span class="font-medium">قسم التميّز</span>
@@ -145,10 +154,20 @@
         </a>
         
         <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'standby_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:standby_list' %}">
+           href="{% url 'dashboard:standby_list' %}" {% if not request.user.profile.school.schedule_settings.show_standby %}style="display:none"{% endif %}>
           <div class="flex items-center">
             <span class="ml-2 text-lg">⏳</span>
             <span class="font-medium">حصص الانتظار</span>
+          </div>
+        </a>
+
+
+
+        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'school_data' %}active-nav{% else %}bg-white/80{% endif %}"
+           href="{% url 'dashboard:school_data' %}" {% if not request.user.profile.school.schedule_settings.show_school_data %}style="display:none"{% endif %}>
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🏫</span>
+            <span class="font-medium">الفصول والمواد والمعلمون</span>
           </div>
         </a>
       </nav>
@@ -205,7 +224,7 @@
         
         <div class="p-6">
           {% block content %}
-          <!-- المحتوى الأساسي -->
+          <!-- المحتوى الأساسي الافتراضي (يمكن استبداله في الصفحات الأخرى) -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- بطاقة إحصائية -->
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
@@ -274,7 +293,6 @@
   <script>
     // إضافة تأثيرات تفاعلية بسيطة
     document.addEventListener('DOMContentLoaded', function() {
-      // تأثيرات للبطاقات عند التمرير
       const cards = document.querySelectorAll('.nav-item, [class*="bg-gradient"]');
       
       const observer = new IntersectionObserver((entries) => {

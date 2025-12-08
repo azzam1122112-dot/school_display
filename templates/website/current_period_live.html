@@ -1,0 +1,116 @@
+{% extends "base_display.html" %}
+{% load static %}
+
+{% block content %}
+<div class="w-full h-screen flex flex-col bg-slate-950 text-slate-50 overflow-hidden">
+    <div class="p-6 bg-slate-900/80 shadow-md border-b border-slate-800">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+                <div class="text-3xl md:text-4xl font-bold mb-1">
+                    {{ today_name }}
+                    {% if current_period %}
+                        <span class="text-sky-400 text-2xl md:text-3xl ms-2">الحصة {{ current_period.index }}</span>
+                    {% else %}
+                        <span class="text-slate-400 text-2xl md:text-3xl ms-2">لا توجد حصة جارية الآن</span>
+                    {% endif %}
+                </div>
+                <div class="text-sm md:text-base text-slate-400">
+                    {% if current_period %}
+                        من {{ current_period.starts_at }} إلى {{ current_period.ends_at }}
+                    {% else %}
+                        ترقّب الحصة القادمة حسب جدول اليوم.
+                    {% endif %}
+                </div>
+            </div>
+            {% if current_period %}
+                <div class="flex flex-col items-start md:items-end gap-2">
+                    <div class="w-full md:w-72 bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div
+                            id="progressbar"
+                            class="h-3 rounded-full bg-gradient-to-l from-rose-500 to-sky-400 transition-all duration-500"
+                            style="width: {{ progress_percent }}%;"
+                        ></div>
+                    </div>
+                    <div class="text-sm md:text-base text-slate-300">
+                        المتبقّي من الحصة: <span class="font-semibold text-sky-300">{{ time_left }}</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-hidden mt-6">
+        {% if current_period %}
+            <div class="h-full px-6 pb-8">
+                <div class="w-full text-sm text-slate-400 mb-3">
+                    يعرض الجدول التالي جميع فصول المدرسة في الحصة الحالية مرتبة حسب اسم الفصل.
+                </div>
+                <div class="relative h-full">
+                    <div
+                        id="scroll-row"
+                        class="flex items-stretch gap-4 lg:gap-6 px-1 lg:px-0 absolute inset-y-0 start-0"
+                    >
+                        {% for lesson in current_lessons %}
+                            <div class="min-w-[360px] lg:min-w-[420px] bg-slate-900/80 border border-slate-800 rounded-2xl shadow-lg flex flex-col justify-between p-4 lg:p-5 backdrop-blur">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="text-xl lg:text-2xl font-bold text-slate-50">
+                                        {{ lesson.school_class.name }}
+                                    </div>
+                                    <div class="text-xs lg:text-sm text-slate-400">
+                                        الحصة {{ current_period.index }}
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="text-base lg:text-lg font-semibold text-sky-300">
+                                        {{ lesson.subject.name }}
+                                    </div>
+                                    <div class="text-sm lg:text-base text-slate-200">
+                                        المعلم: {{ lesson.teacher.name }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="w-full flex items-center justify-center text-2xl text-slate-500">
+                                لا توجد حصص لهذه الحصة.
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="flex-1 flex items-center justify-center text-2xl text-slate-500 px-6">
+                لا توجد حصة دراسية حالياً حسب الجدول.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var row = document.getElementById("scroll-row");
+    if (!row) return;
+
+    var container = row.parentElement;
+    if (!container) return;
+
+    var totalWidth = row.scrollWidth;
+    var viewportWidth = container.offsetWidth;
+
+    if (totalWidth <= viewportWidth + 16) return;
+
+    var x = 0;
+    var speed = {{ scroll_speed|default:0.6 }};
+
+    function loop() {
+        x += speed;
+        if (x >= totalWidth) {
+            x = 0;
+        }
+        row.style.transform = "translateX(-" + x + "px)";
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+});
+</script>
+{% endblock %}

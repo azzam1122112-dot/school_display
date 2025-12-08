@@ -9,6 +9,8 @@ urlpatterns = [
     path("", website_views.home, name="home"),     # الصفحة الرئيسية/العرض
     path("dashboard/", include("dashboard.urls")),  # لوحة التحكم
     path("api/", include("core.api_urls")),  # سنُعرّف api لاحقًا
+    path("schedule/", include("schedule.urls")),
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
