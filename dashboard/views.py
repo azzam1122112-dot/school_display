@@ -16,6 +16,7 @@ from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.contrib.auth import get_user_model, login
 
 from .permissions import manager_required
 from .forms import (
@@ -40,7 +41,7 @@ from schedule.models import (
 )
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
-from core.models import DisplayScreen
+from core.models import DisplayScreen, School, UserProfile
 
 
 SCHOOL_WEEK = [
@@ -145,14 +146,61 @@ def login_view(request):
 
 
 def demo_login(request):
-    try:
-        user = User.objects.get(username="demo_user")
-        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(request, "مرحباً بك في النسخة التجريبية! يمكنك استكشاف النظام بحرية.")
-        return redirect("dashboard:index")
-    except User.DoesNotExist:
-        messages.error(request, "الحساب التجريبي غير مفعل حالياً.")
-        return redirect("dashboard:login")
+    """
+    تسجيل دخول بحساب تجريبي مع بيانات مدرسـة تجريبية.
+    - إذا لم يوجد المستخدم demo_user يتم إنشاؤه.
+    - إذا لم توجد مدرسة تجريبية يتم إنشاؤها.
+    - يتم إنشاء UserProfile يربط المستخدم بالمدرسة التجريبية.
+    """
+    DEMO_USERNAME = "demo_user"
+    DEMO_SCHOOL_SLUG = "demo-school"
+
+    # 1) تأكد من وجود مدرسة تجريبية
+    demo_school, _ = School.objects.get_or_create(
+        slug=DEMO_SCHOOL_SLUG,
+        defaults={
+            "name": "مدرسة تجريبية",
+            "is_active": True,
+        },
+    )
+
+    # 2) تأكد من وجود المستخدم التجريبي
+    demo_user, created = User.objects.get_or_create(
+        username=DEMO_USERNAME,
+        defaults={
+            "first_name": "حساب",
+            "last_name": "تجريبي",
+            "email": "demo@example.com",
+            "is_active": True,
+        },
+    )
+
+    # اجعل له كلمة مرور عشوائية عند الإنشاء (لن نحتاجها فعليًا)
+    if created:
+        demo_user.set_password(User.objects.make_random_password())
+        demo_user.save()
+
+    # يمكنك إعطاؤه صلاحيات مدير للتجربة (اختياري)
+    # demo_user.is_staff = True
+    # demo_user.is_superuser = True
+    # demo_user.save(update_fields=["is_staff", "is_superuser"])
+
+    # 3) تأكد من وجود UserProfile وربطه بالمدرسة التجريبية
+    profile, _ = UserProfile.objects.get_or_create(
+        user=demo_user,
+        defaults={"school": demo_school},
+    )
+    if profile.school != demo_school:
+        profile.school = demo_school
+        profile.save(update_fields=["school"])
+
+    # 4) تسجيل الدخول بهذا الحساب
+    login(request, demo_user, backend="django.contrib.auth.backends.ModelBackend")
+    messages.success(
+        request,
+        "تم تسجيل دخولك بحساب تجريبي. البيانات هنا لأغراض العرض فقط."
+    )
+    return redirect("dashboard:index")
 
 
 def logout_view(request):
