@@ -3,6 +3,9 @@
   var REFRESH_EVERY = parseFloat(body.dataset.refresh || "30") || 30;
   var STANDBY_SPEED = parseFloat(body.dataset.standby || "0.8") || 0.8;
   var PERIODS_SPEED = parseFloat(body.dataset.periodsSpeed || "0.5") || 0.5;
+  // عدد العناصر (البطاقات) التي عندها نُجبِر التمرير حتى لو لم يزد المحتوى عن ارتفاع الكرت.
+  var STANDBY_MIN_ITEMS_FOR_SCROLL = 4;
+  var PERIODS_MIN_ITEMS_FOR_SCROLL = 4;
   var SERVER_TOKEN = body.dataset.apiToken || "";
 
   var api = {
@@ -350,9 +353,14 @@
     if (!contentDiv) return;
     var contentHeight = contentDiv.offsetHeight;
     var viewHeight = viewport.offsetHeight;
-    if (contentHeight <= viewHeight + 3) {
+
+    // نُجبر التمرير إذا كان عدد حصص الانتظار كبيراً بما يكفي حتى لو لم يزد طول المحتوى عن ارتفاع الكرت.
+    var forceScroll = standbyItemsCache && standbyItemsCache.length >= STANDBY_MIN_ITEMS_FOR_SCROLL;
+
+    if (!forceScroll && contentHeight <= viewHeight + 4) {
       return;
     }
+
     var clone = contentDiv.cloneNode(true);
     clone.setAttribute("aria-hidden", "true");
     track.appendChild(clone);
@@ -385,9 +393,14 @@
     if (!contentDiv) return;
     var contentHeight = contentDiv.offsetHeight;
     var viewHeight = viewport.offsetHeight;
-    if (contentHeight <= viewHeight + 4) {
+
+    // نُجبر التمرير إذا كان عدد الحصص الجارية كبيراً بما يكفي حتى لو لم يزد طول المحتوى عن ارتفاع الكرت.
+    var forceScroll = periodItemsCache && periodItemsCache.length >= PERIODS_MIN_ITEMS_FOR_SCROLL;
+
+    if (!forceScroll && contentHeight <= viewHeight + 4) {
       return;
     }
+
     var clone = contentDiv.cloneNode(true);
     clone.setAttribute("aria-hidden", "true");
     track.appendChild(clone);
