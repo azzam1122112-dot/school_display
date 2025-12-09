@@ -350,7 +350,7 @@
     if (!contentDiv) return;
     var contentHeight = contentDiv.offsetHeight;
     var viewHeight = viewport.offsetHeight;
-    if (contentHeight <= viewHeight + 4) {
+    if (contentHeight <= viewHeight + 3) {
       return;
     }
     var clone = contentDiv.cloneNode(true);
