@@ -43,7 +43,7 @@ media/
 *.pot
 *.mo
 # مخرجات collectstatic المختلفة
-static/
+
 # تحذير: لا تتجاهل migrations؛ ضرورية للتاريخ الهيكلي
 # **لا تضف**: */migrations/**
 
