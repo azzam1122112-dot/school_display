@@ -138,7 +138,7 @@ if DEBUG:
 else:
     DATABASES = {
         "default": dj_database_url.parse(
-            os.environ.get("DATABASE_URL"),
+            "postgresql://school_display_db_3bi4_user:tUhOxEfaPPQet7VqD1hy8gjszD1uQKr2@dpg-d4rrh324d50c73b2cqt0-a/school_display_db_3bi4",
             conn_max_age=600,
             ssl_require=True,
         )
