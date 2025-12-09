@@ -7,7 +7,6 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-      python manage.py collectstatic --noinput
       python manage.py migrate --noinput
 
       if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
@@ -21,7 +20,7 @@ services:
       gunicorn config.asgi:application
       -k uvicorn.workers.UvicornWorker
       --bind 0.0.0.0:$PORT
-      --workers=3
+      --workers=1
       --timeout=120
       --log-file -
 
@@ -30,14 +29,19 @@ services:
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
+
       - key: SECRET_KEY
         generateValue: true
+
       - key: DEBUG
         value: "False"
+
       - key: ALLOWED_HOSTS
-        value: ".onrender.com"
+        value: "school-display-p8ec.onrender.com,.onrender.com"
+
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://*.onrender.com"
+        value: "https://school-display-p8ec.onrender.com"
+
       - key: TIME_ZONE
         value: "Asia/Riyadh"
 
