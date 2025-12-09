@@ -34,6 +34,7 @@ DEBUG = env_bool("DEBUG", "True")
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost,.onrender.com")
 
+# CSRF_TRUSTED_ORIGINS
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = _csrf_env
@@ -44,6 +45,10 @@ else:
         if h and h not in {"127.0.0.1", "localhost"}:
             CSRF_TRUSTED_ORIGINS.append(f"https://{h}")
             CSRF_TRUSTED_ORIGINS.append(f"https://*.{h}")
+
+# تفعيل / تعطيل Firebase عبر متغير بيئة واحد
+ENABLE_FIREBASE = env_bool("ENABLE_FIREBASE", "False")
+USE_FIREBASE = ENABLE_FIREBASE  # للتوافق مع أي استخدام سابق لاسم USE_FIREBASE
 
 
 INSTALLED_APPS = [
@@ -128,6 +133,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
+# قاعدة البيانات
 if DEBUG:
     DATABASES = {
         "default": {
@@ -136,9 +142,10 @@ if DEBUG:
         }
     }
 else:
+    # في الإنتاج نعتمد على DATABASE_URL من متغيرات البيئة
     DATABASES = {
-        "default": dj_database_url.parse(
-            "postgresql://school_display_db_3bi4_user:tUhOxEfaPPQet7VqD1hy8gjszD1uQKr2@dpg-d4rrh324d50c73b2cqt0-a/school_display_db_3bi4",
+        "default": dj_database_url.config(
+            env="DATABASE_URL",
             conn_max_age=600,
             ssl_require=True,
         )
@@ -169,6 +176,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
+# Cloudinary
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
     "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
@@ -176,8 +184,6 @@ CLOUDINARY_STORAGE = {
 }
 
 USE_CLOUD_STORAGE = not DEBUG
-USE_FIREBASE = not DEBUG
-
 
 STORAGES = {
     "default": {
@@ -205,6 +211,7 @@ WHITENOISE_USE_FINDERS = DEBUG
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# أمان و Proxy
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
@@ -287,6 +294,7 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://127.0.0.1:8000")
 
 
+# إعادة تأكيد إعدادات الأمان في بيئة الإنتاج
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
