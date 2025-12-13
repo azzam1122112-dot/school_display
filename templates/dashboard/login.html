@@ -1,230 +1,403 @@
+{% load static %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>تسجيل الدخول - لوحة التحكم</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .floating {
-            animation: floating 3s ease-in-out infinite;
-        }
-        @keyframes floating {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        .input-focus:focus {
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            border-color: #667eea;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>تسجيل الدخول — المنصّة</title>
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- (اختياري) ملف ألوان المنصة إن كان موجود -->
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+  <!-- Tailwind CDN (إذا منصتك مبنية على Tailwind محلي احذف هذا) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --bg1:#070a16;
+      --bg2:#0b1220;
+      --card:rgba(255,255,255,.06);
+      --stroke:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.70);
+      --muted2:rgba(255,255,255,.55);
+      --brand1:#4f46e5; /* indigo */
+      --brand2:#0ea5e9; /* sky */
+      --ok:#22c55e;
+    }
+    html,body{height:100%}
+    body{
+      font-family:"IBM Plex Sans Arabic", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 450px at 20% 10%, rgba(79,70,229,.22), transparent 60%),
+        radial-gradient(900px 450px at 80% 20%, rgba(14,165,233,.18), transparent 60%),
+        radial-gradient(700px 350px at 40% 95%, rgba(34,197,94,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      /* مهم: لا تمنع التمرير */
+      overflow-x:hidden;
+    }
+    .bgGrid::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 44px 44px;
+      opacity:.06;
+      pointer-events:none;
+      mask-image: radial-gradient(ellipse at center, black 35%, transparent 70%);
+    }
+    .glass{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      border:1px solid var(--stroke);
+      box-shadow: 0 24px 80px rgba(0,0,0,.35);
+      backdrop-filter: blur(12px);
+    }
+    .soft{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+    }
+    .inputX{
+      width:100%;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      padding: 12px 14px;
+      outline: none;
+      color: #e5e7eb;
+    }
+    .inputX:focus{
+      border-color: rgba(14,165,233,.55);
+      box-shadow: 0 0 0 4px rgba(14,165,233,.12);
+    }
+    .btnBrand{
+      background: linear-gradient(90deg, var(--brand1), var(--brand2));
+      box-shadow: 0 14px 40px rgba(79,70,229,.18);
+    }
+    .btnBrand:hover{ filter: brightness(1.05); }
+    .btnGhost{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .btnGhost:hover{ background: rgba(255,255,255,.10); }
+    .miniLine{ height:1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); }
+    .tag{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+    }
+  </style>
 </head>
-<body class="min-h-screen gradient-bg">
-    <!-- خلفية متحركة -->
-    <div class="fixed inset-0 overflow-hidden">
-        <div class="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl floating"></div>
-        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl floating" style="animation-delay: 1.5s;"></div>
-    </div>
 
-    <div class="relative z-10 w-full max-w-md mx-4">
-        <!-- بطاقة تسجيل الدخول -->
-        <div class="login-card rounded-2xl shadow-2xl overflow-hidden">
-            <!-- رأس البطاقة -->
-            <div class="bg-gradient-to-r from-blue-600 to-purple-700 p-6 text-center">
-                <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                    </svg>
-                </div>
-                <h1 class="text-2xl font-bold text-white mb-2">لوحة التحكم</h1>
-                <p class="text-blue-100 text-sm">نظام إدارة المدرسة</p>
+<body>
+  <div class="absolute inset-0 bgGrid pointer-events-none"></div>
+
+  <!-- مهم: ما فيه h-screen ولا overflow-hidden عشان التمرير يشتغل -->
+  <main class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-10 items-start">
+
+      <!-- Marketing -->
+      <section class="glass rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 tag text-xs">
+              <span class="inline-block h-2 w-2 rounded-full" style="background:var(--ok)"></span>
+              <span style="color:var(--muted)">تجربة سريعة • إعداد مرن • تحديث لحظي</span>
             </div>
 
-            <!-- نموذج الدخول -->
-            <form method="post" class="p-8">
-                {% csrf_token %}
-                
-                <!-- رسائل الخطأ -->
-                {% for message in messages %}
-                <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2 space-x-reverse">
-                    <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>{{ message }}</span>
-                </div>
-                {% endfor %}
+            <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold leading-tight">
+              لوحة العرض الذكية للمدارس
+            </h1>
 
-                <!-- حقل اسم المستخدم -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center">
-                        <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                        اسم المستخدم
-                    </label>
-                    <input 
-                        type="text" 
-                        name="username" 
-                        required 
-                        class="w-full px-4 py-3 rounded-xl border border-slate-300 input-focus transition-all duration-200 bg-white text-slate-700 placeholder-slate-400"
-                        placeholder="أدخل اسم المستخدم"
-                    >
-                </div>
+            <p class="mt-3 text-sm sm:text-base leading-relaxed" style="color:var(--muted)">
+              واجهة عرض احترافية لشاشات المدرسة: <span class="text-slate-100 font-semibold">الحصة الحالية</span>،
+              <span class="text-slate-100 font-semibold">حصص الانتظار</span>، التنبيهات، والمتميزين…
+              بتصميم واضح وجذاب مع ثيمات قابلة للتخصيص من الإعدادات.
+            </p>
+          </div>
 
-                <!-- حقل كلمة المرور -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center">
-                        <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                        كلمة المرور
-                    </label>
-                    <input 
-                        type="password" 
-                        name="password" 
-                        required 
-                        class="w-full px-4 py-3 rounded-xl border border-slate-300 input-focus transition-all duration-200 bg-white text-slate-700 placeholder-slate-400"
-                        placeholder="أدخل كلمة المرور"
-                    >
-                </div>
-
-                <!-- تذكرني (اختياري) -->
-                <div class="mb-6 flex items-center justify-between">
-                    <label class="flex items-center space-x-2 space-x-reverse text-sm text-slate-600 cursor-pointer">
-                        <input type="checkbox" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                        <span>تذكرني</span>
-                    </label>
-                    <a href="#" class="text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200">
-                        نسيت كلمة المرور؟
-                    </a>
-                </div>
-
-                <!-- زر الدخول -->
-                <button 
-                    type="submit"
-                    class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center space-x-2 space-x-reverse"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                    </svg>
-                    <span>تسجيل الدخول</span>
-                </button>
-
-                <!-- فاصل -->
-                <div class="relative my-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-slate-200"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-slate-500">أو</span>
-                    </div>
-                </div>
-
-                <!-- زر التجربة -->
-                <a href="{% url 'dashboard:demo_login' %}" 
-                   class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl border border-indigo-200 transition-all duration-200 flex items-center justify-center space-x-2 space-x-reverse group">
-                    <span class="text-xl group-hover:scale-110 transition-transform duration-200">🚀</span>
-                    <span>جرب النظام الآن (نسخة تجريبية)</span>
-                </a>
-            </form>
-
-            <!-- تذييل البطاقة -->
-            <div class="px-8 py-4 bg-slate-50 border-t border-slate-200 text-center">
-                <p class="text-sm text-slate-600">
-                    نظام إدارة المدرسة © 2025
-                    <span class="block text-xs text-slate-500 mt-1">جميع الحقوق محفوظة</span>
-                </p>
-            </div>
+          <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
+            <span class="text-xl">🏫</span>
+          </div>
         </div>
 
-        <!-- معلومات إضافية -->
-        <div class="mt-6 text-center">
-            <div class="text-white/80 text-sm space-y-1">
-                <p>للحصول على مساعدة، يرجى التواصل مع مدير النظام</p>
-                <p class="text-white/60 text-xs">الإصدار 2.1.0</p>
+        <div class="mt-6 miniLine"></div>
+
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="rounded-2xl p-4 soft">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">⚡</span>
+              <h3 class="font-semibold">تحديثات سلسة</h3>
             </div>
+            <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
+              تحديث تلقائي دون تدخل، مع إمكانية ضبط سرعة التحديث حسب بيئة المدرسة.
+            </p>
+          </div>
+
+          <div class="rounded-2xl p-4 soft">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🎨</span>
+              <h3 class="font-semibold">ثيمات موحّدة</h3>
+            </div>
+            <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
+              ألوان وخلفيات من لوحة الإعدادات لتناسب هوية المدرسة.
+            </p>
+          </div>
+
+          <div class="rounded-2xl p-4 soft">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📢</span>
+              <h3 class="font-semibold">تنبيهات وإعلانات</h3>
+            </div>
+            <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
+              عرض التنبيهات بطريقة واضحة ومشدودة للانتباه على الشاشات الكبيرة.
+            </p>
+          </div>
+
+          <div class="rounded-2xl p-4 soft">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🔒</span>
+              <h3 class="font-semibold">آمن ومخصص</h3>
+            </div>
+            <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
+              عزل بيانات المدارس وروابط عرض بتوكن لحماية الوصول.
+            </p>
+          </div>
         </div>
+
+        <div class="mt-6 miniLine"></div>
+
+        <div class="mt-6 flex flex-wrap gap-2">
+          <span class="text-xs tag rounded-full px-3 py-1.5">RTL عربي</span>
+          <span class="text-xs tag rounded-full px-3 py-1.5">شاشات 55"+</span>
+          <span class="text-xs tag rounded-full px-3 py-1.5">2 شاشة/مدرسة</span>
+          <span class="text-xs tag rounded-full px-3 py-1.5">إعداد سريع</span>
+        </div>
+
+      </section>
+
+      <!-- Login + WhatsApp Lead -->
+      <section class="space-y-6">
+
+        <!-- Login -->
+        <div class="glass rounded-3xl p-6 sm:p-8">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-2xl font-bold">تسجيل الدخول</h2>
+              <p class="mt-1 text-sm" style="color:var(--muted)">لإدارة المنصة وإعدادات المدارس والشاشات.</p>
+            </div>
+            <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
+              <span class="text-xl">🔑</span>
+            </div>
+          </div>
+
+          {% if messages %}
+            <div class="mt-4 space-y-2">
+              {% for message in messages %}
+                <div class="rounded-2xl px-4 py-3 soft text-sm">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <form class="mt-5 space-y-4" method="post" autocomplete="on" novalidate>
+            {% csrf_token %}
+            {% if next %}
+              <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <div>
+              <label class="block text-sm font-medium mb-2">اسم المستخدم</label>
+              <input
+                class="inputX"
+                type="text"
+                name="username"
+                autocomplete="username"
+                placeholder="اكتب اسم المستخدم"
+                maxlength="64"
+                required
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">كلمة المرور</label>
+              <input
+                class="inputX"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                placeholder="••••••••"
+                maxlength="128"
+                required
+              >
+            </div>
+
+            <button type="submit" class="w-full rounded-2xl px-4 py-3 font-semibold btnBrand">
+              دخول النظام
+            </button>
+
+            <div class="mt-4 rounded-2xl px-4 py-3 soft text-sm">
+              <div class="flex items-center gap-2">
+                <span>💬</span>
+                <span class="font-semibold">تريد اشتراك أو تجربة؟</span>
+              </div>
+              <p class="mt-1 text-sm" style="color:var(--muted)">
+                املأ النموذج بالأسفل وسيتم فتح واتساب برسالة جاهزة.
+              </p>
+            </div>
+          </form>
+        </div>
+
+        <!-- WhatsApp Lead Form -->
+        <div class="glass rounded-3xl p-6 sm:p-8">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xl font-bold">طلب اشتراك / تجربة</h3>
+              <p class="mt-1 text-sm" style="color:var(--muted)">
+                نموذج سريع للزوار — إرسال واتساب بنقرة واحدة.
+              </p>
+            </div>
+            <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
+              <span class="text-xl">📩</span>
+            </div>
+          </div>
+
+          <form id="leadForm" class="mt-5 space-y-4" onsubmit="return false" autocomplete="on">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium mb-2">اسمك</label>
+                <input class="inputX" type="text" id="leadName" maxlength="60" placeholder="مثال: أحمد" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">رقم الجوال</label>
+                <input class="inputX" type="tel" id="leadPhone" inputmode="tel" maxlength="20" placeholder="05xxxxxxxx" required>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium mb-2">اسم المدرسة</label>
+                <input class="inputX" type="text" id="leadSchool" maxlength="80" placeholder="مدرسة ..." required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">المدينة (اختياري)</label>
+                <input class="inputX" type="text" id="leadCity" maxlength="40" placeholder="الرياض">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">تفاصيل الطلب</label>
+              <textarea class="inputX" id="leadMsg" rows="4" maxlength="500"
+                        placeholder="مثال: نريد تجربة أسبوع + ثيم للبنات + سرعة تحديث 15 ثانية..."
+                        required></textarea>
+              <p class="mt-2 text-xs" style="color:var(--muted2)">
+                لن يتم حفظ البيانات في هذه الصفحة — يتم فتح واتساب برسالة جاهزة فقط.
+              </p>
+            </div>
+
+            <button type="button" id="sendWa"
+                    class="w-full rounded-2xl px-4 py-3 font-semibold btnBrand">
+              إرسال عبر واتساب
+            </button>
+
+            <div id="leadError" class="hidden rounded-2xl px-4 py-3 soft text-rose-200 text-sm" style="background:rgba(244,63,94,.08); border-color: rgba(244,63,94,.25)"></div>
+
+            <div class="mt-3 text-center text-xs" style="color:var(--muted2)">
+              بالضغط سيتم فتح واتساب على الرقم: <span class="text-slate-100 font-semibold">966546868219</span>
+            </div>
+          </form>
+        </div>
+
+        <footer class="text-center text-xs" style="color:var(--muted2)">
+          © {{ now|date:"Y" }} — جميع الحقوق محفوظة
+        </footer>
+
+      </section>
     </div>
+  </main>
 
-    <script>
-        // إضافة تأثيرات تفاعلية
-        document.addEventListener('DOMContentLoaded', function() {
-            // تأثيرات عند تحميل الصفحة
-            const form = document.querySelector('form');
-            form.style.opacity = '0';
-            form.style.transform = 'translateY(20px)';
-            form.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            
-            setTimeout(() => {
-                form.style.opacity = '1';
-                form.style.transform = 'translateY(0)';
-            }, 200);
+  <script>
+    (function(){
+      "use strict";
+      const WA_NUMBER = "966546868219";
+      const $ = (id) => document.getElementById(id);
 
-            // تأثير focus للحقول
-            const inputs = document.querySelectorAll('input[type="text"], input[type="password"]');
-            inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.parentElement.classList.add('ring-2', 'ring-blue-500/20');
-                });
-                
-                input.addEventListener('blur', function() {
-                    this.parentElement.classList.remove('ring-2', 'ring-blue-500/20');
-                });
-            });
+      function cleanText(v){
+        const s = String(v || "").trim();
+        return s.replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+      }
 
-            // تأثير عند الضغط على زر الدخول
-            const loginBtn = document.querySelector('button[type="submit"]');
-            loginBtn.addEventListener('click', function(e) {
-                const username = document.querySelector('input[name="username"]').value;
-                const password = document.querySelector('input[name="password"]').value;
-                
-                if (!username || !password) {
-                    e.preventDefault();
-                    this.style.transform = 'translateX(10px)';
-                    setTimeout(() => {
-                        this.style.transform = 'translateX(-10px)';
-                        setTimeout(() => {
-                            this.style.transform = 'translateX(0)';
-                        }, 100);
-                    }, 100);
-                } else {
-                    this.innerHTML = `
-                        <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4m8-10h-4M6 12H2m15.364-7.364l-2.828 2.828M7.464 17.536L4.636 20.364M17.536 7.464l2.828-2.828M4.636 3.636l2.828 2.828"></path>
-                        </svg>
-                        <span>جاري الدخول...</span>
-                    `;
-                }
-            });
-        });
+      function validatePhone(v){
+        const s = cleanText(v).replace(/[^\d+]/g, "");
+        return s.length >= 9;
+      }
 
-        // إضافة تأثيرات للخلفية
-        document.addEventListener('mousemove', function(e) {
-            const cards = document.querySelectorAll('.floating');
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
-            
-            cards.forEach((card, index) => {
-                const speed = index === 0 ? 0.02 : 0.01;
-                const xMove = x * speed * 100;
-                const yMove = y * speed * 100;
-                
-                card.style.transform = `translate(${xMove}px, ${yMove}px)`;
-            });
-        });
-    </script>
+      function showError(text){
+        const box = $("leadError");
+        box.textContent = text;
+        box.classList.remove("hidden");
+      }
+
+      function clearError(){
+        const box = $("leadError");
+        box.textContent = "";
+        box.classList.add("hidden");
+      }
+
+      function buildMessage(){
+        const name   = cleanText($("leadName").value);
+        const phone  = cleanText($("leadPhone").value);
+        const school = cleanText($("leadSchool").value);
+        const city   = cleanText($("leadCity").value);
+        const msg    = cleanText($("leadMsg").value);
+
+        const lines = [];
+        lines.push("السلام عليكم،");
+        lines.push("أرغب في الاشتراك/تجربة نظام لوحة العرض الذكية للمدارس.");
+        lines.push("");
+        lines.push("— بيانات التواصل:");
+        lines.push("الاسم: " + name);
+        lines.push("الجوال: " + phone);
+        lines.push("");
+        lines.push("— بيانات المدرسة:");
+        lines.push("المدرسة: " + school);
+        if (city) lines.push("المدينة: " + city);
+        lines.push("");
+        lines.push("— التفاصيل:");
+        lines.push(msg);
+        lines.push("");
+        lines.push("شاكر لكم.");
+        return lines.join("\n");
+      }
+
+      function guard(){
+        clearError();
+        const name = cleanText($("leadName").value);
+        const phone = cleanText($("leadPhone").value);
+        const school = cleanText($("leadSchool").value);
+        const msg = cleanText($("leadMsg").value);
+
+        if (!name || name.length < 2) return showError("فضلاً اكتب اسمًا صحيحًا."), false;
+        if (!validatePhone(phone)) return showError("فضلاً اكتب رقم جوال صحيح."), false;
+        if (!school || school.length < 2) return showError("فضلاً اكتب اسم المدرسة."), false;
+        if (!msg || msg.length < 5) return showError("فضلاً اكتب تفاصيل الطلب."), false;
+        return true;
+      }
+
+      $("sendWa").addEventListener("click", function(){
+        if (!guard()) return;
+        const text = buildMessage();
+        const url = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(text);
+        window.open(url, "_blank", "noopener,noreferrer");
+      });
+    })();
+  </script>
 </body>
 </html>
