@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#07231b">
   <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
 
-  <!-- Optional favicon -->
-  <link rel="icon" href="{% static 'favicon.ico' %}">
+  <!-- (تم حذف favicon لتجنب خطأ manifest إذا الملف غير موجود) -->
+  {# <link rel="icon" href="{% static 'favicon.ico' %}"> #}
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,7 +153,6 @@
       font-size:32px;
     }
 
-    /* tiny animations */
     @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
     .floating{ animation: float 3s ease-in-out infinite; }
 
@@ -240,22 +239,19 @@
           </a>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">+50</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">مدرسة</div>
+        <!-- ✅ تم استبدال الأرقام الوهمية ببطاقات مزايا بدون أرقام -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+          <div class="soft rounded-2xl p-5">
+            <div class="text-lg font-extrabold">⚡ خفيف وسريع</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">تحديثات منتظمة ومصممة لتناسب بيئة المدارس.</div>
           </div>
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">99.8%</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">توفر</div>
+          <div class="soft rounded-2xl p-5">
+            <div class="text-lg font-extrabold">🔐 آمن ومعزول</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">روابط عرض بتوكن + عزل بيانات كل مدرسة.</div>
           </div>
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">24/7</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">دعم</div>
-          </div>
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">5د</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">إعداد</div>
+          <div class="soft rounded-2xl p-5">
+            <div class="text-lg font-extrabold">🎨 هوية قابلة للتخصيص</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">ألوان/خلفية/شعار من لوحة الإعدادات.</div>
           </div>
         </div>
 
@@ -277,8 +273,6 @@
           <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
         </div>
 
-        <!-- IMPORTANT:
-             ضع رابط يوتيوب هنا (أي رابط)، السكربت سيستخرج الـID تلقائيًا -->
         <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
           <iframe
             id="ytFrame"
@@ -343,7 +337,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
-              <input name="name" type="text" class="inputX" placeholder="  منصور" required>
+              <input name="name" type="text" class="inputX" placeholder="منصور" required>
             </div>
             <div>
               <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
@@ -462,7 +456,7 @@
       });
     });
 
-    // ---------- Features (static - no Django context needed) ----------
+    // ---------- Features ----------
     const features = [
       { icon:'📅', title:'جدول حصص ذكي', description:'عرض ديناميكي للحصص مع تمييز الحالية والتالية بتحديث تلقائي.' },
       { icon:'📢', title:'مركز الإعلانات', description:'تنبيهات مهمة وفورية تظهر على الشاشات بمجرد نشرها.' },
@@ -486,7 +480,6 @@
     // ---------- YouTube (Reliable lazy autoplay) ----------
     function extractYouTubeId(url) {
       try {
-        // supports: https://www.youtube.com/watch?v=ID , youtu.be/ID , embed/ID
         const u = new URL(url);
         if (u.hostname.includes('youtu.be')) return u.pathname.replace('/', '');
         if (u.searchParams.get('v')) return u.searchParams.get('v');
@@ -504,12 +497,10 @@
     const youtubeUrl = videoWrap.getAttribute('data-youtube-url') || '';
     const videoId = extractYouTubeId(youtubeUrl) || 'yqa9aT460GM';
 
-    // preload non-autoplay (privacy-friendly)
     const baseSrc = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
     frame.src = baseSrc;
 
     function playYouTube() {
-      // autoplay only on user gesture (click)
       frame.src = baseSrc + '&autoplay=1';
       overlay.classList.add('hide');
       setTimeout(() => overlay.style.display = 'none', 250);
