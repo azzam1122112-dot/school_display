@@ -12,31 +12,21 @@
                 <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
                 <p class="text-slate-600">إدارة شاشات العرض وروابط الوصول</p>
             </div>
-<<<<<<< HEAD
-            {% if screens|length == 0 %}
-            <a href="{% url 'dashboard:screen_create' %}"
-=======
             {% if can_create_screen %}
-            <a href="{% url 'dashboard:screen_create' %}" 
->>>>>>> 90434e20a90c243ff382d63f84ef471c9a1b3dee
+            <a href="{% url 'dashboard:screen_create' %}"
                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 <span>شاشة جديدة</span>
             </a>
-<<<<<<< HEAD
-            {% else %}
-            <div class="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-300">
-                لا يمكن إضافة أكثر من شاشة واحدة لهذه المدرسة
-=======
             {% endif %}
             {% if show_screen_limit_message %}
-            <div class="mt-2 px-4 py-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-xl text-sm font-semibold">
-                لا يمكن إنشاء أكثر من شاشة واحدة لهذه المدرسة.
->>>>>>> 90434e20a90c243ff382d63f84ef471c9a1b3dee
+            <div class="mt-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-300">
+                لا يمكن إضافة أكثر من شاشة واحدة لهذه المدرسة
             </div>
             {% endif %}
+        </div>
         </div>
     </div>
 
@@ -81,14 +71,14 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?c={{ screen.short_code }}" 
-                                       data-full-link="{{ request.scheme }}://{{ request.get_host }}/?c={{ screen.short_code }}"
+                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}" 
+                                       data-full-link="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}"
                                        class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-48 text-slate-600 select-all"
                                        id="link-{{ screen.id }}">
                                 <button onclick="copyLink('link-{{ screen.id }}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
                                     نسخ
                                 </button>
-                                <a href="/?c={{ screen.short_code }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
+                                <a href="/?token={{ screen.token }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
                                     فتح
                                 </a>
                             </div>

@@ -826,7 +826,13 @@ def standby_import(request):
 def screen_list(request):
     school = request.user.profile.school
     qs = DisplayScreen.objects.filter(school=school).order_by("-created_at")
-    return render(request, "dashboard/screen_list.html", {"screens": qs})
+    can_create_screen = qs.count() == 0
+    show_screen_limit_message = not can_create_screen
+    return render(request, "dashboard/screen_list.html", {
+        "screens": qs,
+        "can_create_screen": can_create_screen,
+        "show_screen_limit_message": show_screen_limit_message,
+    })
 
 
 @manager_required
