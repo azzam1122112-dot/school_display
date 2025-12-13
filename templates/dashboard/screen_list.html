@@ -12,13 +12,19 @@
                 <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
                 <p class="text-slate-600">إدارة شاشات العرض وروابط الوصول</p>
             </div>
-            <a href="{% url 'dashboard:screen_create' %}" 
+            {% if screens|length == 0 %}
+            <a href="{% url 'dashboard:screen_create' %}"
                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 <span>شاشة جديدة</span>
             </a>
+            {% else %}
+            <div class="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-300">
+                لا يمكن إضافة أكثر من شاشة واحدة لهذه المدرسة
+            </div>
+            {% endif %}
         </div>
     </div>
 

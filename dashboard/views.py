@@ -832,6 +832,11 @@ def screen_list(request):
 @manager_required
 def screen_create(request):
     school = request.user.profile.school
+    # Check if a screen already exists for this school
+    if DisplayScreen.objects.filter(school=school).exists():
+        messages.warning(request, "لا يمكن إنشاء أكثر من شاشة واحدة لهذه المدرسة.")
+        return redirect("dashboard:screen_list")
+
     if request.method == "POST":
         form = DisplayScreenForm(request.POST)
         if form.is_valid():
