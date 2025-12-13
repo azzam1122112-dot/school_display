@@ -7,68 +7,337 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-6">
 
-  <div>
-    <h1 class="text-2xl md:text-3xl font-bold text-slate-900">{{ title }}</h1>
-    <p class="text-slate-500 mt-1 text-sm md:text-base">
-      قم بتعبئة بيانات المدرسة الأساسية مثل الاسم، الرابط، وحالة الاشتراك.
-    </p>
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        قم بتعبئة بيانات المدرسة الأساسية. سيتم توليد الرابط تلقائيًا اعتمادًا على الـ slug.
+      </p>
+    </div>
+
+    <a href="{% url 'dashboard:system_schools_list' %}"
+       class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+              bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+      <span class="text-base">↩</span>
+      <span>العودة للقائمة</span>
+    </a>
   </div>
 
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+  <!-- Tips Card -->
+  <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
+    <div class="flex items-start gap-3">
+      <div class="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+        ✅
+      </div>
+      <div class="space-y-1">
+        <p class="text-sm font-bold text-slate-900">نصيحة سريعة</p>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          استخدم اسمًا واضحًا للمدرسة، وسيتم توليد <span class="font-semibold">slug</span> تلقائيًا.
+          يمكنك تعديله يدويًا لاحقًا، وسيظهر <span class="font-semibold">رابط المدرسة</span> فورًا.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+
+    <!-- Card Head -->
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="h-9 w-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+        <div class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
           🏫
         </div>
         <div>
-          <p class="text-sm font-semibold text-slate-900">بيانات المدرسة</p>
-          <p class="text-xs text-slate-500">تأكد من إدخال slug فريد لكل مدرسة.</p>
+          <p class="text-sm font-extrabold text-slate-900">بيانات المدرسة</p>
+          <p class="text-xs text-slate-500">تأكد من أن الـ slug فريد — وسيُستخدم في رابط المدرسة.</p>
         </div>
       </div>
+
+      <span class="hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold
+                   bg-slate-100 text-slate-700">
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        حفظ آمن
+      </span>
     </div>
 
-    <form method="post" enctype="multipart/form-data" class="p-5 space-y-4">
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5" id="schoolForm" novalidate>
       {% csrf_token %}
 
       {% if form.non_field_errors %}
-      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div class="font-bold mb-1">تعذّر الحفظ</div>
         {% for error in form.non_field_errors %}
-          <p>{{ error }}</p>
+          <p class="leading-relaxed">{{ error }}</p>
         {% endfor %}
       </div>
       {% endif %}
 
-      {% for field in form %}
-      <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-700">
-          {{ field.label }}
-        </label>
-        <div class="space-y-1">
-          {{ field }}
-          {% if field.help_text %}
-          <p class="text-[11px] text-slate-400">{{ field.help_text }}</p>
-          {% endif %}
-          {% if field.errors %}
-          <p class="text-xs text-rose-600 mt-1">
-            {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
-          </p>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
+      {# --------- حقول النموذج مع تحسين العرض --------- #}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-      <div class="flex items-center justify-end gap-3 pt-2">
+        {% for field in form %}
+          {# نعرض slug بحجم كامل لأنه مرتبط بالرابط #}
+          {% if field.name == "slug" %}
+            <div class="md:col-span-2 space-y-2">
+              <label class="block text-xs font-extrabold text-slate-700">
+                {{ field.label }}
+              </label>
+
+              <div class="relative">
+                {{ field }}
+                <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs">
+                  slug
+                </div>
+              </div>
+
+              {% if field.help_text %}
+                <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+              {% else %}
+                <p class="text-[11px] text-slate-500">
+                  سيتم توليده تلقائيًا من اسم المدرسة، ويمكنك تعديله يدويًا.
+                </p>
+              {% endif %}
+
+              {% if field.errors %}
+                <p class="text-xs text-rose-600">
+                  {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                </p>
+              {% endif %}
+
+              <!-- Generated Link Preview -->
+              <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div class="space-y-1">
+                    <div class="text-xs font-extrabold text-slate-700">رابط المدرسة (يُحدّث تلقائيًا)</div>
+                    <div class="font-mono text-sm text-slate-800 break-all" id="schoolUrlPreview">—</div>
+                    <div class="text-[11px] text-slate-500">
+                      انسخ الرابط وشاركه أو استخدمه داخل لوحة العرض حسب إعداداتك.
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <button type="button"
+                            id="copySchoolUrl"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                                   bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+                      📋 نسخ
+                    </button>
+                    <a href="#"
+                       id="openSchoolUrl"
+                       target="_blank"
+                       rel="noopener"
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                              bg-gradient-to-r from-sky-600 to-sky-700 text-white shadow-sm hover:shadow-md">
+                      🔗 فتح
+                    </a>
+                  </div>
+                </div>
+
+                <div id="copyHint" class="mt-3 hidden text-xs font-semibold text-emerald-700">
+                  ✅ تم نسخ الرابط
+                </div>
+                <div id="copyError" class="mt-3 hidden text-xs font-semibold text-rose-700">
+                  ⚠️ لم يتم النسخ — انسخ يدويًا من الرابط أعلاه
+                </div>
+              </div>
+            </div>
+
+          {% else %}
+            <div class="space-y-2">
+              <label class="block text-xs font-extrabold text-slate-700">
+                {{ field.label }}
+              </label>
+
+              {{ field }}
+
+              {% if field.help_text %}
+                <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+              {% endif %}
+
+              {% if field.errors %}
+                <p class="text-xs text-rose-600">
+                  {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                </p>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
         <a href="{% url 'dashboard:system_schools_list' %}"
-           class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">
+           class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200">
           إلغاء
         </a>
         <button type="submit"
-                class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg">
+                class="px-5 py-2.5 rounded-xl text-sm font-extrabold text-white
+                       bg-gradient-to-r from-emerald-500 to-emerald-600
+                       hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg">
           حفظ
         </button>
       </div>
+
+      <!-- Local styling for Django default widgets (بدون أي مكتبة) -->
+      <style>
+        /* يحسّن شكل مدخلات Django الافتراضية داخل هذا النموذج فقط */
+        #schoolForm input[type="text"],
+        #schoolForm input[type="email"],
+        #schoolForm input[type="url"],
+        #schoolForm input[type="number"],
+        #schoolForm input[type="tel"],
+        #schoolForm input[type="password"],
+        #schoolForm select,
+        #schoolForm textarea {
+          width: 100%;
+          border-radius: 14px;
+          border: 1px solid rgb(226 232 240);
+          background: rgb(255 255 255);
+          padding: 12px 12px;
+          font-size: 14px;
+          line-height: 1.25rem;
+          color: rgb(15 23 42);
+          outline: none;
+          transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+        }
+        #schoolForm textarea { min-height: 120px; resize: vertical; }
+
+        #schoolForm input:focus,
+        #schoolForm select:focus,
+        #schoolForm textarea:focus {
+          border-color: rgb(56 189 248);
+          box-shadow: 0 0 0 4px rgba(56, 189, 248, .18);
+          background: rgb(248 250 252);
+        }
+
+        #schoolForm input[type="file"]{
+          width:100%;
+          border-radius:14px;
+          border: 1px dashed rgb(203 213 225);
+          padding: 12px;
+          background: rgb(248 250 252);
+        }
+
+        /* checkbox */
+        #schoolForm input[type="checkbox"]{
+          width: 18px;
+          height: 18px;
+          border-radius: 6px;
+          border: 1px solid rgb(203 213 225);
+        }
+      </style>
+
+      <!-- Link generator JS -->
+      <script>
+        (function () {
+          "use strict";
+
+          // غيّر هذا المسار إذا كان رابط المدرسة مختلف عندك
+          const PATH_TEMPLATE = "/schools/{slug}/";
+
+          const form = document.getElementById("schoolForm");
+          if (!form) return;
+
+          const nameEl = document.getElementById("id_name");
+          const slugEl = document.getElementById("id_slug");
+
+          const previewEl = document.getElementById("schoolUrlPreview");
+          const copyBtn = document.getElementById("copySchoolUrl");
+          const openBtn = document.getElementById("openSchoolUrl");
+          const copyHint = document.getElementById("copyHint");
+          const copyError = document.getElementById("copyError");
+
+          // origin
+          const isSecure = "{{ request.is_secure|yesno:'1,0' }}" === "1";
+          const origin = (isSecure ? "https://" : "http://") + "{{ request.get_host }}";
+
+          // هل المستخدم عدّل slug يدويًا؟
+          let slugTouched = false;
+          if (slugEl) {
+            slugEl.addEventListener("input", function () {
+              slugTouched = true;
+              updatePreview();
+            });
+          }
+
+          // توليد slug (يدعم العربي + الأرقام + -)
+          function makeSlug(value) {
+            const s = String(value || "").trim();
+            if (!s) return "";
+            // إزالة الرموز غير المناسبة + توحيد الفراغات إلى "-"
+            const cleaned = s
+              .replace(/[\u064B-\u065F]/g, "")             // تشكيل عربي
+              .replace(/[`~!@#$%^&*()+=\[\]{};:'"\\|,.<>\/?]/g, " ")
+              .replace(/\s+/g, "-")
+              .replace(/-+/g, "-")
+              .replace(/^-|-$/g, "");
+
+            // السماح: أحرف عربية + لاتينية + أرقام + -
+            return cleaned.replace(/[^0-9A-Za-z\u0600-\u06FF-]/g, "").toLowerCase();
+          }
+
+          function buildUrl(slug) {
+            const safeSlug = String(slug || "").trim();
+            if (!safeSlug) return "";
+            const path = PATH_TEMPLATE.replace("{slug}", encodeURIComponent(safeSlug));
+            return origin + path;
+          }
+
+          function updatePreview() {
+            const slug = slugEl ? slugEl.value : "";
+            const url = buildUrl(slug);
+
+            if (previewEl) previewEl.textContent = url || "—";
+            if (openBtn) {
+              openBtn.href = url || "#";
+              openBtn.classList.toggle("opacity-50", !url);
+              openBtn.classList.toggle("pointer-events-none", !url);
+            }
+          }
+
+          // عند كتابة الاسم: ولّد slug تلقائيًا إذا لم يتم لمسه يدويًا
+          if (nameEl && slugEl) {
+            nameEl.addEventListener("input", function () {
+              if (slugTouched) return;
+              const nextSlug = makeSlug(nameEl.value);
+              slugEl.value = nextSlug;
+              updatePreview();
+            });
+          }
+
+          // Copy
+          if (copyBtn) {
+            copyBtn.addEventListener("click", async function () {
+              copyHint.classList.add("hidden");
+              copyError.classList.add("hidden");
+
+              const slug = slugEl ? slugEl.value : "";
+              const url = buildUrl(slug);
+              if (!url) {
+                copyError.classList.remove("hidden");
+                return;
+              }
+
+              try {
+                await navigator.clipboard.writeText(url);
+                copyHint.classList.remove("hidden");
+                setTimeout(() => copyHint.classList.add("hidden"), 1800);
+              } catch (e) {
+                copyError.classList.remove("hidden");
+              }
+            });
+          }
+
+          // init
+          updatePreview();
+        })();
+      </script>
+
     </form>
   </div>
 

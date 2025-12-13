@@ -12,6 +12,7 @@
                 <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
                 <p class="text-slate-600">إدارة شاشات العرض وروابط الوصول</p>
             </div>
+            {% if can_create_screen %}
             <a href="{% url 'dashboard:screen_create' %}" 
                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,6 +20,12 @@
                 </svg>
                 <span>شاشة جديدة</span>
             </a>
+            {% endif %}
+            {% if show_screen_limit_message %}
+            <div class="mt-2 px-4 py-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-xl text-sm font-semibold">
+                لا يمكن إنشاء أكثر من شاشة واحدة لهذه المدرسة.
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -63,13 +70,14 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}" 
+                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?c={{ screen.short_code }}" 
+                                       data-full-link="{{ request.scheme }}://{{ request.get_host }}/?c={{ screen.short_code }}"
                                        class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-48 text-slate-600 select-all"
                                        id="link-{{ screen.id }}">
                                 <button onclick="copyLink('link-{{ screen.id }}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
                                     نسخ
                                 </button>
-                                <a href="/?token={{ screen.token }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
+                                <a href="/?c={{ screen.short_code }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
                                     فتح
                                 </a>
                             </div>
@@ -107,10 +115,9 @@
 <script>
 function copyLink(id) {
     var copyText = document.getElementById(id);
-    copyText.select();
-    copyText.setSelectionRange(0, 99999); 
-    navigator.clipboard.writeText(copyText.value);
-    alert("تم نسخ الرابط: " + copyText.value);
+    var fullLink = copyText.getAttribute('data-full-link') || copyText.value;
+    navigator.clipboard.writeText(fullLink);
+    alert("تم نسخ الرابط: " + fullLink);
 }
 </script>
 {% endblock %}
