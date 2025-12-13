@@ -6,15 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07231b">
   <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
-
+  
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-
-  <!-- Tailwind (إذا عندك Tailwind محلي احذف هذا) -->
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
+  
+  <!-- YouTube Embed API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  
   <style>
     :root{
       --bg1:#04150f;      /* deep green */
@@ -53,69 +56,171 @@
     .soft{
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.05);
+      transition: all 0.3s ease;
+    }
+
+    .soft:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
     }
 
     .btnBrand{
       background: linear-gradient(90deg, rgba(31,157,85,1), rgba(34,197,94,1));
       box-shadow:0 16px 44px rgba(31,157,85,.22);
-      transition: filter 0.2s ease;
+      transition: all 0.3s ease;
     }
-    .btnBrand:hover{ filter:brightness(1.06); }
+    .btnBrand:hover{ 
+      filter:brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow:0 20px 50px rgba(31,157,85,.3);
+    }
 
     .btnGold{
       background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
       color:#1b1b1b;
       box-shadow:0 16px 44px rgba(212,175,55,.18);
-      transition: filter 0.2s ease;
+      transition: all 0.3s ease;
     }
-    .btnGold:hover{ filter:brightness(1.03); }
+    .btnGold:hover{ 
+      filter:brightness(1.05);
+      transform: translateY(-2px);
+    }
 
     .btnGhost{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
-      transition: background 0.2s ease;
+      transition: all 0.3s ease;
     }
-    .btnGhost:hover{ background: rgba(255,255,255,.10); }
+    .btnGhost:hover{ 
+      background: rgba(255,255,255,.12);
+      transform: translateY(-2px);
+    }
 
     .tag{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
     }
 
-    .miniLine{ height:1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); }
+    .miniLine{ 
+      height:1px; 
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); 
+    }
 
     .inputX{
       width:100%;
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
       border-radius:16px;
-      padding:12px 14px;
+      padding:14px 16px;
       outline:none;
       color:#e5e7eb;
+      font-size:15px;
       transition: all 0.25s ease;
     }
     .inputX:focus{
-      border-color: rgba(34,197,94,.55);
-      box-shadow: 0 0 0 4px rgba(34,197,94,.12);
+      border-color: rgba(34,197,94,.65);
+      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
+      background: rgba(255,255,255,.09);
     }
 
-    /* تحسينات للفيديو */
+    /* Video Container */
     .video-container {
       position: relative;
       width: 100%;
-      padding-bottom: 56.25%; /* نسبة 16:9 */
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
       border-radius: 20px;
       overflow: hidden;
-      background: rgba(0,0,0,.2);
+      background: #000;
     }
-    .video-container iframe,
-    .video-container video {
+    
+    .video-container iframe {
       position: absolute;
-      top:0;
-      left:0;
-      width:100%;
-      height:100%;
-      border:none;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 35, 27, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .video-container:hover .video-overlay {
+      opacity: 1;
+    }
+    
+    .play-btn {
+      width: 80px;
+      height: 80px;
+      background: var(--green2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 10px 40px rgba(34, 197, 94, 0.4);
+      margin-bottom: 20px;
+    }
+    
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    
+    .stats-counter {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--green2), var(--sky));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .floating {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .video-container {
+        border-radius: 16px;
+      }
+      .play-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+      }
+      .feature-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -123,333 +228,417 @@
 <body>
   <!-- Header -->
   <header class="relative">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-8">
-      <div class="glass rounded-3xl px-5 sm:px-7 py-4 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl">🏫</div>
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8">
+      <div class="glass rounded-3xl px-6 sm:px-8 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
           <div>
-            <div class="text-base sm:text-lg font-extrabold leading-tight">لوحة العرض الذكية</div>
+            <div class="text-lg sm:text-xl font-extrabold leading-tight bg-gradient-to-l from-green2 to-sky bg-clip-text text-transparent">
+              لوحة العرض الذكية للمدارس
+            </div>
             <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-              التحول الرقمي لشاشات المدارس والجامعات
+              التحول الرقمي المتكامل لشاشات العرض المدرسية
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <a href="{% url 'dashboard:login' %}" class="btnGhost rounded-2xl px-4 py-2.5 text-sm font-bold">تسجيل الدخول</a>
-          <a href="#contact" class="btnBrand rounded-2xl px-4 py-2.5 text-sm font-extrabold">طلب تجربة</a>
+        
+        <div class="flex items-center gap-3">
+          <a href="{% url 'dashboard:login' %}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
+          <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
+            <span>طلب تجربة مجانية</span>
+            <span>→</span>
+          </a>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-9 lg:py-12 space-y-10 lg:space-y-12">
-    <!-- Hero -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-10 items-start">
-      <div class="glass rounded-3xl p-6 sm:p-8 lg:p-10">
-        <div class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 tag text-xs">
-          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
-          <span style="color:var(--muted)">نظام ديناميكي • تحديث لحظي • تخصيص كامل للهوية</span>
+  <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
+    <!-- Hero Section with Video -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+      <div class="space-y-8">
+        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
+          <span class="h-2 w-2 rounded-full inline-block bg-green2 animate-pulse"></span>
+          <span style="color:var(--muted)">منصة تفاعلية • تحديث فوري • هوية خاصة لكل مدرسة</span>
         </div>
 
-        <h1 class="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight">
-          حوّل شاشات مدرستك إلى <span style="color:var(--gold)">منصة ذكية تفاعلية</span>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
+          حوّل شاشات مدرستك إلى 
+          <span class="bg-gradient-to-l from-gold to-yellow-300 bg-clip-text text-transparent">
+            منصة اتصال ذكية
+          </span>
         </h1>
 
-        <p class="mt-4 text-sm sm:text-base leading-relaxed" style="color:var(--muted)">
-          نظام متكامل لعرض المعلومات المدرسية بشكل حيوي ومنظم على الشاشات الرقمية. يعرض <strong>الحصص الحالية والتالية</strong>،
-          التنبيهات المهمة، جدول اليوم، الطلاب المتميزين، والإعلانات — كل ذلك مع تحديث تلقائي وتحكم كامل من لوحة الإدارة.
+        <p class="text-lg leading-relaxed" style="color:var(--muted)">
+          نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب. يعرض <strong class="text-white">الحصص الدراسية</strong>، 
+          التنبيهات المهمة، جداول اليوم، الطلاب المتميزين، والإعلانات — كل ذلك بتحديث تلقائي 
+          وتحكم كامل من لوحة إدارة مركزية.
         </p>
 
-        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <a href="#contact" class="btnBrand rounded-2xl px-4 py-3 text-center font-extrabold">ابدأ تجربة مجانية</a>
-          <a href="#features" class="btnGhost rounded-2xl px-4 py-3 text-center font-bold">استكشاف المميزات</a>
-        </div>
-
-        <div class="mt-7 miniLine"></div>
-
-        <!-- Vision 2030 marketing block -->
-        <div class="mt-7 rounded-2xl p-5 soft">
-          <div class="flex items-start gap-3">
-            <div class="h-10 w-10 rounded-2xl soft flex items-center justify-center">🚀</div>
-            <div>
-              <div class="font-extrabold text-lg">دعم التحول الرقمي بالمؤسسات التعليمية</div>
-              <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-                نساعد المدارس على الانتقال من اللوحات التقليدية إلى بيئة رقمية تفاعلية، مما يعزز التواصل ويحسن تجربة
-                الطلاب والمعلمين. نقدم حلاً متكاملاً يتوافق مع تطلعات الرؤية الطموحة للتحول التقني في التعليم[citation:10].
-              </p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span class="text-xs tag rounded-full px-3 py-1.5">كفاءة تشغيلية أعلى</span>
-                <span class="text-xs tag rounded-full px-3 py-1.5">معلومات آنية ودقيقة</span>
-                <span class="text-xs tag rounded-full px-3 py-1.5">هوية بصرية موحدة</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Video / Preview Section -->
-      <div class="glass rounded-3xl p-6 sm:p-8 lg:p-10">
-        <div class="flex items-center justify-between gap-3 mb-5">
-          <div>
-            <div class="font-extrabold text-xl">عرض توضيحي للمنصة</div>
-            <div class="text-sm mt-1" style="color:var(--muted)">
-              شاهد كيف تعمل اللوحة الذكية في مدرسة حقيقية
-            </div>
-          </div>
-          <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center">🎬</div>
-        </div>
-
-        <!-- TikTok Video Embed -->
-        <div class="video-container glass">
-          <!-- TikTok Embed -->
-          <iframe id="tiktokEmbed"
-                  src="https://www.tiktok.com/embed/v2/{{video_id}}"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen>
-          </iframe>
-          <!-- Fallback Video -->
-          <video id="fallbackVideo" controls style="display:none;">
-            <source src="" type="video/mp4">
-            متصفحك لا يدعم تشغيل الفيديو.
-          </video>
-        </div>
-
-        <!-- Video Controls & Info -->
-        <div class="mt-4 text-center">
-          <p class="text-sm" style="color:var(--muted2)">
-            يوفر النظام <strong>واجهة واضحة</strong> قابلة للقراءة من بُعد على الشاشات الكبيرة.
-          </p>
-          <div class="mt-3 flex flex-wrap justify-center gap-2">
-            <button onclick="loadAlternativeVideo()"
-                    class="text-xs tag rounded-full px-3 py-1.5 hover:bg-white/10 transition">
-              تحميل فيديو بديل
-            </button>
-            <a href="https://vt.tiktok.com/ZSPSsvX6X/"
-               target="_blank"
-               class="text-xs tag rounded-full px-3 py-1.5 hover:bg-white/10 transition">
-              فتح الفيديو في تيك توك ↗
-            </a>
-          </div>
-        </div>
-
-        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="soft rounded-2xl p-4">
-            <div class="text-2xl font-extrabold">واضح</div>
-            <div class="text-sm" style="color:var(--muted)">قراءة ممتازة على شاشات 55" فما فوق</div>
-          </div>
-          <div class="soft rounded-2xl p-4">
-            <div class="text-2xl font-extrabold">ديناميكي</div>
-            <div class="text-sm" style="color:var(--muted)">تحديث محتوى تلقائي دون تدخل</div>
-          </div>
-          <div class="soft rounded-2xl p-4">
-            <div class="text-2xl font-extrabold">مرن</div>
-            <div class="text-sm" style="color:var(--muted)">تخصيص الثيمات والخلفيات كليًا</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section id="features" class="glass rounded-3xl p-6 sm:p-8 lg:p-10">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold">المميزات الأساسية</h2>
-          <p class="mt-2 text-sm sm:text-base leading-relaxed" style="color:var(--muted)">
-            تم تصميم كل ميزة لتعزيز التواصل داخل المدرسة وتبسيط العمليات الإدارية.
-          </p>
-        </div>
-        <div class="hidden sm:flex h-12 w-12 rounded-2xl soft items-center justify-center">⚡</div>
-      </div>
-
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">📅 <span>جدول الحصص الذكي</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            عرض ديناميكي للحصص مع تمييز الحصة الجارية والقادمة بلون مختلف، يتم تحديثه تلقائيًا.
-          </p>
-        </div>
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">📢 <span>مركز الإعلانات</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            بث تنبيهات مهمة وفورية (طوارئ، فعاليات، تعاميم) تظهر على جميع الشاشات فور نشرها.
-          </p>
-        </div>
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">🏆 <span>ركن التميز</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            عرض صور وإنجازات الطلاب والمعلمين المتميزين لتحفيز المنافسة الإيجابية داخل المدرسة.
-          </p>
-        </div>
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">🎨 <span>مصمم الهوية</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            حرية كاملة في تخصيص الألوان، الشعار، الخلفيات، والخطوط لتعكس هوية مؤسستك[citation:4].
-          </p>
-        </div>
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">🔗 <span>تكامل سهل</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            يتكامل مع أنظمة إدارة المدارس القائمة ويدعم ربط بيانات الطلاب والجداول آليًا.
-          </p>
-        </div>
-        <div class="soft rounded-2xl p-5 hover:bg-white/10 transition duration-300">
-          <div class="text-lg font-extrabold flex items-center gap-2">📱 <span>لوحة تحكم موحدة</span></div>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-          لوحة تحكم بسيطة تتيح إدارة محتوى جميع الشاشات من مكان واحد، مع صلاحيات متعددة المستخدمين[citation:4].
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- CTA & Contact -->
-    <section id="contact" class="glass rounded-3xl p-6 sm:p-8 lg:p-10">
-      <div class="text-center">
-        <h2 class="text-2xl sm:text-3xl font-extrabold">جاهز للتحول الرقمي؟</h2>
-        <p class="mt-2 text-sm sm:text-base" style="color:var(--muted)">
-          املأ النموذج وسنقوم بفتح محادثة واتساب مع رسالة تحتوي على جميع بياناتك المطلوبة.
-        </p>
-      </div>
-
-      <form id="leadForm" class="mt-6 space-y-4 max-w-2xl mx-auto">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-bold mb-2">الاسم الكامل *</label>
-            <input class="inputX" type="text" id="leadName" maxlength="60" placeholder="الاسم ثلاثي" required>
-          </div>
-          <div>
-            <label class="block text-sm font-bold mb-2">رقم الجوال *</label>
-            <input class="inputX" type="tel" id="leadPhone" inputmode="tel" maxlength="20" placeholder="05xxxxxxxx" required>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-bold mb-2">اسم المدرسة / المؤسسة *</label>
-            <input class="inputX" type="text" id="leadSchool" maxlength="80" placeholder="المدرسة..." required>
-          </div>
-          <div>
-            <label class="block text-sm font-bold mb-2">المدينة</label>
-            <input class="inputX" type="text" id="leadCity" maxlength="40" placeholder="الرياض، جدة...">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-bold mb-2">متطلباتك أو استفساراتك *</label>
-          <textarea class="inputX" id="leadMsg" rows="4" maxlength="500"
-                    placeholder="مثال: نرغب في تجربة المنصة لفرعين، مع 5 شاشات رئيسية، وتكامل مع نظامنا الحالي..."
-                    required></textarea>
-        </div>
-
-        <div class="flex flex-col sm:flex-row gap-3 justify-center">
-          <button type="button" id="sendWa" class="btnBrand rounded-2xl px-6 py-3 font-extrabold">
-            إرسال الطلب عبر واتساب
-          </button>
-          <a href="tel:+966546868219" class="btnGhost rounded-2xl px-6 py-3 font-bold text-center">
-            اتصل بنا مباشرة
+        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+          <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
+            🚀 ابدأ تجربتك المجانية الآن
+          </a>
+          <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
+            <span>🎬 شاهد العرض التوضيحي</span>
           </a>
         </div>
 
-        <div id="leadError" class="hidden rounded-2xl px-4 py-3 text-sm mt-3"
-             style="background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.25); color:#fecdd3;">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="stats-counter">+50</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">مدرسة تستخدم المنصة</div>
+          </div>
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="stats-counter">99.8%</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">نسبة توفر النظام</div>
+          </div>
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="stats-counter">24/7</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">دعم فني متواصل</div>
+          </div>
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="stats-counter">5د</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">إعداد سريع</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Video Demo Section -->
+      <div id="demo" class="glass rounded-3xl p-6 lg:p-8">
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <div>
+            <div class="font-extrabold text-2xl">عرض حي للمنصة في المدرسة</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">
+              شاهد كيف تعمل اللوحة الذكية في بيئة مدرسية حقيقية
+            </div>
+          </div>
+          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">🎥</div>
         </div>
 
-        <p class="mt-4 text-xs text-center" style="color:var(--muted2)">
-          نلتزم بخصوصية بياناتك. لن يتم تخزين أي معلومات عبر هذا النموذج[citation:1].
+        <!-- YouTube Video Embed -->
+        <div class="video-container glass">
+          <iframe 
+            id="youtubeVideo"
+            src="https://www.youtube.com/embed/yqa9aT460GM?rel=0&modestbranding=1&playsinline=1"
+            title="عرض توضيحي لمنصة اللوحة الذكية للمدارس"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+          </iframe>
+          
+          <div class="video-overlay" onclick="playVideo()">
+            <div class="play-btn">▶</div>
+            <div class="text-white text-lg font-bold">انقر للمشاهدة</div>
+          </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
+            <div class="text-sm" style="color:var(--muted)">إدارة جميع الشاشات من لوحة واحدة</div>
+          </div>
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="text-xl font-extrabold mb-2">⚡ تحديث فوري</div>
+            <div class="text-sm" style="color:var(--muted)">تغييرات تظهر خلال ثوانٍ</div>
+          </div>
+          <div class="soft rounded-2xl p-5 text-center">
+            <div class="text-xl font-extrabold mb-2">🎨 تخصيص كامل</div>
+            <div class="text-sm" style="color:var(--muted)">هوية بصرية تناسب مدرستك</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="glass rounded-3xl p-8 lg:p-12">
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
+          <span class="h-2 w-2 rounded-full inline-block bg-sky"></span>
+          <span style="color:var(--muted)">مميزات مبتكرة تخدم العملية التعليمية</span>
+        </div>
+        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
+        <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
+          صممنا المنصة لتلبي جميع احتياجات المدارس في التحول الرقمي للشاشات
         </p>
-      </form>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for feature in features %}
+        <div class="soft rounded-2xl p-6">
+          <div class="feature-icon">
+            {{ feature.icon }}
+          </div>
+          <h3 class="text-xl font-extrabold mb-3">{{ feature.title }}</h3>
+          <p class="text-sm" style="color:var(--muted)">{{ feature.description }}</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Dynamic Features (JavaScript will fill these) -->
+      <div id="featuresContainer" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Features will be inserted here by JavaScript -->
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="contact" class="glass rounded-3xl p-8 lg:p-12">
+      <div class="text-center mb-10">
+        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للتحول الرقمي؟</h2>
+        <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
+          املأ النموذج وسنقوم بالتواصل معك خلال 24 ساعة لتجهيز تجربتك المجانية
+        </p>
+      </div>
+
+      <div class="max-w-2xl mx-auto">
+        <form id="contactForm" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
+              <input type="text" class="inputX" placeholder="أحمد محمد العتيبي" required>
+            </div>
+            <div>
+              <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
+              <input type="tel" class="inputX" placeholder="05XXXXXXXX" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
+              <input type="text" class="inputX" placeholder="المدرسة..." required>
+            </div>
+            <div>
+              <label class="block text-sm font-bold mb-3">المدينة</label>
+              <input type="text" class="inputX" placeholder="الرياض، جدة، الدمام...">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold mb-3">متطلباتك واحتياجاتك *</label>
+            <textarea class="inputX" rows="5" placeholder="أخبرنا عن عدد الشاشات، نوع المحتوى الذي تريد عرضه، وأي متطلبات خاصة..." required></textarea>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
+              إرسال الطلب والبدء بالتجربة
+            </button>
+            <a href="https://wa.me/966546868219" target="_blank" class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
+              محادثة واتساب مباشرة
+            </a>
+          </div>
+
+          <p class="text-center text-sm mt-6" style="color:var(--muted2)">
+            نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية
+          </p>
+        </form>
+      </div>
     </section>
   </main>
 
-  <footer class="mx-auto max-w-6xl px-4 py-8 text-center border-t border-white/10">
-    <p class="text-xs" style="color:var(--muted2)">
-      © <span id="currentYear">{{ now|date:"Y" }}</span> لوحة العرض الذكية. جميع الحقوق محفوظة.
-      | هذا المشروع يدعم أهداف التحول الرقمي في القطاع التعليمي
-    </p>
+  <footer class="border-t border-white/10 mt-20 py-10">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <div class="text-xl font-extrabold mb-4 bg-gradient-to-l from-green2 to-sky bg-clip-text text-transparent">
+            لوحة العرض الذكية
+          </div>
+          <p class="text-sm" style="color:var(--muted2)">
+            منصة التحول الرقمي للشاشات المدرسية
+          </p>
+        </div>
+        
+        <div>
+          <div class="font-bold mb-4">روابط سريعة</div>
+          <ul class="space-y-2">
+            <li><a href="#demo" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
+            <li><a href="#features" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">المميزات</a></li>
+            <li><a href="#contact" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">طلب تجربة</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <div class="font-bold mb-4">الدعم</div>
+          <ul class="space-y-2">
+            <li><a href="mailto:support@example.com" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">الدعم الفني</a></li>
+            <li><a href="tel:+966546868219" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <div class="font-bold mb-4">تابعنا</div>
+          <div class="flex gap-4">
+            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">📱</a>
+            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">🐦</a>
+            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">📸</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="border-t border-white/10 mt-8 pt-8 text-center">
+        <p class="text-sm" style="color:var(--muted2)">
+          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
+        </p>
+      </div>
+    </div>
   </footer>
 
   <script>
-    (function(){
-      "use strict";
-      const WA_NUMBER = "966546868219";
-      const $ = (id) => document.getElementById(id);
-      const currentYear = new Date().getFullYear();
-      if($('currentYear')) $('currentYear').textContent = currentYear;
-
-      // وظيفة تحميل فيديو بديل (مثال)
-      window.loadAlternativeVideo = function() {
-        const embed = $('tiktokEmbed');
-        const fallback = $('fallbackVideo');
-        const source = fallback.querySelector('source');
-
-        // يمكنك هنا وضع رابط فيديو بديل (مخزن على سيرفرك) في placeHolderURL
-        const placeHolderURL = "{% static 'videos/demo-fallback.mp4' %}";
-
-        if(placeHolderURL && placeHolderURL.includes('.mp4')) {
-          embed.style.display = 'none';
-          source.src = placeHolderURL;
-          fallback.style.display = 'block';
-          fallback.load();
-          alert('تم تحميل الفيديو التوضيحي البديل.');
-        } else {
-          alert('عذرًا، الفيديو البديل غير متاح حاليًا. يرجى استخدام زر "فتح في تيك توك".');
+    // Initialize YouTube Player
+    let player;
+    
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('youtubeVideo', {
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
         }
-      };
-
-      // دالة التحقق من البيانات وفتح واتساب
-      function validateAndSend() {
-        const name = ($("leadName").value || "").trim();
-        const phone = ($("leadPhone").value || "").trim().replace(/[^\d+]/g, "");
-        const school = ($("leadSchool").value || "").trim();
-        const city = ($("leadCity").value || "").trim();
-        const msg = ($("leadMsg").value || "").trim();
-        const errorBox = $("leadError");
-
-        errorBox.classList.add("hidden");
-
-        if (!name || name.length < 4) {
-          errorBox.textContent = "الرجاء إدخال الاسم الكامل (أربعة أحرف على الأقل).";
-          errorBox.classList.remove("hidden");
-          return false;
-        }
-        if (!phone || phone.length < 9) {
-          errorBox.textContent = "الرجاء إدخال رقم جوال صحيح.";
-          errorBox.classList.remove("hidden");
-          return false;
-        }
-        if (!school || school.length < 2) {
-          errorBox.textContent = "الرجاء إدخال اسم المدرسة أو المؤسسة.";
-          errorBox.classList.remove("hidden");
-          return false;
-        }
-        if (!msg || msg.length < 10) {
-          errorBox.textContent = "الرجاء وصف متطلباتك بشكل موجز (10 أحرف على الأقل).";
-          errorBox.classList.remove("hidden");
-          return false;
-        }
-
-        const message = `السلام عليكم ورحمة الله وبركاته،
-
-أرغب في التعرف على منصة "لوحة العرض الذكية" للمدارس وطلب تجربة.
-
-*بيانات التواصل:*
-- الاسم: ${name}
-- الجوال: ${phone}
-- المدرسة: ${school}
-- المدينة: ${city || 'غير مذكورة'}
-
-*تفاصيل الطلب/الاستفسار:*
-${msg}
-
-شكرًا لكم،
-أتطلع للرد.`;
-
-        const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-        return true;
+      });
+    }
+    
+    function onPlayerReady(event) {
+      console.log('YouTube player is ready');
+    }
+    
+    function onPlayerStateChange(event) {
+      // Handle player state changes if needed
+    }
+    
+    function playVideo() {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+        document.querySelector('.video-overlay').style.display = 'none';
       }
+    }
+    
+    // Set current year in footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    
+    // Features data
+    const features = [
+      {
+        icon: '📅',
+        title: 'جدول حصص ذكي',
+        description: 'عرض ديناميكي للحصص مع تمييز الحصة الحالية والتالية بتحديث تلقائي'
+      },
+      {
+        icon: '📢',
+        title: 'مركز الإعلانات',
+        description: 'بث تنبيهات مهمة وفورية تظهر على جميع الشاشات فور نشرها'
+      },
+      {
+        icon: '🏆',
+        title: 'ركن التميز',
+        description: 'عرض إنجازات الطلاب والمعلمين المتميزين لتحفيز المنافسة الإيجابية'
+      },
+      {
+        icon: '🎨',
+        title: 'مصمم الهوية',
+        description: 'تخصيص كامل للألوان، الشعار، الخلفيات، والخطوط لهوية مدرستك'
+      },
+      {
+        icon: '🔗',
+        title: 'تكامل سهل',
+        description: 'يتكامل مع أنظمة إدارة المدارس القائمة بربط بيانات تلقائي'
+      },
+      {
+        icon: '📱',
+        title: 'لوحة تحكم موحدة',
+        description: 'إدارة محتوى جميع الشاشات من مكان واحد بصلاحيات متعددة'
+      }
+    ];
+    
+    // Dynamically insert features
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.getElementById('featuresContainer');
+      features.forEach(feature => {
+        const featureHTML = `
+          <div class="soft rounded-2xl p-6">
+            <div class="feature-icon">
+              ${feature.icon}
+            </div>
+            <h3 class="text-xl font-extrabold mb-3">${feature.title}</h3>
+            <p class="text-sm" style="color:var(--muted)">${feature.description}</p>
+          </div>
+        `;
+        container.innerHTML += featureHTML;
+      });
+      
+      // Form submission handler
+      const contactForm = document.getElementById('contactForm');
+      if (contactForm) {
+        contactForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const formData = new FormData(this);
+          const data = Object.fromEntries(formData);
+          
+          // Build WhatsApp message
+          const whatsappMessage = `
+السلام عليكم ورحمة الله وبركاته،
 
-      $("sendWa").addEventListener("click", validateAndSend);
-    })();
+أرغب في تجربة منصة اللوحة الذكية للمدارس.
+
+*البيانات:*
+- الاسم: ${data.name || 'غير مذكور'}
+- الجوال: ${data.phone || 'غير مذكور'}
+- المدرسة: ${data.school || 'غير مذكورة'}
+- المدينة: ${data.city || 'غير مذكورة'}
+
+*المتطلبات:*
+${data.requirements || 'غير مذكور'}
+
+أتطلع للتواصل معكم.
+          `.trim();
+          
+          // Open WhatsApp
+          const whatsappURL = `https://wa.me/966546868219?text=${encodeURIComponent(whatsappMessage)}`;
+          window.open(whatsappURL, '_blank');
+          
+          // Reset form
+          this.reset();
+          
+          // Show success message
+          alert('شكراً لك! سيتم فتح محادثة واتساب مع فريقنا.');
+        });
+      }
+    });
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+    
+    // Add scroll animation to elements
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate-fadeIn');
+        }
+      });
+    }, observerOptions);
+    
+    // Observe elements for animation
+    document.querySelectorAll('.soft, .glass').forEach(el => {
+      observer.observe(el);
+    });
   </script>
 </body>
 </html>
