@@ -1,0 +1,123 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}إدارة المدارس{% endblock %}
+{% block page_title %}إدارة المدارس في المنصّة{% endblock %}
+{% block page_description %}
+عرض، إضافة، وتعديل المدارس في النظام وربطها بالاشتراكات والمستخدمين.
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- رأس الصفحة + بحث -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">
+        إدارة المدارس
+      </h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        يمكنك من هنا إضافة مدرسة جديدة، تعديل بيانات المدارس الحالية، أو إيقاف الاشتراك.
+      </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <form method="get" class="flex items-center gap-2">
+        <input
+          type="text"
+          name="q"
+          value="{{ q }}"
+          placeholder="بحث باسم المدرسة أو الرابط..."
+          class="w-full sm:w-64 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+        >
+        {% if q %}
+        <a href="{% url 'dashboard:system_schools_list' %}"
+           class="text-xs text-slate-500 hover:text-slate-700">
+          مسح البحث
+        </a>
+        {% endif %}
+      </form>
+
+      <a href="{% url 'dashboard:system_school_create' %}"
+         class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-md hover:shadow-lg hover:from-emerald-600 hover:to-emerald-700 transition">
+        <span class="ml-2">➕</span>
+        <span>إضافة مدرسة</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- الجدول -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">اسم المدرسة</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">الرابط (slug)</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">الحالة</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">تاريخ الإنشاء</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+  {% if schools %}
+      {% for s in schools %}
+      <tr>
+        <td class="px-4 py-3">{{ s.name }}</td>
+        <td class="px-4 py-3">{{ s.slug }}</td>
+        <td class="px-4 py-3">
+            {% if s.is_active %}
+                <span class="text-emerald-600 font-semibold">نشط</span>
+            {% else %}
+                <span class="text-red-500 font-semibold">موقوف</span>
+            {% endif %}
+        </td>
+        <td class="px-4 py-3">{{ s.created_at|date:"Y-m-d" }}</td>
+        <td class="px-4 py-3 text-left">
+            <a href="{% url 'dashboard:system_school_edit' s.id %}"
+               class="text-blue-600 hover:text-blue-800 font-medium">تعديل</a>
+            |
+            <a href="{% url 'dashboard:system_school_delete' s.id %}"
+               class="text-red-600 hover:text-red-800 font-medium"
+               onclick="return confirm('هل أنت متأكد من حذف المدرسة؟')">
+               حذف
+            </a>
+        </td>
+      </tr>
+      {% endfor %}
+  {% else %}
+      <tr>
+        <td colspan="5" class="text-center py-6 text-slate-500">
+          لا توجد مدارس حاليًا.
+        </td>
+      </tr>
+  {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ترقيم الصفحات -->
+    {% if page_obj.has_other_pages %}
+    <div class="px-4 py-3 flex items-center justify-between border-t border-slate-100 bg-slate-50/60">
+      <div class="text-xs text-slate-500">
+        صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+      </div>
+      <div class="flex items-center gap-1">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-2 py-1 text-xs rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100">
+          السابقة
+        </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-2 py-1 text-xs rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100">
+          التالية
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

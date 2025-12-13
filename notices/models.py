@@ -1,13 +1,17 @@
 # notices/models.py
 from __future__ import annotations
+
 import os
 import uuid
 from datetime import datetime
+from typing import Any, Optional
 
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils import timezone
-from django.core.validators import FileExtensionValidator
+
 from core.models import School
+
 
 ANNOUNCEMENT_LEVELS = (
     ("urgent", "عاجل"),
@@ -16,25 +20,92 @@ ANNOUNCEMENT_LEVELS = (
     ("success", "تهنئة"),
 )
 
+
+# ===========================
+# Helpers
+# ===========================
+
 def _excellence_upload_to(instance: "Excellence", filename: str) -> str:
     """
-    مسار رفع الصورة: excellence/YYYY/MM/<uuid4><ext>
-    يحافظ على الامتداد الأصلي، ويضمن اسمًا فريدًا.
+    مسار رفع صورة التميّز:
+        excellence/YYYY/MM/<uuid4><ext>
+    - يحافظ على الامتداد الأصلي قدر الإمكان.
+    - يضمن اسمًا فريدًا.
     """
     _, ext = os.path.splitext(filename)
-    ext = (ext or "").lower()[:10]  # تنقية بسيطة
+    ext = (ext or "").lower()[:10]  # تنظيف بسيط للاسم
     now = datetime.now()
     return f"excellence/{now:%Y}/{now:%m}/{uuid.uuid4().hex}{ext or '.jpg'}"
 
 
+# ===========================
+# Announcement
+# ===========================
+
+class AnnouncementQuerySet(models.QuerySet):
+    """
+    QuerySet مخصص لإعلانات المدرسة مع فلاتر جاهزة:
+    - active()           -> الإعلانات المفعلة زمنيًا.
+    - for_school(school) -> إعلانات مدرسة معينة + العامة (school is null).
+    - active_for_school  -> مزيج الاثنين معًا.
+    """
+
+    def active(self, now: Optional[datetime] = None) -> "AnnouncementQuerySet":
+        now = now or timezone.now()
+        qs = self.filter(is_active=True)
+
+        # يبدأ قبل الآن (أو بدون starts_at)
+        qs = qs.filter(
+            models.Q(starts_at__lte=now) | models.Q(starts_at__isnull=True)
+        )
+
+        # لم ينتهِ أو لا يوجد expires_at
+        qs = qs.filter(
+            models.Q(expires_at__gt=now) | models.Q(expires_at__isnull=True)
+        )
+
+        return qs
+
+    def for_school(self, school: Optional[School]) -> "AnnouncementQuerySet":
+        """
+        ترجع الإعلانات الخاصة بالمدرسة + الإعلانات العامة (school is null).
+        """
+        if school is None:
+            return self.none()
+        return self.filter(
+            models.Q(school=school) | models.Q(school__isnull=True)
+        )
+
+    def active_for_school(
+        self,
+        school: Optional[School],
+        now: Optional[datetime] = None,
+    ) -> "AnnouncementQuerySet":
+        return self.for_school(school).active(now=now)
+
+
 class Announcement(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="announcements", verbose_name="المدرسة", null=True, blank=True)
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+        verbose_name="المدرسة",
+        null=True,
+        blank=True,
+    )
     title = models.CharField("العنوان", max_length=120)
     body = models.CharField("النص", max_length=280, blank=True)
-    level = models.CharField("المستوى", max_length=10, choices=ANNOUNCEMENT_LEVELS, default="info")
+    level = models.CharField(
+        "المستوى",
+        max_length=10,
+        choices=ANNOUNCEMENT_LEVELS,
+        default="info",
+    )
     starts_at = models.DateTimeField("يظهر من", default=timezone.now)
     expires_at = models.DateTimeField("ينتهي في", blank=True, null=True)
     is_active = models.BooleanField("مفعّل", default=True)
+
+    objects: AnnouncementQuerySet = AnnouncementQuerySet.as_manager()  # type: ignore[assignment]
 
     class Meta:
         verbose_name = "تنبيه"
@@ -44,10 +115,16 @@ class Announcement(models.Model):
     def __str__(self) -> str:
         return f"[{self.get_level_display()}] {self.title}"
 
+    # --------- منطق التفعيل ---------
+
     @property
     def active_now(self) -> bool:
+        """
+        هل التنبيه فعّال حاليًا بناءً على الوقت والفلاغ is_active؟
+        """
         if not self.is_active:
             return False
+
         now = timezone.now()
         if self.starts_at and now < self.starts_at:
             return False
@@ -55,28 +132,107 @@ class Announcement(models.Model):
             return False
         return True
 
+    # --------- دوال مساعدة للـ API / الواجهة ---------
+
+    @classmethod
+    def active_for_school(cls, school: Optional[School]) -> "AnnouncementQuerySet":
+        """
+        واجهة مختصرة تستخدم في الـ API:
+            Announcement.active_for_school(request.school)
+        """
+        return cls.objects.active_for_school(school)
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        تمثيل بسيط للاستخدام في JSON (شريط التنبيهات في شاشة العرض).
+        نحافظ على أسماء مفهومة ويمكن للواجهة استخدامها مباشرة.
+        """
+        return {
+            "id": self.id,
+            "school_id": self.school_id,
+            "title": self.title,
+            "body": self.body,
+            "level": self.level,
+            "level_label": self.get_level_display(),
+            "starts_at": self.starts_at.isoformat() if self.starts_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "active": self.active_now,
+        }
+
+
+# ===========================
+# Excellence (لوحة الشرف)
+# ===========================
+
+class ExcellenceQuerySet(models.QuerySet):
+    """
+    QuerySet مخصص لسجلات التميّز:
+    - for_school(school)
+    - active_for_today(school, date)
+    """
+
+    def for_school(self, school: Optional[School]) -> "ExcellenceQuerySet":
+        if school is None:
+            return self.none()
+        return self.filter(school=school)
+
+    def active_for_today(
+        self,
+        school: Optional[School],
+        today: Optional[datetime.date] = None,
+    ) -> "ExcellenceQuerySet":
+        """
+        يعيد سجلات التميّز النشطة لليوم الحالي:
+        start_at <= اليوم  و (end_at is null أو end_at >= اليوم)
+        """
+        if school is None:
+            return self.none()
+
+        today = today or timezone.localdate()
+
+        return (
+            self.for_school(school)
+            .filter(start_at__date__lte=today)
+            .filter(
+                models.Q(end_at__isnull=True) | models.Q(end_at__date__gte=today)
+            )
+        )
+
 
 class Excellence(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="excellence_records", verbose_name="المدرسة", null=True, blank=True)
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="excellence_records",
+        verbose_name="المدرسة",
+        null=True,
+        blank=True,
+    )
     teacher_name = models.CharField("اسم المعلم", max_length=100)
     reason = models.CharField("سبب التميّز", max_length=200)
 
-    # ✅ خيار 1: رفع صورة ملف (مستحسن)
+    # رفع صورة كملف
     photo = models.ImageField(
         "صورة (رفع ملف)",
         upload_to=_excellence_upload_to,
         blank=True,
         null=True,
-        validators=[FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])],
-        help_text="صيغة مدعومة: JPG/PNG/WEBP. الحجم يُدار عبر إعدادات الخادم.",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["jpg", "jpeg", "png", "webp"]
+            )
+        ],
+        help_text="الصيغ المدعومة: JPG / JPEG / PNG / WEBP.",
     )
 
-    # ✅ خيار 2: عنوان صورة عن طريق رابط (اختياري كبديل)
+    # أو رابط صورة جاهز (اختياري)
     photo_url = models.URLField("رابط صورة (اختياري)", blank=True, null=True)
 
     start_at = models.DateTimeField("يظهر من", default=timezone.now)
     end_at = models.DateTimeField("ينتهي في", blank=True, null=True)
     priority = models.PositiveSmallIntegerField("أولوية العرض", default=10)
+
+    objects: ExcellenceQuerySet = ExcellenceQuerySet.as_manager()  # type: ignore[assignment]
 
     class Meta:
         verbose_name = "تميّز"
@@ -85,6 +241,8 @@ class Excellence(models.Model):
 
     def __str__(self) -> str:
         return f"{self.teacher_name} — {self.reason}"
+
+    # --------- منطق التفعيل ---------
 
     @property
     def active_now(self) -> bool:
@@ -96,12 +254,9 @@ class Excellence(models.Model):
         return True
 
     @property
-    def image_src(self) -> str | None:
+    def image_src(self) -> Optional[str]:
         """
-        يرجع رابط الصورة المعتمدة للعرض:
-        - إذا كان هناك ملف مرفوع -> self.photo.url
-        - وإلا إن وُجِد photo_url -> يعاد كما هو
-        - وإلا None
+        يرجع رابط الصورة المعتمدة للعرض (ملف مرفوع أو رابط خارجي).
         """
         try:
             if self.photo and hasattr(self.photo, "url"):
@@ -111,25 +266,68 @@ class Excellence(models.Model):
             pass
         return self.photo_url or None
 
-    def save(self, *args, **kwargs):
+    # --------- دوال مساعدة للـ API / الواجهة ---------
+
+    @classmethod
+    def active_for_today(cls, school: Optional[School]) -> "ExcellenceQuerySet":
         """
-        تنظيف بسيط: عند استبدال صورة مرفوعة بصورة جديدة، احذف القديمة من التخزين.
+        تُستخدم في dashboard/api_display.py:
+            Excellence.active_for_today(request.school)
         """
-        old_path = None
+        return cls.objects.active_for_today(school)
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        تمثيل JSON بسيط لواجهة شاشة العرض.
+        نحاول توفير أكثر من اسم مفتاح (name/teacher_name, image/image_url)
+        حتى لو تغيّر الـ JS مستقبلاً يكون التوافق أسهل.
+        """
+        img = self.image_src
+        return {
+            "id": self.id,
+            "school_id": self.school_id,
+            # أسماء عامة
+            "name": self.teacher_name,
+            "title": self.teacher_name,
+            "subtitle": self.reason,
+            # الأسماء الأصلية
+            "teacher_name": self.teacher_name,
+            "reason": self.reason,
+            # الصورة
+            "image": img,
+            "image_url": img,
+            # التواريخ
+            "start_at": self.start_at.isoformat() if self.start_at else None,
+            "end_at": self.end_at.isoformat() if self.end_at else None,
+            "priority": self.priority,
+            "active": self.active_now,
+        }
+
+    def save(self, *args, **kwargs) -> None:
+        """
+        تنظيف بسيط:
+        - عند استبدال صورة مرفوعة بصورة جديدة، نحذف القديمة من التخزين بعد نجاح الحفظ.
+        - لا نوقف الحفظ لو فشل حذف الملف من النظام.
+        """
+        old_path: Optional[str] = None
+
         if self.pk:
             try:
                 old = Excellence.objects.get(pk=self.pk)
                 if old.photo and self.photo and old.photo.name != self.photo.name:
-                    old_path = old.photo.path
+                    # نخزّن المسار القديم لنحذفه بعد نجاح الحفظ
+                    try:
+                        old_path = old.photo.path
+                    except (ValueError, Exception):
+                        old_path = None
             except Excellence.DoesNotExist:
-                pass
+                old_path = None
 
         super().save(*args, **kwargs)
 
-        # احذف الملف القديم بعد نجاح الحفظ (إن وُجد ومختلف)
         if old_path and os.path.isfile(old_path):
             try:
                 os.remove(old_path)
             except OSError:
-                # لا توقف الحفظ بسبب خطأ حذف ملف
+                # لا نرفع استثناء لو فشل الحذف
                 pass

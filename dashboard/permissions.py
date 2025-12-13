@@ -1,57 +1,108 @@
 from functools import wraps
+
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
-from django.contrib import messages
+
 from core.models import UserProfile, School
 
+
 def manager_required(view_func):
+    """
+    ديكور لصلاحيات مدير المدرسة / المستخدم المرتبط بمدرسة معيّنة.
+
+    - يضمن وجود UserProfile للمستخدم.
+    - يضمن أن الـ Profile مرتبط بمدرسة.
+    - يسمح للـ superuser دائمًا بالدخول (مع محاولة ربطه بمدرسة).
+    - يسمح لأي مستخدم لديه profile.school.
+    - يسمح لأعضاء مجموعة "Managers" (للتوافق مع أنظمة قديمة).
+    """
+
     @login_required
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         user = request.user
-        
-        # Ensure user has a profile
-        if not hasattr(user, 'profile'):
+
+        # 1) التأكد من وجود ملف شخصي للمستخدم
+        if not hasattr(user, "profile"):
             if user.is_superuser:
-                # Auto-create profile for superuser if a school exists
+                # للـ superuser: إنشاء/جلب ملف شخصي وربطه بأول مدرسة إن وجدت
                 first_school = School.objects.first()
                 if first_school:
-                    UserProfile.objects.create(user=user, school=first_school)
-                    # Refresh user to access the new profile
+                    profile, _created = UserProfile.objects.get_or_create(user=user)
+                    if profile.school is None:
+                        profile.school = first_school
+                        profile.save()
+                        messages.success(
+                            request,
+                            f"تم إنشاء ملف شخصي تلقائيًا وربطه بالمدرسة: {first_school.name}",
+                        )
+                    # نحدّث الكائن في الذاكرة
                     user.refresh_from_db()
-                    messages.success(request, f"تم إنشاء ملف شخصي تلقائيًا وربطه بالمدرسة: {first_school.name}")
                 else:
-                    messages.warning(request, "لا توجد مدارس في النظام. يرجى إنشاء مدرسة أولاً.")
-                    return redirect('admin:core_school_add')
+                    messages.warning(
+                        request,
+                        "لا توجد مدارس في النظام. يرجى إنشاء مدرسة أولاً.",
+                    )
+                    return redirect("admin:core_school_add")
             else:
+                # مستخدم عادي بدون ملف شخصي
                 raise PermissionDenied("المستخدم ليس لديه ملف شخصي.")
 
-        # Ensure profile has a school
+        # 2) التأكد من أن الملف الشخصي مرتبط بمدرسة
         if not user.profile.school:
             if user.is_superuser:
                 first_school = School.objects.first()
                 if first_school:
                     user.profile.school = first_school
                     user.profile.save()
-                    messages.success(request, f"تم ربط حسابك بالمدرسة: {first_school.name}")
+                    messages.success(
+                        request,
+                        f"تم ربط حسابك بالمدرسة: {first_school.name}",
+                    )
                 else:
-                    messages.warning(request, "لا توجد مدارس في النظام. يرجى إنشاء مدرسة أولاً.")
-                    return redirect('admin:core_school_add')
+                    messages.warning(
+                        request,
+                        "لا توجد مدارس في النظام. يرجى إنشاء مدرسة أولاً.",
+                    )
+                    return redirect("admin:core_school_add")
             else:
                 raise PermissionDenied("الملف الشخصي غير مرتبط بأي مدرسة.")
 
-        # 1. Superuser always has access (now safe)
+        # 3) الـ superuser لديه صلاحية الوصول دائمًا بعد ضمان الربط
         if user.is_superuser:
             return view_func(request, *args, **kwargs)
-            
-        # 2. Check if user has a school profile
-        if hasattr(user, 'profile') and user.profile.school:
-             return view_func(request, *args, **kwargs)
 
-        # 3. Legacy check for Managers group
+        # 4) أي مستخدم مرتبط بمدرسة يمتلك صلاحية المدير المدرسي
+        if getattr(user, "profile", None) and user.profile.school:
+            return view_func(request, *args, **kwargs)
+
+        # 5) دعم قديم: مجموعة Managers
         if user.groups.filter(name="Managers").exists():
             return view_func(request, *args, **kwargs)
-            
+
+        # 6) في غير ذلك: لا يملك صلاحية
         raise PermissionDenied("ليست لديك صلاحية الوصول.")
+
+    return _wrapped
+
+
+def superadmin_required(view_func):
+    """
+    ديكور لصلاحيات مدير النظام (SaaS System Admin).
+
+    - يسمح فقط للمستخدمين الذين لديهم is_superuser=True.
+    - لا يشترط وجود مدرسة أو ملف شخصي (مناسب للوحة إدارة النظام المركزية).
+    """
+
+    @login_required
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user = request.user
+        if not user.is_superuser:
+            # لا يُسمح لغير مدير النظام
+            raise PermissionDenied("هذه الصفحة مخصّصة لمدير النظام فقط.")
+        return view_func(request, *args, **kwargs)
+
     return _wrapped

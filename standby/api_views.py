@@ -12,13 +12,13 @@ from .api_serializers import StandbySerializer
 @authentication_classes([])
 @permission_classes([AllowAny])
 def today_standby(request):
-    screen = validate_display_token(request)
-    if not screen:
+    screen, school = validate_display_token(request)
+    if not screen or not school:
         return Response({"detail": "Forbidden"}, status=403)
 
     today = timezone.localdate()
     qs = (
-        StandbyAssignment.objects.filter(school=screen.school, date=today)
+        StandbyAssignment.objects.filter(school=school, date=today)
         .order_by("period_index", "teacher_name")
     )
 

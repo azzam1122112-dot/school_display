@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚫 الاشتراك غير فعال</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #fdf2f8 0%, #fef3c7 25%, #f1f5f9 100%);
+            min-height: 100vh;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center px-4 py-8">
+    <!-- خلفية متحركة -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse delay-500"></div>
+    </div>
+
+    <!-- البطاقة الرئيسية -->
+    <div class="relative bg-white/95 backdrop-blur-sm shadow-2xl rounded-3xl p-6 sm:p-10 max-w-xl w-full border border-white/50 overflow-hidden z-10">
+        <!-- شريط علوي -->
+        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+            <div class="bg-gradient-to-r from-rose-600 to-pink-600 text-white px-8 py-2.5 rounded-full shadow-2xl font-bold text-lg tracking-wide animate-float">
+                <i class="fas fa-exclamation-triangle ml-2"></i>
+                اشتراك غير فعّال
+            </div>
+        </div>
+
+        <!-- المحتوى الرئيسي -->
+        <div class="mt-12 text-center">
+            <!-- أيقونة رئيسية -->
+            <div class="relative mb-8">
+                <div class="w-28 h-28 mx-auto bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center shadow-lg">
+                    <div class="w-20 h-20 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center text-white shadow-xl animate-pulse">
+                        <i class="fas fa-ban text-4xl"></i>
+                    </div>
+                </div>
+                <div class="absolute -top-2 -right-2 w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-exclamation text-lg"></i>
+                </div>
+            </div>
+
+            <!-- العنوان -->
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-rose-700 to-pink-700 bg-clip-text text-transparent mb-3">
+                الوصول غير متاح
+            </h1>
+            
+            <!-- الوصف -->
+            <p class="text-gray-600 text-lg leading-relaxed mb-6">
+                عذراً، اشتراك مدرستك غير نشط حالياً.<br>
+                يرجى تجديد الاشتراك لاستعادة الوصول الكامل إلى النظام.
+            </p>
+
+            <!-- شريط حالة الاشتراك -->
+            <div class="inline-flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl border border-rose-200 mb-8">
+                <span class="text-gray-700 font-semibold">
+                    <i class="fas fa-info-circle ml-2 text-rose-600"></i>
+                    حالة الاشتراك:
+                </span>
+                <span class="font-bold text-rose-700 text-lg">{{ status }}</span>
+            </div>
+
+            <!-- تفاصيل الاشتراك -->
+            {% if sub %}
+            <div class="bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-gray-200 p-6 mb-8 shadow-inner">
+                <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
+                    <i class="fas fa-file-invoice text-gray-600"></i>
+                    تفاصيل الاشتراك
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-right">
+                    <!-- الخطة -->
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-cube text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">الخطة</p>
+                                <p class="font-bold text-gray-800">{{ sub.plan.name }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- تاريخ البداية -->
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar-day text-emerald-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">تاريخ البدء</p>
+                                <p class="font-bold text-gray-800">{{ sub.starts_at|date:"Y-m-d" }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- تاريخ النهاية -->
+                    {% if sub.ends_at %}
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar-times text-amber-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">تاريخ الانتهاء</p>
+                                <p class="font-bold text-gray-800">{{ sub.ends_at|date:"Y-m-d" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- الأيام المتبقية -->
+                    {% if days_left is not None %}
+                    <div class="sm:col-span-2">
+                        <div class="p-4 rounded-xl border {% if days_left <= 0 %}border-red-200 bg-gradient-to-r from-red-50 to-rose-50{% else %}border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50{% endif %} text-center">
+                            {% if days_left <= 0 %}
+                                <div class="flex items-center justify-center gap-3">
+                                    <i class="fas fa-hourglass-end text-2xl text-red-500"></i>
+                                    <div>
+                                        <p class="font-bold text-red-700 text-lg">الاشتراك منتهي</p>
+                                        <p class="text-red-600 mt-1">
+                                            منذ {{ days_left|abs }} يوم
+                                        </p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="flex items-center justify-center gap-3">
+                                    <i class="fas fa-hourglass-half text-2xl text-amber-500 animate-pulse"></i>
+                                    <div>
+                                        <p class="font-bold text-amber-700 text-lg">متبقي</p>
+                                        <p class="text-amber-600 mt-1 text-2xl font-bold">
+                                            {{ days_left }} يوم
+                                        </p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- قسم الاتصال والدعم -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center justify-center gap-2">
+                    <i class="fas fa-headset text-gray-600"></i>
+                    تواصل مع الدعم
+                </h3>
+                
+                <div class="space-y-4">
+                    <!-- زر الواتساب -->
+                    <a href="https://wa.me/966546868219?text=أرغب%20بتجديد%20اشتراك%20مدرستي%20({{ sub.school.name }})"
+                       target="_blank"
+                       class="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] text-lg">
+                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-700 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div class="relative flex items-center gap-3">
+                            <i class="fab fa-whatsapp text-2xl"></i>
+                            <span>تجديد الاشتراك عبر واتساب</span>
+                        </div>
+                        <div class="relative">
+                            <i class="fas fa-arrow-left group-hover:translate-x-1 transition-transform duration-300"></i>
+                        </div>
+                    </a>
+
+                    <!-- زر البريد الإلكتروني -->
+                    <a href="mailto:xmansx1122@gmail.com?subject=تجديد اشتراك مدرسة&body=أرغب بتجديد اشتراك المدرسة: {{ sub.school.name }}"
+                       class="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] text-lg">
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-700 to-sky-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div class="relative flex items-center gap-3">
+                            <i class="fas fa-envelope text-2xl"></i>
+                            <span>تجديد الاشتراك عبر البريد</span>
+                        </div>
+                        <div class="relative">
+                            <i class="fas fa-arrow-left group-hover:translate-x-1 transition-transform duration-300"></i>
+                        </div>
+                    </a>
+
+                    <!-- معلومات الدعم -->
+                    <div class="mt-6 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200">
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-gray-600">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-clock text-amber-500"></i>
+                                <span>دعم فني متوفر 24/7</span>
+                            </div>
+                            <div class="hidden sm:block w-px h-4 bg-gray-300"></div>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-bolt text-green-500"></i>
+                                <span>تفعيل فوري بعد الدفع</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- زر تسجيل الخروج -->
+            <div class="pt-6 border-t border-gray-200">
+                <a href="{% url 'dashboard:logout' %}"
+                   class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-gray-200 to-slate-200 text-gray-700 rounded-xl font-semibold shadow hover:shadow-lg hover:bg-gray-300 transition-all duration-300 hover:scale-[1.02]">
+                    <i class="fas fa-sign-out-alt"></i>
+                    تسجيل الخروج
+                    <i class="fas fa-arrow-left text-sm"></i>
+                </a>
+                
+                <!-- رابط العودة -->
+                <div class="mt-4 text-center">
+                    <a href="#" onclick="history.back();" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                        <i class="fas fa-arrow-right ml-1"></i>
+                        العودة للصفحة السابقة
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- عناصر زخرفية -->
+        <div class="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-r from-rose-200 to-pink-200 rounded-full blur-3xl opacity-30 -z-10"></div>
+        <div class="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-r from-amber-200 to-orange-200 rounded-full blur-3xl opacity-30 -z-10"></div>
+        
+        <!-- خط منقط زخرفي -->
+        <div class="absolute top-0 left-0 right-0 h-px">
+            <div class="w-full h-px bg-gradient-to-r from-transparent via-rose-300 to-transparent"></div>
+        </div>
+    </div>
+
+    <!-- إضافة أنيميشن للتعويم -->
+    <style>
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</body>
+</html>

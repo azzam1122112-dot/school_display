@@ -1,0 +1,278 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}لوحة إدارة النظام{% endblock %}
+{% block page_title %}لوحة إدارة النظام (SaaS){% endblock %}
+{% block page_description %}إدارة المدارس والمستخدمين والاشتراكات{% endblock %}
+
+{% block content %}
+
+<div class="space-y-8">
+
+  <!-- بطاقات الإحصائيات -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    
+    <!-- عدد المدارس -->
+    <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-4xl font-bold">{{ schools_count }}</div>
+          <div class="text-blue-100 mt-2 text-lg font-medium">المدارس</div>
+          <div class="text-blue-200 text-sm mt-1">نشطة في النظام</div>
+        </div>
+        <div class="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <span class="text-3xl">🏫</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-blue-400/30">
+        <a href="{% url 'dashboard:system_schools_list' %}" 
+           class="inline-flex items-center text-sm text-blue-100 hover:text-white font-medium">
+          عرض المدارس
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- عدد المستخدمين -->
+    <div class="bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-4xl font-bold">{{ users_count }}</div>
+          <div class="text-purple-100 mt-2 text-lg font-medium">المستخدمين</div>
+          <div class="text-purple-200 text-sm mt-1">مسجلين في النظام</div>
+        </div>
+        <div class="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <span class="text-3xl">👥</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-purple-400/30">
+        <a href="{% url 'dashboard:system_users_list' %}" 
+           class="inline-flex items-center text-sm text-purple-100 hover:text-white font-medium">
+          عرض المستخدمين
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- الاشتراكات النشطة -->
+    <div class="bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-4xl font-bold">{{ subscriptions_count }}</div>
+          <div class="text-emerald-100 mt-2 text-lg font-medium">الاشتراكات</div>
+          <div class="text-emerald-200 text-sm mt-1">نشطة حالياً</div>
+        </div>
+        <div class="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <span class="text-3xl">💳</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-emerald-400/30">
+        <a href="{% url 'dashboard:system_subscriptions_list' %}" 
+           class="inline-flex items-center text-sm text-emerald-100 hover:text-white font-medium">
+          عرض الاشتراكات
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- الإيرادات (إذا كنت تريد إضافتها لاحقاً) -->
+    <div class="bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-4xl font-bold">{{ revenue|default:"0" }}</div>
+          <div class="text-amber-100 mt-2 text-lg font-medium">الإيرادات</div>
+          <div class="text-amber-200 text-sm mt-1">ريال سعودي</div>
+        </div>
+        <div class="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <span class="text-3xl">💰</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-amber-400/30">
+        <a href="#" 
+           class="inline-flex items-center text-sm text-amber-100 hover:text-white font-medium">
+          تقرير الإيرادات
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- الإجراءات السريعة -->
+  <div class="mt-8">
+    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      الإجراءات السريعة
+    </h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      
+      <!-- إدارة المدارس -->
+      <a href="{% url 'dashboard:system_schools_list' %}"
+         class="group bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">🏫</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">إدارة المدارس</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              عرض، إضافة، تعديل، أو حذف المدارس المسجلة في النظام
+            </p>
+            <div class="flex items-center text-blue-600 font-medium text-sm">
+              <span>الذهاب إلى المدارس</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- إدارة المستخدمين -->
+      <a href="{% url 'dashboard:system_users_list' %}"
+         class="group bg-gradient-to-br from-white to-purple-50 rounded-2xl border border-purple-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">👤</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">إدارة المستخدمين</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              إدارة حسابات المستخدمين، الصلاحيات، وتفعيل الحسابات
+            </p>
+            <div class="flex items-center text-purple-600 font-medium text-sm">
+              <span>الذهاب إلى المستخدمين</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- إدارة الاشتراكات -->
+      <a href="{% url 'dashboard:system_subscriptions_list' %}"
+         class="group bg-gradient-to-br from-white to-emerald-50 rounded-2xl border border-emerald-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">💰</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">إدارة الاشتراكات</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              إدارة خطط الاشتراك، التجديد، الإلغاء، والمتابعة
+            </p>
+            <div class="flex items-center text-emerald-600 font-medium text-sm">
+              <span>الذهاب إلى الاشتراكات</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- لوحة التقارير -->
+      <a href="#"
+         class="group bg-gradient-to-br from-white to-amber-50 rounded-2xl border border-amber-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">📊</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">التقارير والإحصائيات</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              عرض تقارير الأداء، الإيرادات، والنمو على مدار الوقت
+            </p>
+            <div class="flex items-center text-amber-600 font-medium text-sm">
+              <span>عرض التقارير</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- إدارة الخطط -->
+      <a href="#"
+         class="group bg-gradient-to-br from-white to-indigo-50 rounded-2xl border border-indigo-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">📋</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">إدارة الخطط والأسعار</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              إنشاء وتعديل خطط الاشتراك والأسعار والميزات
+            </p>
+            <div class="flex items-center text-indigo-600 font-medium text-sm">
+              <span>الذهاب إلى الخطط</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- الدعم الفني -->
+      <a href="#"
+         class="group bg-gradient-to-br from-white to-rose-50 rounded-2xl border border-rose-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">🛟</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">الدعم الفني والتذاكر</h3>
+            <p class="text-slate-600 text-sm mb-4">
+              متابعة طلبات الدعم الفني والمشاكل الفنية
+            </p>
+            <div class="flex items-center text-rose-600 font-medium text-sm">
+              <span>الذهاب إلى الدعم</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- قسم آخر (يمكنك إضافته لاحقاً) -->
+  <div class="mt-12 p-6 bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl border border-slate-200">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">💡 نصائح سريعة للإدارة</h3>
+        <p class="text-slate-600">
+          تأكد من مراجعة الاشتراكات المنتهية أسبوعياً • تحقق من حسابات المستخدمين غير النشطة • قم بعمل نسخة احتياطية للبيانات شهرياً
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="window.print()" 
+                class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition-colors">
+          طباعة التقرير
+        </button>
+        <a href="#" 
+           class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium transition-colors">
+          تصدير البيانات
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

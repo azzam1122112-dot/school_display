@@ -1,0 +1,72 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}
+  {% if is_create %}إضافة مستخدم{% else %}تعديل مستخدم{% endif %}
+{% endblock %}
+
+{% block page_title %}
+  {% if is_create %}إضافة مستخدم جديد{% else %}تعديل بيانات المستخدم{% endif %}
+{% endblock %}
+
+{% block page_description %}
+  {% if is_create %}
+    إنشاء مستخدم جديد وربطه بمدرسة وتحديد صلاحياته في النظام، مع تعيين كلمة المرور.
+  {% else %}
+    تعديل بيانات المستخدم، ربطه بالمدرسة، وضبط صلاحياته وكلمة المرور عند الحاجة.
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+  <form method="post" class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 space-y-5">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="mb-4 rounded-xl bg-rose-50 text-rose-700 text-sm px-4 py-3">
+        {% for error in form.non_field_errors %}
+          <div>{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% for field in form %}
+      <div class="space-y-1.5">
+        <label class="block text-sm font-medium text-slate-700">
+          {{ field.label }}
+        </label>
+        {{ field }}
+        {% if field.help_text %}
+          <p class="text-[11px] text-slate-400 mt-0.5">{{ field.help_text }}</p>
+        {% endif %}
+        {% if field.errors %}
+          <p class="text-xs text-rose-600 mt-1">
+            {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+          </p>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+      <p class="text-[11px] text-slate-400">
+        {% if is_create %}
+          سيتم تعيين كلمة المرور من الحقول أعلاه، ويمكنك تغييرها لاحقاً من نفس هذه الصفحة.
+        {% else %}
+          اترك حقول كلمة المرور الجديدة فارغة إذا لا تريد تغيير كلمة المرور الحالية.
+        {% endif %}
+      </p>
+      <div class="flex gap-3">
+        <a href="{% url 'dashboard:system_users_list' %}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100">
+          إلغاء
+        </a>
+        <button type="submit"
+                class="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow">
+          حفظ
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

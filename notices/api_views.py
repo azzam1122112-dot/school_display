@@ -12,12 +12,12 @@ from .api_serializers import AnnouncementSerializer, ExcellenceSerializer
 @authentication_classes([])
 @permission_classes([AllowAny])
 def active_announcements(request):
-    screen = validate_display_token(request)
-    if not screen:
+    screen, school = validate_display_token(request)
+    if not screen or not school:
         return Response({"detail": "Forbidden"}, status=403)
 
     qs = Announcement.objects.filter(
-        school=screen.school,
+        school=school,
         is_active=True,
     ).order_by("-starts_at")
 
@@ -33,12 +33,12 @@ def active_announcements(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def active_excellence(request):
-    screen = validate_display_token(request)
-    if not screen:
+    screen, school = validate_display_token(request)
+    if not screen or not school:
         return Response({"detail": "Forbidden"}, status=403)
 
     qs = Excellence.objects.filter(
-        school=screen.school
+        school=school
     ).order_by("priority", "-start_at")
 
     items = [e for e in qs if e.active_now]
