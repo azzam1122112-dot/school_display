@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#07231b">
   <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
 
-  <!-- (تم حذف favicon لتجنب خطأ manifest إذا الملف غير موجود) -->
-  {# <link rel="icon" href="{% static 'favicon.ico' %}"> #}
+  <!-- favicon (آمن بدون static tag لتجنّب Manifest 500) -->
+  <link rel="icon" href="/static/favicon.ico">
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +22,6 @@
     :root{
       --bg1:#04150f;
       --bg2:#07231b;
-      --navy:#071b2a;
 
       --card:rgba(255,255,255,.06);
       --stroke:rgba(255,255,255,.14);
@@ -34,7 +33,6 @@
       --gold:#d4af37;
       --sky:#38bdf8;
 
-      --danger:#fb7185;
       --radius: 22px;
     }
 
@@ -48,56 +46,83 @@
         radial-gradient(800px 420px at 55% 102%, rgba(212,175,55,.12), transparent 60%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
       overflow-x:hidden;
-      min-height:100vh;
+      /* حل iOS viewport */
+      min-height: 100svh;
+    }
+
+    /* تقليل مشاكل التحريك على الأجهزة الضعيفة/اللمس */
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition: none !important; scroll-behavior: auto !important; }
     }
 
     .glass{
       background:linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.04));
       border:1px solid var(--stroke);
       box-shadow:0 24px 90px rgba(0,0,0,.38);
-      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+    }
+    /* blur اختياري وبس إذا مدعوم */
+    @supports ((-webkit-backdrop-filter: blur(12px)) or (backdrop-filter: blur(12px))){
+      .glass{
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+      }
     }
 
     .soft{
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.05);
-      transition: all .25s ease;
+      border-radius: 18px;
     }
-    .soft:hover{
-      background: rgba(255,255,255,.085);
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+
+    /* hover فقط للأجهزة اللي تدعم hover فعليًا */
+    @media (hover:hover) and (pointer:fine){
+      .soft{ transition: transform .22s ease, box-shadow .22s ease, background .22s ease; }
+      .soft:hover{
+        background: rgba(255,255,255,.085);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      }
     }
 
     .btnBrand{
       background: linear-gradient(90deg, rgba(31,157,85,1), rgba(34,197,94,1));
       box-shadow:0 16px 44px rgba(31,157,85,.22);
-      transition: all .25s ease;
+      border-radius: 18px;
+      transition: filter .2s ease, transform .2s ease, box-shadow .2s ease;
     }
-    .btnBrand:hover{
-      filter:brightness(1.08);
-      transform: translateY(-2px);
-      box-shadow:0 20px 50px rgba(31,157,85,.30);
+    .btnBrand:active{ transform: translateY(1px); }
+    @media (hover:hover) and (pointer:fine){
+      .btnBrand:hover{ filter:brightness(1.08); transform: translateY(-2px); box-shadow:0 20px 50px rgba(31,157,85,.30); }
     }
 
     .btnGold{
       background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
       color:#1b1b1b;
       box-shadow:0 16px 44px rgba(212,175,55,.18);
-      transition: all .25s ease;
+      border-radius: 18px;
+      transition: filter .2s ease, transform .2s ease;
     }
-    .btnGold:hover{ filter:brightness(1.05); transform: translateY(-2px); }
+    .btnGold:active{ transform: translateY(1px); }
+    @media (hover:hover) and (pointer:fine){
+      .btnGold:hover{ filter:brightness(1.05); transform: translateY(-2px); }
+    }
 
     .btnGhost{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
-      transition: all .25s ease;
+      border-radius: 18px;
+      transition: background .2s ease, transform .2s ease;
     }
-    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-2px); }
+    .btnGhost:active{ transform: translateY(1px); }
+    @media (hover:hover) and (pointer:fine){
+      .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-2px); }
+    }
 
     .tag{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
     }
 
     .inputX{
@@ -108,8 +133,8 @@
       padding:14px 16px;
       outline:none;
       color:#e5e7eb;
-      font-size:15px;
-      transition: all .2s ease;
+      font-size: 16px; /* مهم للـ iOS حتى لا يعمل Zoom */
+      transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
     }
     .inputX:focus{
       border-color: rgba(34,197,94,.65);
@@ -118,18 +143,21 @@
     }
     .inputX::placeholder{ color: rgba(255,255,255,.45); }
 
-    /* Video */
+    /* Video: aspect-ratio أفضل من padding-bottom، مع fallback */
     .video-wrap{
       position:relative;
       width:100%;
-      padding-bottom:56.25%;
-      border-radius: 22px;
+      border-radius: 18px;
       overflow:hidden;
       background:#000;
       border:1px solid rgba(255,255,255,.14);
+      aspect-ratio: 16 / 9;
+    }
+    @supports not (aspect-ratio: 16 / 9){
+      .video-wrap{ padding-bottom:56.25%; height:0; }
+      .video-wrap iframe{ position:absolute; inset:0; }
     }
     .video-wrap iframe{
-      position:absolute; inset:0;
       width:100%; height:100%;
       border:0;
     }
@@ -145,12 +173,12 @@
     }
     .video-overlay.hide{ opacity:0; pointer-events:none; }
     .play-btn{
-      width:78px; height:78px;
+      width:76px; height:76px;
       border-radius:999px;
       display:flex; align-items:center; justify-content:center;
       background: linear-gradient(135deg, var(--green2), rgba(56,189,248,.9));
       box-shadow:0 16px 60px rgba(34,197,94,.35);
-      font-size:32px;
+      font-size:30px;
     }
 
     @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
@@ -159,11 +187,11 @@
     @keyframes fadeUp { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
     .fadeUp{ animation: fadeUp .5s ease both; }
 
-    /* Toast */
+    /* Toast مع Safe-area */
     .toast{
       position:fixed;
       left:16px; right:16px;
-      bottom:16px;
+      bottom: calc(16px + env(safe-area-inset-bottom));
       z-index:50;
       max-width:640px;
       margin:0 auto;
@@ -171,91 +199,95 @@
     }
     .toast.show{ display:block; }
 
-    @media (max-width: 768px){
+    /* تحسينات موبايل */
+    @media (max-width: 640px){
+      .floating{ animation: none; } /* لتخفيف الحمل */
       .play-btn{ width:62px; height:62px; font-size:24px; }
-      .video-wrap{ border-radius:16px; }
     }
   </style>
 </head>
 
 <body>
+
   <!-- Header -->
   <header class="relative">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8">
-      <div class="glass rounded-3xl px-6 sm:px-8 py-4 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
-          <div>
-            <div class="text-lg sm:text-xl font-extrabold leading-tight"
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+      <div class="glass px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating shrink-0">🏫</div>
+          <div class="min-w-0">
+            <div class="text-lg sm:text-xl font-extrabold leading-tight truncate"
                  style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
               لوحة العرض الذكية للمدارس
             </div>
-            <div class="text-xs sm:text-sm" style="color:var(--muted2)">
+            <div class="text-xs sm:text-sm leading-relaxed" style="color:var(--muted2)">
               التحول الرقمي المتكامل للشاشات المدرسية — بما يتوافق مع رؤية المملكة 2030
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
-          <a href="{% url 'dashboard:login' %}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
-          <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <a href="{% url 'dashboard:login' %}" class="btnGhost px-5 py-3 text-sm font-bold text-center">تسجيل الدخول</a>
+          <a href="#contact" class="btnBrand px-5 py-3 text-sm font-extrabold flex items-center justify-center gap-2 text-center">
             <span>طلب تجربة مجانية</span>
-            <span>→</span>
+            <span aria-hidden="true">→</span>
           </a>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
+  <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-14 lg:space-y-16">
+
     <!-- Hero -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-      <div class="space-y-8 fadeUp">
-        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+      <div class="space-y-7 fadeUp">
+        <div class="inline-flex items-center gap-2 tag px-4 py-2 text-sm w-fit">
           <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
           <span style="color:var(--muted)">تحديث تلقائي • هوية لكل مدرسة • لوحة تحكم مركزية</span>
         </div>
 
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
+        <h1 class="font-extrabold leading-tight"
+            style="font-size:clamp(28px, 4vw, 56px);">
           حوّل شاشات مدرستك إلى
           <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
             منصة اتصال ذكية
           </span>
         </h1>
 
-        <p class="text-lg leading-relaxed" style="color:var(--muted)">
+        <p class="leading-relaxed" style="color:var(--muted); font-size:clamp(15px, 1.5vw, 18px);">
           نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب:
           <strong class="text-white">الحصص</strong>، <strong class="text-white">التنبيهات</strong>،
           <strong class="text-white">جدول اليوم</strong>، <strong class="text-white">المتميزون</strong>،
           والإعلانات — مع تحديث تلقائي وتحكم كامل.
         </p>
 
-        <div class="flex flex-col sm:flex-row gap-4 pt-2">
-          <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
+        <div class="flex flex-col sm:flex-row gap-4 pt-1">
+          <a href="#contact" class="btnBrand px-7 py-4 text-center font-extrabold text-base sm:text-lg">
             🚀 ابدأ تجربتك المجانية
           </a>
-          <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
-            <span>🎬 شاهد العرض التوضيحي</span>
+          <a href="#demo" class="btnGhost px-7 py-4 text-center font-bold text-base sm:text-lg">
+            🎬 شاهد العرض التوضيحي
           </a>
         </div>
 
-        <!-- ✅ تم استبدال الأرقام الوهمية ببطاقات مزايا بدون أرقام -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-          <div class="soft rounded-2xl p-5">
+        <!-- بدون أرقام وهمية -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+          <div class="soft p-5">
             <div class="text-lg font-extrabold">⚡ خفيف وسريع</div>
             <div class="text-sm mt-2" style="color:var(--muted)">تحديثات منتظمة ومصممة لتناسب بيئة المدارس.</div>
           </div>
-          <div class="soft rounded-2xl p-5">
+          <div class="soft p-5">
             <div class="text-lg font-extrabold">🔐 آمن ومعزول</div>
             <div class="text-sm mt-2" style="color:var(--muted)">روابط عرض بتوكن + عزل بيانات كل مدرسة.</div>
           </div>
-          <div class="soft rounded-2xl p-5">
+          <div class="soft p-5">
             <div class="text-lg font-extrabold">🎨 هوية قابلة للتخصيص</div>
             <div class="text-sm mt-2" style="color:var(--muted)">ألوان/خلفية/شعار من لوحة الإعدادات.</div>
           </div>
         </div>
 
-        <div class="soft rounded-2xl p-5">
+        <div class="soft p-5">
           <div class="text-sm leading-relaxed" style="color:var(--muted)">
             <strong class="text-white">توافق رؤية 2030:</strong>
             يدعم التحول الرقمي داخل المدرسة عبر قناة تواصل مرئية لحظية تُعزز الانضباط، نشر الوعي، وتحسين تجربة الطالب والموظف والزائر.
@@ -264,13 +296,13 @@
       </div>
 
       <!-- Demo Video -->
-      <div id="demo" class="glass rounded-3xl p-6 lg:p-8 fadeUp">
-        <div class="flex items-center justify-between gap-4 mb-6">
+      <div id="demo" class="glass p-5 sm:p-6 lg:p-8 fadeUp">
+        <div class="flex items-center justify-between gap-4 mb-5">
           <div>
-            <div class="font-extrabold text-2xl">🎥 عرض توضيحي سريع</div>
+            <div class="font-extrabold text-xl sm:text-2xl">🎥 عرض توضيحي سريع</div>
             <div class="text-sm mt-2" style="color:var(--muted)">اضغط تشغيل لمشاهدة الفيديو</div>
           </div>
-          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
+          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl shrink-0">⚡</div>
         </div>
 
         <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
@@ -290,15 +322,15 @@
         </div>
 
         <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="soft rounded-2xl p-5 text-center">
+          <div class="soft p-5 text-center">
             <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
             <div class="text-sm" style="color:var(--muted)">لوحة واحدة لإدارة كل الشاشات</div>
           </div>
-          <div class="soft rounded-2xl p-5 text-center">
+          <div class="soft p-5 text-center">
             <div class="text-xl font-extrabold mb-2">⚡ تحديث لحظي</div>
             <div class="text-sm" style="color:var(--muted)">تغييرات تظهر بسرعة على الشاشات</div>
           </div>
-          <div class="soft rounded-2xl p-5 text-center">
+          <div class="soft p-5 text-center">
             <div class="text-xl font-extrabold mb-2">🎨 تخصيص الهوية</div>
             <div class="text-sm" style="color:var(--muted)">ألوان وشعار وخلفيات لكل مدرسة</div>
           </div>
@@ -307,34 +339,34 @@
     </section>
 
     <!-- Features -->
-    <section id="features" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-      <div class="text-center mb-12">
-        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
+    <section id="features" class="glass p-6 sm:p-8 lg:p-12 fadeUp">
+      <div class="text-center mb-10">
+        <div class="inline-flex items-center gap-2 tag px-4 py-2 text-sm mb-4">
           <span class="h-2 w-2 rounded-full inline-block" style="background:var(--sky)"></span>
           <span style="color:var(--muted)">مميزات مبتكرة تخدم المدرسة</span>
         </div>
-        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
-        <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
+        <p class="text-base sm:text-lg max-w-3xl mx-auto" style="color:var(--muted)">
           صُممت المنصة لتكون سريعة، جميلة، وسهلة الإدارة — مع قابلية توسع لعدد كبير من المدارس.
         </p>
       </div>
 
-      <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
     </section>
 
     <!-- Contact -->
-    <section id="contact" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-      <div class="text-center mb-10">
-        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للانطلاق؟</h2>
-        <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
+    <section id="contact" class="glass p-6 sm:p-8 lg:p-12 fadeUp">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3">جاهز للانطلاق؟</h2>
+        <p class="text-base sm:text-lg max-w-2xl mx-auto" style="color:var(--muted)">
           عبّئ النموذج وسنفتح محادثة واتساب مُجهّزة بالبيانات لطلب الاشتراك/التجربة.
         </p>
       </div>
 
       <div class="max-w-2xl mx-auto">
-        <form id="contactForm" class="space-y-6">
+        <form id="contactForm" class="space-y-5">
           {% csrf_token %}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
               <input name="name" type="text" class="inputX" placeholder="منصور" required>
@@ -345,7 +377,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
               <input name="school" type="text" class="inputX" placeholder="مدرسة ..." required>
@@ -362,24 +394,25 @@
           </div>
 
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
+            <button type="submit" class="btnBrand px-10 py-4 font-extrabold text-base sm:text-lg w-full sm:w-auto">
               إرسال الطلب عبر واتساب
             </button>
             <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
-               class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
+               class="btnGold px-10 py-4 font-bold text-base sm:text-lg text-center w-full sm:w-auto">
               محادثة واتساب مباشرة
             </a>
           </div>
 
-          <p class="text-center text-sm mt-6" style="color:var(--muted2)">
+          <p class="text-center text-sm mt-4" style="color:var(--muted2)">
             نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية.
           </p>
         </form>
       </div>
     </section>
+
   </main>
 
-  <footer class="border-t border-white/10 mt-20 py-10">
+  <footer class="border-t border-white/10 mt-16 py-10">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
@@ -413,9 +446,9 @@
           <div class="font-bold mb-4">تابعنا</div>
           <div class="flex gap-4">
             <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
-               class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
-            <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
-            <a href="#contact" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">📝</a>
+               class="h-10 w-10 rounded-full soft flex items-center justify-center">🟢</a>
+            <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center">🎥</a>
+            <a href="#contact" class="h-10 w-10 rounded-full soft flex items-center justify-center">📝</a>
           </div>
         </div>
       </div>
@@ -430,7 +463,7 @@
 
   <!-- Toast -->
   <div id="toast" class="toast">
-    <div class="glass rounded-2xl p-4 flex items-start gap-3">
+    <div class="glass p-4 flex items-start gap-3">
       <div class="h-10 w-10 rounded-xl soft flex items-center justify-center">✅</div>
       <div class="flex-1">
         <div class="font-extrabold">تم تجهيز رسالة واتساب</div>
@@ -462,12 +495,12 @@
       { icon:'📢', title:'مركز الإعلانات', description:'تنبيهات مهمة وفورية تظهر على الشاشات بمجرد نشرها.' },
       { icon:'🏆', title:'ركن التميز', description:'إبراز الطلاب/المعلمين المتميزين لتحفيز بيئة إيجابية.' },
       { icon:'🎨', title:'هوية لكل مدرسة', description:'ألوان وشعار وخلفيات تناسب هوية مدرستك.' },
-      { icon:'⚡', title:'أداء سريع', description:'تحديثات منتظمة وخفيفة على السيرفر تدعم التوسع لعدد كبير من المدارس.' },
+      { icon:'⚡', title:'أداء سريع', description:'تحديثات منتظمة وخفيفة على السيرفر تدعم التوسع.' },
       { icon:'🔐', title:'صلاحيات وإدارة', description:'صلاحيات متعددة ولوحة تحكم سهلة لإدارة المحتوى والشاشات.' },
     ];
     const fCont = document.getElementById('featuresContainer');
     fCont.innerHTML = features.map(f => `
-      <div class="soft rounded-2xl p-6">
+      <div class="soft p-6">
         <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-2xl"
              style="background:linear-gradient(135deg, var(--green), var(--green2)); border:1px solid rgba(255,255,255,.14)">
           ${f.icon}
@@ -477,7 +510,7 @@
       </div>
     `).join('');
 
-    // ---------- YouTube (Reliable lazy autoplay) ----------
+    // ---------- YouTube ----------
     function extractYouTubeId(url) {
       try {
         const u = new URL(url);
@@ -505,13 +538,12 @@
       overlay.classList.add('hide');
       setTimeout(() => overlay.style.display = 'none', 250);
     }
-
     overlay.addEventListener('click', playYouTube);
     overlay.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playYouTube(); }
     });
 
-    // ---------- Contact Form -> WhatsApp ----------
+    // ---------- Contact -> WhatsApp ----------
     const toast = document.getElementById('toast');
     const toastClose = document.getElementById('toastClose');
 
@@ -546,8 +578,7 @@ ${data.requirements || '-'}
 
       showToast();
       const url = `https://wa.me/966546868219?text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank', 'noopener');
-
+      window.open(url, '_blank', 'noopener,noreferrer');
       this.reset();
     });
   </script>
