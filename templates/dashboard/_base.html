@@ -179,6 +179,16 @@
         </div>
       </a>
 
+      <!-- Subscription -->
+      <a href="{% url 'dashboard:my_subscription' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'my_subscription' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">💳</span>
+          <span class="font-medium">اشتراكي</span>
+        </div>
+      </a>
+
       <!-- Settings -->
       <a href="{% url 'dashboard:settings' %}"
          class="nav-item block px-4 py-3 rounded-xl border transition-all
