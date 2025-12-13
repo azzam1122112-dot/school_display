@@ -1,0 +1,36 @@
+/* static/css/app.css */
+/* هوية لونية سعودية حديثة (أخضر/كحلي/ذهبي خفيف) */
+
+:root{
+  --bg1:#04150f;
+  --bg2:#07231b;
+  --navy:#071b2a;
+
+  --card:rgba(255,255,255,.06);
+  --stroke:rgba(255,255,255,.14);
+  --muted:rgba(255,255,255,.72);
+
+  --brand:#22c55e;
+  --brand2:#16a34a;
+  --gold:#d4af37;
+  --sky:#38bdf8;
+
+  --radius: 20px;
+}
+
+html, body { height: 100%; }
+body { margin: 0; }
+
+/* أدوات بسيطة قد تستخدمها بالقوالب */
+.glass{
+  background:linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.04));
+  border:1px solid var(--stroke);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+}
+
+.soft{
+  background: rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius);
+}

@@ -1,12 +1,16 @@
 services:
   - type: web
     name: school-display
-    env: python
+    runtime: python
     plan: starter
 
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+
+    startCommand: |
+      set -e
       python manage.py migrate --noinput
 
       if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
@@ -16,13 +20,15 @@ services:
           --email "${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" || true
       fi
 
-    startCommand: >
-      gunicorn config.asgi:application
-      -k uvicorn.workers.UvicornWorker
-      --bind 0.0.0.0:$PORT
-      --workers=1
-      --timeout=120
-      --log-file -
+      gunicorn config.asgi:application \
+        -k uvicorn.workers.UvicornWorker \
+        --bind 0.0.0.0:$PORT \
+        --workers=${WEB_CONCURRENCY:-2} \
+        --timeout=120 \
+        --keep-alive=5 \
+        --log-level=info \
+        --access-logfile - \
+        --error-logfile -
 
     healthCheckPath: "/"
 
@@ -44,6 +50,9 @@ services:
 
       - key: TIME_ZONE
         value: "Asia/Riyadh"
+
+      - key: WEB_CONCURRENCY
+        value: "2"
 
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

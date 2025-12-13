@@ -4,127 +4,218 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
-  <title>تسجيل الدخول — المنصّة</title>
+  <meta name="theme-color" content="#063b2e">
+  <title>تسجيل الدخول — لوحة العرض الذكية</title>
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- (اختياري) ملف ألوان المنصة إن كان موجود -->
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
-
   <!-- Tailwind CDN (إذا منصتك مبنية على Tailwind محلي احذف هذا) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     :root{
-      --bg1:#070a16;
-      --bg2:#0b1220;
+      /* Vision 2030-inspired palette (Saudi green + deep navy + sky) */
+      --bg1:#04110d;
+      --bg2:#063b2e;
+      --navy:#071b2a;
+
       --card:rgba(255,255,255,.06);
-      --stroke:rgba(255,255,255,.12);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.70);
-      --muted2:rgba(255,255,255,.55);
-      --brand1:#4f46e5; /* indigo */
-      --brand2:#0ea5e9; /* sky */
-      --ok:#22c55e;
+      --stroke:rgba(255,255,255,.14);
+
+      --text:rgba(255,255,255,.94);
+      --muted:rgba(255,255,255,.74);
+      --muted2:rgba(255,255,255,.56);
+
+      --green:#1f9d55;
+      --green2:#22c55e;
+      --sky:#38bdf8;
+      --gold:#d4af37;
+
+      --danger:#fb7185;
+      --radius: 24px;
     }
+
     html,body{height:100%}
     body{
       font-family:"IBM Plex Sans Arabic", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
       color:var(--text);
       background:
-        radial-gradient(900px 450px at 20% 10%, rgba(79,70,229,.22), transparent 60%),
-        radial-gradient(900px 450px at 80% 20%, rgba(14,165,233,.18), transparent 60%),
-        radial-gradient(700px 350px at 40% 95%, rgba(34,197,94,.10), transparent 60%),
+        radial-gradient(900px 460px at 15% 10%, rgba(34,197,94,.22), transparent 60%),
+        radial-gradient(900px 460px at 85% 18%, rgba(56,189,248,.14), transparent 60%),
+        radial-gradient(700px 350px at 45% 105%, rgba(212,175,55,.10), transparent 60%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
-      /* مهم: لا تمنع التمرير */
       overflow-x:hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
+
     .bgGrid::before{
       content:"";
       position:absolute; inset:0;
       background-image:
         linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
-      background-size: 44px 44px;
+      background-size: 48px 48px;
       opacity:.06;
       pointer-events:none;
       mask-image: radial-gradient(ellipse at center, black 35%, transparent 70%);
     }
+
     .glass{
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
       border:1px solid var(--stroke);
-      box-shadow: 0 24px 80px rgba(0,0,0,.35);
+      box-shadow: 0 26px 90px rgba(0,0,0,.38);
       backdrop-filter: blur(12px);
     }
+
     .soft{
-      border:1px solid var(--stroke);
+      border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.05);
+      transition: all .25s ease;
     }
-    .inputX{
-      width:100%;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 16px;
-      padding: 12px 14px;
-      outline: none;
-      color: #e5e7eb;
+    .soft:hover{
+      background: rgba(255,255,255,.085);
+      transform: translateY(-2px);
+      box-shadow: 0 14px 44px rgba(0,0,0,.22);
     }
-    .inputX:focus{
-      border-color: rgba(14,165,233,.55);
-      box-shadow: 0 0 0 4px rgba(14,165,233,.12);
-    }
-    .btnBrand{
-      background: linear-gradient(90deg, var(--brand1), var(--brand2));
-      box-shadow: 0 14px 40px rgba(79,70,229,.18);
-    }
-    .btnBrand:hover{ filter: brightness(1.05); }
-    .btnGhost{
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.12);
-    }
-    .btnGhost:hover{ background: rgba(255,255,255,.10); }
-    .miniLine{ height:1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); }
+
     .tag{
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
     }
+
+    .miniLine{
+      height:1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+    }
+
+    .inputX{
+      width:100%;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding: 12px 14px;
+      outline: none;
+      color: #e5e7eb;
+      transition: all .2s ease;
+    }
+    .inputX::placeholder{ color: rgba(255,255,255,.45); }
+    .inputX:focus{
+      border-color: rgba(34,197,94,.55);
+      box-shadow: 0 0 0 4px rgba(34,197,94,.14);
+      background: rgba(255,255,255,.09);
+    }
+
+    .btnBrand{
+      background: linear-gradient(90deg, rgba(31,157,85,1), rgba(56,189,248,.95));
+      box-shadow: 0 16px 46px rgba(34,197,94,.18);
+      transition: all .25s ease;
+    }
+    .btnBrand:hover{ filter: brightness(1.06); transform: translateY(-1px); }
+
+    .btnGhost{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      transition: all .25s ease;
+    }
+    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-1px); }
+
+    .btnGold{
+      background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
+      color:#1b1b1b;
+      box-shadow:0 16px 44px rgba(212,175,55,.18);
+      transition: all .25s ease;
+    }
+    .btnGold:hover{ filter:brightness(1.05); transform: translateY(-1px); }
+
+    .badgeGrad{
+      background: linear-gradient(90deg, rgba(34,197,94,.22), rgba(56,189,248,.16));
+      border:1px solid rgba(255,255,255,.14);
+    }
+
+    /* Floating WhatsApp */
+    .waFloat{
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 60;
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      right:16px; left:16px;
+      bottom: 86px;
+      max-width: 720px;
+      margin:0 auto;
+      z-index:70;
+      display:none;
+    }
+    .toast.show{ display:block; }
+
+    @keyframes fadeUp { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+    .fadeUp{ animation: fadeUp .5s ease both; }
   </style>
 </head>
 
 <body>
   <div class="absolute inset-0 bgGrid pointer-events-none"></div>
 
-  <!-- مهم: ما فيه h-screen ولا overflow-hidden عشان التمرير يشتغل -->
-  <main class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+  <!-- Top Bar -->
+  <header class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6">
+    <div class="glass rounded-3xl px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl">🏫</div>
+        <div>
+          <div class="text-base sm:text-lg font-extrabold leading-tight"
+               style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
+            لوحة العرض الذكية للمدارس
+          </div>
+          <div class="text-xs sm:text-sm" style="color:var(--muted2)">
+            التحول الرقمي للشاشات المدرسية — رؤية 2030
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="/" class="btnGhost rounded-2xl px-4 py-2 text-sm font-bold">الصفحة الرئيسية</a>
+        <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
+           class="btnGold rounded-2xl px-4 py-2 text-sm font-bold">
+          واتساب سريع
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-10 items-start">
 
       <!-- Marketing -->
-      <section class="glass rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <div class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 tag text-xs">
-              <span class="inline-block h-2 w-2 rounded-full" style="background:var(--ok)"></span>
-              <span style="color:var(--muted)">تجربة سريعة • إعداد مرن • تحديث لحظي</span>
-            </div>
+      <section class="glass rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden fadeUp">
+        <div class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 tag text-xs">
+          <span class="inline-block h-2 w-2 rounded-full" style="background:var(--green2)"></span>
+          <span style="color:var(--muted)">تجربة سريعة • إعداد مرن • تحديث لحظي</span>
+        </div>
 
-            <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold leading-tight">
-              لوحة العرض الذكية للمدارس
-            </h1>
+        <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold leading-tight">
+          شاشة المدرسة… بشكل يليق بها
+        </h1>
 
-            <p class="mt-3 text-sm sm:text-base leading-relaxed" style="color:var(--muted)">
-              واجهة عرض احترافية لشاشات المدرسة: <span class="text-slate-100 font-semibold">الحصة الحالية</span>،
-              <span class="text-slate-100 font-semibold">حصص الانتظار</span>، التنبيهات، والمتميزين…
-              بتصميم واضح وجذاب مع ثيمات قابلة للتخصيص من الإعدادات.
-            </p>
-          </div>
+        <p class="mt-3 text-sm sm:text-base leading-relaxed" style="color:var(--muted)">
+          منصة احترافية لإدارة شاشات العرض المدرسية: <span class="text-slate-100 font-semibold">الحصة الحالية</span>،
+          <span class="text-slate-100 font-semibold">حصص الانتظار</span>، التنبيهات، والمتميزين…
+          مع تخصيص الثيم من الإعدادات، وتجربة عرض مثالية لشاشات 55 بوصة وأكثر.
+        </p>
 
-          <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
-            <span class="text-xl">🏫</span>
-          </div>
+        <div class="mt-6 badgeGrad rounded-2xl p-4">
+          <div class="font-bold">لماذا هذا يخدم رؤية 2030؟</div>
+          <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
+            لأنه يحوّل الشاشات من “عرض جامد” إلى قناة رقمية ذكية داخل المدرسة تدعم التواصل الفوري،
+            الانضباط، نشر الرسائل التوعوية، وإبراز التميز — بأداة مركزية قابلة للتوسع.
+          </p>
         </div>
 
         <div class="mt-6 miniLine"></div>
@@ -136,17 +227,17 @@
               <h3 class="font-semibold">تحديثات سلسة</h3>
             </div>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-              تحديث تلقائي دون تدخل، مع إمكانية ضبط سرعة التحديث حسب بيئة المدرسة.
+              تحديث تلقائي دون تدخل، مع ضبط سرعة التحديث حسب بيئة المدرسة.
             </p>
           </div>
 
           <div class="rounded-2xl p-4 soft">
             <div class="flex items-center gap-2">
               <span class="text-lg">🎨</span>
-              <h3 class="font-semibold">ثيمات موحّدة</h3>
+              <h3 class="font-semibold">هوية موحّدة</h3>
             </div>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-              ألوان وخلفيات من لوحة الإعدادات لتناسب هوية المدرسة.
+              ألوان وخلفيات وشعار لكل مدرسة من لوحة الإعدادات.
             </p>
           </div>
 
@@ -156,7 +247,7 @@
               <h3 class="font-semibold">تنبيهات وإعلانات</h3>
             </div>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-              عرض التنبيهات بطريقة واضحة ومشدودة للانتباه على الشاشات الكبيرة.
+              عرض التنبيهات بطريقة واضحة وجذابة على الشاشات الكبيرة.
             </p>
           </div>
 
@@ -166,7 +257,7 @@
               <h3 class="font-semibold">آمن ومخصص</h3>
             </div>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-              عزل بيانات المدارس وروابط عرض بتوكن لحماية الوصول.
+              عزل بيانات المدارس + روابط عرض بتوكن لحماية الوصول.
             </p>
           </div>
         </div>
@@ -179,18 +270,17 @@
           <span class="text-xs tag rounded-full px-3 py-1.5">2 شاشة/مدرسة</span>
           <span class="text-xs tag rounded-full px-3 py-1.5">إعداد سريع</span>
         </div>
-
       </section>
 
-      <!-- Login + WhatsApp Lead -->
-      <section class="space-y-6">
+      <!-- Login + Lead -->
+      <section class="space-y-6 fadeUp">
 
         <!-- Login -->
         <div class="glass rounded-3xl p-6 sm:p-8">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h2 class="text-2xl font-bold">تسجيل الدخول</h2>
-              <p class="mt-1 text-sm" style="color:var(--muted)">لإدارة المنصة وإعدادات المدارس والشاشات.</p>
+              <h2 class="text-2xl font-extrabold">تسجيل الدخول</h2>
+              <p class="mt-1 text-sm" style="color:var(--muted)">لإدارة المدارس، الشاشات، والإعدادات.</p>
             </div>
             <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
               <span class="text-xl">🔑</span>
@@ -239,7 +329,7 @@
               >
             </div>
 
-            <button type="submit" class="w-full rounded-2xl px-4 py-3 font-semibold btnBrand">
+            <button type="submit" class="w-full rounded-2xl px-4 py-3 font-extrabold btnBrand">
               دخول النظام
             </button>
 
@@ -249,7 +339,7 @@
                 <span class="font-semibold">تريد اشتراك أو تجربة؟</span>
               </div>
               <p class="mt-1 text-sm" style="color:var(--muted)">
-                املأ النموذج بالأسفل وسيتم فتح واتساب برسالة جاهزة.
+                عبّئ النموذج بالأسفل وسنفتح واتساب برسالة جاهزة خلال ثوانٍ.
               </p>
             </div>
           </form>
@@ -259,13 +349,13 @@
         <div class="glass rounded-3xl p-6 sm:p-8">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h3 class="text-xl font-bold">طلب اشتراك / تجربة</h3>
+              <h3 class="text-xl font-extrabold">طلب اشتراك / تجربة</h3>
               <p class="mt-1 text-sm" style="color:var(--muted)">
                 نموذج سريع للزوار — إرسال واتساب بنقرة واحدة.
               </p>
             </div>
             <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
-              <span class="text-xl">📩</span>
+              <span class="text-xl">🟢</span>
             </div>
           </div>
 
@@ -298,19 +388,19 @@
                         placeholder="مثال: نريد تجربة أسبوع + ثيم للبنات + سرعة تحديث 15 ثانية..."
                         required></textarea>
               <p class="mt-2 text-xs" style="color:var(--muted2)">
-                لن يتم حفظ البيانات في هذه الصفحة — يتم فتح واتساب برسالة جاهزة فقط.
+                لا يتم حفظ البيانات في هذه الصفحة — يتم فتح واتساب برسالة جاهزة فقط.
               </p>
             </div>
 
-            <button type="button" id="sendWa"
-                    class="w-full rounded-2xl px-4 py-3 font-semibold btnBrand">
+            <button type="button" id="sendWa" class="w-full rounded-2xl px-4 py-3 font-extrabold btnBrand">
               إرسال عبر واتساب
             </button>
 
-            <div id="leadError" class="hidden rounded-2xl px-4 py-3 soft text-rose-200 text-sm" style="background:rgba(244,63,94,.08); border-color: rgba(244,63,94,.25)"></div>
+            <div id="leadError" class="hidden rounded-2xl px-4 py-3 text-sm"
+                 style="background:rgba(244,63,94,.08); border:1px solid rgba(244,63,94,.25); color:#fecdd3"></div>
 
             <div class="mt-3 text-center text-xs" style="color:var(--muted2)">
-              بالضغط سيتم فتح واتساب على الرقم: <span class="text-slate-100 font-semibold">966546868219</span>
+              سيتم الإرسال إلى الرقم: <span class="text-slate-100 font-semibold">+966 54 686 8219</span>
             </div>
           </form>
         </div>
@@ -318,10 +408,29 @@
         <footer class="text-center text-xs" style="color:var(--muted2)">
           © {{ now|date:"Y" }} — جميع الحقوق محفوظة
         </footer>
-
       </section>
     </div>
   </main>
+
+  <!-- Floating WhatsApp -->
+  <div class="waFloat">
+    <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
+       class="btnBrand rounded-full px-4 py-3 font-extrabold flex items-center gap-2 shadow-lg">
+      <span>واتساب</span><span>🟢</span>
+    </a>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <div class="glass rounded-2xl p-4 flex items-start gap-3">
+      <div class="h-10 w-10 rounded-xl soft flex items-center justify-center">✅</div>
+      <div class="flex-1">
+        <div class="font-extrabold">تم تجهيز رسالة واتساب</div>
+        <div class="text-sm mt-1" style="color:var(--muted)">سيتم فتح واتساب الآن لإرسال طلبك.</div>
+      </div>
+      <button id="toastClose" class="btnGhost rounded-xl px-3 py-2 text-sm font-bold">إغلاق</button>
+    </div>
+  </div>
 
   <script>
     (function(){
@@ -349,6 +458,14 @@
         const box = $("leadError");
         box.textContent = "";
         box.classList.add("hidden");
+      }
+
+      function showToast(){
+        const toast = $("toast");
+        const close = $("toastClose");
+        toast.classList.add("show");
+        const t = setTimeout(() => toast.classList.remove("show"), 4500);
+        close.onclick = () => { clearTimeout(t); toast.classList.remove("show"); };
       }
 
       function buildMessage(){
@@ -395,6 +512,7 @@
         if (!guard()) return;
         const text = buildMessage();
         const url = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(text);
+        showToast();
         window.open(url, "_blank", "noopener,noreferrer");
       });
     })();

@@ -6,34 +6,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07231b">
   <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
-  
+
+  <!-- Optional favicon -->
+  <link rel="icon" href="{% static 'favicon.ico' %}">
+
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS -->
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- YouTube Embed API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-  
+
   <style>
     :root{
-      --bg1:#04150f;      /* deep green */
-      --bg2:#07231b;      /* national green-ish */
-      --navy:#071b2a;     /* deep navy */
+      --bg1:#04150f;
+      --bg2:#07231b;
+      --navy:#071b2a;
+
       --card:rgba(255,255,255,.06);
       --stroke:rgba(255,255,255,.14);
-      --muted:rgba(255,255,255,.74);
-      --muted2:rgba(255,255,255,.56);
+      --muted:rgba(255,255,255,.78);
+      --muted2:rgba(255,255,255,.58);
+
       --green:#1f9d55;
       --green2:#22c55e;
       --gold:#d4af37;
       --sky:#38bdf8;
+
       --danger:#fb7185;
+      --radius: 22px;
     }
 
+    html,body{height:100%}
     body{
       font-family:'Cairo',system-ui,-apple-system,Segoe UI,Arial,sans-serif;
       color:#fff;
@@ -56,11 +61,10 @@
     .soft{
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.05);
-      transition: all 0.3s ease;
+      transition: all .25s ease;
     }
-
     .soft:hover{
-      background: rgba(255,255,255,.08);
+      background: rgba(255,255,255,.085);
       transform: translateY(-2px);
       box-shadow: 0 12px 40px rgba(0,0,0,.25);
     }
@@ -68,43 +72,32 @@
     .btnBrand{
       background: linear-gradient(90deg, rgba(31,157,85,1), rgba(34,197,94,1));
       box-shadow:0 16px 44px rgba(31,157,85,.22);
-      transition: all 0.3s ease;
+      transition: all .25s ease;
     }
-    .btnBrand:hover{ 
+    .btnBrand:hover{
       filter:brightness(1.08);
       transform: translateY(-2px);
-      box-shadow:0 20px 50px rgba(31,157,85,.3);
+      box-shadow:0 20px 50px rgba(31,157,85,.30);
     }
 
     .btnGold{
       background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
       color:#1b1b1b;
       box-shadow:0 16px 44px rgba(212,175,55,.18);
-      transition: all 0.3s ease;
+      transition: all .25s ease;
     }
-    .btnGold:hover{ 
-      filter:brightness(1.05);
-      transform: translateY(-2px);
-    }
+    .btnGold:hover{ filter:brightness(1.05); transform: translateY(-2px); }
 
     .btnGhost{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
-      transition: all 0.3s ease;
+      transition: all .25s ease;
     }
-    .btnGhost:hover{ 
-      background: rgba(255,255,255,.12);
-      transform: translateY(-2px);
-    }
+    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-2px); }
 
     .tag{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
-    }
-
-    .miniLine{ 
-      height:1px; 
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); 
     }
 
     .inputX{
@@ -116,111 +109,72 @@
       outline:none;
       color:#e5e7eb;
       font-size:15px;
-      transition: all 0.25s ease;
+      transition: all .2s ease;
     }
     .inputX:focus{
       border-color: rgba(34,197,94,.65);
       box-shadow: 0 0 0 4px rgba(34,197,94,.18);
       background: rgba(255,255,255,.09);
     }
+    .inputX::placeholder{ color: rgba(255,255,255,.45); }
 
-    /* Video Container */
-    .video-container {
-      position: relative;
-      width: 100%;
-      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-      border-radius: 20px;
-      overflow: hidden;
-      background: #000;
+    /* Video */
+    .video-wrap{
+      position:relative;
+      width:100%;
+      padding-bottom:56.25%;
+      border-radius: 22px;
+      overflow:hidden;
+      background:#000;
+      border:1px solid rgba(255,255,255,.14);
     }
-    
-    .video-container iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
+    .video-wrap iframe{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      border:0;
     }
-    
-    .video-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(7, 35, 27, 0.4);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      cursor: pointer;
+    .video-overlay{
+      position:absolute; inset:0;
+      display:flex;
+      align-items:center; justify-content:center;
+      flex-direction:column;
+      gap:12px;
+      background: radial-gradient(600px 300px at 50% 30%, rgba(34,197,94,.22), rgba(7,35,27,.55));
+      cursor:pointer;
+      transition: opacity .25s ease;
     }
-    
-    .video-container:hover .video-overlay {
-      opacity: 1;
+    .video-overlay.hide{ opacity:0; pointer-events:none; }
+    .play-btn{
+      width:78px; height:78px;
+      border-radius:999px;
+      display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(135deg, var(--green2), rgba(56,189,248,.9));
+      box-shadow:0 16px 60px rgba(34,197,94,.35);
+      font-size:32px;
     }
-    
-    .play-btn {
-      width: 80px;
-      height: 80px;
-      background: var(--green2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      box-shadow: 0 10px 40px rgba(34, 197, 94, 0.4);
-      margin-bottom: 20px;
+
+    /* tiny animations */
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .floating{ animation: float 3s ease-in-out infinite; }
+
+    @keyframes fadeUp { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+    .fadeUp{ animation: fadeUp .5s ease both; }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      left:16px; right:16px;
+      bottom:16px;
+      z-index:50;
+      max-width:640px;
+      margin:0 auto;
+      display:none;
     }
-    
-    .feature-icon {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, var(--green), var(--green2));
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      margin-bottom: 16px;
-    }
-    
-    .stats-counter {
-      font-size: 2.5rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--green2), var(--sky));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    
-    .floating {
-      animation: float 3s ease-in-out infinite;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .video-container {
-        border-radius: 16px;
-      }
-      .play-btn {
-        width: 60px;
-        height: 60px;
-        font-size: 24px;
-      }
-      .feature-icon {
-        width: 48px;
-        height: 48px;
-        font-size: 20px;
-      }
+    .toast.show{ display:block; }
+
+    @media (max-width: 768px){
+      .play-btn{ width:62px; height:62px; font-size:24px; }
+      .video-wrap{ border-radius:16px; }
     }
   </style>
 </head>
@@ -233,15 +187,16 @@
         <div class="flex items-center gap-4">
           <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
           <div>
-            <div class="text-lg sm:text-xl font-extrabold leading-tight bg-gradient-to-l from-green2 to-sky bg-clip-text text-transparent">
+            <div class="text-lg sm:text-xl font-extrabold leading-tight"
+                 style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
               لوحة العرض الذكية للمدارس
             </div>
             <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-              التحول الرقمي المتكامل لشاشات العرض المدرسية
+              التحول الرقمي المتكامل للشاشات المدرسية — بما يتوافق مع رؤية المملكة 2030
             </div>
           </div>
         </div>
-        
+
         <div class="flex items-center gap-3">
           <a href="{% url 'dashboard:login' %}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
           <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
@@ -254,182 +209,176 @@
   </header>
 
   <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
-    <!-- Hero Section with Video -->
+    <!-- Hero -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-      <div class="space-y-8">
+      <div class="space-y-8 fadeUp">
         <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
-          <span class="h-2 w-2 rounded-full inline-block bg-green2 animate-pulse"></span>
-          <span style="color:var(--muted)">منصة تفاعلية • تحديث فوري • هوية خاصة لكل مدرسة</span>
+          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
+          <span style="color:var(--muted)">تحديث تلقائي • هوية لكل مدرسة • لوحة تحكم مركزية</span>
         </div>
 
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-          حوّل شاشات مدرستك إلى 
-          <span class="bg-gradient-to-l from-gold to-yellow-300 bg-clip-text text-transparent">
+          حوّل شاشات مدرستك إلى
+          <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
             منصة اتصال ذكية
           </span>
         </h1>
 
         <p class="text-lg leading-relaxed" style="color:var(--muted)">
-          نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب. يعرض <strong class="text-white">الحصص الدراسية</strong>، 
-          التنبيهات المهمة، جداول اليوم، الطلاب المتميزين، والإعلانات — كل ذلك بتحديث تلقائي 
-          وتحكم كامل من لوحة إدارة مركزية.
+          نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب:
+          <strong class="text-white">الحصص</strong>، <strong class="text-white">التنبيهات</strong>،
+          <strong class="text-white">جدول اليوم</strong>، <strong class="text-white">المتميزون</strong>،
+          والإعلانات — مع تحديث تلقائي وتحكم كامل.
         </p>
 
-        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+        <div class="flex flex-col sm:flex-row gap-4 pt-2">
           <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
-            🚀 ابدأ تجربتك المجانية الآن
+            🚀 ابدأ تجربتك المجانية
           </a>
           <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
             <span>🎬 شاهد العرض التوضيحي</span>
           </a>
         </div>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="stats-counter">+50</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">مدرسة تستخدم المنصة</div>
+            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">+50</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">مدرسة</div>
           </div>
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="stats-counter">99.8%</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">نسبة توفر النظام</div>
+            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">99.8%</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">توفر</div>
           </div>
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="stats-counter">24/7</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">دعم فني متواصل</div>
+            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">24/7</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">دعم</div>
           </div>
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="stats-counter">5د</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">إعداد سريع</div>
+            <div class="text-3xl font-extrabold" style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">5د</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">إعداد</div>
+          </div>
+        </div>
+
+        <div class="soft rounded-2xl p-5">
+          <div class="text-sm leading-relaxed" style="color:var(--muted)">
+            <strong class="text-white">توافق رؤية 2030:</strong>
+            يدعم التحول الرقمي داخل المدرسة عبر قناة تواصل مرئية لحظية تُعزز الانضباط، نشر الوعي، وتحسين تجربة الطالب والموظف والزائر.
           </div>
         </div>
       </div>
 
-      <!-- Video Demo Section -->
-      <div id="demo" class="glass rounded-3xl p-6 lg:p-8">
+      <!-- Demo Video -->
+      <div id="demo" class="glass rounded-3xl p-6 lg:p-8 fadeUp">
         <div class="flex items-center justify-between gap-4 mb-6">
           <div>
-            <div class="font-extrabold text-2xl">عرض حي للمنصة في المدرسة</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">
-              شاهد كيف تعمل اللوحة الذكية في بيئة مدرسية حقيقية
-            </div>
+            <div class="font-extrabold text-2xl">🎥 عرض توضيحي سريع</div>
+            <div class="text-sm mt-2" style="color:var(--muted)">اضغط تشغيل لمشاهدة الفيديو</div>
           </div>
-          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">🎥</div>
+          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
         </div>
 
-        <!-- YouTube Video Embed -->
-        <div class="video-container glass">
-          <iframe 
-            id="youtubeVideo"
-            src="https://www.youtube.com/embed/yqa9aT460GM?rel=0&modestbranding=1&playsinline=1"
+        <!-- IMPORTANT:
+             ضع رابط يوتيوب هنا (أي رابط)، السكربت سيستخرج الـID تلقائيًا -->
+        <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
+          <iframe
+            id="ytFrame"
+            loading="lazy"
             title="عرض توضيحي لمنصة اللوحة الذكية للمدارس"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen>
           </iframe>
-          
-          <div class="video-overlay" onclick="playVideo()">
+
+          <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
             <div class="play-btn">▶</div>
-            <div class="text-white text-lg font-bold">انقر للمشاهدة</div>
+            <div class="text-white text-lg font-bold">تشغيل الفيديو</div>
+            <div class="text-sm" style="color:rgba(255,255,255,.75)">سيتم فتح التشغيل داخل الصفحة</div>
           </div>
         </div>
 
         <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="soft rounded-2xl p-5 text-center">
             <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
-            <div class="text-sm" style="color:var(--muted)">إدارة جميع الشاشات من لوحة واحدة</div>
+            <div class="text-sm" style="color:var(--muted)">لوحة واحدة لإدارة كل الشاشات</div>
           </div>
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-xl font-extrabold mb-2">⚡ تحديث فوري</div>
-            <div class="text-sm" style="color:var(--muted)">تغييرات تظهر خلال ثوانٍ</div>
+            <div class="text-xl font-extrabold mb-2">⚡ تحديث لحظي</div>
+            <div class="text-sm" style="color:var(--muted)">تغييرات تظهر بسرعة على الشاشات</div>
           </div>
           <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-xl font-extrabold mb-2">🎨 تخصيص كامل</div>
-            <div class="text-sm" style="color:var(--muted)">هوية بصرية تناسب مدرستك</div>
+            <div class="text-xl font-extrabold mb-2">🎨 تخصيص الهوية</div>
+            <div class="text-sm" style="color:var(--muted)">ألوان وشعار وخلفيات لكل مدرسة</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="glass rounded-3xl p-8 lg:p-12">
+    <!-- Features -->
+    <section id="features" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
       <div class="text-center mb-12">
         <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
-          <span class="h-2 w-2 rounded-full inline-block bg-sky"></span>
-          <span style="color:var(--muted)">مميزات مبتكرة تخدم العملية التعليمية</span>
+          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--sky)"></span>
+          <span style="color:var(--muted)">مميزات مبتكرة تخدم المدرسة</span>
         </div>
         <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
         <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
-          صممنا المنصة لتلبي جميع احتياجات المدارس في التحول الرقمي للشاشات
+          صُممت المنصة لتكون سريعة، جميلة، وسهلة الإدارة — مع قابلية توسع لعدد كبير من المدارس.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for feature in features %}
-        <div class="soft rounded-2xl p-6">
-          <div class="feature-icon">
-            {{ feature.icon }}
-          </div>
-          <h3 class="text-xl font-extrabold mb-3">{{ feature.title }}</h3>
-          <p class="text-sm" style="color:var(--muted)">{{ feature.description }}</p>
-        </div>
-        {% endfor %}
-      </div>
-
-      <!-- Dynamic Features (JavaScript will fill these) -->
-      <div id="featuresContainer" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Features will be inserted here by JavaScript -->
-      </div>
+      <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </section>
 
-    <!-- CTA Section -->
-    <section id="contact" class="glass rounded-3xl p-8 lg:p-12">
+    <!-- Contact -->
+    <section id="contact" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
       <div class="text-center mb-10">
-        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للتحول الرقمي؟</h2>
+        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للانطلاق؟</h2>
         <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
-          املأ النموذج وسنقوم بالتواصل معك خلال 24 ساعة لتجهيز تجربتك المجانية
+          عبّئ النموذج وسنفتح محادثة واتساب مُجهّزة بالبيانات لطلب الاشتراك/التجربة.
         </p>
       </div>
 
       <div class="max-w-2xl mx-auto">
         <form id="contactForm" class="space-y-6">
+          {% csrf_token %}
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
-              <input type="text" class="inputX" placeholder="أحمد محمد العتيبي" required>
+              <input name="name" type="text" class="inputX" placeholder="  منصور" required>
             </div>
             <div>
               <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
-              <input type="tel" class="inputX" placeholder="05XXXXXXXX" required>
+              <input name="phone" type="tel" class="inputX" placeholder="05XXXXXXXX" required inputmode="tel">
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
-              <input type="text" class="inputX" placeholder="المدرسة..." required>
+              <input name="school" type="text" class="inputX" placeholder="مدرسة ..." required>
             </div>
             <div>
               <label class="block text-sm font-bold mb-3">المدينة</label>
-              <input type="text" class="inputX" placeholder="الرياض، جدة، الدمام...">
+              <input name="city" type="text" class="inputX" placeholder="الرياض، جدة، الدمام...">
             </div>
           </div>
 
           <div>
             <label class="block text-sm font-bold mb-3">متطلباتك واحتياجاتك *</label>
-            <textarea class="inputX" rows="5" placeholder="أخبرنا عن عدد الشاشات، نوع المحتوى الذي تريد عرضه، وأي متطلبات خاصة..." required></textarea>
+            <textarea name="requirements" class="inputX" rows="5" placeholder="عدد الشاشات، نوع المحتوى، أي متطلبات خاصة..." required></textarea>
           </div>
 
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
-              إرسال الطلب والبدء بالتجربة
+              إرسال الطلب عبر واتساب
             </button>
-            <a href="https://wa.me/966546868219" target="_blank" class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
+            <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
+               class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
               محادثة واتساب مباشرة
             </a>
           </div>
 
           <p class="text-center text-sm mt-6" style="color:var(--muted2)">
-            نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية
+            نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية.
           </p>
         </form>
       </div>
@@ -440,41 +389,43 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
-          <div class="text-xl font-extrabold mb-4 bg-gradient-to-l from-green2 to-sky bg-clip-text text-transparent">
+          <div class="text-xl font-extrabold mb-4"
+               style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
             لوحة العرض الذكية
           </div>
           <p class="text-sm" style="color:var(--muted2)">
-            منصة التحول الرقمي للشاشات المدرسية
+            منصة التحول الرقمي للشاشات المدرسية — رؤية 2030
           </p>
         </div>
-        
+
         <div>
           <div class="font-bold mb-4">روابط سريعة</div>
           <ul class="space-y-2">
-            <li><a href="#demo" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
-            <li><a href="#features" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">المميزات</a></li>
-            <li><a href="#contact" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">طلب تجربة</a></li>
+            <li><a href="#demo" class="text-sm hover:text-white transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
+            <li><a href="#features" class="text-sm hover:text-white transition" style="color:var(--muted2)">المميزات</a></li>
+            <li><a href="#contact" class="text-sm hover:text-white transition" style="color:var(--muted2)">طلب تجربة</a></li>
           </ul>
         </div>
-        
+
         <div>
           <div class="font-bold mb-4">الدعم</div>
           <ul class="space-y-2">
-            <li><a href="mailto:support@example.com" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">الدعم الفني</a></li>
-            <li><a href="tel:+966546868219" class="text-sm hover:text-green2 transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
+            <li><a href="tel:+966546868219" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
+            <li><a href="{% url 'dashboard:login' %}" class="text-sm hover:text-white transition" style="color:var(--muted2)">تسجيل الدخول</a></li>
           </ul>
         </div>
-        
+
         <div>
           <div class="font-bold mb-4">تابعنا</div>
           <div class="flex gap-4">
-            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">📱</a>
-            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">🐦</a>
-            <a href="#" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-green2 transition">📸</a>
+            <a href="https://wa.me/966546868219" target="_blank" rel="noopener"
+               class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
+            <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
+            <a href="#contact" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">📝</a>
           </div>
         </div>
       </div>
-      
+
       <div class="border-t border-white/10 mt-8 pt-8 text-center">
         <p class="text-sm" style="color:var(--muted2)">
           © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
@@ -483,161 +434,130 @@
     </div>
   </footer>
 
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <div class="glass rounded-2xl p-4 flex items-start gap-3">
+      <div class="h-10 w-10 rounded-xl soft flex items-center justify-center">✅</div>
+      <div class="flex-1">
+        <div class="font-extrabold">تم تجهيز رسالة واتساب</div>
+        <div class="text-sm mt-1" style="color:var(--muted)">سيتم فتح واتساب الآن لإرسال طلبك.</div>
+      </div>
+      <button id="toastClose" class="btnGhost rounded-xl px-3 py-2 text-sm font-bold">إغلاق</button>
+    </div>
+  </div>
+
   <script>
-    // Initialize YouTube Player
-    let player;
-    
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('youtubeVideo', {
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
-        }
-      });
-    }
-    
-    function onPlayerReady(event) {
-      console.log('YouTube player is ready');
-    }
-    
-    function onPlayerStateChange(event) {
-      // Handle player state changes if needed
-    }
-    
-    function playVideo() {
-      if (player && typeof player.playVideo === 'function') {
-        player.playVideo();
-        document.querySelector('.video-overlay').style.display = 'none';
-      }
-    }
-    
-    // Set current year in footer
+    // ---------- Year ----------
     document.getElementById('currentYear').textContent = new Date().getFullYear();
-    
-    // Features data
-    const features = [
-      {
-        icon: '📅',
-        title: 'جدول حصص ذكي',
-        description: 'عرض ديناميكي للحصص مع تمييز الحصة الحالية والتالية بتحديث تلقائي'
-      },
-      {
-        icon: '📢',
-        title: 'مركز الإعلانات',
-        description: 'بث تنبيهات مهمة وفورية تظهر على جميع الشاشات فور نشرها'
-      },
-      {
-        icon: '🏆',
-        title: 'ركن التميز',
-        description: 'عرض إنجازات الطلاب والمعلمين المتميزين لتحفيز المنافسة الإيجابية'
-      },
-      {
-        icon: '🎨',
-        title: 'مصمم الهوية',
-        description: 'تخصيص كامل للألوان، الشعار، الخلفيات، والخطوط لهوية مدرستك'
-      },
-      {
-        icon: '🔗',
-        title: 'تكامل سهل',
-        description: 'يتكامل مع أنظمة إدارة المدارس القائمة بربط بيانات تلقائي'
-      },
-      {
-        icon: '📱',
-        title: 'لوحة تحكم موحدة',
-        description: 'إدارة محتوى جميع الشاشات من مكان واحد بصلاحيات متعددة'
-      }
-    ];
-    
-    // Dynamically insert features
-    document.addEventListener('DOMContentLoaded', function() {
-      const container = document.getElementById('featuresContainer');
-      features.forEach(feature => {
-        const featureHTML = `
-          <div class="soft rounded-2xl p-6">
-            <div class="feature-icon">
-              ${feature.icon}
-            </div>
-            <h3 class="text-xl font-extrabold mb-3">${feature.title}</h3>
-            <p class="text-sm" style="color:var(--muted)">${feature.description}</p>
-          </div>
-        `;
-        container.innerHTML += featureHTML;
+
+    // ---------- Smooth scroll ----------
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href');
+        if (!id || id === '#') return;
+        const el = document.querySelector(id);
+        if (!el) return;
+        e.preventDefault();
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-      
-      // Form submission handler
-      const contactForm = document.getElementById('contactForm');
-      if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-          
-          const formData = new FormData(this);
-          const data = Object.fromEntries(formData);
-          
-          // Build WhatsApp message
-          const whatsappMessage = `
+    });
+
+    // ---------- Features (static - no Django context needed) ----------
+    const features = [
+      { icon:'📅', title:'جدول حصص ذكي', description:'عرض ديناميكي للحصص مع تمييز الحالية والتالية بتحديث تلقائي.' },
+      { icon:'📢', title:'مركز الإعلانات', description:'تنبيهات مهمة وفورية تظهر على الشاشات بمجرد نشرها.' },
+      { icon:'🏆', title:'ركن التميز', description:'إبراز الطلاب/المعلمين المتميزين لتحفيز بيئة إيجابية.' },
+      { icon:'🎨', title:'هوية لكل مدرسة', description:'ألوان وشعار وخلفيات تناسب هوية مدرستك.' },
+      { icon:'⚡', title:'أداء سريع', description:'تحديثات منتظمة وخفيفة على السيرفر تدعم التوسع لعدد كبير من المدارس.' },
+      { icon:'🔐', title:'صلاحيات وإدارة', description:'صلاحيات متعددة ولوحة تحكم سهلة لإدارة المحتوى والشاشات.' },
+    ];
+    const fCont = document.getElementById('featuresContainer');
+    fCont.innerHTML = features.map(f => `
+      <div class="soft rounded-2xl p-6">
+        <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-2xl"
+             style="background:linear-gradient(135deg, var(--green), var(--green2)); border:1px solid rgba(255,255,255,.14)">
+          ${f.icon}
+        </div>
+        <h3 class="text-xl font-extrabold mt-4 mb-3">${f.title}</h3>
+        <p class="text-sm" style="color:var(--muted)">${f.description}</p>
+      </div>
+    `).join('');
+
+    // ---------- YouTube (Reliable lazy autoplay) ----------
+    function extractYouTubeId(url) {
+      try {
+        // supports: https://www.youtube.com/watch?v=ID , youtu.be/ID , embed/ID
+        const u = new URL(url);
+        if (u.hostname.includes('youtu.be')) return u.pathname.replace('/', '');
+        if (u.searchParams.get('v')) return u.searchParams.get('v');
+        const parts = u.pathname.split('/').filter(Boolean);
+        const embedIndex = parts.indexOf('embed');
+        if (embedIndex >= 0 && parts[embedIndex + 1]) return parts[embedIndex + 1];
+      } catch (e) {}
+      return '';
+    }
+
+    const videoWrap = document.querySelector('.video-wrap');
+    const overlay = document.getElementById('videoOverlay');
+    const frame = document.getElementById('ytFrame');
+
+    const youtubeUrl = videoWrap.getAttribute('data-youtube-url') || '';
+    const videoId = extractYouTubeId(youtubeUrl) || 'yqa9aT460GM';
+
+    // preload non-autoplay (privacy-friendly)
+    const baseSrc = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
+    frame.src = baseSrc;
+
+    function playYouTube() {
+      // autoplay only on user gesture (click)
+      frame.src = baseSrc + '&autoplay=1';
+      overlay.classList.add('hide');
+      setTimeout(() => overlay.style.display = 'none', 250);
+    }
+
+    overlay.addEventListener('click', playYouTube);
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playYouTube(); }
+    });
+
+    // ---------- Contact Form -> WhatsApp ----------
+    const toast = document.getElementById('toast');
+    const toastClose = document.getElementById('toastClose');
+
+    function showToast() {
+      toast.classList.add('show');
+      const t = setTimeout(() => toast.classList.remove('show'), 4500);
+      toastClose.onclick = () => { clearTimeout(t); toast.classList.remove('show'); };
+    }
+
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const fd = new FormData(this);
+      const data = Object.fromEntries(fd.entries());
+
+      const msg = `
 السلام عليكم ورحمة الله وبركاته،
 
-أرغب في تجربة منصة اللوحة الذكية للمدارس.
+أرغب في تجربة/الاشتراك في منصة لوحة العرض الذكية للمدارس.
 
 *البيانات:*
-- الاسم: ${data.name || 'غير مذكور'}
-- الجوال: ${data.phone || 'غير مذكور'}
-- المدرسة: ${data.school || 'غير مذكورة'}
-- المدينة: ${data.city || 'غير مذكورة'}
+- الاسم: ${data.name || '-'}
+- الجوال: ${data.phone || '-'}
+- المدرسة: ${data.school || '-'}
+- المدينة: ${data.city || '-'}
 
 *المتطلبات:*
-${data.requirements || 'غير مذكور'}
+${data.requirements || '-'}
 
-أتطلع للتواصل معكم.
-          `.trim();
-          
-          // Open WhatsApp
-          const whatsappURL = `https://wa.me/966546868219?text=${encodeURIComponent(whatsappMessage)}`;
-          window.open(whatsappURL, '_blank');
-          
-          // Reset form
-          this.reset();
-          
-          // Show success message
-          alert('شكراً لك! سيتم فتح محادثة واتساب مع فريقنا.');
-        });
-      }
-    });
-    
-    // Smooth scrolling for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function(e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('href');
-        if (targetId === '#') return;
-        
-        const targetElement = document.querySelector(targetId);
-        if (targetElement) {
-          targetElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        }
-      });
-    });
-    
-    // Add scroll animation to elements
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animate-fadeIn');
-        }
-      });
-    }, observerOptions);
-    
-    // Observe elements for animation
-    document.querySelectorAll('.soft, .glass').forEach(el => {
-      observer.observe(el);
+شاكرين لكم.
+      `.trim();
+
+      showToast();
+      const url = `https://wa.me/966546868219?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank', 'noopener');
+
+      this.reset();
     });
   </script>
 </body>
