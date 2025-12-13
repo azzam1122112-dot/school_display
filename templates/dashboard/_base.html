@@ -4,196 +4,326 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}لوحة التحكم{% endblock %}</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  {% load static %}
+
   <style>
     html, body {
       height: 100%;
       font-family: 'Cairo', sans-serif;
     }
-    
-    /* تأثيرات التدرج والظلال */
-    .gradient-bg {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .glass-effect {
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
+
     .nav-item {
-      transition: all 0.3s ease;
+      transition: all .3s ease;
       position: relative;
       overflow: hidden;
     }
-    
     .nav-item::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: right 0.5s;
+      content:"";
+      position:absolute;
+      top:0;
+      right:-100%;
+      width:100%;
+      height:100%;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
+      transition:right .5s;
     }
-    
     .nav-item:hover::before {
-      right: 100%;
+      right:100%;
     }
-    
     .active-nav {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      color: white;
-      box-shadow: 0 4px 15px 0 rgba(79, 70, 229, 0.3);
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      color:white;
+      box-shadow:0 4px 15px rgba(79,70,229,.3);
     }
   </style>
 </head>
+
 <body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900">
-  <!-- Header محسن -->
-  <header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-3 space-x-reverse">
-        {% if request.user.profile.school.logo %}
-          <img src="{{ request.user.profile.school.logo.url }}" alt="Logo" class="h-10 w-10 rounded-xl object-contain bg-white border border-slate-200">
-        {% else %}
-          <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-            🏫
-          </div>
-        {% endif %}
-        <div>
-          <h1 class="text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            لوحة الإدارة
-          </h1>
-          <p class="text-xs text-slate-500 mt-1">{{ school_name|default:"مدرستنا" }}</p>
-        </div>
-      </div>
-      
-      <div class="flex items-center space-x-4 space-x-reverse">
-        <div class="text-sm bg-slate-100 px-3 py-1.5 rounded-full">
-          <span class="text-slate-700">مرحبًا،</span>
-          <span class="font-semibold text-slate-900">{{ request.user.get_short_name|default:request.user.username }}</span>
-        </div>
-        <a class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-1.5 rounded-full hover:shadow-lg transition-all duration-300 hover:scale-105" 
-           href="{% url 'dashboard:logout' %}">
-          تسجيل الخروج
-        </a>
+
+<!-- ░░ Header ░░ -->
+<header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+
+    <div class="flex items-center space-x-reverse space-x-3">
+      {% if request.user.is_authenticated and request.user.profile.school and request.user.profile.school.logo %}
+        <img src="{{ request.user.profile.school.logo.url }}"
+             class="h-10 w-10 rounded-xl border bg-white object-contain">
+      {% else %}
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600
+                    flex justify-center items-center text-white font-bold text-lg">🏫</div>
+      {% endif %}
+
+      <div>
+        <h1 class="text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+          لوحة الإدارة
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">
+          {{ school_name|default:"مدرستنا" }}
+        </p>
       </div>
     </div>
-  </header>
 
-  <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
-    <!-- الشريط الجانبي المحسن -->
-    <aside class="col-span-12 md:col-span-3">
-      <nav class="space-y-2 bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50">
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'index' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:index' %}" {% if not request.user.profile.school.schedule_settings.show_home %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">📊</span>
-            <span class="font-medium">الصفحة الرئيسية</span>
-          </div>
-        </a>
-        
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'settings' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:settings' %}" {% if not request.user.profile.school.schedule_settings.show_settings %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">⚙️</span>
-            <span class="font-medium">إعدادات المدرسة</span>
-          </div>
-        </a>
+    <div class="flex items-center space-x-reverse space-x-4">
 
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'change_password' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:change_password' %}" {% if not request.user.profile.school.schedule_settings.show_change_password %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🔒</span>
-            <span class="font-medium">تغيير كلمة المرور</span>
+      {# كرت "اشتراكي" الصغير في الهيدر #}
+      {% with sub=request.school_subscription %}
+        {% if sub %}
+          <div class="hidden md:flex flex-col items-end bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2 text-[11px] leading-snug shadow-sm">
+            <div class="flex items-center mb-1">
+              <span class="ml-1 text-xs">📦</span>
+              <span class="font-semibold text-slate-800">اشتراكي</span>
+            </div>
+            <div class="text-slate-700">
+              {% if sub.plan %}
+                <span class="font-semibold">{{ sub.plan.name }}</span>
+              {% endif %}
+            </div>
+            <div class="text-slate-500">
+              من {{ sub.starts_at|date:"Y-m-d" }}
+              {% if sub.ends_at %}
+                حتى {{ sub.ends_at|date:"Y-m-d" }}
+              {% else %}
+                – مفتوح المدة
+              {% endif %}
+            </div>
+            <div class="mt-1">
+              {% if sub.is_active %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
+                  نشط
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-semibold">
+                  غير فعال
+                </span>
+              {% endif %}
+            </div>
           </div>
-        </a>
+        {% endif %}
+      {% endwith %}
 
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'screen_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:screen_list' %}" {% if not request.user.profile.school.schedule_settings.show_screens %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🖥️</span>
-            <span class="font-medium">شاشات العرض</span>
-          </div>
-        </a>
-        
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'days_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:days_list' %}" {% if not request.user.profile.school.schedule_settings.show_days %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">📅</span>
-            <span class="font-medium">جداول الأيام</span>
-          </div>
-        </a>
-        
-        <!-- رابط إدارة الجدول اليومي (Grid) -->
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'timetable_day' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:timetable_day' %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🗓️</span>
-            <span class="font-medium">إدارة الجدول اليومي</span>
-          </div>
-        </a>
-        
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'ann_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:ann_list' %}" {% if not request.user.profile.school.schedule_settings.show_announcements %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🔔</span>
-            <span class="font-medium">التنبيهات</span>
-          </div>
-        </a>
-        
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'exc_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:exc_list' %}" {% if not request.user.profile.school.schedule_settings.show_excellence %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">⭐</span>
-            <span class="font-medium">قسم التميّز</span>
-          </div>
-        </a>
-        
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'standby_list' %}active-nav{% else %}bg-white/80{% endif %}" 
-           href="{% url 'dashboard:standby_list' %}" {% if not request.user.profile.school.schedule_settings.show_standby %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">⏳</span>
-            <span class="font-medium">حصص الانتظار</span>
-          </div>
-        </a>
+      <div class="bg-slate-100 px-3 py-1.5 rounded-full text-sm">
+        <span>مرحبًا،</span>
+        <span class="font-semibold">
+          {% if request.user.is_authenticated %}
+            {{ request.user.get_short_name|default:request.user.username }}
+          {% else %}
+            ضيف
+          {% endif %}
+        </span>
+      </div>
 
-
-
-        <a class="nav-item block px-4 py-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 border border-transparent hover:border-blue-200/50 {% if request.resolver_match.url_name == 'school_data' %}active-nav{% else %}bg-white/80{% endif %}"
-           href="{% url 'dashboard:school_data' %}" {% if not request.user.profile.school.schedule_settings.show_school_data %}style="display:none"{% endif %}>
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🏫</span>
-            <span class="font-medium">الفصول والمواد والمعلمون</span>
-          </div>
+      {% if request.user.is_authenticated %}
+        <a href="{% url 'dashboard:logout' %}"
+           class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-1.5 rounded-full
+                  hover:shadow-lg hover:scale-105 transition-all duration-300">
+          تسجيل الخروج
         </a>
-      </nav>
-      
-      <div class="mt-6 text-center">
-        <div class="text-xs text-slate-500 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-4 shadow border border-white/50">
-          <div class="font-medium text-slate-700 mb-1">© {{ school_name|default:"مدرستنا" }}</div>
-          <div class="text-slate-500">نظام إدارة العرض المدرسي</div>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+{# ░░ Banner تنبيه الاشتراك ░░ #}
+{% if request.user.is_authenticated %}
+  {% with sub=request.school_subscription %}
+    {% if sub and sub.is_active and sub.days_left and sub.days_left <= 10 %}
+      <div class="bg-gradient-to-r from-amber-500 to-rose-500 text-white">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⏰</span>
+            <div>
+              <div class="text-sm md:text-base font-semibold">
+                متبقّي {{ sub.days_left }} يوم{% if sub.days_left != 1 %}اً{% endif %} على انتهاء اشتراكك.
+              </div>
+              <div class="text-xs md:text-sm text-amber-50/90">
+                لضمان استمرار عمل لوحة العرض بدون انقطاع، يُفضّل تجديد الاشتراك مبكرًا.
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="https://wa.me/966546868219?text=%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83%20%D9%84%D9%88%D8%AD%D8%A9%20%D8%A7%D9%84%D8%B9%D8%B1%D8%B6"
+               target="_blank"
+               class="inline-flex items-center px-3 py-1.5 rounded-full bg-white/10 border border-white/30 text-xs md:text-sm font-semibold hover:bg-white/20 transition">
+              <span class="ml-1">💬</span>
+              واتساب التجديد
+            </a>
+            <a href="mailto:xmansx1122@gmail.com?subject=%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83&body=%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83%20%D9%85%D8%AF%D8%B1%D8%B3%D8%AA%D9%86%D8%A7"
+               class="inline-flex items-center px-3 py-1.5 rounded-full bg-white text-rose-600 text-xs md:text-sm font-semibold hover:bg-amber-50 transition">
+              <span class="ml-1">📧</span>
+              مراسلة بالبريد
+            </a>
+          </div>
         </div>
       </div>
-    </aside>
+    {% endif %}
+  {% endwith %}
+{% endif %}
 
-    <!-- المحتوى الرئيسي المحسن -->
-    <main class="col-span-12 md:col-span-9">
-      {% if messages %}
-        <div class="space-y-3 mb-6">
+<div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
+
+  <!-- ░░ Nav Sidebar ░░ -->
+  <aside class="col-span-12 md:col-span-3">
+    <nav class="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50 space-y-2">
+
+      <!-- Home -->
+      <a href="{% url 'dashboard:index' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'index' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">📊</span>
+          <span class="font-medium">الصفحة الرئيسية</span>
+        </div>
+      </a>
+
+      <!-- Settings -->
+      <a href="{% url 'dashboard:settings' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'settings' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">⚙️</span>
+          <span class="font-medium">إعدادات المدرسة</span>
+        </div>
+      </a>
+
+      <!-- Screens -->
+      <a href="{% url 'dashboard:screen_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'screen_list' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🖥️</span>
+          <span class="font-medium">شاشات العرض</span>
+        </div>
+      </a>
+
+      <!-- Days -->
+      <a href="{% url 'dashboard:days_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'days_list' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">📅</span>
+          <span class="font-medium">جداول الأيام</span>
+        </div>
+      </a>
+
+      <!-- Timetable -->
+      <a href="{% url 'dashboard:timetable_day' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'timetable_day' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🗓️</span>
+          <span class="font-medium">إدارة الجدول اليومي</span>
+        </div>
+      </a>
+
+      <!-- Announcements -->
+      <a href="{% url 'dashboard:ann_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'ann_list' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🔔</span>
+          <span class="font-medium">التنبيهات</span>
+        </div>
+      </a>
+
+      <!-- Excellence -->
+      <a href="{% url 'dashboard:exc_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'exc_list' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">⭐</span>
+          <span class="font-medium">قسم التميّز</span>
+        </div>
+      </a>
+
+      <!-- Standby -->
+      <a href="{% url 'dashboard:standby_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'standby_list' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">⏳</span>
+          <span class="font-medium">حصص الانتظار</span>
+        </div>
+      </a>
+
+      <!-- School Data -->
+      <a href="{% url 'dashboard:school_data' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'school_data' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🏫</span>
+          <span class="font-medium">الفصول والمواد والمعلمون</span>
+        </div>
+      </a>
+
+      <!-- SaaS Super Admin -->
+      {% if request.user.is_superuser %}
+        <div class="border-t border-slate-200 my-3"></div>
+        <div class="px-2 pb-1 text-[11px] font-semibold text-slate-500">
+          إدارة النظام (SaaS)
+        </div>
+
+        <a href="{% url 'dashboard:system_admin_dashboard' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'system_admin_dashboard' %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🧩</span>
+            <span class="font-medium">لوحة إدارة النظام</span>
+          </div>
+        </a>
+
+        <a href="{% url 'dashboard:system_schools_list' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'system_schools_list' %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🏫</span>
+            <span class="font-medium">المدارس</span>
+          </div>
+        </a>
+
+        <a href="{% url 'dashboard:system_users_list' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'system_users_list' %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">👤</span>
+            <span class="font-medium">مستخدمو النظام</span>
+          </div>
+        </a>
+
+        <a href="{% url 'dashboard:system_subscriptions_list' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'system_subscriptions_list' %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">💳</span>
+            <span class="font-medium">اشتراكات المدارس</span>
+          </div>
+        </a>
+      {% endif %}
+    </nav>
+
+    <div class="mt-6 text-center">
+      <div class="text-xs text-slate-500 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-4 shadow border border-white/50">
+        <div class="font-medium text-slate-700 mb-1">© {{ school_name|default:"مدرستنا" }}</div>
+        <div class="text-slate-500">نظام إدارة العرض المدرسي</div>
+      </div>
+    </div>
+  </aside>
+
+
+  <!-- ░░ Main Content ░░ -->
+  <main class="col-span-12 md:col-span-9">
+
+    {% if messages %}
+      <div class="space-y-3 mb-6">
         {% for m in messages %}
-          <div class="px-5 py-3 rounded-xl backdrop-blur-sm border-l-4 
-            {% if m.tags == 'success' %} 
-              bg-emerald-50/80 border-emerald-500 text-emerald-700
-            {% elif m.tags == 'error' %}
-              bg-red-50/80 border-red-500 text-red-700
-            {% else %}
-              bg-sky-50/80 border-sky-500 text-sky-700
-            {% endif %} 
-            shadow-sm transition-all duration-300 hover:shadow-md">
+          <div class="px-5 py-3 rounded-xl backdrop-blur-sm border-l-4 shadow-sm
+              {% if m.tags == 'success' %} bg-emerald-50/80 border-emerald-500 text-emerald-700
+              {% elif m.tags == 'error' %} bg-red-50/80 border-red-500 text-red-700
+              {% else %} bg-sky-50/80 border-sky-500 text-sky-700
+              {% endif %}">
             <div class="flex items-center">
               {% if m.tags == 'success' %}
                 <span class="ml-2 text-lg">✅</span>
@@ -206,111 +336,30 @@
             </div>
           </div>
         {% endfor %}
-        </div>
-      {% endif %}
-      
-      <!-- بطاقة المحتوى -->
-      <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden">
-        <div class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
-          <div class="px-6 py-4">
-            <h2 class="text-xl font-bold text-slate-800">
-              {% block page_title %}الصفحة الرئيسية{% endblock %}
-            </h2>
-            <p class="text-slate-600 text-sm mt-1">
-              {% block page_description %}إدارة النظام والعناصر المختلفة{% endblock %}
-            </p>
-          </div>
-        </div>
-        
-        <div class="p-6">
-          {% block content %}
-          <!-- المحتوى الأساسي الافتراضي (يمكن استبداله في الصفحات الأخرى) -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- بطاقة إحصائية -->
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-2xl font-bold">24</div>
-                  <div class="text-blue-100 text-sm mt-1">معلم نشط</div>
-                </div>
-                <div class="text-3xl">👨‍🏫</div>
-              </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-2xl font-bold">8</div>
-                  <div class="text-emerald-100 text-sm mt-1">حصص اليوم</div>
-                </div>
-                <div class="text-3xl">📚</div>
-              </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-5 text-white shadow-lg">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-2xl font-bold">3</div>
-                  <div class="text-purple-100 text-sm mt-1">تنبيهات نشطة</div>
-                </div>
-                <div class="text-3xl">🔔</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- قسم سريع الإجراءات -->
-          <div class="mt-8">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4">إجراءات سريعة</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <a href="{% url 'dashboard:ann_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1 group">
-                <div class="flex items-center">
-                  <div class="ml-3 text-2xl group-hover:scale-110 transition-transform">➕</div>
-                  <div>
-                    <div class="font-medium text-slate-800">إضافة تنبيه جديد</div>
-                    <div class="text-slate-600 text-sm mt-1">إنشاء تنبيه للمعلمين </div>
-                  </div>
-                </div>
-              </a>
-              
-              <a href="{% url 'dashboard:exc_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1 group">
-                <div class="flex items-center">
-                  <div class="ml-3 text-2xl group-hover:scale-110 transition-transform">⭐</div>
-                  <div>
-                    <div class="font-medium text-slate-800">تسجيل تميّز</div>
-                    <div class="text-slate-600 text-sm mt-1">إضافة معلم متميز للعرض</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-          </div>
-          {% endblock %}
-        </div>
       </div>
-    </main>
-  </div>
+    {% endif %}
 
-  <!-- تأثيرات إضافية -->
-  <script>
-    // إضافة تأثيرات تفاعلية بسيطة
-    document.addEventListener('DOMContentLoaded', function() {
-      const cards = document.querySelectorAll('.nav-item, [class*="bg-gradient"]');
-      
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-          }
-        });
-      }, { threshold: 0.1 });
-      
-      cards.forEach(card => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(card);
-      });
-    });
-  </script>
+
+    <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border overflow-hidden">
+
+      <div class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+        <h2 class="text-xl font-bold text-slate-800">
+          {% block page_title %}الصفحة الرئيسية{% endblock %}
+        </h2>
+        <p class="text-slate-600 text-sm mt-1">
+          {% block page_description %}إدارة النظام والعناصر المختلفة{% endblock %}
+        </p>
+      </div>
+
+      <div class="p-6">
+        {% block content %}
+        <p class="text-slate-600 text-center">مرحبًا بك في لوحة التحكم.</p>
+        {% endblock %}
+      </div>
+
+    </div>
+  </main>
+</div>
+
 </body>
 </html>

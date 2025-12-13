@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.forms import inlineformset_factory, BaseInlineFormSet
+from django.forms import BaseInlineFormSet, inlineformset_factory
+from django.contrib.auth.forms import UserCreationForm
 
 from schedule.models import (
     SchoolSettings,
@@ -15,10 +17,24 @@ from schedule.models import (
     WEEKDAYS,
     SchoolClass,
     Teacher,
+    Subject,
 )
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
-from core.models import DisplayScreen
+from core.models import (
+    DisplayScreen,
+    School,
+    UserProfile,
+    SubscriptionPlan,
+)
+from subscriptions.models import SchoolSubscription  # ✅ الموديل الجديد الصحيح
+
+UserModel = get_user_model()
+
+
+# ========================
+# دوال مساعدة داخلية
+# ========================
 
 
 def _parse_hhmm(value: str | None):
@@ -44,6 +60,11 @@ def _is_blank_break_fields(label, st, dur) -> bool:
     return (st is None) and (dur in (None, ""))
 
 
+# ========================
+# إعدادات المدرسة
+# ========================
+
+
 class SchoolSettingsForm(forms.ModelForm):
     logo = forms.ImageField(label="شعار المدرسة", required=False)
 
@@ -59,12 +80,19 @@ class SchoolSettingsForm(forms.ModelForm):
         widgets = {
             "theme": forms.Select(),
             "refresh_interval_sec": forms.NumberInput(attrs={"min": 5, "step": 5}),
-            "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.05, "max": 5.0, "step": 0.05}),
-            "periods_scroll_speed": forms.NumberInput(attrs={"min": 0.05, "max": 5.0, "step": 0.05}),
+            "standby_scroll_speed": forms.NumberInput(
+                attrs={"min": 0.05, "max": 5.0, "step": 0.05}
+            ),
+            "periods_scroll_speed": forms.NumberInput(
+                attrs={"min": 0.05, "max": 5.0, "step": 0.05}
+            ),
         }
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
+        """
+        نحفظ الإعدادات، ولو تم رفع شعار جديد نحدّث school.logo بأمان.
+        """
+        instance: SchoolSettings = super().save(commit=False)
         logo_file = self.cleaned_data.get("logo")
         if logo_file and instance.school:
             instance.school.logo = logo_file
@@ -72,6 +100,11 @@ class SchoolSettingsForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+# ========================
+# اليوم والجدول الزمني
+# ========================
 
 
 class DayScheduleForm(forms.ModelForm):
@@ -98,6 +131,7 @@ class PeriodForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
+        # حذف الصف
         if _is_checked(self.data.get(f"{self.prefix}-DELETE")):
             self._is_marked_delete = True
             self.instance._skip_cross_validation = True
@@ -107,6 +141,7 @@ class PeriodForm(forms.ModelForm):
         en = cleaned.get("ends_at")
         idx = cleaned.get("index")
 
+        # صف فارغ
         if _is_blank_period_fields(idx, st, en):
             self._is_blank_row = True
             self.instance._skip_cross_validation = True
@@ -158,7 +193,9 @@ class BreakForm(forms.ModelForm):
         if st is None:
             self.add_error("starts_at", "هذا الحقل مطلوب.")
         if dur is None or dur <= 0:
-            self.add_error("duration_min", "مدة الفسحة يجب أن تكون رقمًا موجبًا بالدقائق.")
+            self.add_error(
+                "duration_min", "مدة الفسحة يجب أن تكون رقمًا موجبًا بالدقائق."
+            )
 
         if self.errors:
             self.instance._skip_cross_validation = True
@@ -167,6 +204,13 @@ class BreakForm(forms.ModelForm):
 
 
 class PeriodInlineFormSet(BaseInlineFormSet):
+    """
+    يتحقق من:
+    - عدد الحصص لا يتجاوز العدد المحدد في اليوم.
+    - عدم تكرار أرقام الحصص.
+    - عدم وجود تداخل زمني بين الحصص والفسح.
+    """
+
     def clean(self):
         super().clean()
 
@@ -177,6 +221,7 @@ class PeriodInlineFormSet(BaseInlineFormSet):
         periods = []
         seen_indexes: dict[int, forms.ModelForm] = {}
 
+        # جمع الحصص
         for form in self.forms:
             if not hasattr(form, "cleaned_data"):
                 continue
@@ -188,7 +233,9 @@ class PeriodInlineFormSet(BaseInlineFormSet):
 
             st, en, idx = cd.get("starts_at"), cd.get("ends_at"), cd.get("index")
 
-            if getattr(form, "_is_blank_row", False) or _is_blank_period_fields(idx, st, en):
+            if getattr(form, "_is_blank_row", False) or _is_blank_period_fields(
+                idx, st, en
+            ):
                 form.instance._skip_cross_validation = True
                 continue
 
@@ -206,8 +253,11 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                 continue
 
             seen_indexes[idx] = form
-            periods.append({"label": f"الحصة {idx}", "start": st, "end": en, "form": form})
+            periods.append(
+                {"label": f"الحصة {idx}", "start": st, "end": en, "form": form}
+            )
 
+        # جمع الفسح من بيانات POST (فورم آخر)
         breaks = []
         total_b = int(self.data.get("b-TOTAL_FORMS", 0) or 0)
         for i in range(total_b):
@@ -225,9 +275,19 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                 continue
 
             if st and dur and dur > 0:
-                end = (datetime.combine(datetime.today(), st) + timedelta(minutes=dur)).time()
-                breaks.append({"label": f"الفسحة ({label})", "start": st, "end": end})
+                end = (
+                    datetime.combine(datetime.today(), st)
+                    + timedelta(minutes=dur)
+                ).time()
+                breaks.append(
+                    {
+                        "label": f"الفسحة ({label})",
+                        "start": st,
+                        "end": end,
+                    }
+                )
 
+        # التحقق من العدد الأقصى
         count_periods = len(periods)
         if target_count > 0 and count_periods > target_count:
             raise ValidationError(
@@ -235,14 +295,19 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                 f"رجاءً احذف/عدّل الحصص الزائدة."
             )
 
-        items = [{"kind": "p", **p} for p in periods] + [{"kind": "b", **b} for b in breaks]
+        # ترتيب كل العناصر زمنيًا وفحص التداخل
+        items = [{"kind": "p", **p} for p in periods] + [
+            {"kind": "b", **b} for b in breaks
+        ]
         items.sort(key=lambda x: x["start"])
 
         for i in range(1, len(items)):
             prev, cur = items[i - 1], items[i]
             if cur["start"] < prev["end"]:
                 msg_cur = f"تداخل مع {prev['label']} ({prev['start']}-{prev['end']})."
-                msg_prev = f"يتداخل مع {cur['label']} ({cur['start']}-{cur['end']})."
+                msg_prev = (
+                    f"يتداخل مع {cur['label']} ({cur['start']}-{cur['end']})."
+                )
                 if cur["kind"] == "p":
                     cur["form"].add_error("starts_at", msg_cur)
                     cur["form"].instance._skip_cross_validation = True
@@ -253,7 +318,9 @@ class PeriodInlineFormSet(BaseInlineFormSet):
                     errors_added += 1
 
         if errors_added > 0:
-            raise ValidationError("تحقق من الأوقات: يوجد حقول ناقصة/مكررة أو تداخلات زمنية.")
+            raise ValidationError(
+                "تحقّق من الأوقات: يوجد حقول ناقصة/مكررة أو تداخلات زمنية."
+            )
 
 
 PeriodFormSet = inlineformset_factory(
@@ -278,6 +345,11 @@ BreakFormSet = inlineformset_factory(
 )
 
 
+# ========================
+# الإعلانات والتميز
+# ========================
+
+
 class AnnouncementForm(forms.ModelForm):
     class Meta:
         model = Announcement
@@ -293,7 +365,15 @@ class ExcellenceForm(forms.ModelForm):
 
     class Meta:
         model = Excellence
-        fields = ["teacher_name", "reason", "photo", "photo_url", "start_at", "end_at", "priority"]
+        fields = [
+            "teacher_name",
+            "reason",
+            "photo",
+            "photo_url",
+            "start_at",
+            "end_at",
+            "priority",
+        ]
         widgets = {
             "teacher_name": forms.TextInput(attrs={"maxlength": 100}),
             "reason": forms.TextInput(attrs={"maxlength": 200}),
@@ -325,9 +405,20 @@ class ExcellenceForm(forms.ModelForm):
         return cleaned
 
 
+# ========================
+# حصص الانتظار
+# ========================
+
+
 class StandbyForm(forms.ModelForm):
-    class_name = forms.ModelChoiceField(queryset=SchoolClass.objects.all(), label="الفصل")
-    teacher_name = forms.ModelChoiceField(queryset=Teacher.objects.all(), label="اسم المعلم")
+    class_name = forms.ModelChoiceField(
+        queryset=SchoolClass.objects.none(),
+        label="الفصل",
+    )
+    teacher_name = forms.ModelChoiceField(
+        queryset=Teacher.objects.none(),
+        label="اسم المعلم",
+    )
 
     class Meta:
         model = StandbyAssignment
@@ -336,13 +427,38 @@ class StandbyForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        school = kwargs.pop("school", None)
+        super().__init__(*args, **kwargs)
+        self._school = school
+
+        if school is not None:
+            self.fields["class_name"].queryset = SchoolClass.objects.filter(
+                settings__school=school
+            ).order_by("name")
+            self.fields["teacher_name"].queryset = Teacher.objects.filter(
+                school=school
+            ).order_by("name")
+        else:
+            self.fields["class_name"].queryset = SchoolClass.objects.none()
+            self.fields["teacher_name"].queryset = Teacher.objects.none()
+
     def save(self, commit=True):
         instance = super().save(commit=False)
-        instance.class_name = self.cleaned_data["class_name"].name
-        instance.teacher_name = self.cleaned_data["teacher_name"].name
+        class_obj = self.cleaned_data["class_name"]
+        teacher_obj = self.cleaned_data["teacher_name"]
+        instance.class_name = class_obj.name
+        instance.teacher_name = teacher_obj.name
+        if getattr(self, "_school", None) is not None:
+            instance.school = self._school
         if commit:
             instance.save()
         return instance
+
+
+# ========================
+# شاشات العرض والحصص
+# ========================
 
 
 class DisplayScreenForm(forms.ModelForm):
@@ -354,7 +470,334 @@ class DisplayScreenForm(forms.ModelForm):
 class LessonForm(forms.ModelForm):
     class Meta:
         model = ClassLesson
-        fields = ["school_class", "weekday", "period_index", "subject", "teacher", "is_active"]
-        widgets = {
-            "weekday": forms.Select(choices=WEEKDAYS),
+        fields = [
+            "school_class",
+            "weekday",
+            "period_index",
+            "subject",
+            "teacher",
+            "is_active",
+        ]
+    widgets = {
+        "weekday": forms.Select(choices=WEEKDAYS),
+    }
+
+    def __init__(self, *args, **kwargs):
+        school = kwargs.pop("school", None)
+        super().__init__(*args, **kwargs)
+
+        if school is not None:
+            self.fields["school_class"].queryset = SchoolClass.objects.filter(
+                settings__school=school
+            ).order_by("name")
+            self.fields["subject"].queryset = Subject.objects.filter(
+                school=school
+            ).order_by("name")
+            self.fields["teacher"].queryset = Teacher.objects.filter(
+                school=school
+            ).order_by("name")
+
+
+# =========================
+# نماذج لوحة إدارة النظام (SaaS Admin)
+# =========================
+
+
+class SchoolForm(forms.ModelForm):
+    class Meta:
+        model = School
+        fields = ["name", "slug", "logo", "is_active"]
+        labels = {
+            "name": "اسم المدرسة",
+            "slug": "الرابط (slug)",
+            "logo": "شعار المدرسة",
+            "is_active": "مدرسة مفعّلة",
         }
+        widgets = {
+            "logo": forms.ClearableFileInput(),
+        }
+
+
+class AdminUserForm(forms.ModelForm):
+    """
+    نموذج إنشاء/تعديل مستخدم من لوحة النظام مع إمكانية تعيين كلمة مرور
+    وربط المستخدم بمدرسة عبر UserProfile.
+    """
+
+    password1 = forms.CharField(
+        label="كلمة المرور",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="اتركها فارغة إن لم ترغب في تغيير كلمة المرور (أو للمستخدم الحالي).",
+    )
+    password2 = forms.CharField(
+        label="تأكيد كلمة المرور",
+        widget=forms.PasswordInput,
+        required=False,
+    )
+    school = forms.ModelChoiceField(
+        queryset=School.objects.all().order_by("name"),
+        required=False,
+        label="المدرسة",
+        help_text="يمكن تركها فارغة لمستخدم عام (بدون مدرسة محددة).",
+    )
+
+    class Meta:
+        model = UserModel
+        fields = ["username", "first_name", "last_name", "email", "is_active", "is_staff", "is_superuser"]
+        labels = {
+            "username": "اسم المستخدم",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "email": "البريد الإلكتروني",
+            "is_active": "نشط",
+            "is_staff": "صلاحيات Staff",
+            "is_superuser": "صلاحيات Superuser",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # تعبئة المدرسة الحالية من UserProfile إن وجدت
+        if self.instance.pk:
+            try:
+                profile = self.instance.userprofile
+            except UserProfile.DoesNotExist:
+                profile = None
+            except AttributeError:
+                profile = getattr(self.instance, "profile", None)
+
+            if profile and profile.school_id:
+                self.fields["school"].initial = profile.school
+
+        # تحسين التنسيق
+        for field in self.fields.values():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({"class": "h-4 w-4 text-indigo-600"})
+            else:
+                field.widget.attrs.update(
+                    {
+                        "class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm "
+                        "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    }
+                )
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+
+        # مستخدم جديد
+        if not self.instance.pk:
+            if not p1:
+                raise ValidationError("يجب إدخال كلمة المرور للمستخدم الجديد.")
+            if p1 != p2:
+                raise ValidationError("كلمتا المرور غير متطابقتين.")
+        else:
+            # مستخدم موجود: تغيير كلمة المرور اختياري
+            if p1 or p2:
+                if p1 != p2:
+                    raise ValidationError("كلمتا المرور غير متطابقتين.")
+
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        password = self.cleaned_data.get("password1")
+
+        if password:
+            user.set_password(password)
+
+        if commit:
+            user.save()
+
+        school = self.cleaned_data.get("school")
+        try:
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+        except Exception:
+            profile = getattr(user, "profile", None)
+            if profile is None:
+                profile = UserProfile(user=user)
+
+        profile.school = school
+        if commit:
+            profile.save()
+
+        return user
+
+
+class SchoolSubscriptionForm(forms.ModelForm):
+    """
+    نموذج إدارة اشتراك المدرسة بناءً على موديل SchoolSubscription الجديد:
+    fields = [school, plan, starts_at, ends_at, status, notes]
+    """
+
+    class Meta:
+        model = SchoolSubscription
+        fields = ["school", "plan", "starts_at", "ends_at", "status", "notes"]
+        labels = {
+            "school": "المدرسة",
+            "plan": "الخطة",
+            "starts_at": "تاريخ بداية الاشتراك",
+            "ends_at": "تاريخ نهاية الاشتراك",
+            "status": "حالة الاشتراك",
+            "notes": "ملاحظات",
+        }
+        widgets = {
+            "starts_at": forms.DateInput(attrs={"type": "date"}),
+            "ends_at": forms.DateInput(attrs={"type": "date"}),
+            "status": forms.Select(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["school"].queryset = School.objects.all().order_by("name")
+        self.fields["plan"].queryset = SubscriptionPlan.objects.all().order_by("name")
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get("starts_at")
+        end = cleaned.get("ends_at")
+
+        if start and end and end < start:
+            raise ValidationError("تاريخ النهاية يجب أن يكون بعد تاريخ البداية.")
+
+        return cleaned
+
+
+UserModel = get_user_model()
+
+
+class SystemUserCreateForm(UserCreationForm):
+    """
+    إنشاء مستخدم جديد + ربطه بالمدرسة.
+    يعتمد UserCreationForm حتى نستفيد من تحققات كلمة المرور.
+    """
+    school = forms.ModelChoiceField(
+        queryset=School.objects.all(),
+        required=True,
+        label="المدرسة",
+        help_text="المدرسة التي يرتبط بها هذا المستخدم."
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = UserModel
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+        ]
+        labels = {
+            "username": "اسم المستخدم",
+            "email": "البريد الإلكتروني",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "is_active": "حساب نشط",
+            "is_staff": "صلاحيات موظف (staff)",
+            "is_superuser": "مدير نظام (superuser)",
+        }
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            school = self.cleaned_data.get("school")
+            if school is not None:
+                UserProfile.objects.update_or_create(
+                    user=user,
+                    defaults={"school": school},
+                )
+        return user
+
+
+class SystemUserUpdateForm(forms.ModelForm):
+    """
+    تعديل بيانات المستخدم + إمكانية تغيير كلمة المرور اختيارياً.
+    إذا تُركت حقول كلمة المرور فارغة لن تتغير كلمة المرور.
+    """
+    school = forms.ModelChoiceField(
+        queryset=School.objects.all(),
+        required=True,
+        label="المدرسة",
+        help_text="المدرسة المرتبط بها المستخدم."
+    )
+
+    new_password1 = forms.CharField(
+        label="كلمة المرور الجديدة",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="اترك الحقلين فارغين إذا لا تريد تغيير كلمة المرور."
+    )
+    new_password2 = forms.CharField(
+        label="تأكيد كلمة المرور الجديدة",
+        widget=forms.PasswordInput,
+        required=False,
+    )
+
+    class Meta:
+        model = UserModel
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+        ]
+        labels = {
+            "username": "اسم المستخدم",
+            "email": "البريد الإلكتروني",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "is_active": "حساب نشط",
+            "is_staff": "صلاحيات موظف (staff)",
+            "is_superuser": "مدير نظام (superuser)",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # تعبئة المدرسة الحالية من البروفايل إن وجدت
+        if self.instance.pk:
+            try:
+                profile = self.instance.profile
+                self.fields["school"].initial = profile.school
+            except UserProfile.DoesNotExist:
+                pass
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("new_password1")
+        p2 = cleaned.get("new_password2")
+
+        if p1 or p2:
+            # لو واحد منهم فقط ممتلئ
+            if not p1 or not p2:
+                raise forms.ValidationError("لابد من إدخال كلمة المرور الجديدة وتأكيدها.")
+            if p1 != p2:
+                raise forms.ValidationError("كلمتا المرور غير متطابقتين.")
+            if len(p1) < 8:
+                raise forms.ValidationError("يجب أن تكون كلمة المرور ٨ أحرف على الأقل.")
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        # تغيير كلمة المرور إذا تم إدخالها
+        new_password = self.cleaned_data.get("new_password1")
+        if new_password:
+            user.set_password(new_password)
+
+        if commit:
+            user.save()
+            school = self.cleaned_data.get("school")
+            if school is not None:
+                UserProfile.objects.update_or_create(
+                    user=user,
+                    defaults={"school": school},
+                )
+        return user

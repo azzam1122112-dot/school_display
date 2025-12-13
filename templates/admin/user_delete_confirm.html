@@ -1,0 +1,28 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}حذف مستخدم{% endblock %}
+{% block page_title %}تأكيد حذف مستخدم{% endblock %}
+{% block page_description %}
+  هل أنت متأكد من رغبتك في حذف هذا المستخدم؟ هذا الإجراء لا يمكن التراجع عنه.
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-2xl shadow-lg border border-rose-100 p-6 space-y-4">
+  <p class="text-sm text-slate-700">
+    سيتم حذف المستخدم:
+    <span class="font-semibold text-slate-900">{{ user_obj.username }}</span>
+  </p>
+
+  <form method="post" class="flex justify-end gap-3">
+    {% csrf_token %}
+    <a href="{% url 'dashboard:system_users_list' %}"
+       class="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100">
+      إلغاء
+    </a>
+    <button type="submit"
+            class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">
+      تأكيد الحذف
+    </button>
+  </form>
+</div>
+{% endblock %}

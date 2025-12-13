@@ -1,0 +1,186 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}اشتراكي{% endblock %}
+{% block page_title %}تفاصيل اشتراك المدرسة{% endblock %}
+{% block page_description %}
+هنا يمكنك متابعة خطة الاشتراك الحالية وتواريخ البداية والنهاية وحالة الاشتراك الفعلية.
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+  {# شريط تنبيه أعلى الصفحة حسب حالة الاشتراك #}
+  {% if subscription %}
+    {% if status_code == "expired" %}
+      <div class="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 flex items-start gap-3">
+        <div class="mt-0.5 text-lg">⚠️</div>
+        <div class="space-y-1">
+          <p class="font-semibold text-sm">اشتراك مدرستكم منتهي.</p>
+          <p class="text-xs md:text-sm">
+            لن تعمل بعض الخصائص حتى يتم التجديد. يمكنكم التواصل معنا عبر الواتساب أو البريد لإكمال عملية التجديد.
+          </p>
+        </div>
+      </div>
+    {% elif status_code == "cancelled" %}
+      <div class="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 flex items-start gap-3">
+        <div class="mt-0.5 text-lg">⚠️</div>
+        <div class="space-y-1">
+          <p class="font-semibold text-sm">اشتراك مدرستكم ملغي.</p>
+          <p class="text-xs md:text-sm">
+            تم إلغاء الاشتراك من قبل الإدارة، لن تعمل بعض الخصائص حتى يتم تفعيل اشتراك جديد.
+          </p>
+        </div>
+      </div>
+    {% elif status_code == "upcoming" %}
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 flex items-start gap-3">
+        <div class="mt-0.5 text-lg">⏳</div>
+        <div class="space-y-1">
+          <p class="font-semibold text-sm">اشتراك قادم.</p>
+          <p class="text-xs md:text-sm">
+            سيبدأ اشتراك مدرستكم في {{ subscription.starts_at }}. يمكنكم تجهيز البيانات قبل بدء التفعيل.
+          </p>
+        </div>
+      </div>
+    {% elif status_code == "active" %}
+      <div class="rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900 px-4 py-3 flex items-start gap-3">
+        <div class="mt-0.5 text-lg">✅</div>
+        <div class="space-y-1">
+          <p class="font-semibold text-sm">اشتراككم ساري.</p>
+          <p class="text-xs md:text-sm">
+            جميع خصائص النظام مفعّلة حالياً.
+            {% if subscription.ends_at %}
+              ينتهي الاشتراك في {{ subscription.ends_at }}.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  {% if subscription %}
+    <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+      <div class="px-5 md:px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-4">
+        <div class="space-y-1">
+          <p class="text-xs text-slate-400">الاشتراك الحالي</p>
+          <h3 class="text-lg md:text-2xl font-bold text-slate-900">
+            اشتراك مدرسة {{ school.name }}
+          </h3>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+          <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs md:text-sm font-semibold {{ status_badge_class }}">
+            <span class="w-2 h-2 rounded-full bg-current/60 border border-white/60"></span>
+            <span>الحالة: {{ status_label }}</span>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            اليوم: {{ today }}
+          </p>
+        </div>
+      </div>
+
+      <div class="px-5 md:px-8 py-6 space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60">
+            <p class="text-xs text-slate-500 mb-1">الخطة</p>
+            <p class="text-base md:text-lg font-bold text-indigo-700">
+              {{ subscription.plan.name }}
+            </p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-emerald-100 bg-emerald-50/70">
+            <p class="text-xs text-slate-500 mb-1">بداية الاشتراك</p>
+            <p class="text-base md:text-lg font-semibold text-emerald-700">
+              {{ subscription.starts_at }}
+            </p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-amber-100 bg-amber-50/70">
+            <p class="text-xs text-slate-500 mb-1">نهاية الاشتراك</p>
+            <p class="text-base md:text-lg font-semibold text-amber-700">
+              {% if subscription.ends_at %}
+                {{ subscription.ends_at }}
+              {% else %}
+                مفتوح المدة
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50/70">
+            <p class="text-xs text-slate-500 mb-1">حالة النظام</p>
+            <p class="text-sm md:text-base text-slate-800">
+              {% if status_code == "active" %}
+                الاشتراك ساري، وجميع خصائص النظام متاحة للمدرسة.
+              {% elif status_code == "expired" %}
+                الاشتراك منتهي، وسيتم إيقاف بعض الخصائص حتى يتم التجديد.
+              {% elif status_code == "cancelled" %}
+                الاشتراك ملغي من قبل الإدارة، يلزم إصدار اشتراك جديد لإعادة التفعيل.
+              {% elif status_code == "upcoming" %}
+                الاشتراك لم يبدأ بعد، يمكنكم الدخول للنظام لمراجعة الإعدادات العامة فقط.
+              {% else %}
+                حالة الاشتراك غير معروفة، الرجاء التواصل مع الدعم الفني.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        {% if subscription.notes %}
+          <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50">
+            <p class="text-xs text-slate-500 mb-1">ملاحظات على الاشتراك</p>
+            <p class="text-sm text-slate-800 whitespace-pre-line">
+              {{ subscription.notes }}
+            </p>
+          </div>
+        {% endif %}
+
+        {# بطاقة التواصل لتجديد أو ترقية الاشتراك #}
+        <div class="mt-2 rounded-2xl border border-slate-100 bg-gradient-to-l from-slate-50 to-slate-100/80 px-4 py-5 md:px-6 md:py-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <p class="text-sm font-semibold text-slate-900">
+              تحتاج للتجديد أو ترقية الاشتراك؟
+            </p>
+            <p class="text-xs md:text-sm text-slate-600">
+              تواصل معنا عبر الواتساب أو البريد الإلكتروني، وسنقوم بخدمتك في أقرب وقت.
+            </p>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <a href="https://wa.me/966546868219"
+               class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">
+              <span>واتساب:</span>
+              <span dir="ltr">+966546868219</span>
+            </a>
+            <a href="mailto:support@example.com"
+               class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50">
+              <span>xmansx1122@gmail.com</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  {% else %}
+
+    <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-8 text-center space-y-3">
+      <div class="text-4xl mb-2">📭</div>
+      <p class="text-lg font-semibold text-slate-800">
+        لا يوجد اشتراك مسجّل لهذه المدرسة حالياً.
+      </p>
+      <p class="text-sm text-slate-500">
+        للتفعيل الأول أو طلب تجربة، يمكنك التواصل مع الدعم الفني عبر الواتساب أو البريد الإلكتروني.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+        <a href="https://wa.me/966546868219"
+           class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">
+          واتساب: <span dir="ltr">+966546868219</span>
+        </a>
+        <a href="mailto:support@example.com"
+           class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50">
+          support@example.com
+        </a>
+      </div>
+    </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

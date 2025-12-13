@@ -5,18 +5,26 @@ import csv
 import io
 import math
 
-from django.db import models, transaction
+from django import forms
+from django.apps import apps
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import (
+    authenticate,
+    login,
+    logout,
+    update_session_auth_hash,
+    get_user_model,
+)
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth.models import User
 from django.core.paginator import Paginator
+from django.db import models, transaction
 from django.db.models import Q, Max
 from django.http import HttpResponseBadRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.contrib.auth import get_user_model, login
+from django.utils.crypto import get_random_string
 
 from .permissions import manager_required
 from .forms import (
@@ -29,7 +37,10 @@ from .forms import (
     StandbyForm,
     DisplayScreenForm,
     LessonForm,
+    SystemUserCreateForm,   
+    SystemUserUpdateForm,
 )
+
 from schedule.models import (
     SchoolSettings,
     DaySchedule,
@@ -42,7 +53,14 @@ from schedule.models import (
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
 from core.models import DisplayScreen, School, UserProfile
+from subscriptions.forms import SchoolSubscriptionForm
+from subscriptions.models import SchoolSubscription
 
+UserModel = get_user_model()
+
+# ====================
+# ثوابت وأدوات مساعدة
+# ====================
 
 SCHOOL_WEEK = [
     (0, "الأحد"),
@@ -57,6 +75,9 @@ WEEKDAY_MAP = dict(SCHOOL_WEEK)
 
 
 def _collect_form_errors(*objs) -> str:
+    """
+    تجميع رسائل الأخطاء من الفورمات والفورم ست في رسالة نصية واحدة.
+    """
     msgs: list[str] = []
 
     def _push(err):
@@ -73,7 +94,7 @@ def _collect_form_errors(*objs) -> str:
             _push(obj.non_form_errors())
 
         if hasattr(obj, "forms"):
-            for f in obj.forms:
+            for f in getattr(obj, "forms", []):
                 if hasattr(f, "errors"):
                     if isinstance(f.errors, dict):
                         for elist in f.errors.values():
@@ -103,6 +124,9 @@ def _collect_form_errors(*objs) -> str:
 
 
 def _rev_manager(obj, preferred: str, fallback: str):
+    """
+    إرجاع المدير الصحيح لعلاقة عكسية (periods أو period_set مثلاً).
+    """
     mgr = getattr(obj, preferred, None)
     if mgr is None:
         mgr = getattr(obj, fallback)
@@ -110,6 +134,9 @@ def _rev_manager(obj, preferred: str, fallback: str):
 
 
 def _parse_hhmm_or_hhmmss(s: str) -> time:
+    """
+    تحويل نص HH:MM أو HH:MM:SS إلى كائن time مع رسائل خطأ واضحة.
+    """
     s = (s or "").strip()
     if not s:
         raise ValueError("الوقت مطلوب.")
@@ -122,6 +149,9 @@ def _parse_hhmm_or_hhmmss(s: str) -> time:
 
 
 def _to_int(val: str | None, default: int = 0, *, allow_negative: bool = False) -> int:
+    """
+    تحويل نص إلى int مع قيمة افتراضية واختيار منع القيم السالبة.
+    """
     try:
         x = int(val) if val not in (None, "") else default
     except (TypeError, ValueError):
@@ -129,6 +159,11 @@ def _to_int(val: str | None, default: int = 0, *, allow_negative: bool = False) 
     if not allow_negative and x < 0:
         raise ValueError("القيم لا يجوز أن تكون سالبة.")
     return x
+
+
+# ======================
+# مصادقة ولوحة المدير
+# ======================
 
 
 def login_view(request):
@@ -147,7 +182,7 @@ def login_view(request):
 
 def demo_login(request):
     """
-    تسجيل دخول بحساب تجريبي مع بيانات مدرسـة تجريبية.
+    تسجيل دخول بحساب تجريبي مع بيانات مدرسة تجريبية.
     - إذا لم يوجد المستخدم demo_user يتم إنشاؤه.
     - إذا لم توجد مدرسة تجريبية يتم إنشاؤها.
     - يتم إنشاء UserProfile يربط المستخدم بالمدرسة التجريبية.
@@ -155,7 +190,6 @@ def demo_login(request):
     DEMO_USERNAME = "demo_user"
     DEMO_SCHOOL_SLUG = "demo-school"
 
-    # 1) تأكد من وجود مدرسة تجريبية
     demo_school, _ = School.objects.get_or_create(
         slug=DEMO_SCHOOL_SLUG,
         defaults={
@@ -164,8 +198,7 @@ def demo_login(request):
         },
     )
 
-    # 2) تأكد من وجود المستخدم التجريبي
-    demo_user, created = User.objects.get_or_create(
+    demo_user, created = UserModel.objects.get_or_create(
         username=DEMO_USERNAME,
         defaults={
             "first_name": "حساب",
@@ -175,17 +208,10 @@ def demo_login(request):
         },
     )
 
-    # اجعل له كلمة مرور عشوائية عند الإنشاء (لن نحتاجها فعليًا)
     if created:
-        demo_user.set_password(User.objects.make_random_password())
+        demo_user.set_password(get_random_string(12))
         demo_user.save()
 
-    # يمكنك إعطاؤه صلاحيات مدير للتجربة (اختياري)
-    # demo_user.is_staff = True
-    # demo_user.is_superuser = True
-    # demo_user.save(update_fields=["is_staff", "is_superuser"])
-
-    # 3) تأكد من وجود UserProfile وربطه بالمدرسة التجريبية
     profile, _ = UserProfile.objects.get_or_create(
         user=demo_user,
         defaults={"school": demo_school},
@@ -194,11 +220,10 @@ def demo_login(request):
         profile.school = demo_school
         profile.save(update_fields=["school"])
 
-    # 4) تسجيل الدخول بهذا الحساب
     login(request, demo_user, backend="django.contrib.auth.backends.ModelBackend")
     messages.success(
         request,
-        "تم تسجيل دخولك بحساب تجريبي. البيانات هنا لأغراض العرض فقط."
+        "تم تسجيل دخولك بحساب تجريبي. البيانات هنا لأغراض العرض فقط.",
     )
     return redirect("dashboard:index")
 
@@ -230,7 +255,9 @@ def index(request):
     stats = {
         "ann_count": Announcement.objects.filter(school=school).count(),
         "exc_count": Excellence.objects.filter(school=school).count(),
-        "standby_today": StandbyAssignment.objects.filter(school=school, date=today).count(),
+        "standby_today": StandbyAssignment.objects.filter(
+            school=school, date=today
+        ).count(),
     }
     settings_obj = SchoolSettings.objects.filter(school=school).first()
     return render(
@@ -241,6 +268,11 @@ def index(request):
             "settings": settings_obj,
         },
     )
+
+
+# ======================
+# إعدادات المدرسة
+# ======================
 
 
 @manager_required
@@ -262,6 +294,11 @@ def school_settings(request):
     return render(request, "dashboard/settings.html", {"form": form})
 
 
+# ======================
+# إدارة أيام الجدول
+# ======================
+
+
 @manager_required
 def days_list(request):
     school = request.user.profile.school
@@ -271,9 +308,9 @@ def days_list(request):
         return redirect("dashboard:settings")
 
     existing = set(
-        DaySchedule.objects.filter(settings=settings_obj, weekday__in=WEEKDAY_MAP.keys()).values_list(
-            "weekday", flat=True
-        )
+        DaySchedule.objects.filter(
+            settings=settings_obj, weekday__in=WEEKDAY_MAP.keys()
+        ).values_list("weekday", flat=True)
     )
     for w in WEEKDAY_MAP.keys():
         if w not in existing:
@@ -284,7 +321,9 @@ def days_list(request):
             )
 
     days = list(
-        DaySchedule.objects.filter(settings=settings_obj, weekday__in=WEEKDAY_MAP.keys())
+        DaySchedule.objects.filter(
+            settings=settings_obj, weekday__in=WEEKDAY_MAP.keys()
+        )
         .order_by("weekday")
         .prefetch_related("periods", "breaks")
     )
@@ -401,7 +440,9 @@ def day_autofill(request, weekday: int):
         gap_minutes = _to_int(request.POST.get("gap_minutes"), 0)
         gap_seconds = _to_int(request.POST.get("gap_seconds"), 0)
         break_after = _to_int(request.POST.get("break_after"), 0)
-        break_minutes = _to_int(request.POST.get("break_minutes") or request.POST.get("break_duration"), 0)
+        break_minutes = _to_int(
+            request.POST.get("break_minutes") or request.POST.get("break_duration"), 0
+        )
         break_seconds = _to_int(request.POST.get("break_seconds"), 0)
 
         start_t = _parse_hhmm_or_hhmmss(start_time_str)
@@ -429,7 +470,11 @@ def day_autofill(request, weekday: int):
         periods_mgr.all().delete()
         breaks_mgr.all().delete()
 
-        break_minutes_final = int(math.ceil(max(0, brk.total_seconds()) / 60.0)) if brk.total_seconds() > 0 else 0
+        break_minutes_final = (
+            int(math.ceil(max(0, brk.total_seconds()) / 60.0))
+            if brk.total_seconds() > 0
+            else 0
+        )
 
         for i in range(1, day.periods_count + 1):
             start_period = cursor
@@ -480,6 +525,11 @@ def day_toggle(request, weekday: int):
     return redirect("dashboard:days_list")
 
 
+# ======================
+# التنبيهات وبطاقات التميز
+# ======================
+
+
 @manager_required
 def ann_list(request):
     school = request.user.profile.school
@@ -502,7 +552,11 @@ def ann_create(request):
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = AnnouncementForm()
-    return render(request, "dashboard/ann_form.html", {"form": form, "title": "إنشاء تنبيه"})
+    return render(
+        request,
+        "dashboard/ann_form.html",
+        {"form": form, "title": "إنشاء تنبيه"},
+    )
 
 
 @manager_required
@@ -518,7 +572,11 @@ def ann_edit(request, pk: int):
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = AnnouncementForm(instance=obj)
-    return render(request, "dashboard/ann_form.html", {"form": form, "title": "تعديل تنبيه"})
+    return render(
+        request,
+        "dashboard/ann_form.html",
+        {"form": form, "title": "تعديل تنبيه"},
+    )
 
 
 @manager_required
@@ -544,7 +602,9 @@ def exc_list(request):
         & (Q(end_at__isnull=True) | Q(end_at__gt=now))
     ).count()
     expired_count = Excellence.objects.filter(school=school, end_at__lte=now).count()
-    max_p = Excellence.objects.filter(school=school).aggregate(m=Max("priority"))["m"] or 0
+    max_p = (
+        Excellence.objects.filter(school=school).aggregate(m=Max("priority"))["m"] or 0
+    )
 
     page = Paginator(qs, 12).get_page(request.GET.get("page"))
 
@@ -577,10 +637,7 @@ def exc_create(request):
     return render(
         request,
         "dashboard/exc_form.html",
-        {
-            "form": form,
-            "title": "إضافة تميز",
-        },
+        {"form": form, "title": "إضافة تميز"},
     )
 
 
@@ -600,10 +657,7 @@ def exc_edit(request, pk: int):
     return render(
         request,
         "dashboard/exc_form.html",
-        {
-            "form": form,
-            "title": "تعديل تميز",
-        },
+        {"form": form, "title": "تعديل تميز"},
     )
 
 
@@ -618,18 +672,33 @@ def exc_delete(request, pk: int):
     return HttpResponseBadRequest("طريقة غير مدعومة.")
 
 
+# ======================
+# حصص الانتظار
+# ======================
+
+
 @manager_required
 def standby_list(request):
     school = request.user.profile.school
-    qs = StandbyAssignment.objects.filter(school=school).order_by("-date", "period_index")
+    qs = StandbyAssignment.objects.filter(school=school).order_by(
+        "-date", "period_index"
+    )
 
     today = timezone.localdate()
-    today_count = StandbyAssignment.objects.filter(school=school, date=today).count()
+    today_count = StandbyAssignment.objects.filter(
+        school=school, date=today
+    ).count()
     teachers_count = (
-        StandbyAssignment.objects.filter(school=school).values("teacher_name").distinct().count()
+        StandbyAssignment.objects.filter(school=school)
+        .values("teacher_name")
+        .distinct()
+        .count()
     )
     classes_count = (
-        StandbyAssignment.objects.filter(school=school).values("class_name").distinct().count()
+        StandbyAssignment.objects.filter(school=school)
+        .values("class_name")
+        .distinct()
+        .count()
     )
 
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
@@ -650,7 +719,7 @@ def standby_list(request):
 def standby_create(request):
     school = request.user.profile.school
     if request.method == "POST":
-        form = StandbyForm(request.POST)
+        form = StandbyForm(request.POST, school=school)
         if form.is_valid():
             standby = form.save(commit=False)
             standby.school = school
@@ -659,14 +728,11 @@ def standby_create(request):
             return redirect("dashboard:standby_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
-        form = StandbyForm()
+        form = StandbyForm(school=school)
     return render(
         request,
         "dashboard/standby_form.html",
-        {
-            "form": form,
-            "title": "إضافة تكليف",
-        },
+        {"form": form, "title": "إضافة تكليف"},
     )
 
 
@@ -705,8 +771,7 @@ def standby_import(request):
 
         data = io.StringIO(decoded_file)
         reader = csv.DictReader(data)
-        count = 0
-
+        new_standby_assignments = []
         for row in reader:
             try:
                 raw_date = (row.get("date") or "").strip()
@@ -719,22 +784,34 @@ def standby_import(request):
                 if period_index <= 0:
                     raise ValueError("period_index غير صالح")
 
-                StandbyAssignment.objects.create(
-                    school=school,
-                    date=parsed_date,
-                    period_index=period_index,
-                    class_name=row.get("class_name", ""),
-                    teacher_name=row.get("teacher_name", ""),
-                    notes=row.get("notes", "") or "",
+                new_standby_assignments.append(
+                    StandbyAssignment(
+                        school=school,
+                        date=parsed_date,
+                        period_index=period_index,
+                        class_name=row.get("class_name", ""),
+                        teacher_name=row.get("teacher_name", ""),
+                        notes=row.get("notes", "") or "",
+                    )
                 )
-                count += 1
             except Exception:
                 continue
+
+        if new_standby_assignments:
+            StandbyAssignment.objects.bulk_create(new_standby_assignments)
+            count = len(new_standby_assignments)
+        else:
+            count = 0
 
         messages.success(request, f"تم استيراد {count} سجل.")
         return redirect("dashboard:standby_list")
 
     return render(request, "dashboard/standby_import.html")
+
+
+# ======================
+# شاشات العرض
+# ======================
 
 
 @manager_required
@@ -762,10 +839,7 @@ def screen_create(request):
     return render(
         request,
         "dashboard/screen_form.html",
-        {
-            "form": form,
-            "title": "إضافة شاشة",
-        },
+        {"form": form, "title": "إضافة شاشة"},
     )
 
 
@@ -778,6 +852,11 @@ def screen_delete(request, pk: int):
         messages.success(request, "تم حذف الشاشة.")
         return redirect("dashboard:screen_list")
     return HttpResponseBadRequest("طريقة غير مدعومة.")
+
+
+# ======================
+# أدوات إضافية على الأيام
+# ======================
 
 
 @manager_required
@@ -840,6 +919,11 @@ def day_reindex(request, weekday: int):
     return redirect("dashboard:day_edit", weekday=weekday)
 
 
+# ======================
+# الحصص (ClassLesson)
+# ======================
+
+
 @manager_required
 def lessons_list(request):
     school = request.user.profile.school
@@ -847,8 +931,9 @@ def lessons_list(request):
     lessons = []
     if settings_obj:
         lessons = (
-            settings_obj.class_lessons.select_related("school_class", "subject", "teacher")
-            .order_by("weekday", "period_index", "school_class__name")
+            settings_obj.class_lessons.select_related(
+                "school_class", "subject", "teacher"
+            ).order_by("weekday", "period_index", "school_class__name")
         )
     search = (request.GET.get("search") or "").strip()
     day = (request.GET.get("day") or "").strip()
@@ -870,8 +955,23 @@ def lesson_create(request):
     if not settings_obj:
         messages.error(request, "فضلاً أضف إعدادات المدرسة أولاً.")
         return redirect("dashboard:lessons_list")
+
     if request.method == "POST":
         form = LessonForm(request.POST)
+    else:
+        form = LessonForm()
+
+    form.fields["school_class"].queryset = SchoolClass.objects.filter(
+        settings__school=school
+    ).order_by("name")
+    form.fields["subject"].queryset = Subject.objects.filter(
+        school=school
+    ).order_by("name")
+    form.fields["teacher"].queryset = Teacher.objects.filter(
+        school=school
+    ).order_by("name")
+
+    if request.method == "POST":
         if form.is_valid():
             lesson = form.save(commit=False)
             lesson.settings = settings_obj
@@ -879,9 +979,12 @@ def lesson_create(request):
             messages.success(request, "تمت إضافة الحصة بنجاح.")
             return redirect("dashboard:lessons_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
-    else:
-        form = LessonForm()
-    return render(request, "dashboard/lesson_form.html", {"form": form, "title": "إضافة حصة"})
+
+    return render(
+        request,
+        "dashboard/lesson_form.html",
+        {"form": form, "title": "إضافة حصة"},
+    )
 
 
 @manager_required
@@ -889,6 +992,7 @@ def lesson_edit(request, pk: int):
     school = request.user.profile.school
     settings_obj = SchoolSettings.objects.filter(school=school).first()
     obj = get_object_or_404(ClassLesson, pk=pk, settings=settings_obj)
+
     if request.method == "POST":
         form = LessonForm(request.POST, instance=obj)
         if form.is_valid():
@@ -898,7 +1002,22 @@ def lesson_edit(request, pk: int):
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = LessonForm(instance=obj)
-    return render(request, "dashboard/lesson_form.html", {"form": form, "title": "تعديل حصة"})
+
+    form.fields["school_class"].queryset = SchoolClass.objects.filter(
+        settings__school=school
+    ).order_by("name")
+    form.fields["subject"].queryset = Subject.objects.filter(
+        school=school
+    ).order_by("name")
+    form.fields["teacher"].queryset = Teacher.objects.filter(
+        school=school
+    ).order_by("name")
+
+    return render(
+        request,
+        "dashboard/lesson_form.html",
+        {"form": form, "title": "تعديل حصة"},
+    )
 
 
 @manager_required
@@ -913,32 +1032,60 @@ def lesson_delete(request, pk: int):
     return HttpResponseBadRequest("طريقة غير مدعومة.")
 
 
+# ======================
+# بيانات المدرسة (فصول/مواد/معلمين)
+# ======================
+
+
 @manager_required
 def school_data(request):
     school = request.user.profile.school
     settings_obj = SchoolSettings.objects.filter(school=school).first()
-    classes = settings_obj.school_classes.all() if settings_obj else []
-    subjects = Subject.objects.all()
-    teachers = Teacher.objects.all()
+
+    if settings_obj:
+        classes = settings_obj.school_classes.all().order_by("name")
+    else:
+        classes = SchoolClass.objects.none()
+
+    subjects = Subject.objects.filter(school=school).order_by("name")
+    teachers = Teacher.objects.filter(school=school).order_by("name")
+
     if request.method == "POST":
         if "name" in request.POST:
-            name = request.POST["name"].strip()
-            if request.path.endswith("add_class") and settings_obj:
-                SchoolClass.objects.create(settings=settings_obj, name=name)
-            elif request.path.endswith("add_subject"):
-                Subject.objects.create(name=name)
-            elif request.path.endswith("add_teacher"):
-                Teacher.objects.create(name=name)
-        elif request.path.startswith("/dashboard/delete_class/"):
-            pk = int(request.path.split("/")[-1])
-            SchoolClass.objects.filter(pk=pk).delete()
+            name = (request.POST.get("name") or "").strip()
+            if name:
+                if request.path.endswith("add_class") and settings_obj:
+                    SchoolClass.objects.create(settings=settings_obj, name=name)
+                elif request.path.endswith("add_subject"):
+                    Subject.objects.create(school=school, name=name)
+                elif request.path.endswith("add_teacher"):
+                    Teacher.objects.create(school=school, name=name)
+        elif request.path.startswith("/dashboard/delete_class/") and settings_obj:
+            pk_raw = request.path.rstrip("/").split("/")[-1]
+            try:
+                pk = int(pk_raw)
+            except (TypeError, ValueError):
+                pk = None
+            if pk is not None:
+                SchoolClass.objects.filter(pk=pk, settings=settings_obj).delete()
         elif request.path.startswith("/dashboard/delete_subject/"):
-            pk = int(request.path.split("/")[-1])
-            Subject.objects.filter(pk=pk).delete()
+            pk_raw = request.path.rstrip("/").split("/")[-1]
+            try:
+                pk = int(pk_raw)
+            except (TypeError, ValueError):
+                pk = None
+            if pk is not None:
+                Subject.objects.filter(pk=pk, school=school).delete()
         elif request.path.startswith("/dashboard/delete_teacher/"):
-            pk = int(request.path.split("/")[-1])
-            Teacher.objects.filter(pk=pk).delete()
+            pk_raw = request.path.rstrip("/").split("/")[-1]
+            try:
+                pk = int(pk_raw)
+            except (TypeError, ValueError):
+                pk = None
+            if pk is not None:
+                Teacher.objects.filter(pk=pk, school=school).delete()
         return redirect("dashboard:school_data")
+
     return render(
         request,
         "dashboard/school_data.html",
@@ -963,38 +1110,48 @@ def add_class(request):
 
 @manager_required
 def delete_class(request, pk):
-    SchoolClass.objects.filter(pk=pk).delete()
+    school = request.user.profile.school
+    SchoolClass.objects.filter(pk=pk, settings__school=school).delete()
     return redirect("dashboard:school_data")
 
 
 @manager_required
 def add_subject(request):
+    school = request.user.profile.school
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         if name:
-            Subject.objects.create(name=name)
+            Subject.objects.create(school=school, name=name)
     return redirect("dashboard:school_data")
 
 
 @manager_required
 def delete_subject(request, pk):
-    Subject.objects.filter(pk=pk).delete()
+    school = request.user.profile.school
+    Subject.objects.filter(pk=pk, school=school).delete()
     return redirect("dashboard:school_data")
 
 
 @manager_required
 def add_teacher(request):
+    school = request.user.profile.school
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         if name:
-            Teacher.objects.create(name=name)
+            Teacher.objects.create(school=school, name=name)
     return redirect("dashboard:school_data")
 
 
 @manager_required
 def delete_teacher(request, pk):
-    Teacher.objects.filter(pk=pk).delete()
+    school = request.user.profile.school
+    Teacher.objects.filter(pk=pk, school=school).delete()
     return redirect("dashboard:school_data")
+
+
+# ======================
+# جداول الحصص (يوم/أسبوع/تصدير)
+# ======================
 
 
 @manager_required
@@ -1023,7 +1180,11 @@ def timetable_day_view(request):
         class_param = request.POST.get("class_id")
 
     try:
-        weekday = int(weekday_param) if weekday_param not in (None, "") else int(default_weekday)
+        weekday = (
+            int(weekday_param)
+            if weekday_param not in (None, "")
+            else int(default_weekday)
+        )
     except (TypeError, ValueError):
         weekday = int(default_weekday)
 
@@ -1040,10 +1201,12 @@ def timetable_day_view(request):
             selected_class = classes_qs.first()
     selected_class_id = selected_class.id if selected_class else None
 
-    periods_qs = Period.objects.filter(day__settings=settings_obj, day__weekday=weekday).order_by("index")
+    periods_qs = Period.objects.filter(
+        day__settings=settings_obj, day__weekday=weekday
+    ).order_by("index")
 
-    subjects_qs = Subject.objects.all().order_by("name")
-    teachers_qs = Teacher.objects.all().order_by("name")
+    subjects_qs = Subject.objects.filter(school=school).order_by("name")
+    teachers_qs = Teacher.objects.filter(school=school).order_by("name")
 
     if selected_class is not None:
         existing_lessons_qs = ClassLesson.objects.filter(
@@ -1200,7 +1363,6 @@ def timetable_week_view(request):
         messages.error(request, "لا توجد فصول مسجلة لهذه المدرسة.")
         return redirect("dashboard:timetable_day")
 
-    selected_class = None
     try:
         if class_param not in (None, ""):
             selected_class = classes_qs.get(pk=int(class_param))
@@ -1213,28 +1375,45 @@ def timetable_week_view(request):
         messages.error(request, "تعذر تحديد الفصل.")
         return redirect("dashboard:timetable_day")
 
+    all_periods_qs = Period.objects.filter(
+        day__settings=settings_obj, day__weekday__in=WEEKDAY_MAP.keys()
+    ).order_by("day__weekday", "index")
+
+    periods_by_weekday: dict[int, list[Period]] = {}
+    for p in all_periods_qs:
+        periods_by_weekday.setdefault(p.day.weekday, []).append(p)
+
+    all_lessons_qs = ClassLesson.objects.filter(
+        settings=settings_obj,
+        school_class=selected_class,
+        weekday__in=WEEKDAY_MAP.keys(),
+    ).select_related("subject", "teacher")
+
+    lessons_by_weekday_period: dict[int, dict[int, ClassLesson]] = {}
+    for lesson in all_lessons_qs:
+        lessons_by_weekday_period.setdefault(lesson.weekday, {})[
+            lesson.period_index
+        ] = lesson
+
     days_data = []
 
     for weekday, label in SCHOOL_WEEK:
-        day_periods = Period.objects.filter(day__settings=settings_obj, day__weekday=weekday).order_by("index")
-
-        lessons_qs = ClassLesson.objects.filter(
-            settings=settings_obj,
-            school_class=selected_class,
-            weekday=weekday,
-        ).select_related("subject", "teacher")
-
-        lessons_map = {lesson.period_index: lesson for lesson in lessons_qs}
-
         rows = []
-        for period in day_periods:
-            lesson = lessons_map.get(period.index)
+        current_day_periods = periods_by_weekday.get(weekday, [])
+        current_day_lessons_map = lessons_by_weekday_period.get(weekday, {})
+
+        for period in current_day_periods:
+            lesson = current_day_lessons_map.get(period.index)
             rows.append(
                 {
                     "period": period,
                     "lesson": lesson,
-                    "subject_name": lesson.subject.name if lesson and lesson.subject else "",
-                    "teacher_name": lesson.teacher.name if lesson and lesson.teacher else "",
+                    "subject_name": lesson.subject.name
+                    if lesson and lesson.subject
+                    else "",
+                    "teacher_name": lesson.teacher.name
+                    if lesson and lesson.teacher
+                    else "",
                 }
             )
 
@@ -1299,7 +1478,9 @@ def timetable_export_csv(request):
     response.write("\ufeff")
 
     writer = csv.writer(response)
-    writer.writerow(["اليوم", "رقم الحصة", "وقت البداية", "وقت النهاية", "المادة", "المعلم"])
+    writer.writerow(
+        ["اليوم", "رقم الحصة", "وقت البداية", "وقت النهاية", "المادة", "المعلم"]
+    )
 
     for lesson in lessons:
         key = (lesson.weekday, lesson.period_index)
@@ -1328,3 +1509,433 @@ def timetable_export_csv(request):
         )
 
     return response
+
+
+# =========================
+#  لوحة إدارة النظام (SaaS)
+# =========================
+
+
+def superuser_required(view_func):
+    """
+    يسمح بالدخول فقط للمستخدمين superuser (مدير النظام العام).
+    """
+    return user_passes_test(lambda u: u.is_superuser, login_url="dashboard:login")(view_func)
+
+
+class AdminSchoolForm(forms.ModelForm):
+    """
+    نموذج بسيط لإدارة المدارس من لوحة النظام.
+    يمكن توسيع الحقول لاحقاً حسب موديل School الفعلي.
+    """
+
+    class Meta:
+        model = School
+        fields = ["name", "slug", "is_active"]
+
+
+@superuser_required
+def system_admin_dashboard(request):
+    """
+    لوحة إدارة النظام الرئيسية (إحصاءات عامة).
+    """
+    school_count = School.objects.count()
+    user_count = UserModel.objects.count()
+
+    subs_count = SchoolSubscription.objects.count()
+    today = timezone.localdate()
+    active_subs = SchoolSubscription.objects.filter(
+        status="active"
+    ).filter(
+        models.Q(ends_at__isnull=True) | models.Q(ends_at__gte=today)
+    ).count()
+
+    context = {
+        "schools_count": school_count,
+        "users_count": user_count,
+        "subs_count": subs_count,
+        "active_subs": active_subs,
+    }
+    return render(request, "admin/dashboard.html", context)
+
+
+# =================
+# 🏫 إدارة المدارس
+# =================
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_schools_list(request):
+    q = (request.GET.get("q") or "").strip()
+
+    schools = School.objects.all().order_by("-created_at")
+
+    if q:
+        schools = schools.filter(
+            Q(name__icontains=q) |
+            Q(slug__icontains=q)
+        )
+
+    context = {
+        "schools": schools,
+        "q": q,
+    }
+    return render(request, "admin/schools_list.html", context)
+
+
+@superuser_required
+def system_school_create(request):
+    if request.method == "POST":
+        form = AdminSchoolForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تمت إضافة المدرسة بنجاح.")
+            return redirect("dashboard:system_schools_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = AdminSchoolForm()
+
+    return render(
+        request,
+        "admin/school_form.html",
+        {
+            "form": form,
+            "title": "إضافة مدرسة",
+        },
+    )
+
+
+@superuser_required
+def system_school_edit(request, pk: int):
+    school = get_object_or_404(School, pk=pk)
+    if request.method == "POST":
+        form = AdminSchoolForm(request.POST, request.FILES, instance=school)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث بيانات المدرسة.")
+            return redirect("dashboard:system_schools_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = AdminSchoolForm(instance=school)
+
+    return render(
+        request,
+        "admin/school_form.html",
+        {
+            "form": form,
+            "title": "تعديل مدرسة",
+            "edit": True,
+        },
+    )
+
+
+@superuser_required
+def system_school_delete(request, pk: int):
+    school = get_object_or_404(School, pk=pk)
+    if request.method == "POST":
+        school.delete()
+        messages.warning(request, f"تم حذف المدرسة: {school.name}")
+        return redirect("dashboard:system_schools_list")
+    return HttpResponseBadRequest("طريقة غير مدعومة.")
+
+
+# =================
+# 👥 إدارة المستخدمين
+# =================
+
+
+@superuser_required
+def system_users_list(request):
+    """
+    قائمة مستخدمي النظام في لوحة التحكم (مع بحث وترقيم).
+    """
+    q = (request.GET.get("q") or "").strip()
+
+    qs = (
+        UserModel.objects
+        .select_related("profile")
+        .order_by("-id")
+    )
+
+    if q:
+        qs = qs.filter(
+            Q(username__icontains=q)
+            | Q(email__icontains=q)
+            | Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(profile__school__name__icontains=q)
+        )
+
+    paginator = Paginator(qs, 25)
+    page_number = request.GET.get("page") or 1
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "q": q,
+    }
+    return render(request, "admin/users_list.html", context)
+
+
+@superuser_required
+def system_user_create(request):
+    """
+    إنشاء مستخدم جديد من لوحة التحكم.
+    """
+    if request.method == "POST":
+        form = SystemUserCreateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم إنشاء المستخدم بنجاح.")
+            return redirect("dashboard:system_users_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SystemUserCreateForm()
+
+    return render(
+        request,
+        "admin/user_edit.html",
+        {
+            "form": form,
+            "is_create": True,
+        },
+    )
+
+
+@superuser_required
+def system_user_edit(request, pk: int):
+    """
+    تعديل مستخدم موجود من لوحة التحكم الخاصة بنا.
+    """
+    user = get_object_or_404(UserModel, pk=pk)
+
+    if request.method == "POST":
+        form = SystemUserUpdateForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث بيانات المستخدم بنجاح.")
+            return redirect("dashboard:system_users_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SystemUserUpdateForm(instance=user)
+
+    return render(
+        request,
+        "admin/user_edit.html",
+        {
+            "form": form,
+            "is_create": False,
+            "user_obj": user,
+        },
+    )
+
+
+@superuser_required
+def system_user_delete(request, pk: int):
+    """
+    حذف مستخدم (مع تأكيد بسيط).
+    """
+    user = get_object_or_404(UserModel, pk=pk)
+
+    if request.method == "POST":
+        username = user.username
+        user.delete()
+        messages.success(request, f"تم حذف المستخدم {username}.")
+        return redirect("dashboard:system_users_list")
+
+    return render(
+        request,
+        "admin/user_delete_confirm.html",
+        {"user_obj": user},
+    )
+
+
+# =====================
+# 💳 إدارة الاشتراكات
+# =====================
+
+
+def _get_subscription_model():
+    """
+    محاولة جلب موديل الاشتراكات ديناميكياً من تطبيق subscriptions.
+    إذا لم يكن التطبيق مثبتاً يرجع None.
+    """
+    try:
+        return apps.get_model("subscriptions", "SchoolSubscription")
+    except LookupError:
+        return None
+
+
+@superuser_required
+def system_subscriptions_list(request):
+    SubModel = _get_subscription_model()
+    q = (request.GET.get("q") or "").strip()
+
+    if SubModel is None:
+        messages.error(request, "تطبيق الاشتراكات غير موجود.")
+        subscriptions = []
+    else:
+        qs = (
+            SubModel.objects
+            .select_related("school", "plan")
+            .order_by("-starts_at", "-id")
+        )
+
+        if q:
+            qs = qs.filter(
+                Q(school__name__icontains=q) |
+                Q(plan__name__icontains=q)
+            )
+
+        subscriptions = qs
+
+    return render(
+        request,
+        "admin/subscriptions_list.html",
+        {
+            "subscriptions": subscriptions,
+            "q": q,
+        },
+    )
+
+
+@superuser_required
+def system_subscription_create(request):
+    SubModel = _get_subscription_model()
+    if SubModel is None:
+        messages.error(request, "نظام الاشتراكات غير مثبت.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    if request.method == "POST":
+        form = SchoolSubscriptionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم إنشاء الاشتراك بنجاح.")
+            return redirect("dashboard:system_subscriptions_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SchoolSubscriptionForm()
+
+    return render(
+        request,
+        "admin/subscription_form.html",
+        {
+            "form": form,
+            "title": "إضافة اشتراك",
+        },
+    )
+
+
+@superuser_required
+def system_subscription_edit(request, pk: int):
+    SubModel = _get_subscription_model()
+    if SubModel is None:
+        messages.error(request, "نظام الاشتراكات غير مثبت.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    obj = get_object_or_404(SubModel, pk=pk)
+
+    if request.method == "POST":
+        form = SchoolSubscriptionForm(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث بيانات الاشتراك.")
+            return redirect("dashboard:system_subscriptions_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SchoolSubscriptionForm(instance=obj)
+
+    return render(
+        request,
+        "admin/subscription_form.html",
+        {
+            "form": form,
+            "title": "تعديل اشتراك",
+            "edit": True,
+        },
+    )
+
+
+@superuser_required
+def system_subscription_delete(request, pk: int):
+    SubModel = _get_subscription_model()
+    if SubModel is None:
+        messages.error(request, "نظام الاشتراكات غير مثبت.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    obj = get_object_or_404(SubModel, pk=pk)
+
+    if request.method == "POST":
+        obj.delete()
+        messages.warning(request, "تم حذف الاشتراك.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    return HttpResponseBadRequest("طريقة غير مدعومة.")
+
+
+from django.utils import timezone
+from subscriptions.models import SchoolSubscription
+
+
+@login_required
+def my_subscription(request):
+    """
+    عرض اشتراك المدرسة المرتبطة بالمستخدم الحالي، مع حالة فعلية
+    (سارية / لم يبدأ بعد / منتهي / ملغى) بناءً على التاريخ والحالة.
+    """
+    school = request.user.profile.school
+
+    subscription = (
+        SchoolSubscription.objects
+        .filter(school=school)
+        .order_by("-starts_at")
+        .first()
+    )
+
+    today = timezone.localdate()
+
+    status_code = "none"
+    status_label = "لا يوجد اشتراك"
+    status_badge_class = "bg-rose-50 text-rose-700"
+
+    if subscription is not None:
+        # نبدأ من status الفعلي
+        if subscription.status == "cancelled":
+            status_code = "cancelled"
+            status_label = "ملغى"
+            status_badge_class = "bg-rose-50 text-rose-700"
+        elif subscription.status == "active":
+            # لم يبدأ بعد
+            if subscription.starts_at and subscription.starts_at > today:
+                status_code = "upcoming"
+                status_label = "لم يبدأ بعد"
+                status_badge_class = "bg-amber-50 text-amber-700"
+            # منتهي بالتاريخ
+            elif subscription.ends_at and subscription.ends_at < today:
+                status_code = "expired"
+                status_label = "منتهي"
+                status_badge_class = "bg-rose-50 text-rose-700"
+            # ساري الآن
+            else:
+                status_code = "active"
+                status_label = "سارية"
+                status_badge_class = "bg-emerald-50 text-emerald-700"
+        else:
+            # أي حالات أخرى / غير متوقعة
+            status_code = subscription.status or "unknown"
+            status_label = "غير معروف"
+            status_badge_class = "bg-slate-100 text-slate-700"
+
+    return render(
+        request,
+        "dashboard/my_subscription.html",
+        {
+            "school": school,
+            "subscription": subscription,
+            "status_code": status_code,
+            "status_label": status_label,
+            "status_badge_class": status_badge_class,
+            "today": today,
+        },
+    )

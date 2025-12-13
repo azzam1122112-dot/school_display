@@ -1,0 +1,296 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}إدارة اشتراكات المدارس{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- رأس الصفحة -->
+  <div class="bg-gradient-to-r from-white to-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">
+              إدارة اشتراكات المدارس
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">
+              تحكّم في اشتراكات المدارس، اختر الخطة وحدّد تواريخ البداية والنهاية.
+            </p>
+          </div>
+        </div>
+        
+        <!-- إحصائيات سريعة -->
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-slate-600">سارية: {{ active_count }}</span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span class="text-slate-600">متوقفة: {{ inactive_count }}</span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span class="text-slate-600">المجموع: {{ subscriptions|length }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- زر الإضافة -->
+      <a href="{% url 'dashboard:system_subscription_create' %}"
+         class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold
+                bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600 
+                transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        إضافة اشتراك جديد
+      </a>
+    </div>
+  </div>
+
+  <!-- شريط البحث والفلترة -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <form method="get" class="flex-1">
+        <div class="relative">
+          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-10 text-sm focus:outline-none
+                   focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-slate-50
+                   transition-all duration-200"
+            placeholder="بحث باسم المدرسة، الخطة، أو البريد..."
+          >
+        </div>
+      </form>
+      
+      <!-- فلترة حسب الحالة -->
+      <div class="flex items-center gap-2">
+        <a href="?status=active"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if request.GET.status == 'active' %}bg-emerald-100 text-emerald-700 border border-emerald-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          السارية فقط
+        </a>
+        <a href="?status=inactive"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if request.GET.status == 'inactive' %}bg-slate-100 text-slate-700 border border-slate-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          المتوقفة
+        </a>
+        <a href="?"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if not request.GET.status %}bg-blue-100 text-blue-700 border border-blue-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          الكل
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- جدول الاشتراكات -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-100">
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">المدرسة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الخطة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">تاريخ البدء</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">تاريخ الانتهاء</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الحالة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% if subscriptions %}
+            {% for sub in subscriptions %}
+              <tr class="hover:bg-slate-50/80 transition-colors duration-150 group">
+                <!-- اسم المدرسة -->
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="font-medium text-slate-900">{{ sub.school.name }}</p>
+                      <p class="text-xs text-slate-500 mt-1">{{ sub.school.email|default:"لا يوجد بريد" }}</p>
+                    </div>
+                  </div>
+                </td>
+                
+                <!-- الخطة -->
+                <td class="px-6 py-4">
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span class="font-medium text-indigo-700">{{ sub.plan.name }}</span>
+                  </div>
+                </td>
+                
+                <!-- تاريخ البدء -->
+                <td class="px-6 py-4">
+                  <div class="flex flex-col">
+                    <span class="font-medium text-slate-800">{{ sub.starts_at|date:"Y-m-d" }}</span>
+                    <span class="text-xs text-slate-500 mt-1">{{ sub.starts_at|date:"l" }}</span>
+                  </div>
+                </td>
+                
+                <!-- تاريخ الانتهاء -->
+                <td class="px-6 py-4">
+                  <div class="flex flex-col">
+                    {% if sub.ends_at %}
+                      <span class="font-medium text-slate-800">{{ sub.ends_at|date:"Y-m-d" }}</span>
+                      <span class="text-xs text-slate-500 mt-1">{{ sub.ends_at|date:"l" }}</span>
+                    {% else %}
+                      <span class="text-slate-400 italic">—</span>
+                      <span class="text-xs text-slate-500 mt-1">مفتوحة</span>
+                    {% endif %}
+                  </div>
+                </td>
+                
+                <!-- الحالة -->
+                <td class="px-6 py-4">
+                  {% if sub.is_active %}
+                    <div class="inline-flex items-center gap-2">
+                      <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        سارية
+                      </span>
+                    </div>
+                  {% else %}
+                    <div class="inline-flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                      <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                        موقوفة
+                      </span>
+                    </div>
+                  {% endif %}
+                </td>
+                
+                <!-- الإجراءات -->
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <a href="{% url 'subscriptions:edit' sub.id %}"
+                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold 
+                              text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200
+                              transition-colors duration-150">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      تعديل
+                    </a>
+                    <a href="{% url 'subscriptions:delete' sub.id %}"
+                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold 
+                              text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200
+                              transition-colors duration-150"
+                       onclick="return confirm('هل أنت متأكد من حذف اشتراك مدرسة {{ sub.school.name }}؟');">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      حذف
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <!-- حالة عدم وجود بيانات -->
+            <tr>
+              <td colspan="6" class="px-6 py-16 text-center">
+                <div class="max-w-sm mx-auto space-y-4">
+                  <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-medium text-slate-700">لا توجد اشتراكات</h3>
+                    <p class="text-slate-500 mt-1 text-sm">
+                      {% if q %}
+                        لم يتم العثور على نتائج لـ "{{ q }}"
+                      {% else %}
+                        لم يتم إضافة أي اشتراكات بعد
+                      {% endif %}
+                    </p>
+                  </div>
+                  <div class="pt-4">
+                    <a href="{% url 'dashboard:system_subscription_create' %}"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                              bg-gradient-to-r from-emerald-600 to-green-500 text-white hover:from-emerald-700 hover:to-green-600 
+                              transition-all duration-300 shadow-sm hover:shadow">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      إضافة أول اشتراك
+                    </a>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- الترقيم (Pagination) -->
+  {% if subscriptions.has_other_pages %}
+  <div class="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+    <div class="text-sm text-slate-500">
+      عرض {{ subscriptions.start_index }} إلى {{ subscriptions.end_index }} من {{ subscriptions.paginator.count }}
+    </div>
+    <div class="flex items-center gap-1">
+      {% if subscriptions.has_previous %}
+        <a href="?page={{ subscriptions.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+           class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      {% endif %}
+
+      {% for num in subscriptions.paginator.page_range %}
+        {% if subscriptions.number == num %}
+          <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white font-medium">
+            {{ num }}
+          </span>
+        {% elif num > subscriptions.number|add:'-3' and num < subscriptions.number|add:'3' %}
+          <a href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+             class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+            {{ num }}
+          </a>
+        {% endif %}
+      {% endfor %}
+
+      {% if subscriptions.has_next %}
+        <a href="?page={{ subscriptions.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+           class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

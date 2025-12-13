@@ -1,23 +1,19 @@
+# website/views.py
 from __future__ import annotations
 
-from datetime import datetime
-
 from django.conf import settings
+from django.core.cache import cache
 from django.http import Http404, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.utils import timezone
 
 from core.models import DisplayScreen
-from schedule.models import ClassLesson, Period, SchoolSettings
+from schedule.models import SchoolSettings
 
-# خريطة تحويل كود الثيم في الإعدادات → كود الثيم في الواجهة
 THEME_MAP = {
-    # القيم الجديدة في SchoolSettings.theme
-    "default": "indigo",   # افتراضي
-    "boys": "emerald",     # مدارس البنين
-    "girls": "rose",       # مدارس البنات
-
-    # دعم خلفي للقيم القديمة (لو بقيت سجلات قديمة في قاعدة البيانات)
+    "default": "indigo",
+    "boys": "emerald",
+    "girls": "rose",
     "indigo": "indigo",
     "emerald": "emerald",
     "rose": "rose",
@@ -28,191 +24,115 @@ def health(request):
     return HttpResponse("School Display is running.")
 
 
+def _abs_media_url(request, maybe_url: str | None) -> str | None:
+    if not maybe_url:
+        return None
+    s = str(maybe_url).strip()
+    if not s:
+        return None
+    if s.startswith("http://") or s.startswith("https://"):
+        return s
+    try:
+        return request.build_absolute_uri(s)
+    except Exception:
+        return s
+
+
 def _resolve_screen_and_settings(token: str | None) -> tuple[DisplayScreen | None, SchoolSettings | None, str | None]:
-    settings_obj = None
-    effective_token = token or None
-    screen = None
+    if not token:
+        return None, None, None
 
-    if effective_token:
-        try:
-            screen = (
-                DisplayScreen.objects
-                .select_related("school")
-                .get(token=effective_token, is_active=True)
-            )
-            settings_obj = (
-                SchoolSettings.objects
-                .filter(school=screen.school)
-                .first()
-            )
-        except DisplayScreen.DoesNotExist:
-            screen = None
-            settings_obj = None
+    screen = (
+        DisplayScreen.objects.select_related("school")
+        .filter(token__iexact=token, is_active=True)
+        .first()
+    )
+    if not screen:
+        return None, None, None
 
-    if settings_obj is None:
-        settings_obj = (
-            SchoolSettings.objects
-            .select_related("school")
-            .filter(school__isnull=False)
-            .first()
-        )
-        if settings_obj and not effective_token:
-            screen = (
-                DisplayScreen.objects
-                .filter(school=settings_obj.school, is_active=True)
-                .first()
-            )
-            if screen:
-                effective_token = screen.token
+    try:
+        settings_obj = screen.school.schedule_settings
+    except SchoolSettings.DoesNotExist:
+        return screen, None, token
 
-    return screen, settings_obj, effective_token
+    return screen, settings_obj, token
 
 
-def _build_display_context(token: str | None) -> dict:
+def _build_display_context(request, token: str | None) -> dict | None:
+    if not token:
+        return None
+
+    # ?nocache=1 مفيد أثناء التطوير
+    bypass_cache = (request.GET.get("nocache") == "1")
+
+    cache_key = f"display_ctx:{token}"
+    if not bypass_cache:
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
     screen, settings_obj, effective_token = _resolve_screen_and_settings(token)
+    if not screen or not settings_obj:
+        return None
 
-    # --- الشعار ---
+    # شعار
     logo_url = None
-    if settings_obj:
-        if settings_obj.school and getattr(settings_obj.school, "logo", None):
+    if settings_obj.school and getattr(settings_obj.school, "logo", None):
+        try:
             logo_url = settings_obj.school.logo.url
-        else:
-            logo_url = getattr(settings_obj, "logo_url", None)
+        except Exception:
+            logo_url = None
+    if not logo_url:
+        logo_url = getattr(settings_obj, "logo_url", None)
+    logo_url = _abs_media_url(request, logo_url)
 
-    # قيم افتراضية
-    default_refresh_interval = 30
-    default_standby_speed = 0.8
-    default_periods_speed = 0.5
-
-    # اسم المدرسة
-    school_name = "مدرستنا"
-    if settings_obj and getattr(settings_obj, "name", None):
-        school_name = settings_obj.name
-
-    # فاصل التحديث
-    refresh_interval_sec = default_refresh_interval
-    if settings_obj and getattr(settings_obj, "refresh_interval_sec", None) is not None:
-        refresh_interval_sec = settings_obj.refresh_interval_sec
-
-    # سرعة تمرير الانتظار
-    standby_scroll_speed = default_standby_speed
-    if settings_obj and getattr(settings_obj, "standby_scroll_speed", None) is not None:
-        standby_scroll_speed = settings_obj.standby_scroll_speed
-
-    # سرعة تمرير جدول الحصص
-    periods_scroll_speed = default_periods_speed
-    if settings_obj and getattr(settings_obj, "periods_scroll_speed", None) is not None:
-        periods_scroll_speed = settings_obj.periods_scroll_speed
-
-    # ⚠️ أهم جزء: تحويل الكود المخزن في الإعدادات إلى كود الثيم في الواجهة
-    raw_theme = "default"
-    if settings_obj and getattr(settings_obj, "theme", None):
-        raw_theme = settings_obj.theme
-
+    raw_theme = getattr(settings_obj, "theme", "default")
     theme = THEME_MAP.get(raw_theme, "indigo")
 
-    school_id = None
-    if settings_obj and getattr(settings_obj, "school", None):
-        school_id = settings_obj.school.id
+    school_name = getattr(settings_obj, "name", None) or getattr(settings_obj.school, "name", "مدرستنا")
 
     ctx = {
         "screen": screen,
         "settings": settings_obj,
         "school_name": school_name,
         "logo_url": logo_url,
-        "refresh_interval_sec": refresh_interval_sec,
-        "standby_scroll_speed": standby_scroll_speed,
-        "periods_scroll_speed": periods_scroll_speed,
+        "refresh_interval_sec": getattr(settings_obj, "refresh_interval_sec", 30),
+        "standby_scroll_speed": getattr(settings_obj, "standby_scroll_speed", 0.8),
+        "periods_scroll_speed": getattr(settings_obj, "periods_scroll_speed", 0.5),
         "now_hour": timezone.localtime().hour,
         "theme": theme,
+        "theme_key": raw_theme,
         "api_token": effective_token,
-        "school_id": school_id,
-        "firebase_enabled": getattr(settings, "USE_FIREBASE", False),
+        "display_token": effective_token,
+        "token": effective_token,
+        "school_id": settings_obj.school_id if settings_obj.school_id else None,
+        # مهم: هذا هو المسار الذي يستدعيه display.js
+        "snapshot_url": f"/api/display/snapshot/{effective_token}/",
+        "firebase_enabled": bool(getattr(settings, "USE_FIREBASE", False)),
     }
+
+    cache.set(cache_key, ctx, 60)
     return ctx
+
+
+def home(request):
+    token = request.GET.get("token") or None
+    ctx = _build_display_context(request, token)
+    if not ctx:
+        return render(request, "website/unconfigured_display.html", {"token": token})
+    return render(request, "website/display.html", ctx)
 
 
 def display(request):
     return home(request)
 
 
-def home(request):
-    token = request.GET.get("token") or None
-    ctx = _build_display_context(token)
-    return render(request, "website/display.html", ctx)
-
-
 def display_view(request, screen_key: str):
     if not screen_key:
         raise Http404("Missing screen key.")
-    ctx = _build_display_context(screen_key)
-    if ctx.get("settings") is None:
-        raise Http404("Display is not configured.")
+
+    ctx = _build_display_context(request, screen_key)
+    if not ctx:
+        raise Http404("Display is not configured or found.")
+
     return render(request, "website/display.html", ctx)
-
-
-def current_period_live(request, screen_key: str):
-    if not screen_key:
-        raise Http404("Missing screen key.")
-
-    try:
-        screen = (
-            DisplayScreen.objects
-            .select_related("school")
-            .get(token=screen_key, is_active=True)
-        )
-    except DisplayScreen.DoesNotExist:
-        raise Http404("Screen not found.")
-
-    settings_obj = (
-        SchoolSettings.objects
-        .filter(school=screen.school)
-        .first()
-    )
-    if settings_obj is None:
-        raise Http404("School settings not found.")
-
-    today = timezone.localdate()
-    now = timezone.localtime()
-    now_time = now.time()
-
-    python_weekday = today.weekday()
-    weekday = (python_weekday + 1) % 7
-
-    periods_qs = (
-        Period.objects
-        .filter(day__settings=settings_obj, day__weekday=weekday)
-        .order_by("index")
-    )
-
-    current_period = None
-    for p in periods_qs:
-        if not p.starts_at or not p.ends_at:
-            continue
-        if p.starts_at <= now_time < p.ends_at:
-            current_period = p
-            break
-
-    current_lessons = []
-    if current_period is not None:
-        current_lessons = (
-            ClassLesson.objects
-            .filter(
-                settings=settings_obj,
-                weekday=weekday,
-                period_index=current_period.index,
-                is_active=True,
-            )
-            .select_related("school_class", "subject", "teacher")
-            .order_by("school_class__name")
-        )
-
-    context = {
-        "screen": screen,
-        "settings": settings_obj,
-        "today": today,
-        "now": now,
-        "current_period": current_period,
-        "current_lessons": current_lessons,
-    }
-    return render(request, "website/current_period_live.html", context)

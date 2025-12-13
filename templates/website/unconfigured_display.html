@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاشة غير مهيأة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="text-center p-8 bg-white shadow-lg rounded-lg max-w-md">
+        <h1 class="text-3xl font-bold text-red-600 mb-4">شاشة عرض غير مهيأة</h1>
+        <p class="text-gray-700 mb-2">
+            هذه الشاشة ليست مرتبطة بأي مدرسة حتى الآن.
+        </p>
+        <p class="text-gray-600 mb-6">
+            يرجى استخدام الرمز التالي لربط الشاشة من لوحة التحكم.
+        </p>
+        {% if token %}
+            <div class="p-4 bg-gray-200 rounded-md">
+                <p class="text-2xl font-mono text-gray-800 tracking-widest">{{ token }}</p>
+            </div>
+        {% else %}
+            <div class="p-4 bg-yellow-100 border-r-4 border-yellow-500">
+                <p class="text-yellow-800">
+                    <strong>تنبيه:</strong> لا يوجد رمز مميز (token) في الرابط. يرجى التأكد من أنك تستخدم الرابط الصحيح الذي تم إنشاؤه من لوحة التحكم.
+                </p>
+            </div>
+        {% endif %}
+        <p class="mt-6 text-sm text-gray-500">
+            إذا استمرت المشكلة، يرجى التواصل مع الدعم الفني.
+        </p>
+    </div>
+</body>
+</html>

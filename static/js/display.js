@@ -1,934 +1,1025 @@
 (function () {
-  var body = document.body;
-  var REFRESH_EVERY = parseFloat(body.dataset.refresh || "30") || 30;
-  var STANDBY_SPEED = parseFloat(body.dataset.standby || "0.8") || 0.8;
-  var PERIODS_SPEED = parseFloat(body.dataset.periodsSpeed || "0.5") || 0.5;
-  // عدد العناصر (البطاقات) التي عندها نُجبِر التمرير حتى لو لم يزد المحتوى عن ارتفاع الكرت.
-  var STANDBY_MIN_ITEMS_FOR_SCROLL = 4;
-  var PERIODS_MIN_ITEMS_FOR_SCROLL = 4;
-  var SERVER_TOKEN = body.dataset.apiToken || "";
+  "use strict";
 
-  var api = {
-    today: "/api/display/today/",
-    standby: "/api/standby/today/",
-    ann: "/api/announcements/active/",
-    exc: "/api/announcements/excellence/",
-    settings: "/api/display/settings/",
-    periodClasses: "/api/display/current-classes/"
+  // -------------------------
+  // DOM helpers
+  // -------------------------
+  const $ = (id) => document.getElementById(id);
+  const body = document.body || document.documentElement;
+
+  const dom = {
+    schoolLogo: $("schoolLogo"),
+    schoolLogoFallback: $("schoolLogoFallback"),
+    schoolName: $("schoolName"),
+    dateG: $("dateGregorian"),
+    dateH: $("dateHijri"),
+    clock: $("clock"),
+
+    alertContainer: $("alertContainer"),
+    // ✅ الجديد (عنوان + تفاصيل) — مع توافق للخلف لو كان عندك alertText قديم
+    alertTitle: $("alertTitle"),
+    alertDetails: $("alertDetails"),
+    alertText: $("alertText"),
+
+    badgeKind: $("badgeKind"),
+    heroRange: $("heroRange"),
+    heroTitle: $("heroTitle"),
+    currentScheduleList: $("currentScheduleList"),
+
+    circleProgress: $("circleProgress"),
+    countdown: $("countdown"),
+    progressBar: $("progressBar"),
+
+    miniSchedule: $("miniSchedule"),
+    nextLabel: $("nextLabel"),
+
+    exSlot: $("exSlot"),
+    exIndex: $("exIndex"),
+    exTotal: $("exTotal"),
+
+    pcCount: $("pcCount"),
+    periodClassesTrack: $("periodClassesTrack"),
+
+    sbCount: $("sbCount"),
+    standbyTrack: $("standbyTrack"),
+
+    fsBtn: $("fsBtn"),
   };
 
-  var AR_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  var HIJRI_MONTHS = ["محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"];
+  // -------------------------
+  // config (from dataset + snapshot.settings)
+  // -------------------------
+  let REFRESH_EVERY = parseFloat(body.dataset.refresh || "10") || 10;
+  let STANDBY_SPEED = parseFloat(body.dataset.standby || "0.8") || 0.8;
+  let PERIODS_SPEED = parseFloat(body.dataset.periodsSpeed || "0.5") || 0.5;
 
-  var THEMES = {
-    indigo: { p: "#6366f1", s: "#a855f7", soft: "rgba(99, 102, 241, 0.2)", text: "#c7d2fe", b: "rgba(129, 140, 248, 0.3)" },
-    sky: { p: "#0ea5e9", s: "#3b82f6", soft: "rgba(14, 165, 233, 0.2)", text: "#bae6fd", b: "rgba(56, 189, 248, 0.3)" },
-    emerald: { p: "#10b981", s: "#14b8a6", soft: "rgba(16, 185, 129, 0.2)", text: "#a7f3d0", b: "rgba(52, 211, 153, 0.3)" },
-    rose: { p: "#f43f5e", s: "#ec4899", soft: "rgba(244, 63, 94, 0.2)", text: "#fecdd3", b: "rgba(251, 113, 133, 0.3)" },
-    amber: { p: "#f59e0b", s: "#f97316", soft: "rgba(245, 158, 11, 0.2)", text: "#fde68a", b: "rgba(251, 191, 36, 0.3)" }
-  };
+  const MEDIA_PREFIX = (body.dataset.mediaPrefix || "/media/").toString().trim();
+  const SNAPSHOT_URL = (body.dataset.snapshotUrl || "").toString().trim();
 
-  var $ = function (id) { return document.getElementById(id); };
-  var fmt2 = function (n) { n = Number(n) || 0; return n < 10 ? "0" + n : String(n); };
+  const SERVER_TOKEN = ((body.dataset.apiToken || body.dataset.token || "").trim());
 
-  function applyTheme(name) {
-    var t = THEMES[name] || THEMES.indigo;
-    var r = document.documentElement.style;
-    r.setProperty("--c-primary", t.p);
-    r.setProperty("--c-secondary", t.s);
-    r.setProperty("--c-bg-soft", t.soft);
-    r.setProperty("--c-text", t.text);
-    r.setProperty("--c-border", t.b);
+  function pickTokenFromUrl() {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      return (qs.get("token") || qs.get("t") || "").trim();
+    } catch (e) { return ""; }
   }
 
-  function hmToDate(hm) {
-    if (!hm) return null;
-    var parts = String(hm).split(":");
-    if (parts.length < 2) return null;
-    var h = parseInt(parts[0], 10);
-    var m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m)) return null;
-    var d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0);
+  function isDebug() {
+    try { return new URLSearchParams(window.location.search).get("debug") === "1"; }
+    catch (e) { return false; }
   }
 
-  function isEnded(endHM) {
-    var end = hmToDate(endHM);
-    if (!end) return false;
-    return Date.now() >= end.getTime();
+  function getToken() {
+    let t = SERVER_TOKEN;
+    if (!t) t = pickTokenFromUrl();
+    return (t || "").trim();
   }
 
-  function isNowBetween(startHM, endHM) {
-    var s = hmToDate(startHM);
-    var e = hmToDate(endHM);
-    if (!s || !e) return false;
-    var n = Date.now();
-    return n >= s.getTime() && n < e.getTime();
+  function resolveSnapshotUrl() {
+    if (SNAPSHOT_URL) return SNAPSHOT_URL;
+    const t = getToken();
+    if (t) return "/api/display/snapshot/" + encodeURIComponent(t) + "/";
+    return "/api/display/snapshot/";
   }
+
+  function safeText(x) { return (x === null || x === undefined) ? "" : String(x); }
+  function fmt2(n) { n = Number(n) || 0; return n < 10 ? "0" + n : String(n); }
+  function clamp(n, a, b) { n = Number(n) || 0; return Math.max(a, Math.min(b, n)); }
+
+  function resolveImageURL(raw) {
+    if (!raw) return "";
+    let s = String(raw).trim();
+    if (!s) return "";
+    if (/^data:image\//i.test(s) || /^blob:/i.test(s)) return s;
+    if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, "//").replace(/^https:\/\//i, "//");
+    if (s.charAt(0) === "/") return s;
+    let pref = MEDIA_PREFIX || "/media/";
+    if (pref.charAt(pref.length - 1) !== "/") pref += "/";
+    return pref + s.replace(/^\.?\/*/, "");
+  }
+
+  // -------------------------
+  // ✅ Arabic digits + period title helpers
+  // -------------------------
+  function toArabicDigits(v) {
+    if (v === null || v === undefined) return "";
+    return String(v).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
+  }
+
+  function getPeriodIndex(periodObj) {
+    if (!periodObj || typeof periodObj !== "object") return null;
+    const raw = (periodObj.index ?? periodObj.period_index ?? periodObj.idx ?? periodObj.period
+      ?? periodObj.period_no ?? periodObj.period_number ?? periodObj.periodNum ?? periodObj.slot_index ?? periodObj.order);
+    if (raw === null || raw === undefined || raw === "") return null;
+    const n = parseInt(String(raw), 10);
+    if (isNaN(n) || n <= 0) return null;
+    return n;
+  }
+
+  function formatPeriodTitle(p) {
+    const idx = getPeriodIndex(p);
+    if (!idx) return "حصة";
+    return `حصة (${toArabicDigits(idx)})`;
+  }
+
+  // -------------------------
+  // Debug overlay
+  // -------------------------
+  let dbgEl = null;
+  function ensureDebugOverlay() {
+    if (!isDebug()) return;
+    if (dbgEl) return;
+    dbgEl = document.createElement("div");
+    dbgEl.style.position = "fixed";
+    dbgEl.style.bottom = "12px";
+    dbgEl.style.right = "12px";
+    dbgEl.style.zIndex = "99999";
+    dbgEl.style.padding = "10px 12px";
+    dbgEl.style.borderRadius = "12px";
+    dbgEl.style.background = "rgba(0,0,0,0.55)";
+    dbgEl.style.border = "1px solid rgba(255,255,255,0.18)";
+    dbgEl.style.backdropFilter = "blur(8px)";
+    dbgEl.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    dbgEl.style.fontSize = "12px";
+    dbgEl.style.direction = "ltr";
+    dbgEl.style.color = "#fff";
+    dbgEl.textContent = "debug…";
+    document.body.appendChild(dbgEl);
+  }
+  function setDebugText(txt) { if (dbgEl) dbgEl.textContent = txt; }
+
+  // -------------------------
+  // Server time sync
+  // -------------------------
+  let serverOffsetMs = 0;
+  function nowMs() { return Date.now() + serverOffsetMs; }
 
   function toTimeStr(t) {
     if (!t) return "--:--";
-    var parts = String(t).split(":");
+    const parts = String(t).split(":");
     if (parts.length < 2) return "--:--";
     return fmt2(parts[0]) + ":" + fmt2(parts[1]);
   }
 
-  var clockEl = $("clock");
-  var dateGEl = $("dateGregorian");
-  var dateHEl = $("dateHijri");
-  var showHijri = false;
-  var cachedDateInfo = null;
+  function hmToMs(hm, baseMs) {
+    if (!hm) return null;
+    const parts = String(hm).split(":");
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    const d = new Date(baseMs || nowMs());
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime();
+  }
+
+  function isEnded(endHM, baseMs) {
+    const end = hmToMs(endHM, baseMs);
+    if (!end) return false;
+    return (baseMs || nowMs()) >= end;
+  }
+
+  function isNowBetween(startHM, endHM, baseMs) {
+    const s = hmToMs(startHM, baseMs);
+    const e = hmToMs(endHM, baseMs);
+    if (!s || !e) return false;
+    const n = baseMs || nowMs();
+    return n >= s && n < e;
+  }
+
+  // -------------------------
+  // Theme + brand
+  // -------------------------
+  function applyTheme(name) {
+    let n = (name || "").toString().trim().toLowerCase();
+    if (!n) n = "indigo";
+    document.body.setAttribute("data-theme", n);
+  }
+
+  function hydrateBrand(payload) {
+    try {
+      const settings = (payload && payload.settings) || {};
+      const name = safeText(settings.name || payload.school_name || "");
+      const logo = resolveImageURL(settings.logo_url || payload.logo_url || "");
+
+      if (name) document.title = name + " — لوحة العرض الذكية";
+      if (dom.schoolName && name) dom.schoolName.textContent = name;
+
+      if (dom.schoolLogo) {
+        if (logo) {
+          dom.schoolLogo.src = logo;
+          dom.schoolLogo.classList.remove("hidden");
+          if (dom.schoolLogoFallback) dom.schoolLogoFallback.classList.add("hidden");
+        } else {
+          dom.schoolLogo.classList.add("hidden");
+          if (dom.schoolLogoFallback) dom.schoolLogoFallback.classList.remove("hidden");
+        }
+      }
+    } catch (e) {}
+  }
+
+  // -------------------------
+  // Clock & Date
+  // -------------------------
+  let showHijri = false;
+  let cachedDateInfo = null;
 
   function toggleDateDisplay() {
     showHijri = !showHijri;
-    if (!dateGEl || !dateHEl) return;
-    if (showHijri) {
-      dateGEl.classList.remove("translate-y-0", "opacity-100");
-      dateGEl.classList.add("-translate-y-8", "opacity-0");
-      dateHEl.classList.remove("translate-y-8", "opacity-0");
-      dateHEl.classList.add("translate-y-0", "opacity-100");
-    } else {
-      dateGEl.classList.remove("-translate-y-8", "opacity-0");
-      dateGEl.classList.add("translate-y-0", "opacity-100");
-      dateHEl.classList.remove("translate-y-0", "opacity-100");
-      dateHEl.classList.add("translate-y-8", "opacity-0");
-    }
+    // في قالبك الجديد ما عاد عندك انيميشن translate، فنعرض الاثنين دائمًا بدون مشاكل
   }
 
   function tickClock(dateInfo) {
-    var now = new Date();
-    if (clockEl) {
-      clockEl.textContent = fmt2(now.getHours()) + ":" + fmt2(now.getMinutes());
-    }
+    const now = new Date(nowMs());
+    if (dom.clock) dom.clock.textContent = fmt2(now.getHours()) + ":" + fmt2(now.getMinutes()) + ":" + fmt2(now.getSeconds());
     if (dateInfo) cachedDateInfo = dateInfo;
-    var arWeek = new Intl.DateTimeFormat("ar-SA", { weekday: "long" }).format(now);
-    if (cachedDateInfo) {
-      var g = cachedDateInfo.gregorian || {};
-      var h = cachedDateInfo.hijri || {};
-      var gMonth = g.month_name || AR_MONTHS[now.getMonth()] || g.month;
-      var hMonth = h.month_name || (h.month ? HIJRI_MONTHS[h.month - 1] : "") || h.month;
-      var gText = arWeek + " ، " + (g.day || now.getDate()) + " " + gMonth + " " + (g.year || now.getFullYear()) + "م";
-      var hText = arWeek + " ، " + (h.day || "") + " " + hMonth + " " + (h.year || "") + "هـ";
-      if (dateGEl) dateGEl.textContent = gText;
-      if (dateHEl) dateHEl.textContent = hText;
-    } else {
-      if (dateGEl) {
-        var gm = AR_MONTHS[now.getMonth()];
-        dateGEl.textContent = arWeek + " ، " + now.getDate() + " " + gm + " " + now.getFullYear() + "م";
+
+    try {
+      const arWeek = new Intl.DateTimeFormat("ar-SA", { weekday: "long" }).format(now);
+      if (cachedDateInfo && (dom.dateG || dom.dateH)) {
+        const g = cachedDateInfo.gregorian || {};
+        const h = cachedDateInfo.hijri || {};
+        if (dom.dateG) dom.dateG.textContent = arWeek + " ، " + (g.day || now.getDate()) + " " + (g.month_name || g.month || "") + " " + (g.year || now.getFullYear()) + "م";
+        if (dom.dateH) dom.dateH.textContent = arWeek + " ، " + (h.day || "") + " " + (h.month_name || h.month || "") + " " + (h.year || "") + "هـ";
+        return;
       }
+      if (dom.dateG) dom.dateG.textContent = arWeek + " ، " + now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear() + "م";
+    } catch (e) {
+      if (dom.dateG) dom.dateG.textContent = now.toLocaleDateString("ar-SA");
     }
   }
 
-  var circleEl = $("circleProgress");
-  var progressBar = $("progressBar");
-  var countdownEl = $("countdown");
-  var countdownWrapper = null;
-  if (circleEl && circleEl.parentElement && circleEl.parentElement.nextElementSibling) {
-    countdownWrapper = circleEl.parentElement.nextElementSibling;
-  }
-  var CIRC_TOTAL = 339.292;
-  var countdownSeconds = null;
-  var progressRange = { start: null, end: null };
-  var hasActiveCountdown = false;
+  // -------------------------
+  // progress ring + bar
+  // -------------------------
+  const CIRC_TOTAL = 339.292;
+  let countdownSeconds = null;
+  let progressRange = { start: null, end: null };
+  let hasActiveCountdown = false;
 
   function setRing(pct) {
-    if (!circleEl) return;
-    var clamped = Math.max(0, Math.min(100, pct));
-    var off = CIRC_TOTAL * (1 - clamped / 100);
-    circleEl.style.strokeDashoffset = String(off);
+    if (!dom.circleProgress) return;
+    const clamped = clamp(pct, 0, 100);
+    const off = CIRC_TOTAL * (1 - clamped / 100);
+    dom.circleProgress.style.strokeDashoffset = String(off);
   }
 
-  var finishedPeriodIndices = new Set();
-  var lastScheduleJSON = "";
-  var lastSettingsJSON = "";
-  var mainTimer = null;
-  var sbAnimFrame = null;
-  var standbyItemsCache = [];
+  // -------------------------
+  // fetch snapshot
+  // -------------------------
+  let inflight = null;
+  let ctrl = null;
 
-  // scroll لجدول الحصة الحالية
-  var periodAnimFrame = null;
-  var periodItemsCache = [];
-  var lastPeriodJSON = "";
+  async function safeFetchSnapshot() {
+    if (inflight) return inflight;
 
-  var annList = [];
-  var annIdx = 0;
-  var annTimer = null;
-  var alertContainer = $("alertContainer");
+    const token = getToken();
+    const baseUrl = resolveSnapshotUrl();
 
-  var LEVEL_STYLES = {
-    urgent: { bg: "bg-red-500/20", text: "text-red-400" },
-    warning: { bg: "bg-amber-500/20", text: "text-amber-400" },
-    info: { bg: "bg-blue-500/20", text: "text-blue-400" },
-    success: { bg: "bg-green-500/20", text: "text-green-400" }
-  };
+    const u = new URL(baseUrl, window.location.origin);
+    u.searchParams.set("_t", String(Date.now()));
 
-  var exList = [];
-  var exPtr = 0;
-  var exTimer = null;
-  var EX_INT = 8000;
-  var exSlot = $("exSlot");
-  var exIndexEl = $("exIndex");
-  var exTotalEl = $("exTotal");
+    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+    ctrl = new AbortController();
 
-  function resolveImageURL(raw) {
-    if (!raw) return "";
-    var s = String(raw).trim();
-    if (!s) return "";
-    if (/^data:image\//i.test(s) || /^blob:/i.test(s)) return s;
-    if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, "//");
-    var pref = document.body.dataset.mediaPrefix || "/media/";
-    if (pref.charAt(pref.length - 1) !== "/") pref = pref + "/";
-    return pref + s.replace(/^\.?\/*/, "");
+    inflight = fetch(u.toString(), {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "X-Display-Token": token || ""
+      },
+      cache: "no-store",
+      signal: ctrl.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .catch((e) => {
+        console.error("snapshot fetch error:", e);
+        renderAlert("تعذر جلب البيانات", "تأكد من token ومن مسار snapshot.");
+        ensureDebugOverlay();
+        if (isDebug()) setDebugText("fetch error: " + (e && e.message ? e.message : String(e)));
+        return null;
+      })
+      .finally(() => { inflight = null; });
+
+    return await inflight;
+  }
+
+  // -------------------------
+  // ✅ Alerts (عنوان + تفاصيل) — بدون تمرير
+  // -------------------------
+  function renderAlert(title, details) {
+    const t = safeText(title || "");
+    const d = safeText(details || "");
+
+    // قالب جديد
+    if (dom.alertTitle) dom.alertTitle.textContent = t || "تنبيه";
+    if (dom.alertDetails) dom.alertDetails.textContent = d || "—";
+
+    // توافق للخلف
+    if (dom.alertText && !dom.alertTitle && !dom.alertDetails) {
+      dom.alertText.textContent = (t && d) ? (t + " — " + d) : (t || d || "");
+    }
+  }
+
+  // -------------------------
+  // ✅ Announcements (يحافظ على موضعه ولا يرجع من البداية)
+  // -------------------------
+  let annTimer = null;
+  let annPtr = 0;
+  let annList = [];
+  let annSig = "";
+  const ANN_INT = 6500;
+
+  function annSignature(arr) {
+    const a = Array.isArray(arr) ? arr : [];
+    return JSON.stringify(a.map(x => {
+      x = x || {};
+      const title = safeText(x.title || x.heading || "");
+      const body = safeText(x.body || x.details || x.text || x.message || "");
+      const id = safeText(x.id || x.pk || "");
+      return [id, title, body];
+    }));
+  }
+
+  function renderAnnouncements(arr) {
+    const nextSig = annSignature(arr);
+    const nextList = Array.isArray(arr) ? arr.slice() : [];
+
+    // ✅ إذا نفس البيانات: لا تعيد تشغيل التايمر ولا تعيد من الصفر
+    if (nextSig && nextSig === annSig && nextList.length) {
+      return;
+    }
+
+    // تغيّر البيانات
+    annSig = nextSig;
+    annList = nextList;
+    if (annTimer) { clearInterval(annTimer); annTimer = null; }
+
+    if (!annList.length) {
+      annPtr = 0;
+      renderAlert("لا توجد تنبيهات حالياً", "—");
+      return;
+    }
+
+    // ✅ حافظ على التنبيه الحالي إذا كان ما زال موجوداً (حسب title+body)
+    const current = annList[annPtr] || {};
+    const curKey = safeText(current.title || current.heading || "") + "||" + safeText(current.body || current.details || current.text || current.message || "");
+    let keepIndex = -1;
+    for (let i = 0; i < annList.length; i++) {
+      const x = annList[i] || {};
+      const key = safeText(x.title || x.heading || "") + "||" + safeText(x.body || x.details || x.text || x.message || "");
+      if (key && key === curKey) { keepIndex = i; break; }
+    }
+    if (keepIndex >= 0) annPtr = keepIndex;
+    else annPtr = 0;
+
+    showAnnouncement(annPtr);
+
+    if (annList.length > 1) {
+      annTimer = setInterval(() => showAnnouncement(annPtr + 1), ANN_INT);
+    }
+  }
+
+  function showAnnouncement(i) {
+    if (!annList.length) return;
+    annPtr = (i + annList.length) % annList.length;
+
+    const a = annList[annPtr] || {};
+    const title = safeText(a.title || a.heading || "تنبيه");
+    const body = safeText(a.body || a.details || a.text || a.message || "—");
+
+    renderAlert(title, body);
+  }
+
+  // -------------------------
+  // mini schedule (day_path)
+  // -------------------------
+  let lastScheduleJSON = "";
+  function renderMiniSchedule(payload, baseMs) {
+    if (!dom.miniSchedule) return;
+
+    const timeline = [];
+    if (Array.isArray(payload.day_path)) {
+      payload.day_path.forEach((x) => {
+        if (!x) return;
+        timeline.push({ start: x.from, end: x.to, label: x.label || "" });
+      });
+    }
+
+    timeline.sort((a, b) => (hmToMs(a.start, baseMs) || 0) - (hmToMs(b.start, baseMs) || 0));
+
+    const shown = timeline.filter((x) => !isEnded(x.end, baseMs));
+    const json = JSON.stringify(shown);
+
+    if (json !== lastScheduleJSON) {
+      lastScheduleJSON = json;
+      dom.miniSchedule.innerHTML = "";
+
+      if (!shown.length) {
+        dom.miniSchedule.innerHTML = '<div class="text-xs md:text-sm text-slate-400">لا يوجد جدول اليوم</div>';
+      } else {
+        shown.forEach((x, i) => {
+          const chip = document.createElement("div");
+          chip.id = "sched-item-" + i;
+          chip.className = "flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] transition-all duration-300 bg-white/5 text-slate-300 border border-white/10";
+
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "text-[10px] opacity-70 mb-1";
+          timeSpan.textContent = toTimeStr(x.start);
+
+          const labelSpan = document.createElement("span");
+          labelSpan.className = "font-black text-base md:text-lg leading-none";
+          labelSpan.textContent = safeText(x.label || "—");
+
+          chip.appendChild(timeSpan);
+          chip.appendChild(labelSpan);
+          dom.miniSchedule.appendChild(chip);
+        });
+      }
+    }
+
+    shown.forEach((x, i) => {
+      const el = document.getElementById("sched-item-" + i);
+      if (!el) return;
+      el.style.opacity = isNowBetween(x.start, x.end, baseMs) ? "1" : "0.65";
+    });
+  }
+
+  // -------------------------
+  // period classes + standby (with smooth scroll)
+  // ✅ لا تعيد البناء إذا نفس البيانات → تحافظ على الحركة
+  // -------------------------
+  const PERIODS_MIN_ITEMS_FOR_SCROLL = 4;
+  const STANDBY_MIN_ITEMS_FOR_SCROLL = 4;
+
+  let periodItemsCache = [];
+  let standbyItemsCache = [];
+  let periodAnimFrame = null;
+  let sbAnimFrame = null;
+
+  let lastPeriodSig = "";
+  let lastStandbySig = "";
+
+  function listSignature(items, kind) {
+    const arr = Array.isArray(items) ? items : [];
+    return JSON.stringify(arr.map((x) => {
+      x = x || {};
+      const cls = safeText(x.class_name || x["class"] || x.classroom || "");
+      const subj = safeText(x.subject_name || x.subject || x.label || "");
+      const teacher = safeText(x.teacher_name || x.teacher || x.teacher_full_name || "");
+      const pidx = getPeriodIndex(x) || "";
+      const extra = (kind === "standby") ? safeText(x.reason || x.note || "") : "";
+      return [cls, subj, teacher, pidx, extra];
+    }));
+  }
+
+  function findViewportForTrack(trackEl) {
+    if (!trackEl) return null;
+    let vp = trackEl.parentElement;
+    while (vp && !vp.classList.contains("standby-viewport")) vp = vp.parentElement;
+    return vp || null;
+  }
+
+  function startAutoScroll(trackEl, viewportEl, speed, minItems, itemsCache, frameRefSetter) {
+    if (!trackEl || !viewportEl) return;
+
+    trackEl.style.transform = "translateY(0)";
+    while (trackEl.children.length > 1) trackEl.removeChild(trackEl.lastElementChild);
+
+    const contentDiv = trackEl.firstElementChild;
+    if (!contentDiv) return;
+
+    const contentHeight = contentDiv.offsetHeight;
+    const viewHeight = viewportEl.offsetHeight;
+
+    const forceScroll = itemsCache && itemsCache.length >= minItems;
+    if (!forceScroll && contentHeight <= viewHeight + 4) return;
+
+    const clone = contentDiv.cloneNode(true);
+    clone.setAttribute("aria-hidden", "true");
+    trackEl.appendChild(clone);
+
+    let y = 0;
+    function loop() {
+      y += speed;
+      if (y >= contentHeight) y = 0;
+      trackEl.style.transform = "translateY(-" + y + "px)";
+      frameRefSetter(requestAnimationFrame(loop));
+    }
+    frameRefSetter(requestAnimationFrame(loop));
+  }
+
+  // ✅ مارك-أب احترافي للحصص الجارية (class / subject / teacher منفصل)
+  function buildSlotItem({ clsName, subj, teacher, badgeText, badgeKind }) {
+    const item = document.createElement("div");
+    item.className = "slot-item";
+
+    const top = document.createElement("div");
+    top.className = "slot-top";
+
+    const badges = document.createElement("div");
+    badges.className = "slot-badges";
+
+    const cls = document.createElement("span");
+    cls.className = "slot-class";
+    cls.textContent = safeText(clsName || "—");
+
+    const subject = document.createElement("span");
+    subject.className = "slot-subject";
+    subject.textContent = safeText(subj || "—");
+
+    badges.appendChild(cls);
+    badges.appendChild(subject);
+
+    const chip = document.createElement("span");
+    chip.className = "chip num-font " + (badgeKind === "warn" ? "chip-warn" : "chip-ok");
+    chip.textContent = safeText(badgeText || "حصة");
+
+    top.appendChild(badges);
+    top.appendChild(chip);
+
+    const teacherRow = document.createElement("div");
+    teacherRow.className = "slot-teacher";
+
+    const lbl = document.createElement("span");
+    lbl.className = "label";
+    lbl.textContent = "المعلم:";
+
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = safeText(teacher || "—");
+
+    teacherRow.appendChild(lbl);
+    teacherRow.appendChild(name);
+
+    item.appendChild(top);
+    item.appendChild(teacherRow);
+
+    return item;
+  }
+
+  function renderPeriodClasses(items) {
+    const arr = Array.isArray(items) ? items.slice() : [];
+    const sig = listSignature(arr, "periods");
+
+    // ✅ لا تعيد بناء DOM لو نفس البيانات (يحافظ على الحركة)
+    if (sig && sig === lastPeriodSig) {
+      periodItemsCache = arr.slice();
+      if (dom.pcCount) dom.pcCount.textContent = String(arr.length);
+      return;
+    }
+    lastPeriodSig = sig;
+    periodItemsCache = arr.slice();
+
+    if (dom.pcCount) dom.pcCount.textContent = String(arr.length);
+    if (!dom.periodClassesTrack) return;
+
+    if (periodAnimFrame) { cancelAnimationFrame(periodAnimFrame); periodAnimFrame = null; }
+    dom.periodClassesTrack.innerHTML = "";
+    dom.periodClassesTrack.style.transform = "translateY(0)";
+
+    if (!arr.length) {
+      dom.periodClassesTrack.innerHTML = '<div class="text-center text-xs md:text-sm text-slate-400 py-12">لا توجد حصص جارية</div>';
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "flex flex-col gap-3 pb-4";
+
+    arr.forEach((x) => {
+      x = x || {};
+      const clsName = x.class_name || x["class"] || x.classroom || "—";
+      const subj = x.subject_name || x.subject || x.label || "—";
+      const teacher = x.teacher_name || x.teacher || "";
+
+      const badgeText = formatPeriodTitle(x);
+      list.appendChild(buildSlotItem({
+        clsName,
+        subj,
+        teacher,
+        badgeText,
+        badgeKind: "ok",
+      }));
+    });
+
+    dom.periodClassesTrack.appendChild(list);
+
+    setTimeout(() => {
+      const vp = findViewportForTrack(dom.periodClassesTrack);
+      startAutoScroll(dom.periodClassesTrack, vp, PERIODS_SPEED, PERIODS_MIN_ITEMS_FOR_SCROLL, periodItemsCache, (id) => { periodAnimFrame = id; });
+    }, 120);
+  }
+
+  function renderStandby(items) {
+    const arr = Array.isArray(items) ? items.slice() : [];
+    const sig = listSignature(arr, "standby");
+
+    // ✅ لا تعيد بناء DOM لو نفس البيانات (يحافظ على الحركة)
+    if (sig && sig === lastStandbySig) {
+      standbyItemsCache = arr.slice();
+      if (dom.sbCount) dom.sbCount.textContent = String(arr.length);
+      return;
+    }
+    lastStandbySig = sig;
+    standbyItemsCache = arr.slice();
+
+    if (dom.sbCount) dom.sbCount.textContent = String(arr.length);
+    if (!dom.standbyTrack) return;
+
+    if (sbAnimFrame) { cancelAnimationFrame(sbAnimFrame); sbAnimFrame = null; }
+    dom.standbyTrack.innerHTML = "";
+    dom.standbyTrack.style.transform = "translateY(0)";
+
+    if (!arr.length) {
+      dom.standbyTrack.innerHTML = '<div class="text-center text-xs md:text-sm text-slate-400 py-12">لا توجد حصص انتظار</div>';
+      return;
+    }
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "flex flex-col gap-3 pb-4";
+
+    arr.forEach((x) => {
+      x = x || {};
+      const clsName = x.class_name || x["class"] || x.classroom || "—";
+      const subj = x.subject_name || x.subject || x.label || "—";
+      const teacher = x.teacher_name || x.teacher || x.teacher_full_name || "—";
+
+      // ✅ إصلاح: رقم الحصة من مفاتيح متعددة + عرض دائم
+      const badgeText = formatPeriodTitle(x);
+
+      contentDiv.appendChild(buildSlotItem({
+        clsName,
+        subj,
+        teacher,
+        badgeText,
+        badgeKind: "warn",
+      }));
+    });
+
+    dom.standbyTrack.appendChild(contentDiv);
+
+    setTimeout(() => {
+      const vp = findViewportForTrack(dom.standbyTrack);
+      startAutoScroll(dom.standbyTrack, vp, STANDBY_SPEED, STANDBY_MIN_ITEMS_FOR_SCROLL, standbyItemsCache, (id) => { sbAnimFrame = id; });
+    }, 120);
+  }
+
+  // -------------------------
+  // excellence (honor board)
+  // ✅ يحافظ على الدوران ولا يرجع للبداية إذا نفس البيانات
+  // -------------------------
+  let exTimer = null;
+  let exPtr = 0;
+  let exList = [];
+  let exSig = "";
+  const EX_INT = 7000;
+
+  function exSignature(arr) {
+    const a = Array.isArray(arr) ? arr : [];
+    return JSON.stringify(a.map((e) => {
+      e = e || {};
+      const student = e.student || {};
+      const teacher = e.teacher || {};
+      const name = safeText(e.name || e.student_name || e.teacher_name || student.name || teacher.name || e.full_name || e.display_name || "");
+      const reason = safeText(e.reason || e.note || e.message || e.title || "");
+      const img = safeText(e.image_src || e.photo_url || e.image_url || e.photo || e.image || e.avatar ||
+        student.photo_url || student.image_url || student.photo || student.image ||
+        teacher.photo_url || teacher.image_url || teacher.photo || teacher.image || "");
+      return [name, reason, img];
+    }));
   }
 
   function renderExcellence(items) {
-    var list = Array.isArray(items) ? items : [];
-    list = list.filter(function (x) {
-      return x && (x.teacher_name || x.name || (x.teacher && x.teacher.name));
-    });
-    if (JSON.stringify(list) === JSON.stringify(exList)) return;
-    exList = list;
-    if (exTotalEl) exTotalEl.textContent = String(exList.length || 0);
-    if (!exSlot) return;
+    const nextSig = exSignature(items);
+    const nextList = Array.isArray(items) ? items.slice() : [];
+    const filtered = nextList.filter((x) => x && (x.name || x.student_name || x.teacher_name || x.full_name || x.display_name || (x.student && x.student.name) || (x.teacher && x.teacher.name)));
+
+    if (nextSig && nextSig === exSig && filtered.length) {
+      return; // ✅ لا تعيد من البداية
+    }
+
+    exSig = nextSig;
+    exList = filtered;
+
+    if (dom.exTotal) dom.exTotal.textContent = String(exList.length || 0);
+
+    if (exTimer) { clearInterval(exTimer); exTimer = null; }
+    if (!dom.exSlot) return;
+
     if (!exList.length) {
-      if (exTimer) {
-        clearInterval(exTimer);
-        exTimer = null;
-      }
-      exSlot.innerHTML = '<div class="h-full flex items-center justify-center text-xs md:text-sm text-slate-300">لا يوجد متميزون حالياً</div>';
+      if (dom.exIndex) dom.exIndex.textContent = "0";
+      dom.exSlot.innerHTML = '<div class="h-full w-full flex items-center justify-center text-xs md:text-sm text-slate-300">لا يوجد متميزون حالياً</div>';
       return;
     }
-    exPtr = exPtr % exList.length;
+
+    if (dom.exIndex) dom.exIndex.textContent = String(exPtr + 1);
+
     showExcellence(exPtr);
-    if (!exTimer && exList.length > 1) {
-      exTimer = setInterval(function () {
-        showExcellence(exPtr + 1);
-      }, EX_INT);
+
+    if (exList.length > 1) {
+      exTimer = setInterval(() => showExcellence(exPtr + 1), EX_INT);
     }
   }
 
   function showExcellence(i) {
-    if (!exList.length || !exSlot) return;
+    if (!exList.length || !dom.exSlot) return;
+
     exPtr = (i + exList.length) % exList.length;
-    if (exIndexEl) exIndexEl.textContent = String(exPtr + 1);
-    var e = exList[exPtr] || {};
-    var teacher = e.teacher || {};
-    var rawSrc = e.image_src || e.photo_url || e.image_url || e.photo || e.image || e.avatar || teacher.photo_url || teacher.image_url || teacher.photo || teacher.image;
-    var src = resolveImageURL(rawSrc);
-    var name = e.teacher_name || e.name || teacher.name || "—";
-    var reason = e.reason || "";
-    if (reason.length > 120) reason = reason.slice(0, 117) + "…";
-    exSlot.style.opacity = "0";
-    setTimeout(function () {
-      exSlot.innerHTML = "";
-      var wrapper = document.createElement("div");
-      wrapper.className = "relative h-full w-full bg-slate-900";
-      if (src) {
-        var blurDiv = document.createElement("div");
-        blurDiv.className = "absolute inset-0 overflow-hidden";
-        var blurImg = document.createElement("img");
-        blurImg.src = src;
-        blurImg.className = "w-full h-full object-cover opacity-30 blur-xl scale-110";
-        blurDiv.appendChild(blurImg);
-        wrapper.appendChild(blurDiv);
-        var mainImg = document.createElement("img");
-        mainImg.src = src;
-        mainImg.className = "absolute inset-0 w-full h-full object-contain z-10";
-        mainImg.alt = name;
-        wrapper.appendChild(mainImg);
-      } else {
-        var fb = document.createElement("div");
-        fb.className = "absolute inset-0 bg-gradient-to-br from-indigo-900 to-purple-900";
-        wrapper.appendChild(fb);
-      }
-      var gradient = document.createElement("div");
-      gradient.className = "absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20";
-      wrapper.appendChild(gradient);
-      var textContainer = document.createElement("div");
-      textContainer.className = "absolute bottom-0 left-0 right-0 p-4 z-30";
-      var nameDiv = document.createElement("div");
-      nameDiv.className = "font-bold text-white text-xl leading-tight mb-1 drop-shadow-md";
-      nameDiv.textContent = name;
-      textContainer.appendChild(nameDiv);
-      if (reason) {
-        var reasonDiv = document.createElement("div");
-        reasonDiv.className = "text-xs text-slate-200 line-clamp-2 drop-shadow";
-        reasonDiv.textContent = reason;
-        textContainer.appendChild(reasonDiv);
-      }
-      wrapper.appendChild(textContainer);
-      exSlot.appendChild(wrapper);
-      exSlot.style.opacity = "1";
-    }, 250);
+    if (dom.exIndex) dom.exIndex.textContent = String(exPtr + 1);
+
+    const e = exList[exPtr] || {};
+    const student = e.student || {};
+    const teacher = e.teacher || {};
+
+    const name =
+      e.name || e.student_name || e.teacher_name ||
+      student.name || teacher.name ||
+      e.full_name || e.display_name || "—";
+
+    let reason = safeText(e.reason || e.note || e.message || e.title || "");
+    if (reason.length > 180) reason = reason.slice(0, 177) + "…";
+
+    const rawSrc =
+      e.image_src || e.photo_url || e.image_url || e.photo || e.image || e.avatar ||
+      student.photo_url || student.image_url || student.photo || student.image ||
+      teacher.photo_url || teacher.image_url || teacher.photo || teacher.image;
+
+    const src = resolveImageURL(rawSrc);
+
+    // fade
+    dom.exSlot.style.opacity = "0";
+    setTimeout(() => {
+      dom.exSlot.innerHTML = "";
+
+      const wrap = document.createElement("div");
+      wrap.className = "honor-wrap";
+
+      const img = document.createElement("img");
+      img.alt = name;
+
+      if (src) img.src = src;
+      else img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='28'%3E%F0%9F%8F%86%3C/text%3E%3C/svg%3E";
+
+      const meta = document.createElement("div");
+      meta.className = "honor-meta";
+
+      const nm = document.createElement("div");
+      nm.className = "honor-name";
+      nm.textContent = name;
+
+      const rs = document.createElement("div");
+      rs.className = "honor-reason";
+      rs.textContent = reason || "—";
+
+      meta.appendChild(nm);
+      meta.appendChild(rs);
+
+      wrap.appendChild(img);
+      wrap.appendChild(meta);
+
+      dom.exSlot.appendChild(wrap);
+      dom.exSlot.style.opacity = "1";
+    }, 220);
   }
 
-  function renderStandby(items) {
-    var active = Array.isArray(items) ? items : [];
-    active = active.filter(function (x) {
-      if (!x) return false;
-      if (!x.period_index) return true;
-      var idx = parseInt(x.period_index, 10);
-      if (isNaN(idx)) return true;
-      return !finishedPeriodIndices.has(idx);
-    });
-    active.sort(function (a, b) {
-      var pa = parseInt(a.period_index || "0", 10) || 0;
-      var pb = parseInt(b.period_index || "0", 10) || 0;
-      if (pa !== pb) return pa - pb;
-      var ta = a.teacher_name || "";
-      var tb = b.teacher_name || "";
-      return ta.localeCompare(tb);
-    });
-    var currentJSON = JSON.stringify(active);
-    if (currentJSON === lastStandbyJSON) return;
-    lastStandbyJSON = currentJSON;
-    standbyItemsCache = active.slice();
-    var countEl = $("sbCount");
-    if (countEl) countEl.textContent = String(active.length) + " حصة";
-    var track = $("standbyTrack");
-    if (!track) return;
-    if (sbAnimFrame) {
-      cancelAnimationFrame(sbAnimFrame);
-      sbAnimFrame = null;
-    }
-    track.innerHTML = "";
-    track.style.transform = "translateY(0)";
-    if (!active.length) {
-      track.innerHTML = '<div class="text-center text-xs md:text-sm text-slate-400 py-12">لا توجد حصص انتظار مسجلة اليوم</div>';
-      return;
-    }
-    var block = function (x) {
-      var div = document.createElement("div");
-      div.className = "bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col justify-between backdrop-blur-sm hover:bg-white/10 transition-colors";
-      var header = document.createElement("div");
-      header.className = "flex items-center justify-between mb-2";
-      var periodBadge = document.createElement("div");
-      periodBadge.className = "bg-slate-900/60 text-slate-100 font-bold px-2 py-0.5 rounded text-sm num-font";
-      periodBadge.textContent = "ح " + (x.period_index || "—");
-      var classBadge = document.createElement("div");
-      classBadge.className = "text-[10px] text-slate-300 bg-black/20 px-2 py-0.5 rounded";
-      classBadge.textContent = x.class_name || "";
-      header.appendChild(periodBadge);
-      header.appendChild(classBadge);
-      var teacherName = document.createElement("div");
-      teacherName.className = "font-semibold text-white text-sm truncate";
-      teacherName.textContent = x.teacher_name || "";
-      div.appendChild(header);
-      div.appendChild(teacherName);
-      return div;
-    };
-    var contentDiv = document.createElement("div");
-    contentDiv.className = "standby-grid pb-4";
-    active.forEach(function (item) {
-      contentDiv.appendChild(block(item));
-    });
-    track.appendChild(contentDiv);
-    setTimeout(startStandbyScroll, 120);
-  }
-
-  var lastStandbyJSON = "";
-
-  function findViewportForTrack(trackEl) {
-    if (!trackEl) return null;
-    var vp = trackEl.parentElement;
-    while (vp && !vp.classList.contains("standby-viewport")) {
-      vp = vp.parentElement;
-    }
-    return vp || null;
-  }
-
-  function startStandbyScroll() {
-    var track = $("standbyTrack");
-    var viewport = findViewportForTrack(track);
-    if (!track || !viewport) return;
-    if (sbAnimFrame) {
-      cancelAnimationFrame(sbAnimFrame);
-      sbAnimFrame = null;
-    }
-    track.style.transform = "translateY(0)";
-    while (track.children.length > 1) {
-      track.removeChild(track.lastElementChild);
-    }
-    var contentDiv = track.firstElementChild;
-    if (!contentDiv) return;
-    var contentHeight = contentDiv.offsetHeight;
-    var viewHeight = viewport.offsetHeight;
-
-    // نُجبر التمرير إذا كان عدد حصص الانتظار كبيراً بما يكفي حتى لو لم يزد طول المحتوى عن ارتفاع الكرت.
-    var forceScroll = standbyItemsCache && standbyItemsCache.length >= STANDBY_MIN_ITEMS_FOR_SCROLL;
-
-    if (!forceScroll && contentHeight <= viewHeight + 4) {
-      return;
-    }
-
-    var clone = contentDiv.cloneNode(true);
-    clone.setAttribute("aria-hidden", "true");
-    track.appendChild(clone);
-    var y = 0;
-    var speed = STANDBY_SPEED;
-    function loop() {
-      y += speed;
-      if (y >= contentHeight) {
-        y = 0;
-      }
-      track.style.transform = "translateY(-" + y + "px)";
-      sbAnimFrame = requestAnimationFrame(loop);
-    }
-    sbAnimFrame = requestAnimationFrame(loop);
-  }
-
-  function startPeriodScroll() {
-    var track = $("periodClassesTrack");
-    var viewport = findViewportForTrack(track);
-    if (!track || !viewport) return;
-    if (periodAnimFrame) {
-      cancelAnimationFrame(periodAnimFrame);
-      periodAnimFrame = null;
-    }
-    track.style.transform = "translateY(0)";
-    while (track.children.length > 1) {
-      track.removeChild(track.lastElementChild);
-    }
-    var contentDiv = track.firstElementChild;
-    if (!contentDiv) return;
-    var contentHeight = contentDiv.offsetHeight;
-    var viewHeight = viewport.offsetHeight;
-
-    // نُجبر التمرير إذا كان عدد الحصص الجارية كبيراً بما يكفي حتى لو لم يزد طول المحتوى عن ارتفاع الكرت.
-    var forceScroll = periodItemsCache && periodItemsCache.length >= PERIODS_MIN_ITEMS_FOR_SCROLL;
-
-    if (!forceScroll && contentHeight <= viewHeight + 4) {
-      return;
-    }
-
-    var clone = contentDiv.cloneNode(true);
-    clone.setAttribute("aria-hidden", "true");
-    track.appendChild(clone);
-    var y = 0;
-    var speed = PERIODS_SPEED;
-    function loop() {
-      y += speed;
-      if (y >= contentHeight) {
-        y = 0;
-      }
-      track.style.transform = "translateY(-" + y + "px)";
-      periodAnimFrame = requestAnimationFrame(loop);
-    }
-    periodAnimFrame = requestAnimationFrame(loop);
-  }
-
-  window.addEventListener("resize", function () {
-    if (standbyItemsCache.length) startStandbyScroll();
-    if (periodItemsCache.length) startPeriodScroll();
-  });
-
-  function mountAnnouncements(items) {
-    var newItems = Array.isArray(items) ? items : [];
-    if (JSON.stringify(newItems) === JSON.stringify(annList)) return;
-    annList = newItems;
-    if (!alertContainer) return;
-    if (!annList.length) {
-      alertContainer.classList.add("hidden");
-      alertContainer.innerHTML = "";
-      if (annTimer) {
-        clearInterval(annTimer);
-        annTimer = null;
-      }
-      return;
-    }
-    alertContainer.classList.remove("hidden");
-    if (annTimer) {
-      clearInterval(annTimer);
-      annTimer = null;
-    }
-    showNextAnn();
-    if (annList.length > 1) {
-      annTimer = setInterval(showNextAnn, 5000);
-    }
-  }
-
-  function showNextAnn() {
-    if (!annList.length || !alertContainer) return;
-    annIdx = annIdx % annList.length;
-    var item = annList[annIdx] || {};
-    var level = item.level || "info";
-    var style = LEVEL_STYLES[level] || LEVEL_STYLES.info;
-    var el = document.createElement("div");
-    el.className = "absolute inset-0 flex items-center justify-start px-4 md:px-6 alert-enter";
-    var wrapper = document.createElement("div");
-    wrapper.className = "flex items-center gap-3 w-full";
-    var iconSpan = document.createElement("span");
-    iconSpan.className = "flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full " + style.bg + " " + style.text + " animate-pulse";
-    var iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    iconSvg.setAttribute("class", "w-5 h-5");
-    iconSvg.setAttribute("viewBox", "0 0 24 24");
-    iconSvg.setAttribute("fill", "none");
-    iconSvg.setAttribute("stroke", "currentColor");
-    var iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    if (level === "success") {
-      iconPath.setAttribute("d", "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z");
-    } else if (level === "urgent" || level === "warning") {
-      iconPath.setAttribute("d", "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z");
-    } else {
-      iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
-    }
-    iconPath.setAttribute("stroke-linecap", "round");
-    iconPath.setAttribute("stroke-linejoin", "round");
-    iconPath.setAttribute("stroke-width", "2");
-    iconSvg.appendChild(iconPath);
-    iconSpan.appendChild(iconSvg);
-    var textDiv = document.createElement("div");
-    textDiv.className = "flex flex-col md:flex-row md:items-center gap-1 md:gap-3 overflow-hidden";
-    var titleSpan = document.createElement("span");
-    titleSpan.className = "text-white font-bold text-base md:text-lg whitespace-nowrap";
-    titleSpan.textContent = item.title || "";
-    textDiv.appendChild(titleSpan);
-    if (item.body) {
-      var sep = document.createElement("span");
-      sep.className = "hidden md:inline text-white/40";
-      sep.textContent = "|";
-      var bodySpan = document.createElement("span");
-      bodySpan.className = "text-white/80 text-xs md:text-sm truncate";
-      bodySpan.textContent = item.body;
-      textDiv.appendChild(sep);
-      textDiv.appendChild(bodySpan);
-    }
-    wrapper.appendChild(iconSpan);
-    wrapper.appendChild(textDiv);
-    el.appendChild(wrapper);
-    if (alertContainer.firstElementChild) {
-      var old = alertContainer.firstElementChild;
-      old.classList.remove("alert-enter", "alert-enter-active");
-      old.classList.add("alert-exit", "alert-exit-active");
-      setTimeout(function () {
-        if (old.parentNode === alertContainer) old.parentNode.removeChild(old);
-      }, 450);
-    }
-    alertContainer.appendChild(el);
-    void el.offsetWidth;
-    el.classList.add("alert-enter-active");
-    el.classList.remove("alert-enter");
-    annIdx = (annIdx + 1) % annList.length;
-  }
-
-  async function safeFetch(url) {
-    try {
-      var urlObj = new URL(url, window.location.origin);
-      urlObj.searchParams.append("_t", String(Date.now()));
-      var currentParams = new URLSearchParams(window.location.search);
-      var token = currentParams.get("token");
-      if (!token && SERVER_TOKEN) token = SERVER_TOKEN;
-      if (!token) {
-        return null;
-      }
-      urlObj.searchParams.append("token", token);
-      var r = await fetch(urlObj.toString(), { headers: { Accept: "application/json" } });
-      if (!r.ok) throw new Error(String(r.status));
-      return await r.json();
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
-  }
-
-  async function checkSettings() {
-    var s = await safeFetch(api.settings);
-    if (!s) return;
-    var relevant = {
-      name: s.name,
-      theme: s.theme,
-      logo_url: s.logo_url,
-      refresh_interval_sec: s.refresh_interval_sec,
-      standby_scroll_speed: s.standby_scroll_speed,
-      periods_scroll_speed: s.periods_scroll_speed
-    };
-    var current = JSON.stringify(relevant);
-    if (!lastSettingsJSON) {
-      lastSettingsJSON = current;
-      if (s.theme) applyTheme(s.theme);
-      if (typeof s.refresh_interval_sec === "number" && s.refresh_interval_sec > 0) {
-        REFRESH_EVERY = s.refresh_interval_sec;
-      }
-      if (typeof s.standby_scroll_speed === "number" && s.standby_scroll_speed > 0) {
-        STANDBY_SPEED = s.standby_scroll_speed;
-      }
-      if (typeof s.periods_scroll_speed === "number" && s.periods_scroll_speed > 0) {
-        PERIODS_SPEED = s.periods_scroll_speed;
-      }
-      return;
-    }
-    if (current !== lastSettingsJSON) {
-      window.location.reload();
-    }
-  }
-
-  function renderPeriodClasses(payload) {
-    if (!payload) return;
-    var periodIndex = payload.period_index || payload.index || null;
-    var items = payload.classes || payload.items || [];
-    if (!Array.isArray(items)) items = [];
-    var currentJSON = JSON.stringify({ idx: periodIndex, items: items });
-    if (currentJSON === lastPeriodJSON) return;
-    lastPeriodJSON = currentJSON;
-    periodItemsCache = items.slice();
-    var countEl = $("pcCount");
-    if (countEl) {
-      countEl.textContent = String(items.length) + " فصل";
-    }
-    var track = $("periodClassesTrack");
-    if (!track) return;
-    if (periodAnimFrame) {
-      cancelAnimationFrame(periodAnimFrame);
-      periodAnimFrame = null;
-    }
-    track.innerHTML = "";
-    track.style.transform = "translateY(0)";
-    if (!items.length) {
-      track.innerHTML = '<div class="text-center text-xs md:text-sm text-slate-400 py-12">لا توجد حصة جارية حالياً</div>';
-      return;
-    }
-    var list = document.createElement("div");
-    list.className = "flex flex-col gap-2 pb-4";
-    items.forEach(function (x) {
-      var clsName = x.class || x.class_name || x.classroom || "—";
-      var subj = x.subject || x.subject_name || "";
-      var teacher = x.teacher || x.teacher_name || "";
-      var row = document.createElement("div");
-      row.className = "bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center justify-between text-xs md:text-sm";
-      var left = document.createElement("div");
-      left.className = "font-bold text-indigo-300";
-      left.textContent = clsName;
-      var right = document.createElement("div");
-      right.className = "text-slate-200 flex-1 flex flex-col md:flex-row md:items-center md:justify-end gap-1 md:gap-2";
-      var subjSpan = document.createElement("span");
-      subjSpan.className = "text-slate-200";
-      subjSpan.textContent = subj || "—";
-      right.appendChild(subjSpan);
-      if (teacher) {
-        var teacherSpan = document.createElement("span");
-        teacherSpan.className = "text-slate-300";
-        teacherSpan.textContent = teacher;
-        right.appendChild(teacherSpan);
-      }
-      row.appendChild(left);
-      row.appendChild(right);
-      list.appendChild(row);
-    });
-    track.appendChild(list);
-    setTimeout(startPeriodScroll, 120);
-  }
-
+  // -------------------------
+  // hero state
+  // -------------------------
   function renderState(payload) {
     if (!payload) return;
-    var s = payload.state || {};
-    var day = payload.day || {};
-    var settings = payload.settings || {};
+
+    if (payload.now) {
+      const serverMs = new Date(payload.now).getTime();
+      if (!isNaN(serverMs)) serverOffsetMs = serverMs - Date.now();
+    }
+
+    const baseMs = nowMs();
+
+    const settings = payload.settings || {};
     if (settings.theme) applyTheme(settings.theme);
-    if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0 && settings.refresh_interval_sec !== REFRESH_EVERY) {
-      REFRESH_EVERY = settings.refresh_interval_sec;
-      if (mainTimer) clearInterval(mainTimer);
-      mainTimer = setInterval(refreshAll, Math.max(10, REFRESH_EVERY) * 1000);
+
+    if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
+      const nInt = settings.refresh_interval_sec;
+      if (Math.abs(nInt - REFRESH_EVERY) > 0.001) {
+        REFRESH_EVERY = nInt;
+        resetMainTimer();
+      }
     }
-    if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0 && settings.standby_scroll_speed !== STANDBY_SPEED) {
-      STANDBY_SPEED = settings.standby_scroll_speed;
-      if (sbAnimFrame) startStandbyScroll();
-    }
-    if (typeof settings.periods_scroll_speed === "number" && settings.periods_scroll_speed > 0 && settings.periods_scroll_speed !== PERIODS_SPEED) {
-      PERIODS_SPEED = settings.periods_scroll_speed;
-      if (periodAnimFrame) startPeriodScroll();
-    }
+    if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) STANDBY_SPEED = settings.standby_scroll_speed;
+    if (typeof settings.periods_scroll_speed === "number" && settings.periods_scroll_speed > 0) PERIODS_SPEED = settings.periods_scroll_speed;
+
+    hydrateBrand(payload);
     tickClock(payload.date_info || null);
-    finishedPeriodIndices.clear();
-    if (Array.isArray(day.periods)) {
-      day.periods.forEach(function (p) {
-        if (!p) return;
-        if (isEnded(p.ends_at)) {
-          var idx = parseInt(p.index, 10);
-          if (!isNaN(idx)) finishedPeriodIndices.add(idx);
-        }
-      });
-    }
-    var currentScheduleList = $("currentScheduleList");
-    if (currentScheduleList) {
-      currentScheduleList.innerHTML = "";
-      var now = new Date();
-      var periodsNow = [];
-      if (Array.isArray(day.periods)) {
-        periodsNow = day.periods.filter(function (p) {
-          if (!p) return false;
-          var start = hmToDate(p.starts_at);
-          var end = hmToDate(p.ends_at);
-          if (!start || !end) return false;
-          return now >= start && now < end;
-        });
-      }
-      if (!periodsNow.length) {
-        currentScheduleList.innerHTML = '<div class="w-full rounded-xl border border-slate-600/40 bg-slate-900/40 px-3 py-3 text-center text-slate-400 text-xs md:text-sm">لا توجد حصص حالية الآن</div>';
-      } else {
-        periodsNow.forEach(function (p) {
-          var isStandby = !!p.is_standby;
-          var card = document.createElement("div");
-          card.className = "rounded-xl p-3 flex flex-col md:flex-row items-center justify-between bg-white/5 border border-white/10 gap-2";
-          var inner = document.createElement("div");
-          inner.className = "flex flex-col md:flex-row gap-2 items-center w-full text-xs md:text-sm";
-          var cName = document.createElement("span");
-          cName.className = "font-bold text-indigo-300";
-          cName.textContent = p.class_name || "—";
-          var subj = document.createElement("span");
-          subj.className = "text-slate-300";
-          subj.textContent = p.subject_name || "—";
-          var teacher = document.createElement("span");
-          teacher.className = "text-slate-300";
-          teacher.textContent = p.teacher_name || "—";
-          var idxSpan = document.createElement("span");
-          idxSpan.className = "bg-slate-900/60 px-2 py-1 rounded text-[11px] num-font text-slate-100";
-          idxSpan.textContent = "حصة " + (p.index || "");
-          var kindSpan = document.createElement("span");
-          if (isStandby) {
-            kindSpan.className = "text-emerald-400 font-bold";
-            kindSpan.textContent = "انتظار";
-          } else {
-            kindSpan.className = "text-slate-400";
-            kindSpan.textContent = "عادية";
-          }
-          inner.appendChild(cName);
-          inner.appendChild(subj);
-          inner.appendChild(teacher);
-          inner.appendChild(idxSpan);
-          inner.appendChild(kindSpan);
-          card.appendChild(inner);
-          currentScheduleList.appendChild(card);
-        });
-      }
-    }
-    var title = "لوحة العرض المدرسية";
-    var range = "--:-- → --:--";
-    var badge = "حالة اليوم";
+
+    const s = payload.state || {};
+    const stType = s.type || "";
+
+    let title = s.label || "لوحة العرض المدرسية";
+    let range = (s.from || s.to) ? (toTimeStr(s.from) + " → " + toTimeStr(s.to)) : "--:-- → --:--";
+    let badge = "حالة اليوم";
+
     countdownSeconds = null;
     progressRange = { start: null, end: null };
     hasActiveCountdown = false;
-    var nextLabelEl = $("nextLabel");
-    if (s.type === "before") {
-      title = "صباح الخير";
-      badge = "قبل الطابور";
-      if (s.next && s.next.type === "period") range = "تبدأ " + toTimeStr(s.next.starts_at);
-      if (typeof s.countdown_seconds === "number") {
-        countdownSeconds = s.countdown_seconds;
-        hasActiveCountdown = true;
+
+    if (typeof s.remaining_seconds === "number" && (stType === "period" || stType === "break" || stType === "before")) {
+      countdownSeconds = Math.max(0, Math.floor(s.remaining_seconds));
+      hasActiveCountdown = true;
+    }
+
+    if ((stType === "period" || stType === "break") && s.from && s.to) {
+      const start = hmToMs(s.from, baseMs);
+      const end = hmToMs(s.to, baseMs);
+      if (start && end && end > start) {
+        progressRange.start = start;
+        progressRange.end = end;
       }
-    } else if (s.type === "off") {
-      title = "يوم إجازة";
-      badge = "عطلة";
-      range = "--:--";
-      if (nextLabelEl) nextLabelEl.textContent = "نتمنى لكم يوماً سعيداً";
-    } else if (s.type === "after") {
-      title = "انتهى الدوام";
-      badge = "في أمان الله";
-    } else if (s.type === "break") {
-      title = (s.current && s.current.label) || "استراحة";
-      badge = "استراحة";
-      range = toTimeStr(s.current && s.current.starts_at) + " → " + toTimeStr(s.current && s.current.ends_at);
-      if (typeof s.countdown_seconds === "number") {
-        countdownSeconds = s.countdown_seconds;
-        hasActiveCountdown = true;
-      }
-      if (s.current && s.current.starts_at && s.current.ends_at) {
-        var d = new Date();
-        var sh = parseInt(String(s.current.starts_at).split(":")[0], 10) || 0;
-        var sm = parseInt(String(s.current.starts_at).split(":")[1], 10) || 0;
-        var eh = parseInt(String(s.current.ends_at).split(":")[0], 10) || 0;
-        var em = parseInt(String(s.current.ends_at).split(":")[1], 10) || 0;
-        progressRange.start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), sh, sm, 0).getTime();
-        progressRange.end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), eh, em, 0).getTime();
-      }
-    } else if (s.type === "period") {
-      title = "الحصة " + (s.current && s.current.index ? s.current.index : "");
+    }
+
+    const current = payload.current_period || null;
+    const nextP = payload.next_period || null;
+
+    if (stType === "period") {
       badge = "درس";
-      range = toTimeStr(s.current && s.current.starts_at) + " → " + toTimeStr(s.current && s.current.ends_at);
-      if (typeof s.countdown_seconds === "number") {
-        countdownSeconds = s.countdown_seconds;
-        hasActiveCountdown = true;
-      }
-      if (s.current && s.current.starts_at && s.current.ends_at) {
-        var d2 = new Date();
-        var sh2 = parseInt(String(s.current.starts_at).split(":")[0], 10) || 0;
-        var sm2 = parseInt(String(s.current.starts_at).split(":")[1], 10) || 0;
-        var eh2 = parseInt(String(s.current.ends_at).split(":")[0], 10) || 0;
-        var em2 = parseInt(String(s.current.ends_at).split(":")[1], 10) || 0;
-        progressRange.start = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate(), sh2, sm2, 0).getTime();
-        progressRange.end = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate(), eh2, em2, 0).getTime();
-      }
+      title = formatPeriodTitle(current);
+    } else if (stType === "break") {
+      badge = "استراحة";
+      title = s.label || "استراحة";
+    } else if (stType === "off") {
+      badge = "عطلة";
+      title = s.label || "يوم إجازة";
+      range = "--:--";
     }
-    var heroTitle = $("heroTitle");
-    var heroRange = $("heroRange");
-    var badgeKind = $("badgeKind");
-    if (heroTitle) heroTitle.textContent = title;
-    if (heroRange) heroRange.textContent = range;
-    if (badgeKind) badgeKind.textContent = badge;
-    if (nextLabelEl) {
-      nextLabelEl.innerHTML = "";
-      if (s.next) {
-        var span1 = document.createElement("span");
-        span1.className = "opacity-80";
-        span1.textContent = "التالي: ";
-        var span2 = document.createElement("span");
-        span2.className = "font-bold text-white mx-1";
-        span2.textContent = s.next.type === "period" ? "الحصة " + (s.next.index || "") : (s.next.label || "—");
-        var span3 = document.createElement("span");
-        span3.className = "bg-slate-900/60 px-1.5 rounded text-xs num-font";
-        span3.textContent = toTimeStr(s.next.starts_at);
-        nextLabelEl.appendChild(span1);
-        nextLabelEl.appendChild(span2);
-        nextLabelEl.appendChild(span3);
+
+    if (dom.heroTitle) dom.heroTitle.textContent = safeText(title);
+    if (dom.heroRange) dom.heroRange.textContent = safeText(range);
+    if (dom.badgeKind) dom.badgeKind.textContent = safeText(badge);
+
+    if (dom.nextLabel) {
+      if (nextP && (nextP.from || nextP.to || nextP.label || nextP.index || nextP.period_index)) {
+        const nextTitle = formatPeriodTitle(nextP);
+        const from = toTimeStr(nextP.from);
+        dom.nextLabel.textContent = from !== "--:--" ? (nextTitle + " (" + from + ")") : nextTitle;
       } else {
-        nextLabelEl.textContent = "التالي: —";
+        dom.nextLabel.textContent = "—";
       }
     }
-    var mini = $("miniSchedule");
-    var timeline = [];
-    if (Array.isArray(day.periods)) {
-      day.periods.forEach(function (p) {
-        if (!p) return;
-        timeline.push({ kind: "period", start: p.starts_at, end: p.ends_at, label: p.index || "" });
-      });
-    }
-    if (Array.isArray(day.breaks)) {
-      day.breaks.forEach(function (b) {
-        if (!b) return;
-        timeline.push({ kind: "break", start: b.starts_at, end: b.ends_at, label: b.label || "استراحة" });
-      });
-    }
-    timeline.sort(function (a, b) {
-      var da = hmToDate(a.start) || new Date();
-      var db = hmToDate(b.start) || new Date();
-      if (da.getTime() !== db.getTime()) return da.getTime() - db.getTime();
-      if (a.kind === b.kind) return 0;
-      return a.kind === "period" ? -1 : 1;
-    });
-    var shown = timeline.filter(function (x) {
-      return !isEnded(x.end);
-    });
-    var currentScheduleJSON = JSON.stringify(shown);
-    if (mini) {
-      if (currentScheduleJSON !== lastScheduleJSON) {
-        lastScheduleJSON = currentScheduleJSON;
-        mini.innerHTML = "";
-        if (!shown.length) {
-          mini.innerHTML = '<div class="text-xs md:text-sm text-slate-400">انتهى جدول اليوم</div>';
-        } else {
-          shown.forEach(function (x, i) {
-            var chip = document.createElement("div");
-            chip.id = "sched-item-" + i;
-            chip.className = "flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] h-20 md:h-22 transition-all duration-300 bg-white/5 text-slate-300 border border-white/10";
-            var timeSpan = document.createElement("span");
-            timeSpan.className = "text-[10px] opacity-70 mb-1";
-            timeSpan.textContent = toTimeStr(x.start);
-            var labelSpan = document.createElement("span");
-            labelSpan.className = "font-bold text-lg leading-none";
-            labelSpan.textContent = x.kind === "period" ? "ح " + x.label : x.label;
-            chip.appendChild(timeSpan);
-            chip.appendChild(labelSpan);
-            mini.appendChild(chip);
-          });
-        }
-      }
-      if (shown.length) {
-        shown.forEach(function (x, i) {
-          var el = document.getElementById("sched-item-" + i);
-          if (!el) return;
-          var isCurrent = isNowBetween(x.start, x.end);
-          var clsBase = "flex-shrink-0 rounded-xl p-3 flex flex-col items-center justify-center min-w-[4.5rem] h-20 md:h-22 transition-all duration-300 ";
-          if (isCurrent) {
-            el.className = clsBase + "bg-indigo-500 text-white ring-4 ring-sky-400/60 shadow-[0_0_20px_rgba(99,102,241,0.8)] scale-110 z-10";
-          } else {
-            el.className = clsBase + "bg-white/5 text-slate-300 border border-white/10 opacity-70";
-          }
-        });
+
+    // نشاط حالي (اختصار)
+    if (dom.currentScheduleList) {
+      dom.currentScheduleList.innerHTML = "";
+      if (current && (current.label || current.from || current.to || current.index || current.period_index)) {
+        const cls = safeText(current["class"] || current.class_name || "—");
+        const teacher = safeText(current.teacher || current.teacher_name || "—");
+        const subj = (stType === "period") ? formatPeriodTitle(current) : safeText(current.label || s.label || "—");
+        const tRange = toTimeStr(current.from || s.from) + " → " + toTimeStr(current.to || s.to);
+
+        const chip1 = document.createElement("span");
+        chip1.className = "chip";
+        chip1.textContent = cls;
+
+        const chip2 = document.createElement("span");
+        chip2.className = "chip";
+        chip2.textContent = subj;
+
+        const chip3 = document.createElement("span");
+        chip3.className = "chip num-font";
+        chip3.textContent = tRange;
+
+        dom.currentScheduleList.appendChild(chip1);
+        dom.currentScheduleList.appendChild(chip2);
+        dom.currentScheduleList.appendChild(chip3);
+
+        // المعلم كسطر مستقل لتفادي التداخل
+        const t = document.createElement("div");
+        t.className = "mt-2 text-white/90 font-black";
+        t.style.fontSize = "var(--sub)";
+        //t.textContent = "المعلم: " + teacher;
+        dom.currentScheduleList.appendChild(t);
+      } else {
+        dom.currentScheduleList.innerHTML = '<div class="w-full rounded-xl border border-slate-600/40 bg-slate-900/40 px-3 py-3 text-center text-slate-400 text-xs md:text-sm">لا توجد حصص حالية الآن</div>';
       }
     }
+
+    renderMiniSchedule(payload, baseMs);
   }
 
-  async function refreshAll() {
-    await checkSettings();
-    var res = await Promise.all([
-      safeFetch(api.today),
-      safeFetch(api.ann),
-      safeFetch(api.standby),
-      safeFetch(api.exc),
-      safeFetch(api.periodClasses)
-    ]);
-    var d = res[0];
-    var a = res[1];
-    var s = res[2];
-    var x = res[3];
-    var p = res[4];
-    if (d) renderState(d);
-    if (a && a.items) mountAnnouncements(a.items);
-    else if (a && Array.isArray(a)) mountAnnouncements(a);
-    if (s && s.items) renderStandby(s.items);
-    else if (s && Array.isArray(s)) renderStandby(s);
-    if (x && x.items) renderExcellence(x.items);
-    else if (x && Array.isArray(x)) renderExcellence(x);
-    if (p) renderPeriodClasses(p);
-  }
-
+  // -------------------------
+  // ticker (countdown/progress)
+  // -------------------------
   function startTicker() {
-    setInterval(function () {
+    setInterval(() => {
       tickClock();
+
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         if (countdownSeconds > 0) countdownSeconds -= 1;
       }
-      if (countdownEl) {
+
+      if (dom.countdown) {
         if (hasActiveCountdown && typeof countdownSeconds === "number") {
-          var mm = Math.floor(countdownSeconds / 60);
-          var ss = countdownSeconds % 60;
-          countdownEl.textContent = fmt2(mm) + ":" + fmt2(ss);
+          const mm = Math.floor(countdownSeconds / 60);
+          const ss = countdownSeconds % 60;
+          dom.countdown.textContent = fmt2(mm) + ":" + fmt2(ss);
         } else {
-          countdownEl.textContent = "--:--";
+          dom.countdown.textContent = "--:--";
         }
       }
-      if (countdownWrapper) {
-        if (hasActiveCountdown) {
-          countdownWrapper.style.visibility = "visible";
-          countdownWrapper.style.opacity = "1";
-        } else {
-          countdownWrapper.style.visibility = "hidden";
-          countdownWrapper.style.opacity = "0";
-        }
-      }
-      if (progressBar) {
+
+      if (dom.progressBar) {
         if (progressRange.start && progressRange.end && progressRange.end > progressRange.start) {
-          var now = Date.now();
-          var pct = ((now - progressRange.start) / (progressRange.end - progressRange.start)) * 100;
-          if (pct < 0) pct = 0;
-          if (pct > 100) pct = 100;
-          progressBar.style.width = pct.toFixed(1) + "%";
+          const n = nowMs();
+          let pct = ((n - progressRange.start) / (progressRange.end - progressRange.start)) * 100;
+          pct = clamp(pct, 0, 100);
+          dom.progressBar.style.width = pct.toFixed(1) + "%";
           setRing(pct);
         } else {
-          progressBar.style.width = "0%";
+          dom.progressBar.style.width = "0%";
           setRing(0);
         }
       }
     }, 1000);
   }
 
+  // -------------------------
+  // main refresh
+  // -------------------------
+  let mainTimer = null;
+  function resetMainTimer() {
+    if (mainTimer) clearInterval(mainTimer);
+    mainTimer = setInterval(refreshAll, Math.max(5, REFRESH_EVERY) * 1000);
+  }
+
+  async function refreshAll() {
+    const snap = await safeFetchSnapshot();
+    if (!snap) return;
+
+    try {
+      renderState(snap);
+
+      // ✅ هذه الآن “ذكية” ولن تعيد من البداية إذا لم تتغير البيانات
+      renderAnnouncements(snap.announcements || []);
+      renderExcellence(snap.excellence || []);
+      renderStandby(snap.standby || []);
+      renderPeriodClasses(snap.period_classes || []);
+
+      ensureDebugOverlay();
+      if (isDebug()) {
+        setDebugText(
+          "ok " + new Date().toLocaleTimeString() +
+          " | ann=" + (Array.isArray(snap.announcements) ? snap.announcements.length : 0) +
+          " ex=" + (Array.isArray(snap.excellence) ? snap.excellence.length : 0) +
+          " sb=" + (Array.isArray(snap.standby) ? snap.standby.length : 0) +
+          " pc=" + (Array.isArray(snap.period_classes) ? snap.period_classes.length : 0)
+        );
+      }
+    } catch (e) {
+      console.error("render error:", e);
+      renderAlert("حدث خطأ أثناء العرض", "افتح ?debug=1 لمزيد من التفاصيل.");
+      ensureDebugOverlay();
+      if (isDebug()) setDebugText("render error: " + (e && e.message ? e.message : String(e)));
+    }
+  }
+
+  // -------------------------
+  // fullscreen
+  // -------------------------
   function bindFullscreen() {
-    var fsBtn = $("fsBtn");
-    if (!fsBtn) return;
-    fsBtn.addEventListener("click", function () {
+    if (!dom.fsBtn) return;
+    dom.fsBtn.addEventListener("click", () => {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(function () {});
+        document.documentElement.requestFullscreen().catch(() => {});
       } else {
-        document.exitFullscreen().catch(function () {});
+        document.exitFullscreen().catch(() => {});
       }
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  window.addEventListener("resize", () => {
+    // على resize نعيد الحساب (طبيعي)
+    lastStandbySig = "";
+    lastPeriodSig = "";
+    if (standbyItemsCache.length) renderStandby(standbyItemsCache);
+    if (periodItemsCache.length) renderPeriodClasses(periodItemsCache);
+  });
+
+  // -------------------------
+  // boot
+  // -------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    try {
+      const initTheme = (body.dataset.theme || "").trim();
+      if (initTheme) applyTheme(initTheme);
+    } catch (e) {}
+
+    ensureDebugOverlay();
     tickClock();
     startTicker();
     refreshAll();
-    mainTimer = setInterval(refreshAll, Math.max(10, REFRESH_EVERY) * 1000);
+    resetMainTimer();
+    // toggleDateDisplay لا يؤثر الآن، لكن نتركه
     setInterval(toggleDateDisplay, 5000);
     bindFullscreen();
   });

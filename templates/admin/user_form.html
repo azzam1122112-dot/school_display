@@ -1,0 +1,166 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}
+إنشاء أو تعديل مستخدم للنظام مع ربطه بالمدرسة والصلاحيات المناسبة.
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+  <!-- العنوان العلوي + شارة نوع العملية -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">{{ title }}</h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        تأكد من تعيين المدرسة الصحيحة للمستخدم وضبط صلاحيات <span class="font-semibold">staff</span> و
+        <span class="font-semibold">superuser</span> بعناية.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if is_create %}
+        <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <span class="text-base leading-none">➕</span>
+          مستخدم جديد
+        </span>
+      {% else %}
+        <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">
+          <span class="text-base leading-none">✏️</span>
+          تعديل مستخدم
+        </span>
+      {% endif %}
+      <a href="{% url 'dashboard:system_users_list' %}"
+         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">
+        ⬅ العودة لقائمة المستخدمين
+      </a>
+    </div>
+  </div>
+
+  <!-- ملاحظات أمان -->
+  <div class="grid gap-4 md:grid-cols-2">
+    <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-2xl p-4 shadow-md">
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 text-lg">🔐</div>
+        <div class="space-y-1">
+          <p class="text-sm font-semibold">نصيحة أمان</p>
+          <p class="text-xs text-indigo-50 leading-relaxed">
+            امنح صلاحية <span class="font-semibold">superuser</span> و
+            <span class="font-semibold">staff</span> لعدد محدود من الحسابات الموثوقة فقط،
+            ويفضّل استخدام بريد عمل رسمي لكل مستخدم إداري.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 text-lg">🏫</div>
+        <div class="space-y-1">
+          <p class="text-sm font-semibold text-slate-900">ربط المستخدم بالمدرسة</p>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            تأكد من أن المستخدم مرتبط بالمدرسة الصحيحة في نموذج الملف الشخصي
+            حتى تظهر له جداول العرض ولوحة التحكم الخاصة بها بشكل سليم.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- بطاقة النموذج -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <!-- رأس البطاقة -->
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl">
+          👤
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-900">بيانات المستخدم</p>
+          <p class="text-xs text-slate-500">
+            اسم المستخدم، البريد، وحالة الحساب والصلاحيات الأساسية.
+          </p>
+        </div>
+      </div>
+      {% if not is_create and user_obj %}
+        <div class="hidden md:flex flex-col items-end text-xs text-slate-500">
+          <span class="font-semibold text-slate-700">
+            {{ user_obj.username }}
+          </span>
+          <span class="mt-0.5">
+            {% if user_obj.is_active %}حساب نشط{% else %}حساب معطّل{% endif %}
+            ·
+            {% if user_obj.is_superuser %}مدير نظام{% elif user_obj.is_staff %}موظف إداري{% else %}مستخدم عادي{% endif %}
+          </span>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- النموذج -->
+    <form method="post" class="p-5 space-y-6">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 space-y-1">
+        {% for error in form.non_field_errors %}
+          <p>• {{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- تقسيم الحقول في شبكتين على الشاشات الكبيرة -->
+      <div class="grid gap-4 md:grid-cols-2">
+        {% for field in form %}
+          <div class="space-y-1 md:col-span-1">
+            <label class="block text-xs font-semibold text-slate-700">
+              {{ field.label }}
+              {% if field.field.required %}
+                <span class="text-rose-500">*</span>
+              {% endif %}
+            </label>
+            <div class="space-y-1">
+              <!-- حقل النموذج نفسه -->
+              <div class="relative">
+                {{ field }}
+              </div>
+
+              {% if field.help_text %}
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                {{ field.help_text }}
+              </p>
+              {% endif %}
+
+              {% if field.errors %}
+              <div class="text-[11px] text-rose-600 space-y-0.5">
+                {% for error in field.errors %}
+                  <p>• {{ error }}</p>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- أزرار الحركة -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-4 border-t border-slate-100 mt-2">
+        <div class="text-[11px] text-slate-400 flex items-center gap-1">
+          <span>💡</span>
+          <span>يمكنك تعديل صلاحيات المستخدم لاحقًا من نفس الشاشة عند الحاجة.</span>
+        </div>
+        <div class="flex items-center justify-end gap-3">
+          <a href="{% url 'dashboard:system_users_list' %}"
+             class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+            إلغاء
+          </a>
+          <button type="submit"
+                  class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md hover:shadow-lg transition">
+            {% if is_create %}حفظ المستخدم{% else %}حفظ التعديلات{% endif %}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
