@@ -1,174 +1,185 @@
 # core/middleware.py
 from __future__ import annotations
 
-import re
 from typing import Optional
+import re
+import logging
 
 from django.apps import apps
 from django.http import JsonResponse
 from django.utils import timezone
 
 
+logger = logging.getLogger(__name__)
+
+
+# ==========================================================
+# Display Token Middleware (API فقط)
+# ==========================================================
 class DisplayTokenMiddleware:
     """
-    Middleware خاص بشاشات العرض (Public Display).
+    يحقن:
+      - request.display_screen
+      - request.school
 
-    - يدعم التوكن من:
-      1) QueryString: ?token=
-      2) Header: X-Display-Token
-      3) Authorization: Display <token>
-
-    - يضيف إلى الطلب:
-      request.display_screen
-      request.display_token
-      request.school
-
-    ملاحظات:
-    - المرجع الوحيد للموديل: core.DisplayScreen
-    - ندعم توكن 64 hex (قياسي) + 32 hex (انتقالي لبيانات قديمة)
-    - بعض المسارات قد تكون "aliases/legacy" ويُسمح لها بدون توكن حتى لا تنكسر الاختبارات/التوافق.
+    يدعم التوكن من:
+      - /api/display/snapshot/<token>/
+      - ?token=...
+      - Header: X-Display-Token
+      - Authorization: Display <token>
     """
 
     API_PREFIX = "/api/display/"
-
-    # 🔐 دعم 32 و 64 hex (انتقالي + متوافق مع البيانات الحالية)
     TOKEN_RE = re.compile(r"^(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{64})$")
+    SNAPSHOT_PATH_RE = re.compile(r"^/api/display/snapshot/(?P<token>[0-9a-fA-F]{32}|[0-9a-fA-F]{64})/?$")
 
-    # مسارات مسموحة بدون توكن (للاختبارات/التوافق)
+    # مسارات لا تتطلب توكن (اختياري)
     NO_TOKEN_PATHS = {
         "/api/display/ping/",
-        "/api/display/today/",
-        "/api/display/live/",
     }
-
-    # snapshot له منطق خاص (أحيانًا token في المسار)، فلا نفرض توكن من هنا
-    SNAPSHOT_PREFIX = "/api/display/snapshot"
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def _extract_token(self, request) -> Optional[str]:
-        # 1) QueryString
-        token = request.GET.get("token")
-        if token:
-            return token.strip()
+        # 1) token في المسار (snapshot/<token>/)
+        m = self.SNAPSHOT_PATH_RE.match(request.path or "")
+        if m:
+            return (m.group("token") or "").strip()
 
-        # 2) Header
-        token = request.headers.get("X-Display-Token")
-        if token:
-            return token.strip()
+        # 2) token في QueryString
+        t = (request.GET.get("token") or "").strip()
+        if t:
+            return t
 
-        # 3) Authorization: Display <token>
-        auth = request.headers.get("Authorization") or ""
+        # 3) token في Header
+        t = (request.headers.get("X-Display-Token") or "").strip()
+        if t:
+            return t
+
+        # 4) Authorization: Display <token>
+        auth = (request.headers.get("Authorization") or "").strip()
         if auth.lower().startswith("display "):
-            tok = auth.split(" ", 1)[1].strip()
-            if tok:
-                return tok
+            return auth.split(" ", 1)[1].strip()
 
         return None
 
-    def _get_display_model(self):
-        # ✅ المرجع الوحيد: core.DisplayScreen
-        return apps.get_model("core", "DisplayScreen")
-
-    def _model_has_field(self, model, field_name: str) -> bool:
-        try:
-            model._meta.get_field(field_name)
-            return True
-        except Exception:
-            return False
+    def _pick_token_field(self, DisplayScreen) -> str:
+        """
+        مشاريعك السابقة ظهر فيها api_token أحيانًا.
+        هنا ندعم أكثر من اسم حقل لتجنب FieldError.
+        """
+        candidates = ["token", "api_token", "display_token"]
+        for f in candidates:
+            try:
+                DisplayScreen._meta.get_field(f)
+                return f
+            except Exception:
+                continue
+        raise LookupError("لم أجد حقل توكن مناسب في DisplayScreen (token/api_token/display_token).")
 
     def __call__(self, request):
-        path: str = request.path or ""
+        path = request.path or ""
 
-        # نقيّد الميدلوير على API العرض فقط
         if not path.startswith(self.API_PREFIX):
             return self.get_response(request)
 
-        # مسارات بدون توكن
         if path in self.NO_TOKEN_PATHS:
             return self.get_response(request)
 
-        # snapshot: لا نتحقق هنا (التحقق داخل الـ view إن لزم)
-        if path.startswith(self.SNAPSHOT_PREFIX):
-            return self.get_response(request)
-
         token = self._extract_token(request)
-        if not token:
-            return JsonResponse(
-                {"error": "Display token is required."},
-                status=403,
-                json_dumps_params={"ensure_ascii": False},
-            )
+        if not token or not self.TOKEN_RE.match(token):
+            return JsonResponse({"error": "Invalid display token"}, status=403)
 
-        if not self.TOKEN_RE.match(token):
-            return JsonResponse(
-                {"error": "Invalid display token format."},
-                status=403,
-                json_dumps_params={"ensure_ascii": False},
-            )
+        DisplayScreen = apps.get_model("core", "DisplayScreen")
 
-        DisplayScreen = self._get_display_model()
+        token_field = self._pick_token_field(DisplayScreen)
+        lookup = {f"{token_field}__iexact": token}
 
-        filters = {"token__iexact": token}
-        if self._model_has_field(DisplayScreen, "is_active"):
-            filters["is_active"] = True
+        # is_active اختياري حسب موديلك
+        try:
+            DisplayScreen._meta.get_field("is_active")
+            lookup["is_active"] = True
+        except Exception:
+            pass
 
         try:
-            qs = DisplayScreen.objects.select_related("school")
-
-            only_fields = ["id", "token"]
-            if self._model_has_field(DisplayScreen, "school"):
-                only_fields.append("school_id")
-            if self._model_has_field(DisplayScreen, "is_active"):
-                only_fields.append("is_active")
-            if self._model_has_field(DisplayScreen, "last_seen_at"):
-                only_fields.append("last_seen_at")
-            if self._model_has_field(DisplayScreen, "last_seen"):
-                only_fields.append("last_seen")
-
-            screen = qs.only(*only_fields).get(**filters)
-
+            screen = DisplayScreen.objects.select_related("school").get(**lookup)
         except DisplayScreen.DoesNotExist:
-            return JsonResponse(
-                {"error": "Invalid or inactive display token."},
-                status=403,
-                json_dumps_params={"ensure_ascii": False},
-            )
+            return JsonResponse({"error": "Invalid or inactive display token"}, status=403)
+        except Exception:
+            logger.exception("DisplayTokenMiddleware failed while fetching screen")
+            return JsonResponse({"error": "Display token lookup failed"}, status=500)
 
-        # ربط البيانات بالطلب
         request.display_screen = screen
-        request.display_token = token
-        request.school = getattr(screen, "school", None)
+        request.school = screen.school
 
-        # تحديث last_seen (كل 30 ثانية)
+        # تحديث last_seen_at إن كان موجودًا
         now = timezone.now()
-        update_field = (
-            "last_seen_at"
-            if self._model_has_field(DisplayScreen, "last_seen_at")
-            else ("last_seen" if self._model_has_field(DisplayScreen, "last_seen") else None)
-        )
-
-        if update_field:
-            last_seen_val = getattr(screen, update_field, None)
-            if not last_seen_val or (now - last_seen_val).total_seconds() > 30:
-                DisplayScreen.objects.filter(pk=screen.pk).update(**{update_field: now})
-                setattr(screen, update_field, now)
+        try:
+            DisplayScreen._meta.get_field("last_seen_at")
+            last_seen = getattr(screen, "last_seen_at", None)
+            if (last_seen is None) or ((now - last_seen).total_seconds() > 30):
+                DisplayScreen.objects.filter(pk=screen.pk).update(last_seen_at=now)
+        except Exception:
+            pass
 
         return self.get_response(request)
 
 
-class SecurityHeadersMiddleware:
+# ==========================================================
+# Active School Context (Context ONLY)
+# ==========================================================
+class ActiveSchoolMiddleware:
     """
-    Headers إضافية للأمان.
+    ✅ يحدد request.school للمستخدم المسجل (مدرسته النشطة)
+    ❌ لا Redirect
+    ❌ لا منع دخول
+
+    مهم: لا يطغى على request.school إذا كان محدد مسبقًا (مثل display API).
     """
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        resp = self.get_response(request)
+        # لا تكتب فوق request.school إذا موجودة
+        if not hasattr(request, "school"):
+            request.school = None
 
-        resp["X-Content-Type-Options"] = "nosniff"
-        resp["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return self.get_response(request)
 
-        return resp
+        # لو سبق وتحددّت school من Middleware آخر، اتركها
+        if getattr(request, "school", None) is not None:
+            return self.get_response(request)
+
+        profile = getattr(user, "profile", None)
+        if not profile:
+            return self.get_response(request)
+
+        # عيّن active_school تلقائيًا عند عدم وجودها
+        try:
+            if not getattr(profile, "active_school_id", None) and profile.schools.exists():
+                profile.active_school = profile.schools.first()
+                profile.save(update_fields=["active_school"])
+        except Exception:
+            return self.get_response(request)
+
+        request.school = getattr(profile, "active_school", None)
+        return self.get_response(request)
+
+
+# ==========================================================
+# Security Headers
+# ==========================================================
+class SecurityHeadersMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response

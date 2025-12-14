@@ -6,10 +6,11 @@ import io
 import math
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django import forms
 from django.apps import apps
+from django.conf import settings as dj_settings
 from django.contrib import messages
 from django.contrib.auth import (
     authenticate,
@@ -20,15 +21,16 @@ from django.contrib.auth import (
 )
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, FieldError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Max, Q
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch, get_resolver
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 # ✅ عدّل هذه الاستيرادات حسب أسماء تطبيقاتك الفعلية
@@ -65,6 +67,7 @@ WEEKDAY_MAP = {
     6: "السبت",
 }
 
+# أيام الدراسة الافتراضية
 SCHOOL_WEEK = [
     (0, "الأحد"),
     (1, "الاثنين"),
@@ -72,6 +75,33 @@ SCHOOL_WEEK = [
     (3, "الأربعاء"),
     (4, "الخميس"),
 ]
+SCHOOL_WEEKDAY_IDS = [w for w, _ in SCHOOL_WEEK]
+
+
+# ======================
+# URL helpers (حل NoReverseMatch للـ namespaces)
+# ======================
+
+def _namespace_exists(ns: str) -> bool:
+    try:
+        return ns in (get_resolver().namespace_dict or {})
+    except Exception:
+        return False
+
+
+def _safe_reverse(name: str, *, kwargs: dict | None = None, fallback: str | None = None) -> str:
+    """
+    reverse آمن: يرجع رابط '#' بدل كسر الصفحة عند NoReverseMatch
+    """
+    try:
+        return reverse(name, kwargs=kwargs)
+    except NoReverseMatch:
+        if fallback:
+            try:
+                return reverse(fallback, kwargs=kwargs)
+            except NoReverseMatch:
+                return "#"
+        return "#"
 
 
 # ======================
@@ -86,7 +116,7 @@ def _get_model(app_label: str, model_name: str):
 def _get_model_first(*candidates: tuple[str, str]):
     """
     جرّب أكثر من مكان للموديل لتفادي تغيّر بنية التطبيقات.
-    مثال: School قد يكون في schools أو dashboard.
+    (مُثبت على هيكل مشروع school_display الحالي)
     """
     last_err = None
     for app_label, model_name in candidates:
@@ -94,79 +124,79 @@ def _get_model_first(*candidates: tuple[str, str]):
             return _get_model(app_label, model_name)
         except Exception as e:
             last_err = e
-            continue
-    raise LookupError(f"تعذر العثور على الموديل من المرشحين: {candidates}. آخر خطأ: {last_err}")
+    raise LookupError(
+        f"تعذر العثور على الموديل من المرشحين: {candidates}. آخر خطأ: {last_err}"
+    )
 
 
 @lru_cache(maxsize=32)
 def SchoolModel():
-    # ✅ غيّر أولوية التطبيقات حسب مشروعك
-    return _get_model_first(("schools", "School"), ("dashboard", "School"))
+    return _get_model_first(("core", "School"))
 
 
 @lru_cache(maxsize=32)
 def UserProfileModel():
-    return _get_model_first(("profiles", "UserProfile"), ("dashboard", "UserProfile"))
+    return _get_model_first(("core", "UserProfile"))
 
 
 @lru_cache(maxsize=32)
 def SchoolSettingsModel():
-    return _get_model_first(("dashboard", "SchoolSettings"), ("schools", "SchoolSettings"))
+    return _get_model_first(("schedule", "SchoolSettings"))
 
 
 @lru_cache(maxsize=32)
 def SchoolClassModel():
-    return _get_model_first(("dashboard", "SchoolClass"), ("schools", "SchoolClass"))
+    return _get_model_first(("schedule", "SchoolClass"))
 
 
 @lru_cache(maxsize=32)
 def SubjectModel():
-    return _get_model_first(("dashboard", "Subject"), ("schools", "Subject"))
+    return _get_model_first(("schedule", "Subject"))
 
 
 @lru_cache(maxsize=32)
 def TeacherModel():
-    return _get_model_first(("dashboard", "Teacher"), ("schools", "Teacher"))
+    return _get_model_first(("schedule", "Teacher"))
 
 
 @lru_cache(maxsize=32)
 def DayScheduleModel():
-    return _get_model_first(("dashboard", "DaySchedule"),)
+    return _get_model_first(("schedule", "DaySchedule"))
 
 
 @lru_cache(maxsize=32)
 def PeriodModel():
-    return _get_model_first(("dashboard", "Period"),)
+    return _get_model_first(("schedule", "Period"))
 
 
 @lru_cache(maxsize=32)
 def BreakModel():
-    return _get_model_first(("dashboard", "Break"),)
+    return _get_model_first(("schedule", "Break"))
 
 
 @lru_cache(maxsize=32)
 def ClassLessonModel():
-    return _get_model_first(("dashboard", "ClassLesson"),)
+    return _get_model_first(("schedule", "ClassLesson"))
 
 
 @lru_cache(maxsize=32)
 def AnnouncementModel():
-    return _get_model_first(("dashboard", "Announcement"),)
+    return _get_model_first(("notices", "Announcement"))
 
 
 @lru_cache(maxsize=32)
 def ExcellenceModel():
-    return _get_model_first(("dashboard", "Excellence"),)
+    return _get_model_first(("notices", "Excellence"))
 
 
 @lru_cache(maxsize=32)
 def StandbyAssignmentModel():
-    return _get_model_first(("dashboard", "StandbyAssignment"),)
+    return _get_model_first(("standby", "StandbyAssignment"))
 
 
 @lru_cache(maxsize=32)
 def DisplayScreenModel():
-    return _get_model_first(("dashboard", "DisplayScreen"),)
+    return _get_model_first(("core", "DisplayScreen"))
 
 
 # ======================
@@ -258,28 +288,86 @@ def _get_or_create_profile(user):
     return profile
 
 
+def _safe_next_url(request, default_name: str = "dashboard:index") -> str:
+    nxt = (request.GET.get("next") or request.POST.get("next") or "").strip()
+    if not nxt:
+        return reverse(default_name)
+    allowed_hosts = {request.get_host()}
+    try:
+        allowed_hosts |= set(dj_settings.ALLOWED_HOSTS or [])
+    except Exception:
+        pass
+    if url_has_allowed_host_and_scheme(nxt, allowed_hosts=allowed_hosts, require_https=request.is_secure()):
+        return nxt
+    return reverse(default_name)
+
+
+def _classes_qs_from_settings(settings_obj):
+    """
+    بعض المشاريع تسمي علاقة الفصول: settings.school_classes
+    وبعضها: settings.classes أو schoolclass_set
+    نخليها مرنة حتى لا تتكسر الصفحات.
+    """
+    if settings_obj is None:
+        return SchoolClassModel().objects.none()
+
+    for preferred, fallback in (("school_classes", "schoolclass_set"), ("classes", "schoolclass_set")):
+        mgr = _rev_manager(settings_obj, preferred, fallback)
+        if mgr is not None:
+            try:
+                return mgr.all()
+            except Exception:
+                continue
+
+    # كحل أخير: حاول عبر موديل SchoolClass مباشرة
+    try:
+        SchoolClass = SchoolClassModel()
+        return SchoolClass.objects.filter(settings=settings_obj)
+    except Exception:
+        return SchoolClassModel().objects.none()
+
+
 def get_active_school_or_redirect(request):
+    """
+    يرجّع (school, response)
+    - school: مدرسة نشطة (School) أو None
+    - response: HttpResponseRedirect أو None
+
+    مهم: لا تُرجع إلى صفحة login هنا إطلاقًا حتى لا يحدث Redirect loop.
+    """
     profile = _get_or_create_profile(request.user)
+
+    try:
+        schools_ids = list(profile.schools.values_list("id", flat=True))
+    except Exception:
+        schools_ids = []
+
+    logger.debug(
+        "active_school check: user=%s active_school_id=%s schools=%s",
+        getattr(request.user, "pk", None),
+        getattr(profile, "active_school_id", None),
+        schools_ids,
+    )
 
     if getattr(profile, "active_school_id", None):
         return profile.active_school, None
 
-    schools_qs = profile.schools.order_by("id")
-    if schools_qs.exists():
-        profile.active_school = schools_qs.first()
-        profile.save(update_fields=["active_school"])
-        messages.info(request, f"تم تعيين المدرسة النشطة تلقائيًا: {profile.active_school.name}")
-        return profile.active_school, None
+    schools_mgr = getattr(profile, "schools", None)
+    if schools_mgr is not None:
+        qs = profile.schools.order_by("id")
+        if qs.exists():
+            first_school = qs.first()
+            profile.active_school = first_school
+            profile.save(update_fields=["active_school"])
+            messages.info(request, f"تم تعيين المدرسة النشطة تلقائيًا: {first_school.name}")
+            return first_school, None
 
-    messages.error(request, "الملف الشخصي غير مرتبط بأي مدرسة.")
-    return None, redirect("dashboard:index")
+    if getattr(request.user, "is_superuser", False):
+        messages.info(request, "لا توجد مدرسة مرتبطة بحسابك — تم تحويلك للوحة إدارة النظام.")
+        return None, redirect("dashboard:system_admin_dashboard")
 
-
-def require_active_school(request):
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        raise PermissionDenied("الملف الشخصي غير مرتبط بأي مدرسة.")
-    return school
+    messages.error(request, "حسابك غير مرتبط بأي مدرسة. يرجى التواصل مع الإدارة.")
+    return None, redirect("dashboard:select_school")
 
 
 # ======================
@@ -288,7 +376,10 @@ def require_active_school(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect("dashboard:index")
+        if getattr(request.user, "is_superuser", False):
+            return redirect("dashboard:system_admin_dashboard")
+        _school, resp = get_active_school_or_redirect(request)
+        return resp or redirect("dashboard:index")
 
     if request.method == "POST":
         u = (request.POST.get("username") or "").strip()
@@ -296,16 +387,17 @@ def login_view(request):
         user = authenticate(request, username=u, password=p)
         if user:
             login(request, user)
-            return redirect("dashboard:index")
+            if getattr(user, "is_superuser", False):
+                return redirect(_safe_next_url(request, default_name="dashboard:system_admin_dashboard"))
+            _school, resp = get_active_school_or_redirect(request)
+            return resp or redirect(_safe_next_url(request, default_name="dashboard:index"))
+
         messages.error(request, "بيانات الدخول غير صحيحة.")
 
     return render(request, "dashboard/login.html")
 
 
 def demo_login(request):
-    """
-    تسجيل دخول بحساب تجريبي مع بيانات مدرسة تجريبية.
-    """
     School = SchoolModel()
     DEMO_ID = "demo_user"
     DEMO_SCHOOL_SLUG = "demo-school"
@@ -316,7 +408,7 @@ def demo_login(request):
     )
 
     lookup = {}
-    defaults = {"is_active": True}
+    defaults: dict[str, Any] = {"is_active": True}
     if _model_has_field(UserModel, "username"):
         lookup["username"] = DEMO_ID
         defaults.update({"first_name": "حساب", "last_name": "تجريبي", "email": "demo@example.com"})
@@ -328,7 +420,6 @@ def demo_login(request):
         defaults.update({"first_name": "Demo", "last_name": "User"})
 
     demo_user, created = UserModel.objects.get_or_create(**lookup, defaults=defaults)
-
     if created:
         demo_user.set_password(get_random_string(12))
         demo_user.save()
@@ -375,6 +466,8 @@ def index(request):
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
+    if school is None:
+        return render(request, "dashboard/no_school.html")
 
     today = timezone.localdate()
     stats = {
@@ -388,12 +481,48 @@ def index(request):
     SubModel = _get_subscription_model()
     subscription = None
     if SubModel is not None:
-        subscription = SubModel.objects.filter(school=school).order_by("-starts_at").first()
+        subscription = SubModel.objects.filter(school=school).order_by("-starts_at", "-id").first()
 
     return render(
         request,
         "dashboard/index.html",
         {"stats": stats, "settings": settings_obj, "subscription": subscription},
+    )
+
+
+@login_required
+def select_school(request):
+    profile = _get_or_create_profile(request.user)
+
+    if getattr(request.user, "is_superuser", False):
+        return redirect("dashboard:system_admin_dashboard")
+
+    schools_qs = getattr(profile, "schools", None)
+    if schools_qs is None:
+        return render(request, "dashboard/no_school.html")
+
+    schools = profile.schools.order_by("name", "id")
+    if not schools.exists():
+        return render(request, "dashboard/no_school.html")
+
+    if request.method == "POST":
+        sid = (request.POST.get("school_id") or "").strip()
+        try:
+            school = profile.schools.get(pk=int(sid))
+        except Exception:
+            messages.error(request, "المدرسة غير موجودة أو ليست ضمن صلاحياتك.")
+            return redirect("dashboard:select_school")
+
+        profile.active_school = school
+        profile.save(update_fields=["active_school"])
+        messages.success(request, f"تم اختيار المدرسة النشطة: {school.name}")
+
+        return redirect(_safe_next_url(request, default_name="dashboard:index"))
+
+    return render(
+        request,
+        "dashboard/select_school.html",
+        {"schools": schools, "active_school_id": getattr(profile, "active_school_id", None)},
     )
 
 
@@ -446,10 +575,11 @@ def days_list(request):
         return redirect("dashboard:settings")
 
     existing = set(
-        DaySchedule.objects.filter(settings=settings_obj, weekday__in=WEEKDAY_MAP.keys())
+        DaySchedule.objects.filter(settings=settings_obj, weekday__in=SCHOOL_WEEKDAY_IDS)
         .values_list("weekday", flat=True)
     )
-    for w in WEEKDAY_MAP.keys():
+
+    for w in SCHOOL_WEEKDAY_IDS:
         if w not in existing:
             DaySchedule.objects.create(
                 settings=settings_obj,
@@ -459,7 +589,7 @@ def days_list(request):
             )
 
     days = list(
-        DaySchedule.objects.filter(settings=settings_obj, weekday__in=WEEKDAY_MAP.keys())
+        DaySchedule.objects.filter(settings=settings_obj, weekday__in=SCHOOL_WEEKDAY_IDS)
         .order_by("weekday")
         .prefetch_related("periods", "breaks")
     )
@@ -504,7 +634,7 @@ def days_list(request):
 @manager_required
 @transaction.atomic
 def day_edit(request, weekday: int):
-    if weekday not in WEEKDAY_MAP:
+    if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
         return redirect("dashboard:days_list")
 
@@ -553,8 +683,9 @@ def day_edit(request, weekday: int):
 
 @manager_required
 @transaction.atomic
+@require_POST
 def day_autofill(request, weekday: int):
-    if weekday not in WEEKDAY_MAP:
+    if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
         return redirect("dashboard:days_list")
 
@@ -571,8 +702,6 @@ def day_autofill(request, weekday: int):
         return redirect("dashboard:settings")
 
     day = get_object_or_404(DaySchedule, settings=settings_obj, weekday=weekday)
-    if request.method != "POST":
-        return redirect("dashboard:day_edit", weekday=weekday)
 
     try:
         start_time_str = request.POST.get("start_time", "07:00:00")
@@ -639,12 +768,9 @@ def day_autofill(request, weekday: int):
 
 
 @manager_required
-@transaction.atomic
+@require_POST
 def day_toggle(request, weekday: int):
-    if request.method != "POST":
-        return HttpResponseBadRequest("طريقة غير مدعومة.")
-
-    if weekday not in WEEKDAY_MAP:
+    if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم غير صالح.")
         return redirect("dashboard:days_list")
 
@@ -679,7 +805,7 @@ def ann_list(request):
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
-    qs = Announcement.objects.filter(school=school).order_by("-starts_at")
+    qs = Announcement.objects.filter(school=school).order_by("-starts_at", "-id")
     page = Paginator(qs, 10).get_page(request.GET.get("page"))
     return render(request, "dashboard/ann_list.html", {"page": page})
 
@@ -742,7 +868,7 @@ def exc_list(request):
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
-    qs = Excellence.objects.filter(school=school).order_by("priority", "-start_at")
+    qs = Excellence.objects.filter(school=school).order_by("priority", "-start_at", "-id")
 
     now = timezone.now()
     active_count = Excellence.objects.filter(
@@ -823,7 +949,7 @@ def standby_list(request):
     if response:
         return response
 
-    qs = StandbyAssignment.objects.filter(school=school).order_by("-date", "period_index")
+    qs = StandbyAssignment.objects.filter(school=school).order_by("-date", "period_index", "-id")
 
     today = timezone.localdate()
     today_count = StandbyAssignment.objects.filter(school=school, date=today).count()
@@ -902,6 +1028,7 @@ def standby_import(request):
         reader = csv.DictReader(data)
         new_items = []
 
+        skipped = 0
         for row in reader:
             try:
                 raw_date = (row.get("date") or "").strip()
@@ -925,15 +1052,18 @@ def standby_import(request):
                     )
                 )
             except Exception:
+                skipped += 1
                 continue
 
+        count = 0
         if new_items:
-            StandbyAssignment.objects.bulk_create(new_items)
+            StandbyAssignment.objects.bulk_create(new_items, batch_size=500)
             count = len(new_items)
-        else:
-            count = 0
 
-        messages.success(request, f"تم استيراد {count} سجل.")
+        if skipped:
+            messages.warning(request, f"تم استيراد {count} سجل، وتجاوز {skipped} صف بسبب بيانات غير صحيحة.")
+        else:
+            messages.success(request, f"تم استيراد {count} سجل.")
         return redirect("dashboard:standby_list")
 
     return render(request, "dashboard/standby_import.html")
@@ -950,7 +1080,7 @@ def screen_list(request):
     if response:
         return response
 
-    qs = DisplayScreen.objects.filter(school=school).order_by("-created_at")
+    qs = DisplayScreen.objects.filter(school=school).order_by("-created_at", "-id")
     can_create_screen = qs.count() == 0
     show_screen_limit_message = not can_create_screen
     return render(
@@ -1005,11 +1135,9 @@ def screen_delete(request, pk: int):
 
 @manager_required
 @transaction.atomic
+@require_POST
 def day_clear(request, weekday: int):
-    if request.method != "POST":
-        return HttpResponseBadRequest("طريقة غير مدعومة.")
-
-    if weekday not in WEEKDAY_MAP:
+    if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسية.")
         return redirect("dashboard:days_list")
 
@@ -1041,11 +1169,9 @@ def day_clear(request, weekday: int):
 
 @manager_required
 @transaction.atomic
+@require_POST
 def day_reindex(request, weekday: int):
-    if request.method != "POST":
-        return HttpResponseBadRequest("طريقة غير مدعومة.")
-
-    if weekday not in WEEKDAY_MAP:
+    if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسية.")
         return redirect("dashboard:days_list")
 
@@ -1121,7 +1247,6 @@ def lessons_list(request):
 @manager_required
 def lesson_create(request):
     SchoolSettings = SchoolSettingsModel()
-    SchoolClass = SchoolClassModel()
     Subject = SubjectModel()
     Teacher = TeacherModel()
 
@@ -1135,7 +1260,9 @@ def lesson_create(request):
         return redirect("dashboard:lessons_list")
 
     form = LessonForm(request.POST or None)
-    form.fields["school_class"].queryset = SchoolClass.objects.filter(settings__school=school).order_by("name")
+
+    classes_qs = _classes_qs_from_settings(settings_obj).order_by("name")
+    form.fields["school_class"].queryset = classes_qs
     form.fields["subject"].queryset = Subject.objects.filter(school=school).order_by("name")
     form.fields["teacher"].queryset = Teacher.objects.filter(school=school).order_by("name")
 
@@ -1155,7 +1282,6 @@ def lesson_create(request):
 def lesson_edit(request, pk: int):
     SchoolSettings = SchoolSettingsModel()
     ClassLesson = ClassLessonModel()
-    SchoolClass = SchoolClassModel()
     Subject = SubjectModel()
     Teacher = TeacherModel()
 
@@ -1164,10 +1290,16 @@ def lesson_edit(request, pk: int):
         return response
 
     settings_obj = SchoolSettings.objects.filter(school=school).first()
+    if settings_obj is None:
+        messages.error(request, "فضلاً أضف إعدادات المدرسة أولاً.")
+        return redirect("dashboard:lessons_list")
+
     obj = get_object_or_404(ClassLesson, pk=pk, settings=settings_obj)
 
     form = LessonForm(request.POST or None, instance=obj)
-    form.fields["school_class"].queryset = SchoolClass.objects.filter(settings__school=school).order_by("name")
+
+    classes_qs = _classes_qs_from_settings(settings_obj).order_by("name")
+    form.fields["school_class"].queryset = classes_qs
     form.fields["subject"].queryset = Subject.objects.filter(school=school).order_by("name")
     form.fields["teacher"].queryset = Teacher.objects.filter(school=school).order_by("name")
 
@@ -1192,6 +1324,10 @@ def lesson_delete(request, pk: int):
         return response
 
     settings_obj = SchoolSettings.objects.filter(school=school).first()
+    if settings_obj is None:
+        messages.error(request, "فضلاً أضف إعدادات المدرسة أولاً.")
+        return redirect("dashboard:lessons_list")
+
     obj = get_object_or_404(ClassLesson, pk=pk, settings=settings_obj)
     obj.delete()
     messages.success(request, "تم حذف الحصة.")
@@ -1214,7 +1350,7 @@ def school_data(request):
 
     settings_obj = SchoolSettings.objects.filter(school=school).first()
 
-    classes = settings_obj.school_classes.all().order_by("name") if settings_obj else SchoolClassModel().objects.none()
+    classes = _classes_qs_from_settings(settings_obj).order_by("name")
     subjects = Subject.objects.filter(school=school).order_by("name")
     teachers = Teacher.objects.filter(school=school).order_by("name")
 
@@ -1298,7 +1434,10 @@ def delete_class(request, pk: int):
         return response
 
     deleted, _ = SchoolClass.objects.filter(pk=pk, settings__school=school).delete()
-    messages.success(request, "تم حذف الفصل.") if deleted else messages.error(request, "الفصل غير موجود.")
+    if deleted:
+        messages.success(request, "تم حذف الفصل.")
+    else:
+        messages.error(request, "الفصل غير موجود.")
     return redirect("dashboard:school_data")
 
 
@@ -1312,7 +1451,10 @@ def delete_subject(request, pk: int):
         return response
 
     deleted, _ = Subject.objects.filter(pk=pk, school=school).delete()
-    messages.success(request, "تم حذف المادة.") if deleted else messages.error(request, "المادة غير موجودة.")
+    if deleted:
+        messages.success(request, "تم حذف المادة.")
+    else:
+        messages.error(request, "المادة غير موجودة.")
     return redirect("dashboard:school_data")
 
 
@@ -1326,7 +1468,10 @@ def delete_teacher(request, pk: int):
         return response
 
     deleted, _ = Teacher.objects.filter(pk=pk, school=school).delete()
-    messages.success(request, "تم حذف المعلم/ـة.") if deleted else messages.error(request, "المعلم/ـة غير موجود.")
+    if deleted:
+        messages.success(request, "تم حذف المعلم/ـة.")
+    else:
+        messages.error(request, "المعلم/ـة غير موجود.")
     return redirect("dashboard:school_data")
 
 
@@ -1362,7 +1507,7 @@ def timetable_day_view(request):
     except (TypeError, ValueError):
         weekday = int(default_weekday)
 
-    classes_qs = settings_obj.school_classes.all().order_by("name")
+    classes_qs = _classes_qs_from_settings(settings_obj).order_by("name")
 
     selected_class = None
     if classes_qs.exists():
@@ -1528,7 +1673,7 @@ def timetable_week_view(request):
         return redirect("dashboard:settings")
 
     class_param = request.GET.get("class_id")
-    classes_qs = settings_obj.school_classes.all().order_by("name")
+    classes_qs = _classes_qs_from_settings(settings_obj).order_by("name")
 
     if not classes_qs.exists():
         messages.error(request, "لا توجد فصول مسجلة لهذه المدرسة.")
@@ -1540,7 +1685,7 @@ def timetable_week_view(request):
         selected_class = classes_qs.first()
 
     all_periods_qs = Period.objects.filter(
-        day__settings=settings_obj, day__weekday__in=WEEKDAY_MAP.keys()
+        day__settings=settings_obj, day__weekday__in=SCHOOL_WEEKDAY_IDS
     ).order_by("day__weekday", "index")
 
     periods_by_weekday: dict[int, list] = {}
@@ -1550,7 +1695,7 @@ def timetable_week_view(request):
     all_lessons_qs = ClassLesson.objects.filter(
         settings=settings_obj,
         school_class=selected_class,
-        weekday__in=WEEKDAY_MAP.keys(),
+        weekday__in=SCHOOL_WEEKDAY_IDS,
     ).select_related("subject", "teacher")
 
     lessons_by_weekday_period: dict[int, dict[int, object]] = {}
@@ -1599,9 +1744,10 @@ def timetable_export_csv(request):
         messages.error(request, "لم يتم تحديد الفصل المطلوب للتصدير.")
         return redirect("dashboard:timetable_day")
 
+    classes_qs = _classes_qs_from_settings(settings_obj)
     try:
-        school_class = settings_obj.school_classes.get(pk=int(class_param))
-    except (ValueError, settings_obj.school_classes.model.DoesNotExist):
+        school_class = classes_qs.get(pk=int(class_param))
+    except (ValueError, classes_qs.model.DoesNotExist):
         messages.error(request, "الفصل المحدد غير موجود.")
         return redirect("dashboard:timetable_day")
 
@@ -1665,9 +1811,7 @@ def switch_school(request, school_id):
     profile.active_school = school
     profile.save(update_fields=["active_school"])
     messages.success(request, f"تم التبديل إلى مدرسة: {school.name}")
-
-    next_url = request.GET.get("next") or "dashboard:index"
-    return redirect(next_url)
+    return redirect(_safe_next_url(request, default_name="dashboard:index"))
 
 
 @superuser_required
@@ -1701,7 +1845,7 @@ def system_schools_list(request):
     School = SchoolModel()
 
     q = (request.GET.get("q") or "").strip()
-    schools = School.objects.all().order_by("-created_at")
+    schools = School.objects.all().order_by("-created_at", "-id")
 
     if q:
         schools = schools.filter(Q(name__icontains=q) | Q(slug__icontains=q))
@@ -1760,22 +1904,31 @@ def system_school_delete(request, pk: int):
 def system_users_list(request):
     q = (request.GET.get("q") or "").strip()
 
-    qs = (
-        UserModel.objects
-        .select_related("profile", "profile__active_school")
-        .prefetch_related("profile__schools")
-        .order_by("-id")
-    )
+    qs = UserModel.objects.all().order_by("-id")
+
+    try:
+        qs = qs.select_related("profile", "profile__active_school").prefetch_related("profile__schools")
+    except FieldError:
+        try:
+            qs = qs.select_related("profile")
+        except FieldError:
+            pass
 
     if q:
-        qs = qs.filter(
-            Q(username__icontains=q)
-            | Q(email__icontains=q)
-            | Q(first_name__icontains=q)
-            | Q(last_name__icontains=q)
-            | Q(profile__active_school__name__icontains=q)
-            | Q(profile__schools__name__icontains=q)
-        ).distinct()
+        filters = Q()
+        for key in ("username", "email", "first_name", "last_name"):
+            try:
+                UserModel._meta.get_field(key)
+                filters |= Q(**{f"{key}__icontains": q})
+            except Exception:
+                continue
+
+        try:
+            filters |= Q(profile__active_school__name__icontains=q) | Q(profile__schools__name__icontains=q)
+        except Exception:
+            pass
+
+        qs = qs.filter(filters).distinct()
 
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get("page") or 1)
@@ -1832,28 +1985,216 @@ def system_user_delete(request, pk: int):
 # 💳 إدارة الاشتراكات
 # =====================
 
-def _get_subscription_model():
+def _get_subscription_model_robust():
+    """
+    1) لو عندك تطبيق subscriptions فعليًا: subscriptions.SchoolSubscription
+    2) وإلا: استخدم core.SchoolSubscription (Legacy الموجود في core/models.py)
+    """
     try:
         return apps.get_model("subscriptions", "SchoolSubscription")
-    except LookupError:
-        return None
+    except Exception:
+        try:
+            return apps.get_model("core", "SchoolSubscription")
+        except Exception:
+            return None
 
+def _get_subscription_model():
+    return _get_subscription_model_robust()
 
 @superuser_required
 def system_subscriptions_list(request):
-    SubModel = _get_subscription_model()
+    SubModel = _get_subscription_model_robust()
+
     q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()  # active | inactive | ""
+
+    today = timezone.localdate()
+
+    rows = []
+    page_obj = None
+
+    active_count = 0
+    inactive_count = 0
+    total_count = 0
 
     if SubModel is None:
-        messages.error(request, "تطبيق الاشتراكات غير موجود.")
-        subscriptions = []
-    else:
-        qs = SubModel.objects.select_related("school", "plan").order_by("-starts_at", "-id")
-        if q:
-            qs = qs.filter(Q(school__name__icontains=q) | Q(plan__name__icontains=q))
-        subscriptions = qs
+        return render(
+            request,
+            "admin/subscriptions_list.html",
+            {
+                "rows": rows,
+                "page_obj": page_obj,
+                "q": q,
+                "status": status,
+                "active_count": 0,
+                "inactive_count": 0,
+                "total_count": 0,
+            },
+        )
 
-    return render(request, "admin/subscriptions_list.html", {"subscriptions": subscriptions, "q": q})
+    # ---------- بناء QuerySet مرن حسب الحقول ----------
+    qs = SubModel.objects.all()
+
+    # روابط شائعة
+    has_school = True
+    has_plan = True
+    try:
+        SubModel._meta.get_field("school")
+    except Exception:
+        has_school = False
+    try:
+        SubModel._meta.get_field("plan")
+    except Exception:
+        has_plan = False
+
+    if has_school:
+        try:
+            qs = qs.select_related("school")
+        except Exception:
+            pass
+    if has_plan:
+        try:
+            qs = qs.select_related("plan")
+        except Exception:
+            pass
+
+    # فلترة البحث
+    if q:
+        filters = Q()
+        if has_school:
+            filters |= Q(school__name__icontains=q)
+            # email في School غير موجود عندك في core/models.py → لن نفلتر عليه
+        if has_plan:
+            filters |= Q(plan__name__icontains=q)
+        qs = qs.filter(filters).distinct()
+
+    # ---------- توحيد منطق "نشط" بين النظامين ----------
+    # New subscriptions عادة: starts_at/ends_at + status
+    # Legacy core: start_date/end_date + is_active
+    def _is_active_obj(sub) -> bool:
+        # boolean مباشر لو موجود
+        if hasattr(sub, "is_active"):
+            try:
+                if not bool(sub.is_active):
+                    return False
+            except Exception:
+                pass
+
+        # status لو موجود
+        if hasattr(sub, "status"):
+            try:
+                if str(sub.status) == "cancelled":
+                    return False
+                # لو status == active غالباً يعني ساري (مع مراعاة التاريخ)
+            except Exception:
+                pass
+
+        # ends_at / end_date
+        end_val = getattr(sub, "ends_at", None)
+        if end_val is None:
+            end_val = getattr(sub, "end_date", None)
+
+        if end_val:
+            try:
+                return end_val >= today
+            except Exception:
+                return True
+
+        return True
+
+    def _starts_at(sub):
+        v = getattr(sub, "starts_at", None)
+        if v is None:
+            v = getattr(sub, "start_date", None)
+        return v
+
+    def _ends_at(sub):
+        v = getattr(sub, "ends_at", None)
+        if v is None:
+            v = getattr(sub, "end_date", None)
+        return v
+
+    # أعداد الإجمالي/النشط/غير النشط (بدون كسر لو اختلفت الحقول)
+    # نحاول DB أولاً إن أمكن، وإلا نحسب بعد جلب بسيط
+    try:
+        total_count = qs.count()
+    except Exception:
+        total_count = 0
+
+    # فلترة حسب status من الرابط
+    if status == "active":
+        # أفضلية فلترة DB إن كان عندك is_active/end_date
+        if hasattr(SubModel, "is_active") and (hasattr(SubModel, "end_date") or hasattr(SubModel, "ends_at")):
+            # هذا فرع متسامح – لكن بعض الأنظمة لا تقبل هذا مباشرة
+            # لذا نكتفي بفلترة Python في الصفحات
+            pass
+    elif status == "inactive":
+        pass
+
+    # ترتيب
+    # new: -starts_at, -id | legacy: -start_date, -id
+    if hasattr(SubModel, "starts_at"):
+        qs = qs.order_by("-starts_at", "-id")
+    elif hasattr(SubModel, "start_date"):
+        qs = qs.order_by("-start_date", "-id")
+    else:
+        qs = qs.order_by("-id")
+
+    # Pagination
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    # بناء rows جاهزة للقالب
+    # + تطبيق فلتر active/inactive هنا بشكل نهائي وآمن
+    filtered_rows = []
+    for sub in page_obj.object_list:
+        is_active = _is_active_obj(sub)
+
+        if status == "active" and not is_active:
+            continue
+        if status == "inactive" and is_active:
+            continue
+
+        school_obj = getattr(sub, "school", None)
+        plan_obj = getattr(sub, "plan", None)
+
+        filtered_rows.append(
+            {
+                "id": sub.pk,
+                "school_name": getattr(school_obj, "name", "") if school_obj else "—",
+                "school_email": getattr(school_obj, "email", "") if school_obj else "",
+                "plan_name": getattr(plan_obj, "name", "") if plan_obj else "—",
+                "starts_at": _starts_at(sub),
+                "ends_at": _ends_at(sub),
+                "is_active": is_active,
+            }
+        )
+
+    # حساب العدادات بشكل موثوق (على كامل qs) — بحساب بسيط
+    # (لو كانت كبيرة جدًا لاحقًا نعملها Query-level حسب حقولك)
+    try:
+        all_list = list(qs[:2000])  # حد أمان
+    except Exception:
+        all_list = []
+
+    if all_list:
+        active_count = sum(1 for s in all_list if _is_active_obj(s))
+        inactive_count = len(all_list) - active_count
+        total_count = len(all_list)
+
+    return render(
+        request,
+        "admin/subscriptions_list.html",
+        {
+            "rows": filtered_rows,
+            "page_obj": page_obj,
+            "q": q,
+            "status": status,
+            "active_count": active_count,
+            "inactive_count": inactive_count,
+            "total_count": total_count,
+        },
+    )
 
 
 @superuser_required
@@ -1861,14 +2202,14 @@ def system_subscription_create(request):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("subscriptions:system_subscriptions_list")
+        return redirect("dashboard:system_subscriptions_list")
 
     if request.method == "POST":
         form = SchoolSubscriptionForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "تم إنشاء الاشتراك بنجاح.")
-            return redirect("subscriptions:system_subscriptions_list")
+            return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm()
@@ -1881,7 +2222,7 @@ def system_subscription_edit(request, pk: int):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("subscriptions:system_subscriptions_list")
+        return redirect("dashboard:system_subscriptions_list")
 
     obj = get_object_or_404(SubModel, pk=pk)
 
@@ -1890,7 +2231,7 @@ def system_subscription_edit(request, pk: int):
         if form.is_valid():
             form.save()
             messages.success(request, "تم تحديث بيانات الاشتراك.")
-            return redirect("subscriptions:system_subscriptions_list")
+            return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm(instance=obj)
@@ -1904,12 +2245,12 @@ def system_subscription_delete(request, pk: int):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("subscriptions:system_subscriptions_list")
+        return redirect("dashboard:system_subscriptions_list")
 
     obj = get_object_or_404(SubModel, pk=pk)
     obj.delete()
     messages.warning(request, "تم حذف الاشتراك.")
-    return redirect("subscriptions:system_subscriptions_list")
+    return redirect("dashboard:system_subscriptions_list")
 
 
 # ==========================
@@ -1925,7 +2266,7 @@ def my_subscription(request):
     SubModel = _get_subscription_model()
     subscription = None
     if SubModel is not None:
-        subscription = SubModel.objects.filter(school=school).order_by("-starts_at").first()
+        subscription = SubModel.objects.filter(school=school).order_by("-starts_at", "-id").first()
 
     today = timezone.localdate()
 
@@ -1938,7 +2279,6 @@ def my_subscription(request):
             status_code = "cancelled"
             status_label = "ملغى"
             status_badge_class = "bg-rose-50 text-rose-700"
-
         elif subscription.status == "active":
             if subscription.starts_at and subscription.starts_at > today:
                 status_code = "upcoming"

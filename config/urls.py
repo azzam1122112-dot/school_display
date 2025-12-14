@@ -36,8 +36,9 @@ urlpatterns = [
     path("favicon.ico", RedirectView.as_view(url="/static/favicon.ico", permanent=True)),
 ]
 
-# ✅ تضمين الاشتراكات مرة واحدة فقط وبشكل شرطي
-if "subscriptions" in settings.INSTALLED_APPS:
+
+# ✅ تضمين الاشتراكات إذا كان أي تطبيق يبدأ بـ 'subscriptions' في INSTALLED_APPS
+if any(app.startswith("subscriptions") for app in settings.INSTALLED_APPS):
     urlpatterns += [
         path("subscriptions/", include(("subscriptions.urls", "subscriptions"), namespace="subscriptions")),
     ]

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from django.db.models import Q
 
 from importlib import import_module
 from typing import Any, Callable, Dict, List, Tuple
@@ -7,6 +8,7 @@ from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
+from django.apps import apps
 
 import logging
 
@@ -301,48 +303,82 @@ def _build_snapshot_payload(school: Any) -> Dict[str, Any]:
 # ٥) نقطة الـ API الفعلية
 # ---------------------------------------------------------------------------
 
+import re
+from django.db.models import Q
+
+TOKEN_RE = re.compile(r"^(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{64})$")
+
 @require_GET
-def display_snapshot(request: HttpRequest) -> HttpResponse:
+def display_snapshot(request: HttpRequest, token: str) -> HttpResponse:
     """
-    نقطة API موحدة لشاشة العرض الرقمية.
-
-    تعتمد على DisplayTokenMiddleware لإضافة request.school (بناءً على توكن الشاشة).
-
-    تعيد في استجابة واحدة:
-      - today:     الحالة العامة لليوم (قبل/أثناء/استراحة/بعد/إجازة + periods/breaks/date_info)
-      - period_classes: الحصص الجارية الآن
-      - ann:       الإعلانات النشطة
-      - standby:   حصص الانتظار لليوم (standby.items)
-      - exc:       بيانات المتميزين (exc.items)
-      - settings:  إعدادات شاشة العرض (حاليًا None)
-      - server_time: وقت السيرفر بالتوقيت المحلي (ISO)
-      - refresh_hint_seconds: تلميح ذكي لمعدل التحديث المقترح حسب حالة اليوم
-
-    ملاحظات:
-      - إذا لم يتم حقن request.school (مثلاً التوكن ناقص أو الـ middleware غير مفعّل)
-        فنعيد 400 مع رسالة خطأ واضحة.
-      - نستخدم كاش خفيف لمدة 10 ثواني لكل مدرسة ولكل يوم لتخفيف الضغط على قاعدة البيانات.
+    /api/display/snapshot/<token>/
     """
-    school = getattr(request, "school", None)
-    if school is None:
-        return JsonResponse(
-            {"error": "Missing school context. Did you forget the display token middleware or token is invalid?"},
-            status=400,
-        )
+    token = (token or "").strip()
+
+    # ✅ تحقق صارم للتوكن (أوضح وأضمن)
+    if not TOKEN_RE.match(token):
+        return JsonResponse({"error": "Invalid token."}, status=400)
+
+    # نحاول الحصول على شاشة العرض عبر token بمرونة حسب أسماء الحقول
+    DisplayScreen = None
+    for app_label in ("core", "dashboard"):
+        try:
+            DisplayScreen = apps.get_model(app_label, "DisplayScreen")
+            break
+        except Exception:
+            continue
+
+    if DisplayScreen is None:
+        return JsonResponse({"error": "DisplayScreen model not found."}, status=500)
+
+    # حاول حقول شائعة: api_token / token / access_token / short_code
+    q = Q()
+    for field in ("api_token", "token", "access_token", "short_code"):
+        try:
+            DisplayScreen._meta.get_field(field)
+            # ✅ مطابقة غير حساسة لحالة الأحرف
+            q |= Q(**{f"{field}__iexact": token})
+        except Exception:
+            continue
+
+    if not q:
+        return JsonResponse({"error": "No token field found on DisplayScreen."}, status=500)
+
+    qs = DisplayScreen.objects.select_related("school").filter(q)
+
+    # ✅ لو عندك is_active في الموديل
+    try:
+        DisplayScreen._meta.get_field("is_active")
+        qs = qs.filter(is_active=True)
+    except Exception:
+        pass
+
+    screen = qs.first()
+    if screen is None or getattr(screen, "school", None) is None:
+        return JsonResponse({"error": "Token not found or screen has no school."}, status=404)
+
+    # ✅ تحديث last_seen_at إذا موجود
+    now = timezone.now()
+    try:
+        DisplayScreen._meta.get_field("last_seen_at")
+        last_seen = getattr(screen, "last_seen_at", None)
+        if not last_seen or (now - last_seen).total_seconds() > 30:
+            DisplayScreen.objects.filter(pk=screen.pk).update(last_seen_at=now)
+    except Exception:
+        pass
+
+    school = screen.school
+    request.school = school  # optional: يبقي التوافق مع أي كود يعتمد request.school
 
     today = timezone.localdate()
-    cache_key = f"display:snapshot:{getattr(school, 'id', 'unknown')}:{today.isoformat()}"
+    cache_key = f"display:snapshot:{school.id}:{today.isoformat()}"
 
     cached = cache.get(cache_key)
     if cached is not None:
-        # نحدث وقت السيرفر في كل رد حتى لو من الكاش
         cached = dict(cached)
-        cached["server_time"] = timezone.now().isoformat()
+        cached["server_time"] = now.isoformat()
         return JsonResponse(cached)
 
     data = _build_snapshot_payload(school)
-
-    # كاش بسيط لمدة 10 ثواني
     cache.set(cache_key, data, timeout=10)
-
     return JsonResponse(data)

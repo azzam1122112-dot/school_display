@@ -1,8 +1,7 @@
 from django.urls import path
 
 from . import views
-from dashboard.api_display import display_snapshot
-
+ 
 app_name = "dashboard"
 
 urlpatterns = [
@@ -15,6 +14,7 @@ urlpatterns = [
     path("password/", views.change_password, name="change_password"),
     path("switch-school/<int:school_id>/", views.switch_school, name="switch_school"),
     path("", views.index, name="index"),
+    path("select-school/", views.select_school, name="select_school"),
 
     # ==================
     # Settings
@@ -94,8 +94,7 @@ urlpatterns = [
     # ==================
     # Display API
     # ==================
-    path("api/display/snapshot/", display_snapshot, name="display_snapshot"),
-
+ 
     # ==================
     # SaaS Admin Panel
     # ==================

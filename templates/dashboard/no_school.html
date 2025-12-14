@@ -1,0 +1,12 @@
+{% extends "dashboard/_base.html" %}
+{% block content %}
+<div class="container py-10 text-center">
+    <div class="bg-rose-100 border border-rose-300 rounded-xl p-8 max-w-xl mx-auto">
+        <h1 class="text-2xl font-bold text-rose-700 mb-4">لا توجد مدرسة مرتبطة بحسابك</h1>
+        <p class="text-lg text-rose-600 mb-4">
+            حسابك غير مرتبط بأي مدرسة نشطة. يرجى التواصل مع الإدارة أو الدعم الفني لإضافة مدرسة إلى حسابك.
+        </p>
+        <a href="/dashboard/logout/" class="inline-block mt-4 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition">تسجيل الخروج</a>
+    </div>
+</div>
+{% endblock %}

@@ -17,9 +17,10 @@ except Exception:
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# -------------------------
-# Helpers
-# -------------------------
+import logging.config
+LOGGING_CONFIG_FILE = BASE_DIR / "logging.conf"
+if LOGGING_CONFIG_FILE.exists():
+    logging.config.fileConfig(LOGGING_CONFIG_FILE, disable_existing_loggers=False)
 def env_bool(key: str, default: str = "False") -> bool:
     return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -117,27 +118,23 @@ INSTALLED_APPS = [
 # -------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-
-    # ضغط الاستجابات (مفيد جدًا لJSON وشاشات العرض)
-    "django.middleware.gzip.GZipMiddleware",
-
-    # Static serving (WhiteNoise)
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
-    # Custom middlewares
-    "core.middleware.DisplayTokenMiddleware",
-    "core.middleware.SecurityHeadersMiddleware",
+    # Context أولاً
+    "core.middleware.ActiveSchoolMiddleware",
+
+    # Dashboard rules
     "dashboard.middleware.SubscriptionRequiredMiddleware",
 
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-]
+    # Display API (يستطيع override request.school عند الـ API)
+    "core.middleware.DisplayTokenMiddleware",
 
+    "core.middleware.SecurityHeadersMiddleware",
+]
 
 # -------------------------
 # URLs / Templates

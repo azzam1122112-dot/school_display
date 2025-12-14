@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}اختيار المدرسة{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-4">اختيار المدرسة</h1>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <label class="block text-sm font-medium">المدرسة</label>
+    <select name="school_id" class="w-full border rounded-lg p-3">
+      {% for s in schools %}
+        <option value="{{ s.id }}" {% if active_school_id == s.id %}selected{% endif %}>
+          {{ s.name }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="w-full rounded-lg bg-indigo-600 text-white py-3 font-semibold">
+      متابعة
+    </button>
+  </form>
+</div>
+{% endblock %}
