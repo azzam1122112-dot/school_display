@@ -72,7 +72,7 @@
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
         <!-- ✅ إضافة فصل عبر نفس الصفحة -->
-        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
+        <form method="post" action="{% url 'dashboard:add_class' %}" class="space-y-3">
           {% csrf_token %}
           <input type="hidden" name="action" value="add_class">
 
@@ -154,7 +154,7 @@
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
         <!-- ✅ إضافة مادة عبر نفس الصفحة -->
-        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
+        <form method="post" action="{% url 'dashboard:add_subject' %}" class="space-y-3">
           {% csrf_token %}
           <input type="hidden" name="action" value="add_subject">
 
@@ -236,7 +236,7 @@
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
         <!-- ✅ إضافة معلم عبر نفس الصفحة -->
-        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
+        <form method="post" action="{% url 'dashboard:add_teacher' %}" class="space-y-3">
           {% csrf_token %}
           <input type="hidden" name="action" value="add_teacher">
 
