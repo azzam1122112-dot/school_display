@@ -4,6 +4,8 @@ from datetime import datetime, date, time, timedelta
 import csv
 import io
 import math
+import logging
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from django import forms
@@ -29,8 +31,6 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.views.decorators.http import require_POST
 
-from django.contrib.auth.models import AbstractBaseUser
-
 # ✅ عدّل هذه الاستيرادات حسب أسماء تطبيقاتك الفعلية
 from .decorators import manager_required
 from .forms import (
@@ -47,25 +47,10 @@ from .forms import (
     PeriodFormSet,
     BreakFormSet,
 )
-from .models import (
-    School,
-    UserProfile,
-    SchoolSettings,
-    SchoolClass,
-    Subject,
-    Teacher,
-    DaySchedule,
-    Period,
-    Break,
-    ClassLesson,
-    Announcement,
-    Excellence,
-    StandbyAssignment,
-    DisplayScreen,
-)
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    # فقط لتحسين الـ type hints بدون دوائر استيراد
     pass
 
 UserModel = get_user_model()
@@ -87,6 +72,101 @@ SCHOOL_WEEK = [
     (3, "الأربعاء"),
     (4, "الخميس"),
 ]
+
+
+# ======================
+# Model loader (حل ImportError نهائياً)
+# ======================
+
+@lru_cache(maxsize=128)
+def _get_model(app_label: str, model_name: str):
+    return apps.get_model(app_label, model_name)
+
+
+def _get_model_first(*candidates: tuple[str, str]):
+    """
+    جرّب أكثر من مكان للموديل لتفادي تغيّر بنية التطبيقات.
+    مثال: School قد يكون في schools أو dashboard.
+    """
+    last_err = None
+    for app_label, model_name in candidates:
+        try:
+            return _get_model(app_label, model_name)
+        except Exception as e:
+            last_err = e
+            continue
+    raise LookupError(f"تعذر العثور على الموديل من المرشحين: {candidates}. آخر خطأ: {last_err}")
+
+
+@lru_cache(maxsize=32)
+def SchoolModel():
+    # ✅ غيّر أولوية التطبيقات حسب مشروعك
+    return _get_model_first(("schools", "School"), ("dashboard", "School"))
+
+
+@lru_cache(maxsize=32)
+def UserProfileModel():
+    return _get_model_first(("profiles", "UserProfile"), ("dashboard", "UserProfile"))
+
+
+@lru_cache(maxsize=32)
+def SchoolSettingsModel():
+    return _get_model_first(("dashboard", "SchoolSettings"), ("schools", "SchoolSettings"))
+
+
+@lru_cache(maxsize=32)
+def SchoolClassModel():
+    return _get_model_first(("dashboard", "SchoolClass"), ("schools", "SchoolClass"))
+
+
+@lru_cache(maxsize=32)
+def SubjectModel():
+    return _get_model_first(("dashboard", "Subject"), ("schools", "Subject"))
+
+
+@lru_cache(maxsize=32)
+def TeacherModel():
+    return _get_model_first(("dashboard", "Teacher"), ("schools", "Teacher"))
+
+
+@lru_cache(maxsize=32)
+def DayScheduleModel():
+    return _get_model_first(("dashboard", "DaySchedule"),)
+
+
+@lru_cache(maxsize=32)
+def PeriodModel():
+    return _get_model_first(("dashboard", "Period"),)
+
+
+@lru_cache(maxsize=32)
+def BreakModel():
+    return _get_model_first(("dashboard", "Break"),)
+
+
+@lru_cache(maxsize=32)
+def ClassLessonModel():
+    return _get_model_first(("dashboard", "ClassLesson"),)
+
+
+@lru_cache(maxsize=32)
+def AnnouncementModel():
+    return _get_model_first(("dashboard", "Announcement"),)
+
+
+@lru_cache(maxsize=32)
+def ExcellenceModel():
+    return _get_model_first(("dashboard", "Excellence"),)
+
+
+@lru_cache(maxsize=32)
+def StandbyAssignmentModel():
+    return _get_model_first(("dashboard", "StandbyAssignment"),)
+
+
+@lru_cache(maxsize=32)
+def DisplayScreenModel():
+    return _get_model_first(("dashboard", "DisplayScreen"),)
 
 
 # ======================
@@ -156,9 +236,6 @@ def _to_int(val, default: int = 0) -> int:
 
 
 def _rev_manager(obj, preferred: str, fallback: str):
-    """
-    إرجاع المدير الصحيح لعلاقة عكسية بدون تقييم fallback مبكرًا.
-    """
     mgr = getattr(obj, preferred, None)
     if mgr is None:
         mgr = getattr(obj, fallback, None)
@@ -175,9 +252,9 @@ def _parse_hhmm_or_hhmmss(s: str) -> time:
     raise ValueError("صيغة الوقت غير صحيحة. استخدم HH:MM أو HH:MM:SS.")
 
 
-def _get_or_create_profile(user: AbstractBaseUser) -> "UserProfile":
-    # ✅ حل نهائي لخطأ Pylance (لا نستخدم UserModel كتلميح نوع)
-    profile, _created = UserProfile.objects.get_or_create(user=user)
+def _get_or_create_profile(user):
+    Profile = UserProfileModel()
+    profile, _created = Profile.objects.get_or_create(user=user)
     return profile
 
 
@@ -198,7 +275,7 @@ def get_active_school_or_redirect(request):
     return None, redirect("dashboard:index")
 
 
-def require_active_school(request) -> "School":
+def require_active_school(request):
     school, response = get_active_school_or_redirect(request)
     if response:
         raise PermissionDenied("الملف الشخصي غير مرتبط بأي مدرسة.")
@@ -228,8 +305,8 @@ def login_view(request):
 def demo_login(request):
     """
     تسجيل دخول بحساب تجريبي مع بيانات مدرسة تجريبية.
-    (مقاوم لاختلافات حقول المستخدم custom قدر الإمكان)
     """
+    School = SchoolModel()
     DEMO_ID = "demo_user"
     DEMO_SCHOOL_SLUG = "demo-school"
 
@@ -290,6 +367,11 @@ def change_password(request):
 
 @manager_required
 def index(request):
+    Announcement = AnnouncementModel()
+    Excellence = ExcellenceModel()
+    StandbyAssignment = StandbyAssignmentModel()
+    SchoolSettings = SchoolSettingsModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -321,6 +403,8 @@ def index(request):
 
 @manager_required
 def school_settings(request):
+    SchoolSettings = SchoolSettingsModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -349,6 +433,9 @@ def school_settings(request):
 
 @manager_required
 def days_list(request):
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -421,6 +508,9 @@ def day_edit(request, weekday: int):
         messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
         return redirect("dashboard:days_list")
 
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -467,6 +557,9 @@ def day_autofill(request, weekday: int):
     if weekday not in WEEKDAY_MAP:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
         return redirect("dashboard:days_list")
+
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
 
     school, response = get_active_school_or_redirect(request)
     if response:
@@ -540,6 +633,7 @@ def day_autofill(request, weekday: int):
         return redirect("dashboard:day_edit", weekday=weekday)
 
     except Exception as e:
+        logger.exception("day_autofill failed")
         messages.error(request, f"تعذّر تنفيذ التعبئة: {e}")
         return redirect("dashboard:day_edit", weekday=weekday)
 
@@ -553,6 +647,9 @@ def day_toggle(request, weekday: int):
     if weekday not in WEEKDAY_MAP:
         messages.error(request, "اليوم غير صالح.")
         return redirect("dashboard:days_list")
+
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
 
     school, response = get_active_school_or_redirect(request)
     if response:
@@ -578,6 +675,7 @@ def day_toggle(request, weekday: int):
 
 @manager_required
 def ann_list(request):
+    Announcement = AnnouncementModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -588,6 +686,7 @@ def ann_list(request):
 
 @manager_required
 def ann_create(request):
+    Announcement = AnnouncementModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -607,6 +706,7 @@ def ann_create(request):
 
 @manager_required
 def ann_edit(request, pk: int):
+    Announcement = AnnouncementModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -626,6 +726,7 @@ def ann_edit(request, pk: int):
 @manager_required
 @require_POST
 def ann_delete(request, pk: int):
+    Announcement = AnnouncementModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -637,6 +738,7 @@ def ann_delete(request, pk: int):
 
 @manager_required
 def exc_list(request):
+    Excellence = ExcellenceModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -660,6 +762,7 @@ def exc_list(request):
 
 @manager_required
 def exc_create(request):
+    Excellence = ExcellenceModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -679,6 +782,7 @@ def exc_create(request):
 
 @manager_required
 def exc_edit(request, pk: int):
+    Excellence = ExcellenceModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -698,6 +802,7 @@ def exc_edit(request, pk: int):
 @manager_required
 @require_POST
 def exc_delete(request, pk: int):
+    Excellence = ExcellenceModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -713,6 +818,7 @@ def exc_delete(request, pk: int):
 
 @manager_required
 def standby_list(request):
+    StandbyAssignment = StandbyAssignmentModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -735,6 +841,7 @@ def standby_list(request):
 
 @manager_required
 def standby_create(request):
+    StandbyAssignment = StandbyAssignmentModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -757,6 +864,7 @@ def standby_create(request):
 @manager_required
 @require_POST
 def standby_delete(request, pk: int):
+    StandbyAssignment = StandbyAssignmentModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -768,6 +876,7 @@ def standby_delete(request, pk: int):
 
 @manager_required
 def standby_import(request):
+    StandbyAssignment = StandbyAssignmentModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -836,6 +945,7 @@ def standby_import(request):
 
 @manager_required
 def screen_list(request):
+    DisplayScreen = DisplayScreenModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -852,6 +962,7 @@ def screen_list(request):
 
 @manager_required
 def screen_create(request):
+    DisplayScreen = DisplayScreenModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -878,6 +989,7 @@ def screen_create(request):
 @manager_required
 @require_POST
 def screen_delete(request, pk: int):
+    DisplayScreen = DisplayScreenModel()
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -900,6 +1012,9 @@ def day_clear(request, weekday: int):
     if weekday not in WEEKDAY_MAP:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسية.")
         return redirect("dashboard:days_list")
+
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
 
     school, response = get_active_school_or_redirect(request)
     if response:
@@ -933,6 +1048,9 @@ def day_reindex(request, weekday: int):
     if weekday not in WEEKDAY_MAP:
         messages.error(request, "اليوم خارج أيام الأسبوع الدراسية.")
         return redirect("dashboard:days_list")
+
+    SchoolSettings = SchoolSettingsModel()
+    DaySchedule = DayScheduleModel()
 
     school, response = get_active_school_or_redirect(request)
     if response:
@@ -968,6 +1086,9 @@ def day_reindex(request, weekday: int):
 
 @manager_required
 def lessons_list(request):
+    SchoolSettings = SchoolSettingsModel()
+    ClassLesson = ClassLessonModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -975,7 +1096,6 @@ def lessons_list(request):
     settings_obj = SchoolSettings.objects.filter(school=school).first()
     lessons = ClassLesson.objects.none()
     if settings_obj:
-        # ملاحظة: لو related_name مختلف عندك عدله هنا
         lessons = (
             ClassLesson.objects.filter(settings=settings_obj)
             .select_related("school_class", "subject", "teacher")
@@ -1000,6 +1120,11 @@ def lessons_list(request):
 
 @manager_required
 def lesson_create(request):
+    SchoolSettings = SchoolSettingsModel()
+    SchoolClass = SchoolClassModel()
+    Subject = SubjectModel()
+    Teacher = TeacherModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1028,6 +1153,12 @@ def lesson_create(request):
 
 @manager_required
 def lesson_edit(request, pk: int):
+    SchoolSettings = SchoolSettingsModel()
+    ClassLesson = ClassLessonModel()
+    SchoolClass = SchoolClassModel()
+    Subject = SubjectModel()
+    Teacher = TeacherModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1053,6 +1184,9 @@ def lesson_edit(request, pk: int):
 @manager_required
 @require_POST
 def lesson_delete(request, pk: int):
+    SchoolSettings = SchoolSettingsModel()
+    ClassLesson = ClassLessonModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1070,13 +1204,17 @@ def lesson_delete(request, pk: int):
 
 @manager_required
 def school_data(request):
+    SchoolSettings = SchoolSettingsModel()
+    Subject = SubjectModel()
+    Teacher = TeacherModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
 
     settings_obj = SchoolSettings.objects.filter(school=school).first()
 
-    classes = settings_obj.school_classes.all().order_by("name") if settings_obj else SchoolClass.objects.none()
+    classes = settings_obj.school_classes.all().order_by("name") if settings_obj else SchoolClassModel().objects.none()
     subjects = Subject.objects.filter(school=school).order_by("name")
     teachers = Teacher.objects.filter(school=school).order_by("name")
 
@@ -1090,6 +1228,9 @@ def school_data(request):
 @manager_required
 @require_POST
 def add_class(request):
+    SchoolSettings = SchoolSettingsModel()
+    SchoolClass = SchoolClassModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1112,6 +1253,8 @@ def add_class(request):
 @manager_required
 @require_POST
 def add_subject(request):
+    Subject = SubjectModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1129,6 +1272,8 @@ def add_subject(request):
 @manager_required
 @require_POST
 def add_teacher(request):
+    Teacher = TeacherModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1146,6 +1291,8 @@ def add_teacher(request):
 @manager_required
 @require_POST
 def delete_class(request, pk: int):
+    SchoolClass = SchoolClassModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1158,6 +1305,8 @@ def delete_class(request, pk: int):
 @manager_required
 @require_POST
 def delete_subject(request, pk: int):
+    Subject = SubjectModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1170,6 +1319,8 @@ def delete_subject(request, pk: int):
 @manager_required
 @require_POST
 def delete_teacher(request, pk: int):
+    Teacher = TeacherModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1185,6 +1336,12 @@ def delete_teacher(request, pk: int):
 
 @manager_required
 def timetable_day_view(request):
+    SchoolSettings = SchoolSettingsModel()
+    Period = PeriodModel()
+    Subject = SubjectModel()
+    Teacher = TeacherModel()
+    ClassLesson = ClassLessonModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1214,7 +1371,7 @@ def timetable_day_view(request):
                 selected_class = classes_qs.get(pk=int(class_param))
             else:
                 selected_class = classes_qs.first()
-        except (ValueError, SchoolClass.DoesNotExist):
+        except (ValueError, classes_qs.model.DoesNotExist):
             selected_class = classes_qs.first()
 
     selected_class_id = selected_class.id if selected_class else None
@@ -1232,7 +1389,7 @@ def timetable_day_view(request):
     else:
         existing_lessons_qs = ClassLesson.objects.none()
 
-    lessons_map: dict[int, ClassLesson] = {l.period_index: l for l in existing_lessons_qs}
+    lessons_map: dict[int, object] = {l.period_index: l for l in existing_lessons_qs}
 
     if request.method == "POST" and selected_class is not None:
         created_count = 0
@@ -1329,7 +1486,11 @@ def timetable_day_view(request):
     for period in periods_qs:
         lesson = lessons_map.get(period.index)
         rows.append(
-            {"period": period, "subject_id": lesson.subject_id if lesson else None, "teacher_id": lesson.teacher_id if lesson else None}
+            {
+                "period": period,
+                "subject_id": lesson.subject_id if lesson else None,
+                "teacher_id": lesson.teacher_id if lesson else None,
+            }
         )
 
     return render(
@@ -1353,6 +1514,10 @@ def timetable_day_view(request):
 
 @manager_required
 def timetable_week_view(request):
+    SchoolSettings = SchoolSettingsModel()
+    Period = PeriodModel()
+    ClassLesson = ClassLessonModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1371,14 +1536,14 @@ def timetable_week_view(request):
 
     try:
         selected_class = classes_qs.get(pk=int(class_param)) if class_param else classes_qs.first()
-    except (ValueError, SchoolClass.DoesNotExist):
+    except (ValueError, classes_qs.model.DoesNotExist):
         selected_class = classes_qs.first()
 
     all_periods_qs = Period.objects.filter(
         day__settings=settings_obj, day__weekday__in=WEEKDAY_MAP.keys()
     ).order_by("day__weekday", "index")
 
-    periods_by_weekday: dict[int, list[Period]] = {}
+    periods_by_weekday: dict[int, list] = {}
     for p in all_periods_qs:
         periods_by_weekday.setdefault(p.day.weekday, []).append(p)
 
@@ -1388,7 +1553,7 @@ def timetable_week_view(request):
         weekday__in=WEEKDAY_MAP.keys(),
     ).select_related("subject", "teacher")
 
-    lessons_by_weekday_period: dict[int, dict[int, ClassLesson]] = {}
+    lessons_by_weekday_period: dict[int, dict[int, object]] = {}
     for lesson in all_lessons_qs:
         lessons_by_weekday_period.setdefault(lesson.weekday, {})[lesson.period_index] = lesson
 
@@ -1416,6 +1581,10 @@ def timetable_week_view(request):
 
 @manager_required
 def timetable_export_csv(request):
+    SchoolSettings = SchoolSettingsModel()
+    Period = PeriodModel()
+    ClassLesson = ClassLessonModel()
+
     school, response = get_active_school_or_redirect(request)
     if response:
         return response
@@ -1432,12 +1601,12 @@ def timetable_export_csv(request):
 
     try:
         school_class = settings_obj.school_classes.get(pk=int(class_param))
-    except (ValueError, SchoolClass.DoesNotExist):
+    except (ValueError, settings_obj.school_classes.model.DoesNotExist):
         messages.error(request, "الفصل المحدد غير موجود.")
         return redirect("dashboard:timetable_day")
 
     periods_qs = Period.objects.filter(day__settings=settings_obj).select_related("day")
-    period_map: dict[tuple[int, int], Period] = {(p.day.weekday, p.index): p for p in periods_qs}
+    period_map: dict[tuple[int, int], object] = {(p.day.weekday, p.index): p for p in periods_qs}
 
     lessons = (
         ClassLesson.objects.filter(settings=settings_obj, school_class=school_class)
@@ -1473,10 +1642,15 @@ def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser, login_url="dashboard:login")(view_func)
 
 
-class AdminSchoolForm(forms.ModelForm):
-    class Meta:
-        model = School
-        fields = ["name", "slug", "is_active"]
+def _admin_school_form_class():
+    School = SchoolModel()
+
+    class AdminSchoolForm(forms.ModelForm):
+        class Meta:
+            model = School
+            fields = ["name", "slug", "is_active"]
+
+    return AdminSchoolForm
 
 
 @login_required
@@ -1484,7 +1658,7 @@ def switch_school(request, school_id):
     profile = _get_or_create_profile(request.user)
     try:
         school = profile.schools.get(pk=school_id)
-    except School.DoesNotExist:
+    except Exception:
         messages.error(request, "المدرسة غير موجودة أو ليس لديك صلاحية الوصول إليها.")
         return redirect("dashboard:index")
 
@@ -1498,6 +1672,8 @@ def switch_school(request, school_id):
 
 @superuser_required
 def system_admin_dashboard(request):
+    School = SchoolModel()
+
     school_count = School.objects.count()
     user_count = UserModel.objects.count()
 
@@ -1522,6 +1698,8 @@ def system_admin_dashboard(request):
 
 @superuser_required
 def system_schools_list(request):
+    School = SchoolModel()
+
     q = (request.GET.get("q") or "").strip()
     schools = School.objects.all().order_by("-created_at")
 
@@ -1533,37 +1711,43 @@ def system_schools_list(request):
 
 @superuser_required
 def system_school_create(request):
+    FormCls = _admin_school_form_class()
+
     if request.method == "POST":
-        form = AdminSchoolForm(request.POST, request.FILES)
+        form = FormCls(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, "تمت إضافة المدرسة بنجاح.")
             return redirect("dashboard:system_schools_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
-        form = AdminSchoolForm()
+        form = FormCls()
 
     return render(request, "admin/school_form.html", {"form": form, "title": "إضافة مدرسة"})
 
 
 @superuser_required
 def system_school_edit(request, pk: int):
+    School = SchoolModel()
+    FormCls = _admin_school_form_class()
+
     school = get_object_or_404(School, pk=pk)
     if request.method == "POST":
-        form = AdminSchoolForm(request.POST, request.FILES, instance=school)
+        form = FormCls(request.POST, request.FILES, instance=school)
         if form.is_valid():
             form.save()
             messages.success(request, "تم تحديث بيانات المدرسة.")
             return redirect("dashboard:system_schools_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
-        form = AdminSchoolForm(instance=school)
+        form = FormCls(instance=school)
 
     return render(request, "admin/school_form.html", {"form": form, "title": "تعديل مدرسة", "edit": True})
 
 
 @superuser_required
 def system_school_delete(request, pk: int):
+    School = SchoolModel()
     school = get_object_or_404(School, pk=pk)
     if request.method == "POST":
         school.delete()
@@ -1677,14 +1861,14 @@ def system_subscription_create(request):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("dashboard:system_subscriptions_list")
+        return redirect("subscriptions:system_subscriptions_list")
 
     if request.method == "POST":
         form = SchoolSubscriptionForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "تم إنشاء الاشتراك بنجاح.")
-            return redirect("dashboard:system_subscriptions_list")
+            return redirect("subscriptions:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm()
@@ -1697,7 +1881,7 @@ def system_subscription_edit(request, pk: int):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("dashboard:system_subscriptions_list")
+        return redirect("subscriptions:system_subscriptions_list")
 
     obj = get_object_or_404(SubModel, pk=pk)
 
@@ -1706,7 +1890,7 @@ def system_subscription_edit(request, pk: int):
         if form.is_valid():
             form.save()
             messages.success(request, "تم تحديث بيانات الاشتراك.")
-            return redirect("dashboard:system_subscriptions_list")
+            return redirect("subscriptions:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm(instance=obj)
@@ -1720,12 +1904,12 @@ def system_subscription_delete(request, pk: int):
     SubModel = _get_subscription_model()
     if SubModel is None:
         messages.error(request, "نظام الاشتراكات غير مثبت.")
-        return redirect("dashboard:system_subscriptions_list")
+        return redirect("subscriptions:system_subscriptions_list")
 
     obj = get_object_or_404(SubModel, pk=pk)
     obj.delete()
     messages.warning(request, "تم حذف الاشتراك.")
-    return redirect("dashboard:system_subscriptions_list")
+    return redirect("subscriptions:system_subscriptions_list")
 
 
 # ==========================
