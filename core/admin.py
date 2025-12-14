@@ -67,10 +67,14 @@ class SchoolAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "school")
-    list_filter = ("school",)
-    search_fields = ("user__username", "user__email", "school__name")
-    autocomplete_fields = ("school",)
+    list_display = ("user", "get_schools", "active_school")
+    list_filter = ("schools", "active_school")
+    search_fields = ("user__username", "user__email", "schools__name")
+    autocomplete_fields = ("schools", "active_school")
+
+    def get_schools(self, obj):
+        return ", ".join([s.name for s in obj.schools.all()])
+    get_schools.short_description = "المدارس المرتبطة"
 
 
 @admin.register(DisplayScreen)

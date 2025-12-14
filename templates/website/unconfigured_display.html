@@ -191,267 +191,362 @@
 </head>
 
 <body>
-  <!-- Header -->
-  <header class="relative">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
-      <div class="glass rounded-3xl px-5 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
-          <div>
-            <div class="text-lg sm:text-xl font-extrabold leading-tight"
-                 style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
-              لوحة العرض الذكية للمدارس
+  {# ✅ روابط آمنة (لا تسبب NoReverseMatch) #}
+  {% url 'subscriptions' as subscriptions_url %}
+  {% url 'website:subscriptions' as website_subscriptions_url %}
+  {% url 'dashboard:login' as login_url %}
+
+  {# ✅ اختر الرابط المتاح أولاً #}
+  {% if subscriptions_url %}
+    {% with subs_url=subscriptions_url %}
+      <header class="relative">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+          <div class="glass rounded-3xl px-5 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
+              <div>
+                <div class="text-lg sm:text-xl font-extrabold leading-tight"
+                     style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
+                  لوحة العرض الذكية للمدارس
+                </div>
+                <div class="text-xs sm:text-sm" style="color:var(--muted2)">
+                  التحول الرقمي المتكامل للشاشات المدرسية
+                </div>
+              </div>
             </div>
-            <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-              التحول الرقمي المتكامل للشاشات المدرسية
+
+            <div class="flex flex-wrap items-center gap-3 justify-end">
+              <a href="{{ subs_url }}"
+                 class="btnGhost rounded-2xl px-4 py-2.5 text-sm font-extrabold flex items-center gap-2"
+                 aria-label="أسعار الاشتراكات">
+                <span aria-hidden="true">💳</span>
+                <span>أسعار الاشتراكات</span>
+              </a>
+
+              {% if login_url %}
+                <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
+              {% else %}
+                <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
+              {% endif %}
+
+              <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
+                <span>طلب تجربة مجانية</span>
+                <span aria-hidden="true">→</span>
+              </a>
             </div>
           </div>
         </div>
+      </header>
 
-        <div class="flex items-center gap-3 justify-end">
-          <a href="{% url 'dashboard:login' %}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
-          <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
-            <span>طلب تجربة مجانية</span>
-            <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
-    <!-- Hero -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-      <div class="space-y-8 fadeUp">
-        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
-          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
-          <span style="color:var(--muted)">تحديث تلقائي • هوية لكل مدرسة • لوحة تحكم مركزية</span>
-        </div>
-
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-          حوّل شاشات مدرستك إلى
-          <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
-            منصة اتصال ذكية
-          </span>
-        </h1>
-
-        <p class="text-lg leading-relaxed" style="color:var(--muted)">
-          نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب:
-          <strong class="text-white">الحصص</strong>، <strong class="text-white">التنبيهات</strong>،
-          <strong class="text-white">جدول اليوم</strong>، <strong class="text-white">المتميزون</strong>
-          والإعلانات — مع تحديث تلقائي وتحكم كامل.
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-4 pt-2">
-          <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
-            🚀 ابدأ تجربتك المجانية
-          </a>
-          <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
-            <span>🎬 شاهد العرض التوضيحي</span>
-          </a>
-        </div>
-
-        <!-- مزايا بدون أرقام -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-          <div class="soft rounded-2xl p-5">
-            <div class="text-lg font-extrabold">⚡ خفيف وسريع</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">تحديثات منتظمة ومصممة لتناسب بيئة المدارس.</div>
-          </div>
-          <div class="soft rounded-2xl p-5">
-            <div class="text-lg font-extrabold">🔐 آمن ومعزول</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">روابط عرض بتوكن + عزل بيانات كل مدرسة.</div>
-          </div>
-          <div class="soft rounded-2xl p-5">
-            <div class="text-lg font-extrabold">🎨 هوية قابلة للتخصيص</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">ألوان/خلفية/شعار من لوحة الإعدادات.</div>
-          </div>
-        </div>
-
-        <!-- ✅ (خيار 4) تنبيه مهم -->
-        <div class="soft rounded-2xl p-5" style="border-color: rgba(212,175,55,.35); background: rgba(212,175,55,.06);">
-          <div class="flex items-start gap-3">
-            <div class="h-10 w-10 rounded-xl soft flex items-center justify-center" style="background: rgba(212,175,55,.10); border-color: rgba(212,175,55,.25);">
-              ⚠️
+      <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          <div class="space-y-8 fadeUp">
+            <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
+              <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
+              <span style="color:var(--muted)">تحديث تلقائي • هوية لكل مدرسة • لوحة تحكم مركزية</span>
             </div>
-            <div class="flex-1">
-              <div class="font-extrabold text-base sm:text-lg">تنبيه مهم:</div>
-              <div class="text-sm sm:text-base leading-relaxed mt-1" style="color: var(--muted)">
-                لعمل النظام بشكل صحيح، يجب توفر شاشة داخل المدرسة متصلة بالإنترنت لعرض لوحة العرض، وضمان تحديث المحتوى تلقائيًا.
+
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
+              حوّل شاشات مدرستك إلى
+              <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
+                منصة اتصال ذكية
+              </span>
+            </h1>
+
+            <p class="text-lg leading-relaxed" style="color:var(--muted)">
+              نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب:
+              <strong class="text-white">الحصص</strong>، <strong class="text-white">التنبيهات</strong>،
+              <strong class="text-white">جدول اليوم</strong>، <strong class="text-white">المتميزون</strong>
+              والإعلانات — مع تحديث تلقائي وتحكم كامل.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 pt-2">
+              <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
+                🚀 ابدأ تجربتك المجانية
+              </a>
+              <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
+                <span>🎬 شاهد العرض التوضيحي</span>
+              </a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+              <div class="soft rounded-2xl p-5">
+                <div class="text-lg font-extrabold">⚡ خفيف وسريع</div>
+                <div class="text-sm mt-2" style="color:var(--muted)">تحديثات منتظمة ومصممة لتناسب بيئة المدارس.</div>
+              </div>
+              <div class="soft rounded-2xl p-5">
+                <div class="text-lg font-extrabold">🔐 آمن ومعزول</div>
+                <div class="text-sm mt-2" style="color:var(--muted)">روابط عرض بتوكن + عزل بيانات كل مدرسة.</div>
+              </div>
+              <div class="soft rounded-2xl p-5">
+                <div class="text-lg font-extrabold">🎨 هوية قابلة للتخصيص</div>
+                <div class="text-sm mt-2" style="color:var(--muted)">ألوان/خلفية/شعار من لوحة الإعدادات.</div>
+              </div>
+            </div>
+
+            <div class="soft rounded-2xl p-5" style="border-color: rgba(212,175,55,.35); background: rgba(212,175,55,.06);">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-xl soft flex items-center justify-center" style="background: rgba(212,175,55,.10); border-color: rgba(212,175,55,.25);">
+                  ⚠️
+                </div>
+                <div class="flex-1">
+                  <div class="font-extrabold text-base sm:text-lg">تنبيه مهم:</div>
+                  <div class="text-sm sm:text-base leading-relaxed mt-1" style="color: var(--muted)">
+                    لعمل النظام بشكل صحيح، يجب توفر شاشة داخل المدرسة متصلة بالإنترنت لعرض لوحة العرض، وضمان تحديث المحتوى تلقائيًا.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="soft rounded-2xl p-5">
+              <div class="text-sm leading-relaxed" style="color:var(--muted)">
+                <strong class="text-white">توافق رؤية 2030:</strong>
+                يدعم التحول الرقمي داخل المدرسة عبر قناة تواصل مرئية لحظية تُعزز الانضباط، نشر الوعي، وتحسين تجربة الطالب والموظف والزائر.
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="soft rounded-2xl p-5">
-          <div class="text-sm leading-relaxed" style="color:var(--muted)">
-            <strong class="text-white">توافق رؤية 2030:</strong>
-            يدعم التحول الرقمي داخل المدرسة عبر قناة تواصل مرئية لحظية تُعزز الانضباط، نشر الوعي، وتحسين تجربة الطالب والموظف والزائر.
-          </div>
-        </div>
-      </div>
-
-      <!-- Demo Video -->
-      <div id="demo" class="glass rounded-3xl p-6 lg:p-8 fadeUp">
-        <div class="flex items-center justify-between gap-4 mb-6">
-          <div>
-            <div class="font-extrabold text-2xl">🎥 عرض توضيحي سريع</div>
-            <div class="text-sm mt-2" style="color:var(--muted)">اضغط تشغيل لمشاهدة الفيديو</div>
-          </div>
-          <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
-        </div>
-
-        <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
-          <iframe
-            id="ytFrame"
-            loading="lazy"
-            title="عرض توضيحي لمنصة اللوحة الذكية للمدارس"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-          </iframe>
-
-          <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
-            <div class="play-btn">▶</div>
-            <div class="text-white text-lg font-bold">تشغيل الفيديو</div>
-            <div class="text-sm" style="color:rgba(255,255,255,.75)">سيتم فتح التشغيل داخل الصفحة</div>
-          </div>
-        </div>
-
-        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
-            <div class="text-sm" style="color:var(--muted)">لوحة واحدة لإدارة كل الشاشات</div>
-          </div>
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-xl font-extrabold mb-2">⚡ تحديث لحظي</div>
-            <div class="text-sm" style="color:var(--muted)">تغييرات تظهر بسرعة على الشاشات</div>
-          </div>
-          <div class="soft rounded-2xl p-5 text-center">
-            <div class="text-xl font-extrabold mb-2">🎨 تخصيص الهوية</div>
-            <div class="text-sm" style="color:var(--muted)">ألوان وشعار وخلفيات لكل مدرسة</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="features" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-      <div class="text-center mb-12">
-        <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
-          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--sky)"></span>
-          <span style="color:var(--muted)">مميزات مبتكرة تخدم المدرسة</span>
-        </div>
-        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
-        <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
-          صُممت المنصة لتكون سريعة، جميلة، وسهلة الإدارة — مع قابلية توسع لعدد كبير من المدارس.
-        </p>
-      </div>
-
-      <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </section>
-
-    <section id="contact" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-      <div class="text-center mb-10">
-        <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للانطلاق؟</h2>
-        <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
-          عبّئ النموذج وسنفتح محادثة واتساب مُجهّزة بالبيانات لطلب الاشتراك/التجربة.
-        </p>
-      </div>
-
-      <div class="max-w-2xl mx-auto">
-        <form id="contactForm" class="space-y-6" autocomplete="on">
-          {% csrf_token %}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
-              <input name="name" type="text" class="inputX" placeholder="منصور" maxlength="60" required>
+          <div id="demo" class="glass rounded-3xl p-6 lg:p-8 fadeUp">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <div class="font-extrabold text-2xl">🎥 عرض توضيحي سريع</div>
+                <div class="text-sm mt-2" style="color:var(--muted)">اضغط تشغيل لمشاهدة الفيديو</div>
+              </div>
+              <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
             </div>
-            <div>
-              <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
-              <input name="phone" type="tel" class="inputX" placeholder="05XXXXXXXX" maxlength="20" required inputmode="tel">
+
+            <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
+              <iframe
+                id="ytFrame"
+                loading="lazy"
+                title="عرض توضيحي لمنصة اللوحة الذكية للمدارس"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen>
+              </iframe>
+
+              <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
+                <div class="play-btn">▶</div>
+                <div class="text-white text-lg font-bold">تشغيل الفيديو</div>
+                <div class="text-sm" style="color:rgba(255,255,255,.75)">سيتم فتح التشغيل داخل الصفحة</div>
+              </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="soft rounded-2xl p-5 text-center">
+                <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
+                <div class="text-sm" style="color:var(--muted)">لوحة واحدة لإدارة كل الشاشات</div>
+              </div>
+              <div class="soft rounded-2xl p-5 text-center">
+                <div class="text-xl font-extrabold mb-2">⚡ تحديث لحظي</div>
+                <div class="text-sm" style="color:var(--muted)">تغييرات تظهر بسرعة على الشاشات</div>
+              </div>
+              <div class="soft rounded-2xl p-5 text-center">
+                <div class="text-xl font-extrabold mb-2">🎨 تخصيص الهوية</div>
+                <div class="text-sm" style="color:var(--muted)">ألوان وشعار وخلفيات لكل مدرسة</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
+          <div class="text-center mb-12">
+            <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
+              <span class="h-2 w-2 rounded-full inline-block" style="background:var(--sky)"></span>
+              <span style="color:var(--muted)">مميزات مبتكرة تخدم المدرسة</span>
+            </div>
+            <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
+            <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
+              صُممت المنصة لتكون سريعة، جميلة، وسهلة الإدارة — مع قابلية توسع لعدد كبير من المدارس.
+            </p>
+          </div>
+
+          <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <section id="contact" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
+          <div class="text-center mb-10">
+            <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للانطلاق؟</h2>
+            <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
+              عبّئ النموذج وسنفتح محادثة واتساب مُجهّزة بالبيانات لطلب الاشتراك/التجربة.
+            </p>
+
+            <div class="mt-5">
+              <a href="{{ subs_url }}"
+                 class="btnGhost rounded-2xl px-6 py-3 text-sm font-extrabold inline-flex items-center gap-2">
+                <span aria-hidden="true">💳</span>
+                <span>عرض أسعار الاشتراكات</span>
+              </a>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="max-w-2xl mx-auto">
+            <form id="contactForm" class="space-y-6" autocomplete="on">
+              {% csrf_token %}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
+                  <input name="name" type="text" class="inputX" placeholder="منصور" maxlength="60" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
+                  <input name="phone" type="tel" class="inputX" placeholder="05XXXXXXXX" maxlength="20" required inputmode="tel">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
+                  <input name="school" type="text" class="inputX" placeholder="مدرسة ..." maxlength="80" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-bold mb-3">المدينة</label>
+                  <input name="city" type="text" class="inputX" placeholder="الرياض، جدة، الدمام..." maxlength="40">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold mb-3">متطلباتك واحتياجاتك *</label>
+                <textarea name="requirements" class="inputX" rows="5" placeholder="عدد الشاشات، نوع المحتوى، أي متطلبات خاصة..." maxlength="600" required></textarea>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
+                  إرسال الطلب عبر واتساب
+                </button>
+                <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
+                   class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
+                  محادثة واتساب مباشرة
+                </a>
+              </div>
+
+              <p class="text-center text-sm mt-6" style="color:var(--muted2)">
+                نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية.
+              </p>
+            </form>
+          </div>
+        </section>
+      </main>
+
+      <footer class="border-t border-white/10 mt-20 py-10">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
-              <input name="school" type="text" class="inputX" placeholder="مدرسة ..." maxlength="80" required>
+              <div class="text-xl font-extrabold mb-4"
+                   style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
+                لوحة العرض الذكية
+              </div>
+              <p class="text-sm" style="color:var(--muted2)">
+                منصة التحول الرقمي للشاشات المدرسية
+              </p>
             </div>
+
             <div>
-              <label class="block text-sm font-bold mb-3">المدينة</label>
-              <input name="city" type="text" class="inputX" placeholder="الرياض، جدة، الدمام..." maxlength="40">
+              <div class="font-bold mb-4">روابط سريعة</div>
+              <ul class="space-y-2">
+                <li><a href="#demo" class="text-sm hover:text-white transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
+                <li><a href="#features" class="text-sm hover:text-white transition" style="color:var(--muted2)">المميزات</a></li>
+                <li><a href="#contact" class="text-sm hover:text-white transition" style="color:var(--muted2)">طلب تجربة</a></li>
+                <li>
+                  <a href="{{ subs_url }}" class="text-sm hover:text-white transition" style="color:var(--muted2)">
+                    أسعار الاشتراكات
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <div class="font-bold mb-4">الدعم</div>
+              <ul class="space-y-2">
+                <li><a href="tel:+966546868219" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
+                {% if login_url %}
+                  <li><a href="{{ login_url }}" class="text-sm hover:text-white transition" style="color:var(--muted2)">تسجيل الدخول</a></li>
+                {% else %}
+                  <li><span class="text-sm opacity-60" style="color:var(--muted2)">تسجيل الدخول</span></li>
+                {% endif %}
+              </ul>
+            </div>
+
+            <div>
+              <div class="font-bold mb-4">تابعنا</div>
+              <div class="flex gap-4">
+                <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
+                   class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
+                <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
+                <a href="{{ subs_url }}"
+                   class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition"
+                   aria-label="أسعار الاشتراكات">💳</a>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-bold mb-3">متطلباتك واحتياجاتك *</label>
-            <textarea name="requirements" class="inputX" rows="5" placeholder="عدد الشاشات، نوع المحتوى، أي متطلبات خاصة..." maxlength="600" required></textarea>
+          <div class="border-t border-white/10 mt-8 pt-8 text-center">
+            <p class="text-sm" style="color:var(--muted2)">
+              © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
+            </p>
+          </div>
+        </div>
+      </footer>
+
+    {% endwith %}
+  {% else %}
+    {# ✅ إذا لم يوجد subscriptions، جرّب website:subscriptions #}
+    {% if website_subscriptions_url %}
+      <script>
+        // توجيه سريع: لدينا رابط بديل
+        window.location.href = "{{ website_subscriptions_url }}";
+      </script>
+    {% endif %}
+
+    {# ✅ fallback: اعرض الصفحة بدون كسر (الزر معطل) #}
+    <header class="relative">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        <div class="glass rounded-3xl px-5 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
+            <div>
+              <div class="text-lg sm:text-xl font-extrabold leading-tight"
+                   style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
+                لوحة العرض الذكية للمدارس
+              </div>
+              <div class="text-xs sm:text-sm" style="color:var(--muted2)">
+                التحول الرقمي المتكامل للشاشات المدرسية
+              </div>
+            </div>
           </div>
 
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
-              إرسال الطلب عبر واتساب
-            </button>
-            <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
-               class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
-              محادثة واتساب مباشرة
+          <div class="flex flex-wrap items-center gap-3 justify-end">
+            <a href="#"
+               class="btnGhost rounded-2xl px-4 py-2.5 text-sm font-extrabold flex items-center gap-2 opacity-60 cursor-not-allowed"
+               aria-disabled="true"
+               tabindex="-1">
+              <span aria-hidden="true">💳</span>
+              <span>أسعار الاشتراكات</span>
+            </a>
+
+            {% if login_url %}
+              <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
+            {% else %}
+              <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
+            {% endif %}
+
+            <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
+              <span>طلب تجربة مجانية</span>
+              <span aria-hidden="true">→</span>
             </a>
           </div>
-
-          <p class="text-center text-sm mt-6" style="color:var(--muted2)">
-            نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية.
-          </p>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <footer class="border-t border-white/10 mt-20 py-10">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-          <div class="text-xl font-extrabold mb-4"
-               style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
-            لوحة العرض الذكية
-          </div>
-          <p class="text-sm" style="color:var(--muted2)">
-            منصة التحول الرقمي للشاشات المدرسية
-          </p>
-        </div>
-
-        <div>
-          <div class="font-bold mb-4">روابط سريعة</div>
-          <ul class="space-y-2">
-            <li><a href="#demo" class="text-sm hover:text-white transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
-            <li><a href="#features" class="text-sm hover:text-white transition" style="color:var(--muted2)">المميزات</a></li>
-            <li><a href="#contact" class="text-sm hover:text-white transition" style="color:var(--muted2)">طلب تجربة</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <div class="font-bold mb-4">الدعم</div>
-          <ul class="space-y-2">
-            <li><a href="tel:+966546868219" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
-            <li><a href="{% url 'dashboard:login' %}" class="text-sm hover:text-white transition" style="color:var(--muted2)">تسجيل الدخول</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <div class="font-bold mb-4">تابعنا</div>
-          <div class="flex gap-4">
-            <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
-               class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
-            <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
-            <a href="#contact" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">📝</a>
-          </div>
         </div>
       </div>
+    </header>
 
-      <div class="border-t border-white/10 mt-8 pt-8 text-center">
-        <p class="text-sm" style="color:var(--muted2)">
-          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
+    <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
+      <div class="glass rounded-3xl p-8 lg:p-12">
+        <div class="text-2xl font-extrabold mb-3">تنبيه</div>
+        <p class="text-base" style="color:var(--muted)">
+          رابط صفحة “أسعار الاشتراكات” غير مُعرّف حاليًا داخل URLs. تم تعطيل الزر مؤقتًا لتجنب ظهور أخطاء في الصفحة.
         </p>
       </div>
-    </div>
-  </footer>
+    </main>
+  {% endif %}
 
   <!-- Toast -->
   <div id="toast" class="toast" aria-live="polite" aria-atomic="true">
@@ -467,7 +562,8 @@
 
   <script>
     // ---------- Year ----------
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    const yearEl = document.getElementById('currentYear');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
 
     // ---------- Smooth scroll ----------
     document.querySelectorAll('a[href^="#"]').forEach(a => {

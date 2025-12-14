@@ -38,11 +38,17 @@ class UserProfile(models.Model):
         related_name="profile",
         verbose_name="المستخدم",
     )
-    school = models.ForeignKey(
+    schools = models.ManyToManyField(
         School,
-        on_delete=models.CASCADE,
         related_name="users",
-        verbose_name="المدرسة",
+        verbose_name="المدارس المتاحة",
+        blank=True,
+    )
+    active_school = models.ForeignKey(
+        School,
+        on_delete=models.SET_NULL,
+        related_name="active_users",
+        verbose_name="المدرسة النشطة",
         null=True,
         blank=True,
     )
@@ -52,10 +58,18 @@ class UserProfile(models.Model):
         verbose_name_plural = "ملفات المستخدمين"
 
     def __str__(self):
-        return f"{self.user.username} - {self.school.name if self.school else 'No School'}"
+        return f"{self.user.username} - {self.active_school.name if self.active_school else 'No Active School'}"
 
 
 class DisplayScreen(models.Model):
+    short_code = models.CharField(
+        max_length=8,
+        unique=True,
+        editable=False,
+        verbose_name="رابط مختصر",
+        null=True,
+        blank=True,
+    )
     school = models.ForeignKey(
         School,
         on_delete=models.CASCADE,
@@ -92,6 +106,14 @@ class DisplayScreen(models.Model):
     def save(self, *args, **kwargs):
         if not self.token:
             self.token = secrets.token_hex(32)
+        if not self.short_code:
+            # Generate a unique short code (alphanumeric, 6 chars)
+            import string, random
+            for _ in range(10):
+                code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+                if not DisplayScreen.objects.filter(short_code=code).exists():
+                    self.short_code = code
+                    break
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -123,6 +145,11 @@ class SubscriptionPlan(models.Model):
         null=True,
         blank=True,
         help_text="اتركه فارغًا لعدد غير محدود.",
+    )
+    max_schools = models.PositiveIntegerField(
+        "الحد الأقصى للمدارس",
+        default=1,
+        help_text="العدد المسموح به من المدارس في هذه الخطة.",
     )
     is_active = models.BooleanField(
         "متاحة للاشتراك",

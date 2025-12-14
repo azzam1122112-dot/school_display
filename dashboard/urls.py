@@ -9,6 +9,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("demo-login/", views.demo_login, name="demo_login"),
     path("logout/", views.logout_view, name="logout"),
+    path("switch-school/<int:school_id>/", views.switch_school, name="switch_school"),
     path("password/", views.change_password, name="change_password"),
     path("", views.index, name="index"),
 
@@ -64,7 +65,7 @@ urlpatterns = [
     path("add_subject", views.add_subject, name="add_subject"),
     path("delete_subject/<int:pk>", views.delete_subject, name="delete_subject"),
     path("add_teacher", views.add_teacher, name="add_teacher"),
-    path("delete_teacher/<int:pk>", views.delete_teacher, name="delete_teacher"),
+
 
     # API لالتقاط لقطة من بيانات العرض
     path("api/display/snapshot/", display_snapshot, name="display_snapshot"),

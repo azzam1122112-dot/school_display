@@ -535,11 +535,12 @@ class AdminUserForm(forms.ModelForm):
         widget=forms.PasswordInput,
         required=False,
     )
-    school = forms.ModelChoiceField(
+    schools = forms.ModelMultipleChoiceField(
         queryset=School.objects.all().order_by("name"),
         required=False,
-        label="المدرسة",
-        help_text="يمكن تركها فارغة لمستخدم عام (بدون مدرسة محددة).",
+        label="المدارس",
+        help_text="يمكن ربط المستخدم بعدة مدارس.",
+        widget=forms.SelectMultiple(attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}),
     )
 
     class Meta:
@@ -558,7 +559,7 @@ class AdminUserForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # تعبئة المدرسة الحالية من UserProfile إن وجدت
+        # تعبئة المدارس الحالية من UserProfile إن وجدت
         if self.instance.pk:
             try:
                 profile = self.instance.userprofile
@@ -567,8 +568,17 @@ class AdminUserForm(forms.ModelForm):
             except AttributeError:
                 profile = getattr(self.instance, "profile", None)
 
-            if profile and profile.school_id:
-                self.fields["school"].initial = profile.school
+            if profile:
+                self.fields["schools"].initial = profile.schools.all()
+    def save(self, commit=True):
+        user = super().save(commit)
+        # تحديث المدارس المرتبطة بالبروفايل
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        schools = self.cleaned_data.get("schools")
+        if schools is not None:
+            profile.schools.set(schools)
+        profile.save()
+        return user
 
         # تحسين التنسيق
         for field in self.fields.values():
@@ -673,11 +683,12 @@ class SystemUserCreateForm(UserCreationForm):
     إنشاء مستخدم جديد + ربطه بالمدرسة.
     يعتمد UserCreationForm حتى نستفيد من تحققات كلمة المرور.
     """
-    school = forms.ModelChoiceField(
+    schools = forms.ModelMultipleChoiceField(
         queryset=School.objects.all(),
         required=True,
-        label="المدرسة",
-        help_text="المدرسة التي يرتبط بها هذا المستخدم."
+        label="المدارس",
+        help_text="المدارس التي يرتبط بها هذا المستخدم.",
+        widget=forms.SelectMultiple(attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}),
     )
 
     class Meta(UserCreationForm.Meta):
@@ -705,12 +716,14 @@ class SystemUserCreateForm(UserCreationForm):
         user = super().save(commit=False)
         if commit:
             user.save()
-            school = self.cleaned_data.get("school")
-            if school is not None:
-                UserProfile.objects.update_or_create(
-                    user=user,
-                    defaults={"school": school},
-                )
+            schools = self.cleaned_data.get("schools")
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            if schools is not None:
+                profile.schools.set(schools)
+                # تعيين أول مدرسة كمدرسة نشطة افتراضيًا إذا لم تكن موجودة
+                if not profile.active_school and schools:
+                    profile.active_school = schools[0]
+            profile.save()
         return user
 
 
@@ -719,11 +732,12 @@ class SystemUserUpdateForm(forms.ModelForm):
     تعديل بيانات المستخدم + إمكانية تغيير كلمة المرور اختيارياً.
     إذا تُركت حقول كلمة المرور فارغة لن تتغير كلمة المرور.
     """
-    school = forms.ModelChoiceField(
+    schools = forms.ModelMultipleChoiceField(
         queryset=School.objects.all(),
-        required=True,
-        label="المدرسة",
-        help_text="المدرسة المرتبط بها المستخدم."
+        required=False,
+        label="المدارس",
+        help_text="المدارس المرتبط بها المستخدم.",
+        widget=forms.SelectMultiple(attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}),
     )
 
     new_password1 = forms.CharField(
@@ -761,13 +775,27 @@ class SystemUserUpdateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # تعبئة المدرسة الحالية من البروفايل إن وجدت
+        # تعبئة المدارس الحالية من البروفايل إن وجدت
         if self.instance.pk:
             try:
                 profile = self.instance.profile
-                self.fields["school"].initial = profile.school
+                self.fields["schools"].initial = profile.schools.all()
             except UserProfile.DoesNotExist:
                 pass
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # تغيير كلمة المرور إذا تم إدخالها
+        new_password = self.cleaned_data.get("new_password1")
+        if new_password:
+            user.set_password(new_password)
+        if commit:
+            user.save()
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            schools = self.cleaned_data.get("schools")
+            if schools is not None:
+                profile.schools.set(schools)
+            profile.save()
+        return user
 
     def clean(self):
         cleaned = super().clean()
@@ -784,20 +812,5 @@ class SystemUserUpdateForm(forms.ModelForm):
                 raise forms.ValidationError("يجب أن تكون كلمة المرور ٨ أحرف على الأقل.")
         return cleaned
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-
-        # تغيير كلمة المرور إذا تم إدخالها
-        new_password = self.cleaned_data.get("new_password1")
-        if new_password:
-            user.set_password(new_password)
-
-        if commit:
-            user.save()
-            school = self.cleaned_data.get("school")
-            if school is not None:
-                UserProfile.objects.update_or_create(
-                    user=user,
-                    defaults={"school": school},
-                )
+    # تم حذف الدالة الزائدة التي تكتب فوق set للمدارس
         return user

@@ -1,0 +1,121 @@
+{% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
+<!doctype html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07231b">
+  <meta name="color-scheme" content="dark">
+
+  <title>{% block title %}لوحة العرض الذكية{% endblock %}</title>
+
+  <!-- Favicon (بدون static tag لتجنب manifest errors) -->
+  <link rel="icon" href="{{ STATIC_PREFIX }}favicon.ico">
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --bg1:#04150f;
+      --bg2:#07231b;
+
+      --card:rgba(255,255,255,.06);
+      --stroke:rgba(255,255,255,.14);
+      --muted:rgba(255,255,255,.78);
+      --muted2:rgba(255,255,255,.58);
+
+      --green:#1f9d55;
+      --green2:#22c55e;
+      --gold:#d4af37;
+      --sky:#38bdf8;
+
+      --radius: 22px;
+    }
+
+    html,body{height:100%}
+    body{
+      font-family:'Cairo',system-ui,-apple-system,Segoe UI,Arial,sans-serif;
+      color:#fff;
+      background:
+        radial-gradient(900px 520px at 18% 12%, rgba(31,157,85,.26), transparent 62%),
+        radial-gradient(900px 520px at 85% 18%, rgba(56,189,248,.16), transparent 62%),
+        radial-gradient(800px 420px at 55% 102%, rgba(212,175,55,.12), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+      min-height:100vh;
+    }
+
+    .glass{
+      background:linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.04));
+      border:1px solid var(--stroke);
+      box-shadow:0 24px 90px rgba(0,0,0,.38);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+    }
+    @supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))){
+      .glass{ background: rgba(9, 30, 24, .78); }
+    }
+
+    .soft{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+      border-radius: 20px;
+    }
+    .soft:hover{
+      background: rgba(255,255,255,.085);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+    }
+
+    .btnBrand{
+      background: linear-gradient(90deg, rgba(31,157,85,1), rgba(34,197,94,1));
+      box-shadow:0 16px 44px rgba(31,157,85,.22);
+      transition: transform .25s ease, filter .25s ease, box-shadow .25s ease;
+      border-radius: 18px;
+    }
+    .btnBrand:hover{
+      filter:brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow:0 20px 50px rgba(31,157,85,.30);
+    }
+
+    .btnGhost{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      transition: transform .25s ease, background .25s ease;
+      border-radius: 18px;
+    }
+    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-2px); }
+
+    .tag{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .soft, .btnBrand, .btnGhost{ transition: none !important; }
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="h-full">
+  {# ✅ دعم البلوكين لتفادي الصفحات الفارغة #}
+  {% block content %}
+    {% block body %}{% endblock %}
+  {% endblock %}
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

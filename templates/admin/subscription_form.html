@@ -7,66 +7,677 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6">
 
-  <div>
-    <h1 class="text-2xl md:text-3xl font-bold text-slate-900">{{ title }}</h1>
-    <p class="text-slate-500 mt-1 text-sm md:text-base">
-      اختر المدرسة والخطة المناسبة وحدّد تواريخ بداية ونهاية الاشتراك.
-    </p>
+  <!-- Header -->
+  <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <div class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl">
+          💳
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
+          <p class="text-slate-600 mt-1 text-sm md:text-base leading-relaxed">
+            اختر المدرسة والخطة وحدّد فترة الاشتراك. يمكنك إيقاف الاشتراك مؤقتًا بإلغاء تفعيل خيار <span class="font-bold">نشط</span>.
+          </p>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold bg-slate-100 text-slate-700">
+              ✅ حفظ آمن
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-100">
+              🔎 بحث داخل المدارس
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-100">
+              📅 معاينة الفترة تلقائيًا
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <a href="{% url 'dashboard:system_subscriptions_list' %}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
+                bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+        <span class="text-base">↩</span>
+        <span>العودة للقائمة</span>
+      </a>
+    </div>
   </div>
 
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-      <div class="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-        💳
-      </div>
-      <div>
-        <p class="text-sm font-semibold text-slate-900">بيانات الاشتراك</p>
-        <p class="text-xs text-slate-500">يمكن إيقاف الاشتراك مؤقتًا بتعطيل خيار "نشط".</p>
+  <!-- Tips -->
+  <div class="rounded-3xl border border-slate-200 bg-white p-5">
+    <div class="flex items-start gap-3">
+      <div class="h-10 w-10 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center">💡</div>
+      <div class="space-y-1">
+        <div class="text-sm font-extrabold text-slate-900">معلومة مهمة</div>
+        <div class="text-sm text-slate-600 leading-relaxed">
+          يمكنك البحث عن المدرسة بالاسم بدل التمرير الطويل. وستظهر لك معاينة واضحة لفترة الاشتراك قبل الحفظ.
+        </div>
       </div>
     </div>
+  </div>
 
-    <form method="post" class="p-5 space-y-4">
+  <!-- Form Card -->
+  <div class="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">🧾</div>
+        <div>
+          <p class="text-sm font-extrabold text-slate-900">بيانات الاشتراك</p>
+          <p class="text-xs text-slate-500">حدّد المدرسة والخطة والفترة وتفعيل/إيقاف الاشتراك.</p>
+        </div>
+      </div>
+
+      <span class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold bg-slate-100 text-slate-700">
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        جاهز للحفظ
+      </span>
+    </div>
+
+    <form method="post" class="p-6 space-y-6" id="subForm" novalidate>
       {% csrf_token %}
 
       {% if form.non_field_errors %}
-      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      <div class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+        <div class="font-extrabold mb-1">تعذّر الحفظ</div>
         {% for error in form.non_field_errors %}
-          <p>{{ error }}</p>
+          <p class="leading-relaxed">{{ error }}</p>
         {% endfor %}
       </div>
       {% endif %}
 
-      {% for field in form %}
-      <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-700">
-          {{ field.label }}
-        </label>
-        <div class="space-y-1">
-          {{ field }}
-          {% if field.help_text %}
-          <p class="text-[11px] text-slate-400">{{ field.help_text }}</p>
-          {% endif %}
-          {% if field.errors %}
-          <p class="text-xs text-rose-600 mt-1">
-            {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
-          </p>
-          {% endif %}
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left: main -->
+        <div class="lg:col-span-8 space-y-6">
+
+          <!-- School / Plan -->
+          <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5">
+            <div class="flex items-start gap-3 mb-4">
+              <div class="h-10 w-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">🏫</div>
+              <div>
+                <div class="text-sm font-extrabold text-slate-900">المدرسة والخطة</div>
+                <div class="text-xs text-slate-500">ابحث عن المدرسة ثم اختر الخطة.</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              {% for field in form %}
+
+                {# --- مدرسة: combobox مع بحث --- #}
+                {% if field.name == "school" %}
+                <div class="md:col-span-2 space-y-2">
+                  <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
+
+                  <div class="relative" id="schoolCombo">
+                    <!-- input -->
+                    <div class="relative">
+                      <input
+                        id="schoolSearchInput"
+                        type="text"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900
+                               outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                        placeholder="ابحث عن مدرسة..."
+                        autocomplete="off"
+                        role="combobox"
+                        aria-expanded="false"
+                        aria-controls="schoolDropdown"
+                        aria-autocomplete="list"
+                      />
+
+                      <div class="absolute inset-y-0 left-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          id="schoolClearBtn"
+                          class="hidden rounded-xl px-2 py-1 text-xs font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          aria-label="مسح الاختيار"
+                        >مسح</button>
+
+                        <span class="text-slate-400 text-sm">⌄</span>
+                      </div>
+                    </div>
+
+                    <!-- dropdown -->
+                    <div
+                      id="schoolDropdown"
+                      class="hidden absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+                    >
+                      <div class="p-2 border-b border-slate-100 bg-slate-50">
+                        <div class="text-[11px] font-extrabold text-slate-600">
+                          اكتب للبحث ثم اختر (Enter) — Esc للإغلاق
+                        </div>
+                      </div>
+
+                      <ul id="schoolList" class="max-h-72 overflow-auto py-1" role="listbox" aria-label="قائمة المدارس">
+                        <!-- تُبنى تلقائيًا من select -->
+                      </ul>
+
+                      <div id="schoolEmpty" class="hidden px-4 py-3 text-sm text-slate-500">
+                        لا توجد نتائج مطابقة.
+                      </div>
+                    </div>
+
+                    {# select الأصلي (نخفيه بصريًا ونبقيه هو المصدر الحقيقي للقيمة) #}
+                    <div class="sr-only">
+                      {{ field }}
+                    </div>
+
+                    {% if field.help_text %}
+                      <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+                    {% else %}
+                      <p class="text-[11px] text-slate-500">اكتب جزءًا من اسم المدرسة للعثور عليها بسرعة.</p>
+                    {% endif %}
+
+                    {% if field.errors %}
+                      <p class="text-xs text-rose-600">
+                        {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                      </p>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endif %}
+
+                {# --- الخطة --- #}
+                {% if field.name == "plan" %}
+                <div class="space-y-2">
+                  <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+                  {% endif %}
+                  {% if field.errors %}
+                    <p class="text-xs text-rose-600">
+                      {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                    </p>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Dates -->
+          <div class="rounded-3xl border border-slate-200 bg-white p-5">
+            <div class="flex items-start gap-3 mb-4">
+              <div class="h-10 w-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">📅</div>
+              <div>
+                <div class="text-sm font-extrabold text-slate-900">فترة الاشتراك</div>
+                <div class="text-xs text-slate-500">حدد بداية ونهاية الاشتراك.</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {% for field in form %}
+                {% if field.name == "start_date" or field.name == "end_date" %}
+                  <div class="space-y-2">
+                    <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                      <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                      <p class="text-xs text-rose-600">
+                        {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                      </p>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <div class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="text-xs font-extrabold text-slate-700">معاينة الفترة</div>
+                  <div class="font-mono text-sm text-slate-900 break-all" id="rangePreview">—</div>
+                  <div class="text-[11px] text-slate-500" id="rangeHint">اختر تاريخ البداية والنهاية لعرض المعاينة.</div>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold bg-white border border-slate-200 text-slate-700">
+                  ⏳ الأيام: <span id="daysCount">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Other fields -->
+          <div class="rounded-3xl border border-slate-200 bg-white p-5">
+            <div class="flex items-start gap-3 mb-4">
+              <div class="h-10 w-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">⚙️</div>
+              <div>
+                <div class="text-sm font-extrabold text-slate-900">إعدادات إضافية</div>
+                <div class="text-xs text-slate-500">حقول أخرى مرتبطة بالاشتراك (إن وُجدت).</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {% for field in form %}
+                {% if field.name != "school" and field.name != "plan" and field.name != "start_date" and field.name != "end_date" and field.name != "is_active" %}
+                  <div class="space-y-2">
+                    <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                      <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                      <p class="text-xs text-rose-600">
+                        {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                      </p>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right: status -->
+        <div class="lg:col-span-4 space-y-6">
+
+          <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5">
+            <div class="flex items-start gap-3">
+              <div class="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">✅</div>
+              <div>
+                <div class="text-sm font-extrabold text-slate-900">حالة الاشتراك</div>
+                <div class="text-xs text-slate-500 mt-1">فعّل/أوقف الاشتراك حسب الحاجة.</div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              {% for field in form %}
+                {% if field.name == "is_active" %}
+                  <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition">
+                    {{ field }}
+                    <div class="min-w-0">
+                      <div class="text-sm font-extrabold text-slate-900">{{ field.label }}</div>
+                      <div class="text-[11px] text-slate-500">عند الإيقاف لن تُعرض شاشة المدرسة (حسب منطق النظام).</div>
+                    </div>
+                  </label>
+
+                  {% if field.errors %}
+                    <p class="text-xs text-rose-600 mt-2">
+                      {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                    </p>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+              <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="text-xs font-extrabold text-slate-700">ملاحظة تشغيلية</div>
+                <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+                  لتشغيل لوحة العرض داخل المدرسة يجب وجود <span class="font-extrabold">شاشة متصلة بالإنترنت</span> لعرض المحتوى وتحديثه تلقائيًا.
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-      {% endfor %}
 
-      <div class="flex items-center justify-end gap-3 pt-2">
+      <!-- Actions -->
+      <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
         <a href="{% url 'dashboard:system_subscriptions_list' %}"
-           class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">
+           class="px-5 py-2.5 rounded-2xl text-sm font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200">
           إلغاء
         </a>
         <button type="submit"
-                class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg">
+                class="px-6 py-2.5 rounded-2xl text-sm font-extrabold text-white
+                       bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700
+                       shadow-md hover:shadow-lg">
           حفظ
         </button>
       </div>
+
+      <!-- Local widget styling -->
+      <style>
+        #subForm input[type="text"],
+        #subForm input[type="email"],
+        #subForm input[type="url"],
+        #subForm input[type="number"],
+        #subForm input[type="tel"],
+        #subForm input[type="password"],
+        #subForm input[type="date"],
+        #subForm select,
+        #subForm textarea {
+          width: 100%;
+          border-radius: 16px;
+          border: 1px solid rgb(226 232 240);
+          background: rgb(255 255 255);
+          padding: 12px 12px;
+          font-size: 14px;
+          line-height: 1.25rem;
+          color: rgb(15 23 42);
+          outline: none;
+          transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+        }
+        #subForm textarea { min-height: 120px; resize: vertical; }
+
+        #subForm input:focus,
+        #subForm select:focus,
+        #subForm textarea:focus {
+          border-color: rgb(16 185 129);
+          box-shadow: 0 0 0 4px rgba(16, 185, 129, .16);
+          background: rgb(248 250 252);
+        }
+
+        #subForm input[type="checkbox"]{
+          width: 18px;
+          height: 18px;
+          border-radius: 6px;
+          border: 1px solid rgb(203 213 225);
+        }
+
+        /* dropdown list scroll nicer */
+        #schoolList::-webkit-scrollbar { width: 10px; }
+        #schoolList::-webkit-scrollbar-thumb { background: rgb(226 232 240); border-radius: 999px; }
+      </style>
+
+      <!-- Date preview JS -->
+      <script>
+        (function () {
+          "use strict";
+
+          const startEl = document.getElementById("id_start_date");
+          const endEl = document.getElementById("id_end_date");
+          const previewEl = document.getElementById("rangePreview");
+          const hintEl = document.getElementById("rangeHint");
+          const daysEl = document.getElementById("daysCount");
+
+          function parseDate(v) {
+            if (!v) return null;
+            const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return null;
+            const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+            const dt = new Date(Date.UTC(y, mo, d));
+            if (Number.isNaN(dt.getTime())) return null;
+            return dt;
+          }
+
+          function fmt(dt) {
+            try {
+              return new Intl.DateTimeFormat("ar-SA", { year: "numeric", month: "long", day: "numeric" }).format(dt);
+            } catch (e) {
+              return dt.toISOString().slice(0, 10);
+            }
+          }
+
+          function update() {
+            if (!previewEl || !hintEl || !daysEl) return;
+            const s = parseDate(startEl ? startEl.value : "");
+            const e = parseDate(endEl ? endEl.value : "");
+
+            if (!s || !e) {
+              previewEl.textContent = "—";
+              hintEl.textContent = "اختر تاريخ البداية والنهاية لعرض المعاينة.";
+              hintEl.classList.remove("text-rose-600");
+              hintEl.classList.add("text-slate-500");
+              daysEl.textContent = "—";
+              return;
+            }
+
+            const diffMs = e.getTime() - s.getTime();
+            previewEl.textContent = fmt(s) + "  →  " + fmt(e);
+
+            if (diffMs < 0) {
+              hintEl.textContent = "⚠️ تاريخ النهاية يجب أن يكون بعد تاريخ البداية.";
+              hintEl.classList.add("text-rose-600");
+              hintEl.classList.remove("text-slate-500");
+              daysEl.textContent = "—";
+              return;
+            }
+
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+            hintEl.textContent = "✅ فترة الاشتراك تبدو صحيحة.";
+            hintEl.classList.remove("text-rose-600");
+            hintEl.classList.add("text-slate-500");
+            daysEl.textContent = String(days);
+          }
+
+          if (startEl) startEl.addEventListener("change", update);
+          if (endEl) endEl.addEventListener("change", update);
+          update();
+        })();
+      </script>
+
+      <!-- School search combobox JS -->
+      <script>
+        (function () {
+          "use strict";
+
+          const combo = document.getElementById("schoolCombo");
+          if (!combo) return;
+
+          // Django select is rendered inside sr-only block
+          const selectEl = document.getElementById("id_school");
+          const inputEl = document.getElementById("schoolSearchInput");
+          const dropdownEl = document.getElementById("schoolDropdown");
+          const listEl = document.getElementById("schoolList");
+          const emptyEl = document.getElementById("schoolEmpty");
+          const clearBtn = document.getElementById("schoolClearBtn");
+
+          if (!selectEl || !inputEl || !dropdownEl || !listEl || !emptyEl || !clearBtn) return;
+
+          // Build items from select options
+          function getOptions() {
+            return Array.from(selectEl.options || []).map(o => ({
+              value: o.value,
+              label: (o.textContent || "").trim(),
+              disabled: !!o.disabled
+            }));
+          }
+
+          let options = getOptions();
+          let filtered = [];
+          let activeIndex = -1;
+
+          function isOpen() {
+            return !dropdownEl.classList.contains("hidden");
+          }
+
+          function open() {
+            dropdownEl.classList.remove("hidden");
+            inputEl.setAttribute("aria-expanded", "true");
+          }
+
+          function close() {
+            dropdownEl.classList.add("hidden");
+            inputEl.setAttribute("aria-expanded", "false");
+            activeIndex = -1;
+            highlightActive();
+          }
+
+          function normalize(s) {
+            return String(s || "")
+              .toLowerCase()
+              .replace(/\s+/g, " ")
+              .trim();
+          }
+
+          function renderList(items) {
+            listEl.innerHTML = "";
+            if (!items.length) {
+              emptyEl.classList.remove("hidden");
+              return;
+            }
+            emptyEl.classList.add("hidden");
+
+            const frag = document.createDocumentFragment();
+            items.forEach((it, idx) => {
+              const li = document.createElement("li");
+              li.className = "px-4 py-2.5 text-sm cursor-pointer select-none flex items-center justify-between gap-3";
+              li.setAttribute("role", "option");
+              li.dataset.value = it.value;
+              li.dataset.index = String(idx);
+
+              const left = document.createElement("div");
+              left.className = "min-w-0";
+              left.innerHTML = `<div class="font-semibold text-slate-900 truncate">${escapeHtml(it.label || "-")}</div>`;
+
+              const right = document.createElement("div");
+              right.className = "text-xs font-extrabold text-slate-400";
+              right.textContent = it.value ? "اختيار" : "";
+
+              li.appendChild(left);
+              li.appendChild(right);
+
+              if (!it.value || it.disabled) {
+                li.classList.add("opacity-50", "pointer-events-none");
+                right.textContent = "";
+              }
+
+              li.addEventListener("mouseenter", () => {
+                activeIndex = idx;
+                highlightActive();
+              });
+
+              li.addEventListener("mousedown", (e) => {
+                // prevent input blur
+                e.preventDefault();
+              });
+
+              li.addEventListener("click", () => {
+                choose(idx);
+              });
+
+              frag.appendChild(li);
+            });
+
+            listEl.appendChild(frag);
+            highlightActive();
+          }
+
+          function escapeHtml(text) {
+            return String(text || "")
+              .replaceAll("&", "&amp;")
+              .replaceAll("<", "&lt;")
+              .replaceAll(">", "&gt;")
+              .replaceAll('"', "&quot;")
+              .replaceAll("'", "&#039;");
+          }
+
+          function highlightActive() {
+            const children = Array.from(listEl.children);
+            children.forEach((el, i) => {
+              if (i === activeIndex) {
+                el.classList.add("bg-emerald-50");
+                el.classList.remove("bg-white");
+                el.scrollIntoView({ block: "nearest" });
+              } else {
+                el.classList.remove("bg-emerald-50");
+              }
+            });
+          }
+
+          function syncFromSelect() {
+            // refresh options (in case server rendered new list)
+            options = getOptions();
+
+            const selected = options.find(o => o.value && o.value === selectEl.value);
+            if (selected) {
+              inputEl.value = selected.label;
+              clearBtn.classList.remove("hidden");
+            } else {
+              inputEl.value = "";
+              clearBtn.classList.add("hidden");
+            }
+          }
+
+          function filter() {
+            const q = normalize(inputEl.value);
+            filtered = options
+              .filter(o => o.value) // ignore empty placeholder option
+              .filter(o => normalize(o.label).includes(q));
+
+            activeIndex = filtered.length ? 0 : -1;
+            renderList(filtered);
+          }
+
+          function choose(idx) {
+            const item = filtered[idx];
+            if (!item) return;
+
+            selectEl.value = item.value;
+            // trigger change for any listeners
+            selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+
+            inputEl.value = item.label;
+            clearBtn.classList.remove("hidden");
+            close();
+          }
+
+          function clearSelection() {
+            selectEl.value = "";
+            selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+            inputEl.value = "";
+            clearBtn.classList.add("hidden");
+            filter();
+            open();
+            inputEl.focus();
+          }
+
+          // Events
+          inputEl.addEventListener("focus", () => {
+            open();
+            filter();
+          });
+
+          inputEl.addEventListener("input", () => {
+            open();
+            filter();
+          });
+
+          inputEl.addEventListener("keydown", (e) => {
+            if (!isOpen() && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+              open();
+              filter();
+              return;
+            }
+
+            if (e.key === "Escape") {
+              close();
+              return;
+            }
+
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              if (!filtered.length) return;
+              activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+              highlightActive();
+              return;
+            }
+
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              if (!filtered.length) return;
+              activeIndex = Math.max(activeIndex - 1, 0);
+              highlightActive();
+              return;
+            }
+
+            if (e.key === "Enter") {
+              if (activeIndex >= 0) {
+                e.preventDefault();
+                choose(activeIndex);
+              }
+            }
+          });
+
+          document.addEventListener("click", (e) => {
+            if (!combo.contains(e.target)) close();
+          });
+
+          clearBtn.addEventListener("click", clearSelection);
+
+          // Init: show selected school if editing
+          syncFromSelect();
+          filter();
+          close();
+        })();
+      </script>
+
     </form>
   </div>
 

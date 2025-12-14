@@ -15,7 +15,7 @@ def manager_required(view_func):
     - يضمن وجود UserProfile للمستخدم.
     - يضمن أن الـ Profile مرتبط بمدرسة.
     - يسمح للـ superuser دائمًا بالدخول (مع محاولة ربطه بمدرسة).
-    - يسمح لأي مستخدم لديه profile.school.
+    - يسمح لأي مستخدم لديه profile.active_school.
     - يسمح لأعضاء مجموعة "Managers" (للتوافق مع أنظمة قديمة).
     """
 
@@ -31,8 +31,9 @@ def manager_required(view_func):
                 first_school = School.objects.first()
                 if first_school:
                     profile, _created = UserProfile.objects.get_or_create(user=user)
-                    if profile.school is None:
-                        profile.school = first_school
+                    if profile.active_school is None:
+                        profile.active_school = first_school
+                        profile.schools.add(first_school)
                         profile.save()
                         messages.success(
                             request,
@@ -50,12 +51,19 @@ def manager_required(view_func):
                 # مستخدم عادي بدون ملف شخصي
                 raise PermissionDenied("المستخدم ليس لديه ملف شخصي.")
 
-        # 2) التأكد من أن الملف الشخصي مرتبط بمدرسة
-        if not user.profile.school:
-            if user.is_superuser:
+        # 2) التأكد من أن الملف الشخصي مرتبط بمدرسة نشطة
+        if not user.profile.active_school:
+            # إذا كان لديه مدارس مرتبطة، عيّن أول واحدة كمدرسة نشطة تلقائيًا
+            schools_qs = user.profile.schools.all()
+            if schools_qs.exists():
+                user.profile.active_school = schools_qs.first()
+                user.profile.save(update_fields=["active_school"])
+                messages.info(request, f"تم تعيين المدرسة النشطة تلقائيًا: {user.profile.active_school.name}")
+            elif user.is_superuser:
                 first_school = School.objects.first()
                 if first_school:
-                    user.profile.school = first_school
+                    user.profile.active_school = first_school
+                    user.profile.schools.add(first_school)
                     user.profile.save()
                     messages.success(
                         request,
@@ -70,12 +78,13 @@ def manager_required(view_func):
             else:
                 raise PermissionDenied("الملف الشخصي غير مرتبط بأي مدرسة.")
 
+
         # 3) الـ superuser لديه صلاحية الوصول دائمًا بعد ضمان الربط
         if user.is_superuser:
             return view_func(request, *args, **kwargs)
 
-        # 4) أي مستخدم مرتبط بمدرسة يمتلك صلاحية المدير المدرسي
-        if getattr(user, "profile", None) and user.profile.school:
+        # 4) أي مستخدم مرتبط بمدرسة نشطة يمتلك صلاحية المدير المدرسي
+        if getattr(user, "profile", None) and user.profile.active_school:
             return view_func(request, *args, **kwargs)
 
         # 5) دعم قديم: مجموعة Managers

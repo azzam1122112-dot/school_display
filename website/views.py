@@ -1,5 +1,13 @@
-# website/views.py
+
 from __future__ import annotations
+from django.shortcuts import redirect
+# رابط مختصر: /s/<short_code> → إعادة توجيه للرابط الأصلي
+def short_display_redirect(request, short_code):
+    screen = DisplayScreen.objects.filter(short_code=short_code, is_active=True).first()
+    if not screen:
+        raise Http404("Invalid short code.")
+    # إعادة توجيه للرابط الأصلي
+    return redirect(f"/?token={screen.token}")
 
 from django.conf import settings
 from django.core.cache import cache
@@ -121,6 +129,10 @@ def home(request):
     if not ctx:
         return render(request, "website/unconfigured_display.html", {"token": token})
     return render(request, "website/display.html", ctx)
+
+
+def subscriptions(request):
+    return render(request, "website/subscriptions.html")
 
 
 def display(request):

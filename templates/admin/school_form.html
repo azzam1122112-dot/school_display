@@ -7,49 +7,64 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6">
 
   <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-    <div>
-      <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
-      <p class="text-slate-500 mt-1 text-sm md:text-base">
-        قم بتعبئة بيانات المدرسة الأساسية. سيتم توليد الرابط تلقائيًا اعتمادًا على الـ slug.
-      </p>
-    </div>
+  <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <div class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center text-2xl">
+          🏫
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
+          <p class="text-slate-600 mt-1 text-sm md:text-base leading-relaxed">
+            أدخل بيانات المدرسة. سيتم توليد <span class="font-bold">Slug إنجليزي فقط</span> ورابط المدرسة تلقائيًا.
+          </p>
+          <div class="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+            ✅ slug باللغة الإنجليزية فقط
+          </div>
+        </div>
+      </div>
 
-    <a href="{% url 'dashboard:system_schools_list' %}"
-       class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
-              bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
-      <span class="text-base">↩</span>
-      <span>العودة للقائمة</span>
-    </a>
+      <a href="{% url 'dashboard:system_schools_list' %}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold
+                bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+        <span class="text-base">↩</span>
+        <span>العودة للقائمة</span>
+      </a>
+    </div>
   </div>
 
-  <!-- Tips Card -->
-  <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
-    <div class="flex items-start gap-3">
-      <div class="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-        ✅
+  <!-- Tips -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="text-sm font-extrabold text-slate-900">🎯 الهدف</div>
+      <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+        رابط ثابت وسهل المشاركة لكل مدرسة.
       </div>
-      <div class="space-y-1">
-        <p class="text-sm font-bold text-slate-900">نصيحة سريعة</p>
-        <p class="text-sm text-slate-600 leading-relaxed">
-          استخدم اسمًا واضحًا للمدرسة، وسيتم توليد <span class="font-semibold">slug</span> تلقائيًا.
-          يمكنك تعديله يدويًا لاحقًا، وسيظهر <span class="font-semibold">رابط المدرسة</span> فورًا.
-        </p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="text-sm font-extrabold text-slate-900">🔤 slug إنجليزي</div>
+      <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+        لتجنب مشاكل الأجهزة/المتصفحات والروابط.
+      </div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="text-sm font-extrabold text-slate-900">🔗 رابط مباشر</div>
+      <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+        زر نسخ + فتح الرابط بسرعة.
       </div>
     </div>
   </div>
 
   <!-- Form Card -->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+  <div class="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
 
-    <!-- Card Head -->
     <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
-          🏫
+        <div class="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+          ✅
         </div>
         <div>
           <p class="text-sm font-extrabold text-slate-900">بيانات المدرسة</p>
@@ -57,50 +72,51 @@
         </div>
       </div>
 
-      <span class="hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold
-                   bg-slate-100 text-slate-700">
+      <span class="hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700">
         <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
         حفظ آمن
       </span>
     </div>
 
-    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5" id="schoolForm" novalidate>
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-6" id="schoolForm" novalidate>
       {% csrf_token %}
 
       {% if form.non_field_errors %}
       <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-        <div class="font-bold mb-1">تعذّر الحفظ</div>
+        <div class="font-extrabold mb-1">تعذّر الحفظ</div>
         {% for error in form.non_field_errors %}
           <p class="leading-relaxed">{{ error }}</p>
         {% endfor %}
       </div>
       {% endif %}
 
-      {# --------- حقول النموذج مع تحسين العرض --------- #}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         {% for field in form %}
-          {# نعرض slug بحجم كامل لأنه مرتبط بالرابط #}
           {% if field.name == "slug" %}
             <div class="md:col-span-2 space-y-2">
-              <label class="block text-xs font-extrabold text-slate-700">
-                {{ field.label }}
-              </label>
+              <div class="flex items-center justify-between gap-3">
+                <label class="block text-xs font-extrabold text-slate-700">
+                  {{ field.label }}
+                </label>
+                <button type="button"
+                        id="regenSlugBtn"
+                        class="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-1.5 rounded-full
+                               bg-sky-50 text-sky-700 border border-sky-100 hover:bg-sky-100">
+                  ✨ توليد من الاسم
+                </button>
+              </div>
 
               <div class="relative">
                 {{ field }}
-                <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs">
-                  slug
+                <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs font-mono">
+                  english-slug
                 </div>
               </div>
 
-              {% if field.help_text %}
-                <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
-              {% else %}
-                <p class="text-[11px] text-slate-500">
-                  سيتم توليده تلقائيًا من اسم المدرسة، ويمكنك تعديله يدويًا.
-                </p>
-              {% endif %}
+              <p class="text-[11px] text-slate-500">
+                يُولَّد تلقائيًا <span class="font-bold">بالإنجليزية فقط</span> (حروف/أرقام/شرطة -). يمكنك تعديله يدويًا.
+              </p>
 
               {% if field.errors %}
                 <p class="text-xs text-rose-600">
@@ -108,21 +124,23 @@
                 </p>
               {% endif %}
 
-              <!-- Generated Link Preview -->
-              <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div class="space-y-1">
-                    <div class="text-xs font-extrabold text-slate-700">رابط المدرسة (يُحدّث تلقائيًا)</div>
-                    <div class="font-mono text-sm text-slate-800 break-all" id="schoolUrlPreview">—</div>
+              <!-- URL Preview -->
+              <div class="mt-3 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div class="min-w-0 space-y-1">
+                    <div class="text-xs font-extrabold text-slate-700">رابط المدرسة (تلقائي)</div>
+                    <div class="rounded-2xl bg-white border border-slate-200 px-4 py-3 font-mono text-sm text-slate-800 break-all"
+                         id="schoolUrlPreview"
+                         aria-live="polite">—</div>
                     <div class="text-[11px] text-slate-500">
-                      انسخ الرابط وشاركه أو استخدمه داخل لوحة العرض حسب إعداداتك.
+                      ملاحظة: إذا تغيّر مسار العرض في مشروعك، غيّر PATH_TEMPLATE في السكربت.
                     </div>
                   </div>
 
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 shrink-0">
                     <button type="button"
                             id="copySchoolUrl"
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
                                    bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
                       📋 نسخ
                     </button>
@@ -130,17 +148,17 @@
                        id="openSchoolUrl"
                        target="_blank"
                        rel="noopener"
-                       class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
                               bg-gradient-to-r from-sky-600 to-sky-700 text-white shadow-sm hover:shadow-md">
                       🔗 فتح
                     </a>
                   </div>
                 </div>
 
-                <div id="copyHint" class="mt-3 hidden text-xs font-semibold text-emerald-700">
+                <div id="copyHint" class="mt-3 hidden text-xs font-extrabold text-emerald-700">
                   ✅ تم نسخ الرابط
                 </div>
-                <div id="copyError" class="mt-3 hidden text-xs font-semibold text-rose-700">
+                <div id="copyError" class="mt-3 hidden text-xs font-extrabold text-rose-700">
                   ⚠️ لم يتم النسخ — انسخ يدويًا من الرابط أعلاه
                 </div>
               </div>
@@ -172,20 +190,19 @@
       <!-- Actions -->
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
         <a href="{% url 'dashboard:system_schools_list' %}"
-           class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200">
+           class="px-4 py-3 rounded-2xl text-sm font-extrabold text-slate-700 bg-slate-100 hover:bg-slate-200">
           إلغاء
         </a>
         <button type="submit"
-                class="px-5 py-2.5 rounded-xl text-sm font-extrabold text-white
+                class="px-6 py-3 rounded-2xl text-sm font-extrabold text-white
                        bg-gradient-to-r from-emerald-500 to-emerald-600
                        hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg">
           حفظ
         </button>
       </div>
 
-      <!-- Local styling for Django default widgets (بدون أي مكتبة) -->
+      <!-- تحسين شكل widgets بدون مكتبات -->
       <style>
-        /* يحسّن شكل مدخلات Django الافتراضية داخل هذا النموذج فقط */
         #schoolForm input[type="text"],
         #schoolForm input[type="email"],
         #schoolForm input[type="url"],
@@ -195,7 +212,7 @@
         #schoolForm select,
         #schoolForm textarea {
           width: 100%;
-          border-radius: 14px;
+          border-radius: 16px;
           border: 1px solid rgb(226 232 240);
           background: rgb(255 255 255);
           padding: 12px 12px;
@@ -217,13 +234,12 @@
 
         #schoolForm input[type="file"]{
           width:100%;
-          border-radius:14px;
+          border-radius:16px;
           border: 1px dashed rgb(203 213 225);
           padding: 12px;
           background: rgb(248 250 252);
         }
 
-        /* checkbox */
         #schoolForm input[type="checkbox"]{
           width: 18px;
           height: 18px;
@@ -232,16 +248,16 @@
         }
       </style>
 
-      <!-- Link generator JS -->
+      <!-- Link + English slug generator -->
       <script>
         (function () {
           "use strict";
 
-          // غيّر هذا المسار إذا كان رابط المدرسة مختلف عندك
+          // ✅ غيّر هذا المسار إذا كان رابط المدرسة مختلف عندك
+          // أمثلة:
+          // const PATH_TEMPLATE = "/display/{slug}/";
+          // const PATH_TEMPLATE = "/s/{slug}/";
           const PATH_TEMPLATE = "/schools/{slug}/";
-
-          const form = document.getElementById("schoolForm");
-          if (!form) return;
 
           const nameEl = document.getElementById("id_name");
           const slugEl = document.getElementById("id_slug");
@@ -251,40 +267,102 @@
           const openBtn = document.getElementById("openSchoolUrl");
           const copyHint = document.getElementById("copyHint");
           const copyError = document.getElementById("copyError");
+          const regenBtn = document.getElementById("regenSlugBtn");
 
-          // origin
           const isSecure = "{{ request.is_secure|yesno:'1,0' }}" === "1";
           const origin = (isSecure ? "https://" : "http://") + "{{ request.get_host }}";
 
-          // هل المستخدم عدّل slug يدويًا؟
+          // هل المستخدم لمس slug يدويًا؟
           let slugTouched = false;
           if (slugEl) {
             slugEl.addEventListener("input", function () {
               slugTouched = true;
+              // نظّف فوريًا ليبقى إنجليزي
+              slugEl.value = sanitizeEnglishSlug(slugEl.value);
               updatePreview();
             });
           }
 
-          // توليد slug (يدعم العربي + الأرقام + -)
-          function makeSlug(value) {
-            const s = String(value || "").trim();
-            if (!s) return "";
-            // إزالة الرموز غير المناسبة + توحيد الفراغات إلى "-"
-            const cleaned = s
-              .replace(/[\u064B-\u065F]/g, "")             // تشكيل عربي
-              .replace(/[`~!@#$%^&*()+=\[\]{};:'"\\|,.<>\/?]/g, " ")
+          // إزالة كلمات شائعة من الاسم لتقليل التكرار
+          function stripCommonWords(s) {
+            const txt = String(s || "").trim();
+            if (!txt) return "";
+            // كلمات شائعة بالعربي/الإنجليزي
+            return txt
+              .replace(/\b(school|schools)\b/ig, " ")
+              .replace(/مدرسة|مدارس/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+          }
+
+          // transliteration بسيط من العربية للاتينية (لأجل slug فقط)
+          const AR_MAP = {
+            "ا":"a","أ":"a","إ":"i","آ":"a","ء":"", "ؤ":"w","ئ":"y","ى":"a",
+            "ب":"b","ت":"t","ث":"th","ج":"j","ح":"h","خ":"kh",
+            "د":"d","ذ":"dh","ر":"r","ز":"z","س":"s","ش":"sh",
+            "ص":"s","ض":"d","ط":"t","ظ":"z","ع":"a","غ":"gh",
+            "ف":"f","ق":"q","ك":"k","ل":"l","م":"m","ن":"n","ه":"h","و":"w","ي":"y",
+            "ة":"h"
+          };
+
+          function transliterateArabicToLatin(input) {
+            const s = String(input || "");
+            let out = "";
+            for (const ch of s) {
+              out += (AR_MAP[ch] !== undefined) ? AR_MAP[ch] : ch;
+            }
+            return out;
+          }
+
+          function sanitizeEnglishSlug(value) {
+            let s = String(value || "").trim();
+
+            // إزالة التشكيل العربي
+            s = s.replace(/[\u064B-\u065F]/g, "");
+
+            // transliteration للعربي
+            s = transliterateArabicToLatin(s);
+
+            // normalize
+            try { s = s.normalize("NFKD"); } catch (e) {}
+
+            // أبقِ فقط: a-z 0-9 والمسافات/الشرطات
+            s = s
+              .toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, " ")
               .replace(/\s+/g, "-")
               .replace(/-+/g, "-")
               .replace(/^-|-$/g, "");
 
-            // السماح: أحرف عربية + لاتينية + أرقام + -
-            return cleaned.replace(/[^0-9A-Za-z\u0600-\u06FF-]/g, "").toLowerCase();
+            // حد طول منطقي
+            if (s.length > 60) s = s.slice(0, 60).replace(/-+$/g, "");
+            return s;
+          }
+
+          function randomSlug() {
+            try {
+              const arr = new Uint8Array(4);
+              crypto.getRandomValues(arr);
+              return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+            } catch (e) {
+              return String(Date.now()).slice(-8);
+            }
+          }
+
+          function makeSlugFromName(name) {
+            const base = stripCommonWords(name);
+            let slug = sanitizeEnglishSlug(base);
+
+            if (!slug) slug = "school-" + randomSlug();
+            // منع تكرار prefix لو الاسم أصلاً يبدأ به
+            slug = slug.replace(/^school-+school-+/g, "school-");
+            return slug;
           }
 
           function buildUrl(slug) {
-            const safeSlug = String(slug || "").trim();
-            if (!safeSlug) return "";
-            const path = PATH_TEMPLATE.replace("{slug}", encodeURIComponent(safeSlug));
+            const safe = String(slug || "").trim();
+            if (!safe) return "";
+            const path = PATH_TEMPLATE.replace("{slug}", encodeURIComponent(safe));
             return origin + path;
           }
 
@@ -300,40 +378,57 @@
             }
           }
 
-          // عند كتابة الاسم: ولّد slug تلقائيًا إذا لم يتم لمسه يدويًا
+          function regenerateFromName() {
+            if (!slugEl) return;
+            const nm = nameEl ? nameEl.value : "";
+            const next = makeSlugFromName(nm);
+            slugEl.value = next;
+            slugTouched = false; // اعتبره توليد آلي
+            updatePreview();
+          }
+
+          // توليد تلقائي عند كتابة الاسم (إذا لم يعدله يدويًا)
           if (nameEl && slugEl) {
             nameEl.addEventListener("input", function () {
               if (slugTouched) return;
-              const nextSlug = makeSlug(nameEl.value);
-              slugEl.value = nextSlug;
+              slugEl.value = makeSlugFromName(nameEl.value);
               updatePreview();
             });
           }
 
-          // Copy
+          if (regenBtn) {
+            regenBtn.addEventListener("click", function () {
+              regenerateFromName();
+            });
+          }
+
           if (copyBtn) {
             copyBtn.addEventListener("click", async function () {
-              copyHint.classList.add("hidden");
-              copyError.classList.add("hidden");
+              if (copyHint) copyHint.classList.add("hidden");
+              if (copyError) copyError.classList.add("hidden");
 
               const slug = slugEl ? slugEl.value : "";
               const url = buildUrl(slug);
               if (!url) {
-                copyError.classList.remove("hidden");
+                if (copyError) copyError.classList.remove("hidden");
                 return;
               }
 
               try {
                 await navigator.clipboard.writeText(url);
-                copyHint.classList.remove("hidden");
-                setTimeout(() => copyHint.classList.add("hidden"), 1800);
+                if (copyHint) copyHint.classList.remove("hidden");
+                setTimeout(() => { if (copyHint) copyHint.classList.add("hidden"); }, 1800);
               } catch (e) {
-                copyError.classList.remove("hidden");
+                if (copyError) copyError.classList.remove("hidden");
               }
             });
           }
 
           // init
+          // إذا كان slug موجود مسبقًا (تعديل مدرسة) نظّفه إنجليزيًا وحدث الرابط
+          if (slugEl && slugEl.value) slugEl.value = sanitizeEnglishSlug(slugEl.value);
+          // لو slug فاضي واسم موجود: ولّد
+          if (slugEl && nameEl && !slugEl.value && nameEl.value) regenerateFromName();
           updatePreview();
         })();
       </script>
