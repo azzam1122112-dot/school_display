@@ -118,21 +118,17 @@ INSTALLED_APPS = [
 # -------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # ⭐ الحل هنا
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
-    # Context أولاً
     "core.middleware.ActiveSchoolMiddleware",
-
-    # Dashboard rules
     "dashboard.middleware.SubscriptionRequiredMiddleware",
-
-    # Display API (يستطيع override request.school عند الـ API)
     "core.middleware.DisplayTokenMiddleware",
-
     "core.middleware.SecurityHeadersMiddleware",
 ]
 
