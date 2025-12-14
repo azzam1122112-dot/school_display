@@ -103,7 +103,7 @@ class ExcellenceSerializer(serializers.Serializer):
         """
         request = self.context.get("request")
 
-        # 1) من المعلم المرتبط (الأولوية القصوى لضمان التطابق مع الاسم)
+        # 1) من المعلم/ـة المرتبط (الأولوية القصوى لضمان التطابق مع الاسم)
         t = self._teacher(obj)
         if t:
             for attr in ("photo", "image", "image_url", "photo_url"):

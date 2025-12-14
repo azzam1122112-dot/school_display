@@ -62,7 +62,7 @@ class SchoolSettings(models.Model):
     show_excellence = models.BooleanField("إظهار قسم التميز", default=True)
     show_standby = models.BooleanField("إظهار حصص الانتظار", default=True)
     show_lessons = models.BooleanField("إظهار الحصص المجدولة", default=True)
-    show_school_data = models.BooleanField("إظهار الفصول والمواد والمعلمون", default=True)
+    show_school_data = models.BooleanField("إظهار الفصول والمواد والمعلم/ـةون", default=True)
 
     school = models.OneToOneField(
         School,
@@ -176,11 +176,11 @@ class Teacher(models.Model):
         null=True,
         blank=True,
     )
-    name = models.CharField("اسم المعلم", max_length=100)
+    name = models.CharField("اسم المعلم/ـة", max_length=100)
 
     class Meta:
         verbose_name = "معلم"
-        verbose_name_plural = "المعلمون"
+        verbose_name_plural = "المعلم/ـةون"
         ordering = ("name",)
         constraints = [
             models.UniqueConstraint(fields=("school", "name"), name="uq_tch_sch_nm"),
@@ -254,7 +254,7 @@ class Period(models.Model):
         Teacher,
         on_delete=models.CASCADE,
         related_name="periods",
-        verbose_name="المعلم",
+        verbose_name="المعلم/ـة",
         null=True,
         blank=True,
     )
@@ -381,7 +381,7 @@ class ClassLesson(models.Model):
         Teacher,
         on_delete=models.CASCADE,
         related_name="class_lessons",
-        verbose_name="المعلم",
+        verbose_name="المعلم/ـة",
     )
     is_active = models.BooleanField("مفعّلة", default=True)
 
@@ -407,4 +407,4 @@ class ClassLesson(models.Model):
             if self.subject_id and self.subject.school_id and self.subject.school_id != settings_school_id:
                 raise ValidationError({"subject": ["المادة لا تتبع لنفس المدرسة."]})
             if self.teacher_id and self.teacher.school_id and self.teacher.school_id != settings_school_id:
-                raise ValidationError({"teacher": ["المعلم لا يتبع لنفس المدرسة."]})
+                raise ValidationError({"teacher": ["المعلم/ـة لا يتبع لنفس المدرسة."]})

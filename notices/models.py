@@ -208,7 +208,7 @@ class Excellence(models.Model):
         null=True,
         blank=True,
     )
-    teacher_name = models.CharField("اسم المعلم", max_length=100)
+    teacher_name = models.CharField("اسم المعلم/ـة", max_length=100)
     reason = models.CharField("سبب التميّز", max_length=200)
 
     # رفع صورة كملف

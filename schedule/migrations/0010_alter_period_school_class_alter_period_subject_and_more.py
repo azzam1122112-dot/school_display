@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                 on_delete=django.db.models.deletion.SET_NULL,
                 related_name="periods",
                 to="schedule.teacher",
-                verbose_name="المعلم",
+                verbose_name="المعلم/ـة",
             ),
         ),
     ]

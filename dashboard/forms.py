@@ -417,7 +417,7 @@ class StandbyForm(forms.ModelForm):
     )
     teacher_name = forms.ModelChoiceField(
         queryset=Teacher.objects.none(),
-        label="اسم المعلم",
+        label="اسم المعلم/ـة",
     )
 
     class Meta:

@@ -546,7 +546,7 @@
 
     const lbl = document.createElement("span");
     lbl.className = "label";
-    lbl.textContent = "المعلم:";
+    lbl.textContent = "المعلم/ـة:";
 
     const name = document.createElement("span");
     name.className = "name";
@@ -893,11 +893,11 @@
         dom.currentScheduleList.appendChild(chip2);
         dom.currentScheduleList.appendChild(chip3);
 
-        // المعلم كسطر مستقل لتفادي التداخل
+        // المعلم/ـة كسطر مستقل لتفادي التداخل
         const t = document.createElement("div");
         t.className = "mt-2 text-white/90 font-black";
         t.style.fontSize = "var(--sub)";
-        //t.textContent = "المعلم: " + teacher;
+        //t.textContent = "المعلم/ـة: " + teacher;
         dom.currentScheduleList.appendChild(t);
       } else {
         dom.currentScheduleList.innerHTML = '<div class="w-full rounded-xl border border-slate-600/40 bg-slate-900/40 px-3 py-3 text-center text-slate-400 text-xs md:text-sm">لا توجد حصص حالية الآن</div>';

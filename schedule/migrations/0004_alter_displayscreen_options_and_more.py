@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
             options={
                 "ordering": ("name",),
                 "verbose_name": "معلم",
-                "verbose_name_plural": "المعلمون",
+                "verbose_name_plural": "المعلم/ـةون",
             },
         ),
         migrations.RemoveConstraint(

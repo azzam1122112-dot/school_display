@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "teacher_name",
-                    models.CharField(max_length=100, verbose_name="اسم المعلم"),
+                    models.CharField(max_length=100, verbose_name="اسم المعلم/ـة"),
                 ),
                 ("reason", models.CharField(max_length=200, verbose_name="سبب التميّز")),
                 (

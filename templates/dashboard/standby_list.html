@@ -247,7 +247,7 @@
 <script>
 // تأكيد الحذف مع تفاصيل أكثر
 function confirmDelete(teacherName, date, period) {
-    const message = `هل أنت متأكد من أنك تريد حذف حصة الانتظار التالية؟\n\nالمعلم: ${teacherName}\nالتاريخ: ${date}\nالحصة: ${period}\n\nهذا الإجراء لا يمكن التراجع عنه.`;
+    const message = `هل أنت متأكد من أنك تريد حذف حصة الانتظار التالية؟\n\nالمعلم/ـة: ${teacherName}\nالتاريخ: ${date}\nالحصة: ${period}\n\nهذا الإجراء لا يمكن التراجع عنه.`;
     return confirm(message);
 }
 

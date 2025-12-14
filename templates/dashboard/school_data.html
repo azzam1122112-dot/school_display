@@ -1,5 +1,5 @@
 {% extends "dashboard/_base.html" %}
-{% block title %}إدارة الفصول والمواد والمعلمين{% endblock %}
+{% block title %}إدارة الفصول والمواد والمعلمين/المعلمات{% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-8">
@@ -8,31 +8,44 @@
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
       <h1 class="text-2xl md:text-3xl font-bold text-slate-900">
-        إدارة الفصول والمواد والمعلمين
+        إدارة الفصول والمواد والمعلمين/المعلمات
       </h1>
       <p class="text-slate-500 mt-1 text-sm md:text-base">
-        أضف وعدّل الفصول والمواد والمعلمين بسرعة من صفحة واحدة مخصصة لإعداد بيانات المدرسة.
+        أضف وعدّل الفصول والمواد والمعلمين/المعلمات بسرعة من صفحة واحدة مخصصة لإعداد بيانات المدرسة.
       </p>
     </div>
 
-    <div class="grid grid-cols-3 gap-3 text-xs md:text-sm">
-      <div class="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-start">
-        <span class="text-slate-500">عدد الفصول</span>
-        <span class="text-lg md:text-xl font-bold text-emerald-600">
-          {{ classes|length }}
-        </span>
-      </div>
-      <div class="px-4 py-2 rounded-2xl bg-sky-50 border border-sky-100 flex flex-col items-start">
-        <span class="text-slate-500">عدد المواد</span>
-        <span class="text-lg md:text-xl font-bold text-sky-600">
-          {{ subjects|length }}
-        </span>
-      </div>
-      <div class="px-4 py-2 rounded-2xl bg-indigo-50 border border-indigo-100 flex flex-col items-start">
-        <span class="text-slate-500">عدد المعلمين</span>
-        <span class="text-lg md:text-xl font-bold text-indigo-600">
-          {{ teachers|length }}
-        </span>
+    <div class="flex items-center gap-3">
+      <a
+        href="{% url 'dashboard:index' %}"
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 19l-7-7 7-7"/>
+        </svg>
+        العودة للرئيسية
+      </a>
+
+      <div class="grid grid-cols-3 gap-3 text-xs md:text-sm">
+        <div class="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-start">
+          <span class="text-slate-500">عدد الفصول</span>
+          <span class="text-lg md:text-xl font-bold text-emerald-600">
+            {{ classes|length }}
+          </span>
+        </div>
+        <div class="px-4 py-2 rounded-2xl bg-sky-50 border border-sky-100 flex flex-col items-start">
+          <span class="text-slate-500">عدد المواد</span>
+          <span class="text-lg md:text-xl font-bold text-sky-600">
+            {{ subjects|length }}
+          </span>
+        </div>
+        <div class="px-4 py-2 rounded-2xl bg-indigo-50 border border-indigo-100 flex flex-col items-start">
+          <span class="text-slate-500">عدد المعلمين</span>
+          <span class="text-lg md:text-xl font-bold text-indigo-600">
+            {{ teachers|length }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -58,16 +71,19 @@
       </div>
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
-        <form method="post" action="{% url 'dashboard:add_class' %}" class="space-y-3">
+        <!-- ✅ إضافة فصل عبر نفس الصفحة -->
+        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
           {% csrf_token %}
+          <input type="hidden" name="action" value="add_class">
+
           <div class="space-y-1">
-            <label class="block text-xs font-medium text-slate-600">
-              اسم الفصل
-            </label>
+            <label class="block text-xs font-medium text-slate-600">اسم الفصل</label>
             <div class="relative">
               <input
                 type="text"
                 name="name"
+                required
+                maxlength="120"
                 placeholder="مثال: 1 / أ أو ثالث متوسط 2"
                 class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500 text-sm placeholder-slate-400 bg-slate-50/60"
               >
@@ -79,6 +95,7 @@
               </span>
             </div>
           </div>
+
           <button
             type="submit"
             class="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold py-2.5 shadow-sm hover:bg-emerald-700 transition-colors"
@@ -97,6 +114,7 @@
           {% for c in classes %}
           <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2.5 text-sm">
             <span class="truncate text-slate-800">{{ c.name }}</span>
+
             <form method="post" action="{% url 'dashboard:delete_class' c.id %}">
               {% csrf_token %}
               <button
@@ -135,16 +153,19 @@
       </div>
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
-        <form method="post" action="{% url 'dashboard:add_subject' %}" class="space-y-3">
+        <!-- ✅ إضافة مادة عبر نفس الصفحة -->
+        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
           {% csrf_token %}
+          <input type="hidden" name="action" value="add_subject">
+
           <div class="space-y-1">
-            <label class="block text-xs font-medium text-slate-600">
-              اسم المادة
-            </label>
+            <label class="block text-xs font-medium text-slate-600">اسم المادة</label>
             <div class="relative">
               <input
                 type="text"
                 name="name"
+                required
+                maxlength="120"
                 placeholder="مثال: الرياضيات، القرآن الكريم، العلوم"
                 class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/70 focus:border-sky-500 text-sm placeholder-slate-400 bg-slate-50/60"
               >
@@ -156,6 +177,7 @@
               </span>
             </div>
           </div>
+
           <button
             type="submit"
             class="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-sky-600 text-white text-sm font-semibold py-2.5 shadow-sm hover:bg-sky-700 transition-colors"
@@ -174,6 +196,7 @@
           {% for s in subjects %}
           <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2.5 text-sm">
             <span class="truncate text-slate-800">{{ s.name }}</span>
+
             <form method="post" action="{% url 'dashboard:delete_subject' s.id %}">
               {% csrf_token %}
               <button
@@ -194,7 +217,7 @@
       </div>
     </div>
 
-    <!-- المعلمون -->
+    <!-- المعلمون/المعلمات -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-l from-indigo-50 to-white">
         <div class="flex items-center gap-2">
@@ -204,7 +227,7 @@
                     d="M5.121 17.804A6 6 0 0112 14a6 6 0 016.879 3.804M15 11a3 3 0 10-6 0 3 3 0 006 0z"/>
             </svg>
           </div>
-          <h2 class="font-semibold text-slate-800">المعلمون</h2>
+          <h2 class="font-semibold text-slate-800">المعلمون/المعلمات</h2>
         </div>
         <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 font-medium">
           {{ teachers|length }} معلم
@@ -212,16 +235,19 @@
       </div>
 
       <div class="p-5 space-y-4 flex-1 flex flex-col">
-        <form method="post" action="{% url 'dashboard:add_teacher' %}" class="space-y-3">
+        <!-- ✅ إضافة معلم عبر نفس الصفحة -->
+        <form method="post" action="{% url 'dashboard:school_data' %}" class="space-y-3">
           {% csrf_token %}
+          <input type="hidden" name="action" value="add_teacher">
+
           <div class="space-y-1">
-            <label class="block text-xs font-medium text-slate-600">
-              اسم المعلم
-            </label>
+            <label class="block text-xs font-medium text-slate-600">اسم المعلم/المعلمة</label>
             <div class="relative">
               <input
                 type="text"
                 name="name"
+                required
+                maxlength="120"
                 placeholder="مثال: أحمد بن علي أو أ. منى العتيبي"
                 class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500 text-sm placeholder-slate-400 bg-slate-50/60"
               >
@@ -233,6 +259,7 @@
               </span>
             </div>
           </div>
+
           <button
             type="submit"
             class="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold py-2.5 shadow-sm hover:bg-indigo-700 transition-colors"
@@ -241,7 +268,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 4v16m8-8H4"/>
             </svg>
-            إضافة معلم
+            إضافة معلم/معلمة
           </button>
         </form>
 
@@ -251,11 +278,12 @@
           {% for t in teachers %}
           <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2.5 text-sm">
             <span class="truncate text-slate-800">{{ t.name }}</span>
+
             <form method="post" action="{% url 'dashboard:delete_teacher' t.id %}">
               {% csrf_token %}
               <button
                 type="submit"
-                onclick="return confirm('سيتم حذف هذا المعلم من النظام، هل أنت متأكد؟');"
+                onclick="return confirm('سيتم حذف هذا المعلم/المعلمة من النظام، هل أنت متأكد؟');"
                 class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
               >
                 حذف
@@ -274,4 +302,3 @@
   </div>
 </div>
 {% endblock %}
-      

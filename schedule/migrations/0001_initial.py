@@ -46,11 +46,11 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("name", models.CharField(max_length=100, verbose_name="اسم المعلم")),
+                ("name", models.CharField(max_length=100, verbose_name="اسم المعلم/ـة")),
             ],
             options={
                 "verbose_name": "معلم",
-                "verbose_name_plural": "المعلمون",
+                "verbose_name_plural": "المعلم/ـةون",
                 "ordering": ["name"],
             },
         ),
@@ -117,7 +117,7 @@ class Migration(migrations.Migration):
                 (
                     "show_school_data",
                     models.BooleanField(
-                        default=True, verbose_name="إظهار الفصول والمواد والمعلمون"
+                        default=True, verbose_name="إظهار الفصول والمواد والمعلم/ـةون"
                     ),
                 ),
                 ("name", models.CharField(max_length=150, verbose_name="اسم المدرسة")),
@@ -336,7 +336,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="periods",
                         to="schedule.teacher",
-                        verbose_name="المعلم",
+                        verbose_name="المعلم/ـة",
                     ),
                 ),
             ],
@@ -411,7 +411,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="class_lessons",
                         to="schedule.teacher",
-                        verbose_name="المعلم",
+                        verbose_name="المعلم/ـة",
                     ),
                 ),
             ],

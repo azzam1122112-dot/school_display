@@ -138,7 +138,7 @@ class Command(BaseCommand):
         Announcement.objects.create(
             school=school,
             title="اجتماع مجلس الآباء",
-            body="ندعوكم لحضور اجتماع مجلس الآباء والمعلمين يوم الخميس القادم في مسرح المدرسة.",
+            body="ندعوكم لحضور اجتماع مجلس الآباء والمعلم/ـةين يوم الخميس القادم في مسرح المدرسة.",
             level="warning",
             is_active=True,
             starts_at=timezone.now(),

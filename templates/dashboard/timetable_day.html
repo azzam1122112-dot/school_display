@@ -20,7 +20,7 @@
  إدارة الجدول اليومي للفصول 
                 </h1>
                 <p class="mt-1 text-sm text-slate-400">
-                    اختر الفصل واليوم ثم عدّل المواد والمعلمين لكل حصة، وسيتم تطبيق التعديلات مباشرة على شاشة العرض.
+                    اختر الفصل واليوم ثم عدّل المواد والمعلم/ـةين لكل حصة، وسيتم تطبيق التعديلات مباشرة على شاشة العرض.
                 </p>
             </div>
         </div>
@@ -148,7 +148,7 @@
                     class="inline-flex items-center gap-1 rounded-full border border-slate-600/80
                            bg-slate-900/80 px-2.5 py-1 text-slate-100">
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                    المعلم
+                    المعلم/ـة
                 </span>
                 <span class="text-[11px] text-slate-400">
                     ترك الحصة بدون مادة ومعلم يعني عدم وجود حصة في هذا التوقيت لهذا الفصل.
@@ -208,7 +208,7 @@
                                         {% endfor %}
                                     </select>
 
-                                    <!-- المعلم -->
+                                    <!-- المعلم/ـة -->
                                     <select
                                         name="teacher-{{ selected_class.id }}-{{ row.period.index }}"
                                         class="timetable-select w-full rounded-lg border border-slate-700 bg-gradient-to-l
