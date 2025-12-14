@@ -1,52 +1,34 @@
 from __future__ import annotations
 
+import logging
 from importlib import import_module
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Optional
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# ١) أدوات مساعدة مرنة للجدول الدراسي (schedule)
+# Helpers: schedule (مرن)
 # ---------------------------------------------------------------------------
 
-def _fallback_today_state(school: Any) -> Dict[str, Any]:
-    """
-    دالة احتياطية تُستخدم إذا لم نجد دوال الجدول في تطبيق schedule.
-
-    ترجع بنية بسيطة تكفي الواجهة حتى لا تتعطل.
-    """
+def _fallback_today_state(_: Any) -> Dict[str, Any]:
     now = timezone.localtime()
     return {
-        "state": {
-            "type": "unknown",
-            "label": "لا يوجد جدول لهذا اليوم",
-        },
-        "day": {
-            "name": now.strftime("%A"),
-            "date": now.date().isoformat(),
-        },
+        "state": {"type": "unknown", "label": "لا يوجد جدول لهذا اليوم"},
+        "day": {"name": now.strftime("%A"), "date": now.date().isoformat()},
         "periods": [],
         "breaks": [],
         "settings": {},
-        "date_info": {
-            "gregorian": now.strftime("%Y-%m-%d"),
-        },
+        "date_info": {"gregorian": now.strftime("%Y-%m-%d")},
     }
 
 
-def _fallback_period_classes_now(school: Any) -> List[Dict[str, Any]]:
-    """
-    دالة احتياطية تُستخدم إذا لم نجد get_period_classes_now.
-    ترجع قائمة فاضية بدون كسر الواجهة.
-    """
+def _fallback_period_classes_now(_: Any) -> List[Dict[str, Any]]:
     return []
 
 
@@ -55,18 +37,15 @@ def _get_schedule_helpers() -> Tuple[
     Callable[[Any], List[Dict[str, Any]]],
 ]:
     """
-    يحاول استيراد دوال الجدول من schedule.utils بشكل مرن.
-
-    - إذا وُجدت get_today_state و get_period_classes_now → تُستخدم.
-    - إذا لم توجد أو حدث خطأ → نستخدم دوال احتياطية لا تكسر النظام.
+    يحاول استيراد:
+      schedule.utils.get_today_state
+      schedule.utils.get_period_classes_now
+    وإلا يستخدم fallback بدون كسر الواجهة.
     """
     try:
         utils_mod = import_module("schedule.utils")
     except Exception:
-        logger.warning(
-            "schedule.utils غير موجود؛ سيتم استخدام دوال احتياطية لشاشة العرض.",
-            exc_info=True,
-        )
+        logger.warning("schedule.utils غير موجود؛ سيتم استخدام fallback.", exc_info=True)
         return _fallback_today_state, _fallback_period_classes_now
 
     get_today_state = getattr(utils_mod, "get_today_state", None)
@@ -76,257 +55,369 @@ def _get_schedule_helpers() -> Tuple[
         return get_today_state, get_period_classes_now
 
     logger.warning(
-        "schedule.utils موجود لكن الدوال get_today_state/get_period_classes_now غير معرفة "
-        "أو غير قابلة للاستدعاء؛ سيتم استخدام دوال احتياطية."
+        "schedule.utils موجود لكن get_today_state/get_period_classes_now غير متاحة؛ fallback."
     )
     return _fallback_today_state, _fallback_period_classes_now
 
 
-# ---------------------------------------------------------------------------
-# ٢) أدوات مساعدة مرنة للإعلانات وحصص الانتظار والمتميزين
-# ---------------------------------------------------------------------------
+def _safe_list(value: Any) -> List[Dict[str, Any]]:
+    """
+    يحول أي قيمة إلى List[dict] بشكل آمن (تفادي QuerySet/None/objects غير قابلة للـ JSON).
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        # تأكد أنها list of dict قدر الإمكان
+        out: List[Dict[str, Any]] = []
+        for item in value:
+            if isinstance(item, dict):
+                out.append(item)
+            else:
+                out.append({"value": str(item)})
+        return out
+    try:
+        # QuerySet أو iterable
+        out = []
+        for item in value:
+            if isinstance(item, dict):
+                out.append(item)
+            else:
+                out.append({"value": str(item)})
+        return out
+    except Exception:
+        return [{"value": str(value)}]
 
-# إعلانــات
-try:
-    from notices.models import Announcement  # type: ignore
-except Exception:  # pragma: no cover - يعتمد على تركيب المشروع
-    Announcement = None  # type: ignore
-    logger.info("تعذر استيراد notices.Announcement؛ سيتم إرجاع قائمة إعلانات فارغة في الـ API.")
 
+# ---------------------------------------------------------------------------
+# notices: Announcement + Excellence (من مشروعك)
+# ---------------------------------------------------------------------------
 
 def _get_announcements_for_school(school: Any) -> List[Dict[str, Any]]:
     """
-    إرجاع الإعلانات النشطة للمدرسة بصيغة قوائم قواميس.
-
-    المنطق:
-      - إذا كان في Announcement.active_for_school(school) → نستخدمها.
-      - إذا ما فيه، نحاول استخدام Announcement.objects.filter(...) بشكل عام.
-      - لو حدث أي خطأ → نرجع قائمة فاضية بدون كسر النظام.
+    يعتمد على notices.models.Announcement إن وجد.
+    حقولك الشائعة: title, body, level, starts_at, expires_at, is_active, school?
     """
-    if Announcement is None:
+    try:
+        from notices.models import Announcement  # type: ignore
+    except Exception:
         return []
 
-    # 1) لو عندنا ميثود مخصّص active_for_school
-    active_for_school = getattr(Announcement, "active_for_school", None)
-    if callable(active_for_school):
-        try:
-            qs = active_for_school(school)
-        except Exception:
-            logger.exception("تعذر جلب الإعلانات من Announcement.active_for_school.")
-            return []
-    else:
-        # 2) Fallback عام: نفترض وجود حقل is_active وربما school
-        try:
-            qs = Announcement.objects.all()
-            if hasattr(Announcement, "is_active"):
-                qs = qs.filter(is_active=True)
-            if hasattr(Announcement, "school"):
-                qs = qs.filter(school=school)
-        except Exception:
-            logger.exception("تعذر جلب الإعلانات من Announcement.objects.")
-            return []
+    now = timezone.localtime()
+
+    try:
+        qs = Announcement.objects.all()
+
+        # school filter إن كان موجودًا
+        if hasattr(Announcement, "school"):
+            qs = qs.filter(school=school)
+
+        # is_active إن كان موجودًا
+        if hasattr(Announcement, "is_active"):
+            qs = qs.filter(is_active=True)
+
+        # نافذة الزمن إن كانت الحقول موجودة
+        if hasattr(Announcement, "starts_at"):
+            qs = qs.filter(starts_at__lte=now)
+        if hasattr(Announcement, "expires_at"):
+            qs = qs.filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))
+
+        qs = qs.order_by("-id")[:20]
+    except Exception:
+        logger.exception("تعذر جلب الإعلانات.")
+        return []
 
     items: List[Dict[str, Any]] = []
     for a in qs:
+        # لو عندك as_dict
         as_dict = getattr(a, "as_dict", None)
         if callable(as_dict):
             try:
-                items.append(as_dict())
-                continue
+                d = as_dict()
+                if isinstance(d, dict):
+                    items.append(d)
+                    continue
             except Exception:
-                logger.exception("خطأ أثناء استدعاء Announcement.as_dict().")
+                logger.exception("خطأ في Announcement.as_dict()")
+
+        # fallback: body/text
+        body = getattr(a, "body", None)
+        if body is None:
+            body = getattr(a, "text", "")
 
         items.append(
             {
                 "id": getattr(a, "id", None),
                 "title": getattr(a, "title", "") or "",
-                "text": getattr(a, "text", "") or "",
+                "body": body or "",
+                "level": getattr(a, "level", "") or "",
             }
         )
     return items
 
 
+def _get_excellence_items_for_school(school: Any) -> List[Dict[str, Any]]:
+    """
+    يعتمد على notices.models.Excellence إن وجد.
+    حقولك الشائعة: teacher_name, reason, photo, photo_url, start_at, end_at, priority
+    """
+    try:
+        from notices.models import Excellence  # type: ignore
+    except Exception:
+        return []
 
-# حصص الانتظار
-try:
-    from standby import models as standby_models  # type: ignore
-except Exception:  # pragma: no cover
-    standby_models = None
-    logger.info(
-        "تعذر استيراد standby.models؛ سيتم إرجاع قائمة حصص انتظار فارغة في شاشة العرض."
-    )
+    now = timezone.localtime()
 
+    try:
+        qs = Excellence.objects.all()
+        if hasattr(Excellence, "school"):
+            qs = qs.filter(school=school)
+
+        if hasattr(Excellence, "start_at"):
+            qs = qs.filter(start_at__lte=now)
+        if hasattr(Excellence, "end_at"):
+            qs = qs.filter(models.Q(end_at__isnull=True) | models.Q(end_at__gt=now))
+
+        # أولوية إن وجدت
+        if hasattr(Excellence, "priority"):
+            qs = qs.order_by("-priority", "-id")
+        else:
+            qs = qs.order_by("-id")
+
+        qs = qs[:30]
+    except Exception:
+        logger.exception("تعذر جلب المتميزين.")
+        return []
+
+    items: List[Dict[str, Any]] = []
+    for e in qs:
+        photo_url = ""
+        try:
+            f = getattr(e, "photo", None)
+            if f and getattr(f, "url", None):
+                photo_url = f.url
+        except Exception:
+            photo_url = ""
+
+        photo_url = getattr(e, "photo_url", "") or photo_url
+
+        items.append(
+            {
+                "id": getattr(e, "id", None),
+                "name": getattr(e, "teacher_name", "") or "",
+                "reason": getattr(e, "reason", "") or "",
+                "photo": photo_url or "",
+            }
+        )
+    return items
+
+
+# ---------------------------------------------------------------------------
+# standby: StandbyAssignment (من مشروعك)
+# ---------------------------------------------------------------------------
 
 def _get_standby_items_for_school(school: Any) -> List[Dict[str, Any]]:
     """
-    إرجاع حصص الانتظار لليوم.
-
-    - تحاول استخدام StandbySlot.active_for_today(school) إن وُجدت.
-    - لو لم توجد StandbySlot أو حدث خطأ → ترجع قائمة فاضية بدون كسر النظام.
+    في مشروعك الحالي الموديل الظاهر هو: standby.models.StandbyAssignment
+    حقول متوقعة: school, date, period_index, class_name, teacher_name, notes
     """
-    if standby_models is None:
+    try:
+        from standby.models import StandbyAssignment  # type: ignore
+    except Exception:
         return []
 
-    slot_cls = getattr(standby_models, "StandbySlot", None)
-    if slot_cls is None:
-        # في مشروعك الحالي قد يكون اسم الموديل مختلف (Standby, StandbyLesson, ...إلخ).
-        # بما أننا لا نعرفه بدقة، نخليها فاضية أفضل من كسر السيرفر.
-        logger.debug("لم يتم العثور على StandbySlot داخل standby.models؛ سيتم إرجاع قائمة فاضية.")
-        return []
+    today = timezone.localdate()
 
     try:
-        # لو فيه دالة classmethod/manager مخصّصة
-        active_for_today = getattr(slot_cls, "active_for_today", None)
-        if callable(active_for_today):
-            qs = active_for_today(school)
-        else:
-            # fallback عام؛ قد لا يُستخدم في تركيبك لكن لا يضر
-            qs = slot_cls.objects.filter(is_active=True)
-
-        items: List[Dict[str, Any]] = []
-        for s in qs:
-            as_dict = getattr(s, "as_dict", None)
-            if callable(as_dict):
-                try:
-                    items.append(as_dict())
-                    continue
-                except Exception:
-                    logger.exception("خطأ أثناء استدعاء StandbySlot.as_dict().")
-
-            # fallback مبسط لأهم الحقول المحتملة
-            items.append(
-                {
-                    "teacher": getattr(s, "teacher_name", "")
-                    or str(getattr(s, "teacher", "")),
-                    "class": getattr(s, "class_name", "") or getattr(s, "klass", ""),
-                    "room": getattr(s, "room", ""),
-                    "period": getattr(s, "period_label", ""),
-                }
-            )
-        return items
+        qs = StandbyAssignment.objects.filter(school=school, date=today).order_by("period_index", "id")
+        qs = qs[:50]
     except Exception:
-        logger.exception("تعذر جلب حصص الانتظار من standby.")
+        logger.exception("تعذر جلب حصص الانتظار.")
         return []
 
-
-# المتميزون / لوحة الشرف — في مشروعك الحالي لا يوجد موديل مخصص، فنرجع دائمًا قائمة فاضية
-def _get_excellence_items_for_school(school: Any) -> List[Dict[str, Any]]:
-    """
-    إرجاع عناصر لوحة الشرف (لوحة المتميزين).
-    في هذا المشروع لا يوجد موديل خاص، لذلك نعيد قائمة فاضية بشكل افتراضي.
-    """
-    return []
+    items: List[Dict[str, Any]] = []
+    for s in qs:
+        items.append(
+            {
+                "id": getattr(s, "id", None),
+                "period_index": getattr(s, "period_index", None),
+                "class_name": getattr(s, "class_name", "") or "",
+                "teacher_name": getattr(s, "teacher_name", "") or "",
+                "notes": getattr(s, "notes", "") or "",
+            }
+        )
+    return items
 
 
 # ---------------------------------------------------------------------------
-# ٣) منطق اختيار معدل التحديث الذكي
+# settings for display (SchoolSettings)
 # ---------------------------------------------------------------------------
 
-def _compute_refresh_hint(today_state: Dict[str, Any]) -> int:
+def _get_school_settings_dict(school: Any) -> Dict[str, Any]:
     """
-    يحسب معدل التحديث المقترح (بالثواني) بناءً على حالة اليوم.
-
-    المبدأ:
-      - أثناء الحصص / الاستراحة / قبل بدء الطابور -> تحديث سريع (10 ثواني).
-      - بعد انتهاء اليوم الدراسي -> تحديث متوسّط (30 دقيقة).
-      - في الإجازات / يوم بلا دوام -> تحديث بطيء (180 دقيقة).
-      - غير ذلك -> قيمة افتراضية آمنة (60 ثانية).
-
-    هذا مجرد "تلميح" للواجهة ولا يغيّر إعدادات المستخدم في لوحة التحكم.
+    يجلب SchoolSettings للمدرسة إن وجد.
     """
+    try:
+        from schedule.models import SchoolSettings  # type: ignore
+    except Exception:
+        return {}
+
+    try:
+        st = SchoolSettings.objects.filter(school=school).select_related("school").first()
+        if not st:
+            return {}
+        return {
+            "theme": getattr(st, "theme", "") or "",
+            "refresh_interval_sec": getattr(st, "refresh_interval_sec", None),
+            "standby_scroll_speed": getattr(st, "standby_scroll_speed", None),
+            "periods_scroll_speed": getattr(st, "periods_scroll_speed", None),
+        }
+    except Exception:
+        logger.exception("تعذر جلب SchoolSettings.")
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# refresh hint
+# ---------------------------------------------------------------------------
+
+def _compute_refresh_hint(today_state: Dict[str, Any], settings_dict: Dict[str, Any]) -> int:
+    """
+    - إن كانت المدرسة محددة refresh_interval_sec نرجّعها (إن كانت رقمًا صالحًا)
+    - وإلا نحسب تلميح حسب حالة اليوم
+    """
+    try:
+        v = settings_dict.get("refresh_interval_sec")
+        if isinstance(v, int) and v >= 5:
+            return v
+    except Exception:
+        pass
+
     state = today_state.get("state") or {}
     state_type = (state.get("type") or "").lower().strip()
 
     if state_type in {"before", "period", "break"}:
-        return 10  # ثواني
+        return 10
     if state_type == "after":
-        return 30 * 60  # 30 دقيقة
+        return 30 * 60
     if state_type == "off":
-        return 180 * 60  # 180 دقيقة
-    return 60  # افتراضي
+        return 180 * 60
+    return 60
 
 
 # ---------------------------------------------------------------------------
-# ٤) بناء الحمولة الأساسية للـ Snapshot
+# build payload (Schema ثابت + مفاتيح احتياطية)
 # ---------------------------------------------------------------------------
 
 def _build_snapshot_payload(school: Any) -> Dict[str, Any]:
-    """
-    يبني الحمولة الأساسية للـ snapshot لشاشة العرض لمدرسة معينة في يوم معيّن.
-
-    ترجع بنية JSON متسقة مع display.js:
-      - today:           حالة اليوم + الجدول + معلومات التاريخ.
-      - period_classes:  الحصص الجارية الآن.
-      - ann:             الإعلانات النشطة.
-      - standby:         حصص الانتظار (standby.items).
-      - exc:             المتميزون (exc.items).
-      - settings:        حجز لخيارات مستقبلية (حاليًا None).
-      - server_time:     وقت السيرفر (ISO).
-      - refresh_hint_seconds: تلميح لمعدل التحديث.
-    """
     get_today_state, get_period_classes_now = _get_schedule_helpers()
 
-    # الحالة العامة لليوم + الجدول
-    today_state: Dict[str, Any] = get_today_state(school)
+    today_state: Dict[str, Any] = {}
+    try:
+        today_state = get_today_state(school) or {}
+    except Exception:
+        logger.exception("get_today_state فشل؛ fallback.")
+        today_state = _fallback_today_state(school)
 
-    # الحصص الجارية الآن
-    period_classes: Any = get_period_classes_now(school)
+    period_classes_raw: Any
+    try:
+        period_classes_raw = get_period_classes_now(school)
+    except Exception:
+        logger.exception("get_period_classes_now فشل؛ fallback.")
+        period_classes_raw = []
 
-    # الإعلانات
+    period_classes = _safe_list(period_classes_raw)
+
     ann_items = _get_announcements_for_school(school)
-
-    # حصص الانتظار
     standby_items = _get_standby_items_for_school(school)
-
-    # لوحة الشرف / المتميزون (حاليًا فارغ افتراضيًا)
     exc_items = _get_excellence_items_for_school(school)
 
-    # تلميح لمعدل التحديث الذكي
-    refresh_hint_seconds = _compute_refresh_hint(today_state)
+    settings_dict = _get_school_settings_dict(school)
+    refresh_hint_seconds = _compute_refresh_hint(today_state, settings_dict)
 
     payload: Dict[str, Any] = {
+        "schema_version": 2,
+        "school": {
+            "id": getattr(school, "id", None),
+            "name": getattr(school, "name", "") or "",
+            "slug": getattr(school, "slug", "") or "",
+            "logo": (getattr(getattr(school, "logo", None), "url", "") or ""),
+        },
         "today": today_state,
         "period_classes": period_classes,
         "ann": ann_items,
         "standby": {"items": standby_items},
         "exc": {"items": exc_items},
-        "settings": None,  # حجز لمستقبلًا إن أضفنا إعدادات عرض إضافية
+        "settings": settings_dict,
         "server_time": timezone.now().isoformat(),
-        "refresh_hint_seconds": refresh_hint_seconds,
+        "refresh_hint_seconds": int(refresh_hint_seconds),
+        # مفاتيح احتياطية (لو display.js قديم)
+        "announcements": ann_items,
+        "standby_items": standby_items,
+        "excellence_items": exc_items,
     }
     return payload
 
 
 # ---------------------------------------------------------------------------
-# ٥) نقطة الـ API الفعلية
+# API endpoint
 # ---------------------------------------------------------------------------
 
 @require_GET
-def display_snapshot(request: HttpRequest) -> HttpResponse:
+def display_snapshot(request: HttpRequest, token: Optional[str] = None) -> HttpResponse:
     """
-    نقطة API موحدة لشاشة العرض الرقمية.
+    ✅ Snapshot API لشاشة العرض.
 
-    تعتمد على DisplayTokenMiddleware لإضافة request.school (بناءً على توكن الشاشة).
+    يعمل بطريقتين:
+    1) الأفضل: token ضمن الـURL (/api/display/snapshot/<token>/)
+       → يجلب DisplayScreen + school ويحدّث last_seen.
+    2) بديل: request.school من middleware (إن كان موجودًا)
 
-    تعيد في استجابة واحدة:
-      - today:     الحالة العامة لليوم (قبل/أثناء/استراحة/بعد/إجازة + periods/breaks/date_info)
-      - period_classes: الحصص الجارية الآن
-      - ann:       الإعلانات النشطة
-      - standby:   حصص الانتظار لليوم (standby.items)
-      - exc:       بيانات المتميزين (exc.items)
-      - settings:  إعدادات شاشة العرض (حاليًا None)
-      - server_time: وقت السيرفر بالتوقيت المحلي (ISO)
-      - refresh_hint_seconds: تلميح ذكي لمعدل التحديث المقترح حسب حالة اليوم
-
-    ملاحظات:
-      - إذا لم يتم حقن request.school (مثلاً التوكن ناقص أو الـ middleware غير مفعّل)
-        فنعيد 400 مع رسالة خطأ واضحة.
-      - نستخدم كاش خفيف لمدة 10 ثواني لكل مدرسة ولكل يوم لتخفيف الضغط على قاعدة البيانات.
+    كاش: 10 ثواني لكل (school + date).
+    Debug: ?debug=1 يضيف diagnostics
     """
-    school = getattr(request, "school", None)
+
+    school = None
+    screen = None
+
+    # 1) من token إن توفر
+    if token:
+        try:
+            from core.models import DisplayScreen  # type: ignore
+            screen = (
+                DisplayScreen.objects.select_related("school")
+                .filter(token=token, is_active=True)
+                .first()
+            )
+            if not screen or not getattr(screen, "school", None):
+                return JsonResponse({"error": "Invalid token or inactive screen."}, status=404)
+
+            school = screen.school
+
+            # تحديث last_seen إن كان موجودًا
+            try:
+                if hasattr(screen, "last_seen"):
+                    screen.last_seen = timezone.now()
+                    screen.save(update_fields=["last_seen"])
+                elif hasattr(screen, "last_seen_at"):
+                    screen.last_seen_at = timezone.now()
+                    screen.save(update_fields=["last_seen_at"])
+            except Exception:
+                # لا نفشل الـAPI بسبب last_seen
+                logger.debug("تعذر تحديث last_seen للشاشة.", exc_info=True)
+
+        except Exception:
+            logger.exception("تعذر resolve token إلى DisplayScreen.")
+            return JsonResponse({"error": "Server error while resolving token."}, status=500)
+
+    # 2) fallback من middleware
+    if school is None:
+        school = getattr(request, "school", None)
+
     if school is None:
         return JsonResponse(
-            {"error": "Missing school context. Did you forget the display token middleware or token is invalid?"},
+            {
+                "error": "Missing school context. Provide token in URL or enable middleware to inject request.school."
+            },
             status=400,
         )
 
@@ -335,14 +426,33 @@ def display_snapshot(request: HttpRequest) -> HttpResponse:
 
     cached = cache.get(cache_key)
     if cached is not None:
-        # نحدث وقت السيرفر في كل رد حتى لو من الكاش
         cached = dict(cached)
         cached["server_time"] = timezone.now().isoformat()
+
+        # Debug info
+        if request.GET.get("debug"):
+            cached["debug"] = {
+                "source": "cache",
+                "school_id": getattr(school, "id", None),
+                "token_used": bool(token),
+            }
         return JsonResponse(cached)
 
     data = _build_snapshot_payload(school)
-
-    # كاش بسيط لمدة 10 ثواني
     cache.set(cache_key, data, timeout=10)
 
+    if request.GET.get("debug"):
+        data = dict(data)
+        data["debug"] = {
+            "source": "fresh",
+            "school_id": getattr(school, "id", None),
+            "token_used": bool(token),
+            "server_local": timezone.localtime().isoformat(),
+            "keys": sorted(list(data.keys())),
+        }
+
     return JsonResponse(data)
+
+
+# Django ORM Q import (داخل الملف لتجنب لبس في أعلى الملف)
+from django.db import models  # noqa: E402

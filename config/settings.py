@@ -113,31 +113,44 @@ INSTALLED_APPS = [
 
 
 # -------------------------
-# Middleware
+# Middleware (Final Approved Order)
 # -------------------------
 MIDDLEWARE = [
+    # أساسيات الأمان
     "django.middleware.security.SecurityMiddleware",
 
-    # ضغط الاستجابات (مفيد جدًا لJSON وشاشات العرض)
-    "django.middleware.gzip.GZipMiddleware",
-
-    # Static serving (WhiteNoise)
+    # Static files (WhiteNoise)
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
+    # Sessions & Common
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+
+    # ضغط الاستجابات (بعد Common)
+    "django.middleware.gzip.GZipMiddleware",
+
+    # CSRF
     "django.middleware.csrf.CsrfViewMiddleware",
+
+    # Auth
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
-    # Custom middlewares
+    # 🔐 Multi-school (بعد auth)
+    "core.middleware.ActiveSchoolMiddleware",
+
+    # 🖥️ Display API (يعتمد على request)
     "core.middleware.DisplayTokenMiddleware",
-    "core.middleware.SecurityHeadersMiddleware",
+
+    # 💳 اشتراك الداشبورد
     "dashboard.middleware.SubscriptionRequiredMiddleware",
 
+    # 🛡️ Headers إضافية
+    "core.middleware.SecurityHeadersMiddleware",
+
+    # Clickjacking
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
 
 # -------------------------
 # URLs / Templates

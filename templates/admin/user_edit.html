@@ -10,51 +10,114 @@
 
 {% block page_description %}
   {% if is_create %}
-    إنشاء مستخدم جديد وربطه بمدرسة وتحديد صلاحياته في النظام، مع تعيين كلمة المرور.
+    إنشاء مستخدم جديد وربطه بمدرسة أو أكثر مع تحديد المدرسة النشطة وصلاحياته.
   {% else %}
-    تعديل بيانات المستخدم، ربطه بالمدرسة، وضبط صلاحياته وكلمة المرور عند الحاجة.
+    تعديل بيانات المستخدم، المدارس المرتبط بها، وتعيين المدرسة النشطة.
   {% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-6">
 
-  <form method="post" class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 space-y-5">
+  <form method="post"
+        class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 space-y-6">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
-      <div class="mb-4 rounded-xl bg-rose-50 text-rose-700 text-sm px-4 py-3">
+      <div class="rounded-xl bg-rose-50 text-rose-700 text-sm px-4 py-3">
         {% for error in form.non_field_errors %}
           <div>{{ error }}</div>
         {% endfor %}
       </div>
     {% endif %}
 
-    {% for field in form %}
+    <!-- =========================
+         بيانات الحساب
+    ========================== -->
+    <div class="space-y-5">
+      <h3 class="text-sm font-semibold text-slate-700 border-b pb-2">
+        بيانات الحساب
+      </h3>
+
+      {% for field in form %}
+        {% if field.name not in "schools active_school" %}
+          <div class="space-y-1.5">
+            <label class="block text-sm font-medium text-slate-700">
+              {{ field.label }}
+            </label>
+            {{ field }}
+            {% if field.help_text %}
+              <p class="text-[11px] text-slate-400">{{ field.help_text }}</p>
+            {% endif %}
+            {% if field.errors %}
+              <p class="text-xs text-rose-600">
+                {% for error in field.errors %}
+                  {{ error }}{% if not forloop.last %}<br>{% endif %}
+                {% endfor %}
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- =========================
+         ربط المدارس
+    ========================== -->
+    <div class="space-y-5 pt-6 border-t">
+      <h3 class="text-sm font-semibold text-slate-700">
+        ربط المدارس
+      </h3>
+
+      <!-- المدارس -->
       <div class="space-y-1.5">
         <label class="block text-sm font-medium text-slate-700">
-          {{ field.label }}
+          المدارس المرتبط بها
         </label>
-        {{ field }}
-        {% if field.help_text %}
-          <p class="text-[11px] text-slate-400 mt-0.5">{{ field.help_text }}</p>
-        {% endif %}
-        {% if field.errors %}
-          <p class="text-xs text-rose-600 mt-1">
-            {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+        {{ form.schools }}
+        <p class="text-[11px] text-slate-400">
+          يمكن ربط المستخدم بأكثر من مدرسة حسب صلاحياته.
+        </p>
+        {% if form.schools.errors %}
+          <p class="text-xs text-rose-600">
+            {% for error in form.schools.errors %}
+              {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
           </p>
         {% endif %}
       </div>
-    {% endfor %}
 
-    <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+      <!-- المدرسة النشطة -->
+      <div class="space-y-1.5">
+        <label class="block text-sm font-medium text-slate-700">
+          المدرسة النشطة
+        </label>
+        {{ form.active_school }}
+        <p class="text-[11px] text-slate-400">
+          المدرسة الافتراضية التي يدخل بها المستخدم إلى لوحة التحكم.
+        </p>
+        {% if form.active_school.errors %}
+          <p class="text-xs text-rose-600">
+            {% for error in form.active_school.errors %}
+              {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- =========================
+         أزرار الحفظ
+    ========================== -->
+    <div class="pt-6 flex items-center justify-between border-t">
       <p class="text-[11px] text-slate-400">
         {% if is_create %}
-          سيتم تعيين كلمة المرور من الحقول أعلاه، ويمكنك تغييرها لاحقاً من نفس هذه الصفحة.
+          سيتم إنشاء المستخدم وربطه بالمدارس المحددة مباشرة.
         {% else %}
-          اترك حقول كلمة المرور الجديدة فارغة إذا لا تريد تغيير كلمة المرور الحالية.
+          سيتم تحديث بيانات المستخدم دون التأثير على بيانات الدخول.
         {% endif %}
       </p>
+
       <div class="flex gap-3">
         <a href="{% url 'dashboard:system_users_list' %}"
            class="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100">
@@ -66,7 +129,7 @@
         </button>
       </div>
     </div>
-  </form>
 
+  </form>
 </div>
 {% endblock %}

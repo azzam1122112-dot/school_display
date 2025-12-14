@@ -130,3 +130,30 @@ def on_period_change(sender, instance, **kwargs):
 @receiver(post_delete, sender=Break)
 def on_break_change(sender, instance, **kwargs):
     sync_day_schedule(instance.day)
+
+
+
+
+# core/signals.py
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+from core.models import UserProfile, School
+
+User = get_user_model()
+
+@receiver(post_save, sender=User)
+def ensure_user_profile(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    profile, _ = UserProfile.objects.get_or_create(user=instance)
+
+    if profile.schools.exists():
+        return
+
+    school = School.objects.first()
+    if school:
+        profile.schools.add(school)
+        profile.active_school = school
+        profile.save(update_fields=["active_school"])

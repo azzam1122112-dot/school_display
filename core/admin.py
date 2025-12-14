@@ -9,17 +9,20 @@ from .models import School, DisplayScreen, UserProfile
 
 class SchoolScopedAdmin(admin.ModelAdmin):
     """
-    Mixin to restrict admin view to the user's school.
+    Mixin to restrict admin view to the user's active_school.
     Superusers see everything.
     """
+
+    def _get_active_school(self, request):
+        profile = getattr(request.user, "profile", None)
+        return getattr(profile, "active_school", None)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
 
-        profile = getattr(request.user, "profile", None)
-        school = getattr(profile, "school", None)
+        school = self._get_active_school(request)
         if not school:
             return qs.none()
 
@@ -35,16 +38,14 @@ class SchoolScopedAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not request.user.is_superuser:
-            profile = getattr(request.user, "profile", None)
-            school = getattr(profile, "school", None)
+            school = self._get_active_school(request)
             if school and hasattr(obj, "school"):
                 obj.school = school
         super().save_model(request, obj, form, change)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if not request.user.is_superuser:
-            profile = getattr(request.user, "profile", None)
-            school = getattr(profile, "school", None)
+            school = self._get_active_school(request)
             if school:
                 if db_field.name == "school":
                     kwargs["queryset"] = School.objects.filter(id=school.id)
@@ -67,10 +68,31 @@ class SchoolAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "school")
-    list_filter = ("school",)
-    search_fields = ("user__username", "user__email", "school__name")
-    autocomplete_fields = ("school",)
+    """
+    ✅ Updated for:
+      - active_school (FK)
+      - schools (M2M)
+    """
+
+    list_display = ("user", "active_school", "schools_count")
+    list_filter = ("active_school", "schools")
+    search_fields = (
+        "user__username",
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "active_school__name",
+        "schools__name",
+    )
+    autocomplete_fields = ("user", "active_school", "schools")
+    list_select_related = ("active_school",)
+
+    @admin.display(description="عدد المدارس")
+    def schools_count(self, obj: UserProfile) -> int:
+        try:
+            return obj.schools.count()
+        except Exception:
+            return 0
 
 
 @admin.register(DisplayScreen)

@@ -50,3 +50,7 @@ class CoreConfig(AppConfig):
             logger.info("Firebase signals loaded successfully.")
         except Exception as exc:  # حماية إضافية
             logger.exception("Failed to load Firebase signals: %s", exc)
+
+
+def ready(self):
+    import core.signals

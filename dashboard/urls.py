@@ -114,5 +114,11 @@ urlpatterns = [
         name="system_subscription_delete",
     ),
     path("my-subscription/", views.my_subscription, name="my_subscription"),
+   
+    path(
+    "no-school/",
+    views.no_school,
+    name="no_school",
+),
 
 ]

@@ -27,7 +27,7 @@ class StandbyAssignmentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        # نتوقع أن الواجهة (view) تمُرّر school=request.user.profile.school
+        # نتوقع أن الواجهة (view) تمُرّر school=request.user.profile.active_school
         school = kwargs.pop("school", None)
         super().__init__(*args, **kwargs)
 
