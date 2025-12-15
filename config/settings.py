@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
-import logging.config
+from urllib.parse import urlparse
 
 import dj_database_url
 
-# =========================
-# Environment
-# =========================
+
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
 except Exception:
     pass
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -32,7 +28,9 @@ def env_int(key: str, default: str) -> int:
 
 
 def env_list(key: str, default: str = "") -> list[str]:
-    raw = os.getenv(key, default)
+    raw = os.getenv(key, default).strip()
+    if not raw:
+        return []
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
@@ -42,38 +40,39 @@ def exists_dir(p: Path) -> bool:
     except Exception:
         return False
 
+# مهم: خلي DEBUG True افتراضيًا لتفادي مشاكل SSL/Redirect محليًا إذا ما عندك .env
+DEBUG = env_bool("DEBUG", "True")
 
-# =========================
-# Core
-# =========================
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")
-DEBUG = env_bool("DEBUG", "False")
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == "dev-insecure-key-change-me"):
+    raise RuntimeError("SECRET_KEY must be set in production!")
 
-ALLOWED_HOSTS = [
-    "school-display.com",
-    "www.school-display.com",
-    ".onrender.com",
-    "127.0.0.1",
-    "localhost",
-]
+ALLOWED_HOSTS = env_list(
+    "ALLOWED_HOSTS",
+    "school-display.com,www.school-display.com,.onrender.com,127.0.0.1,localhost",
+)
+# Django يتوقع list
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
-# =========================
-# CSRF
-# =========================
+# CSRF_TRUSTED_ORIGINS لازم تكون مع scheme (http/https)
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = _csrf_env
 else:
-    CSRF_TRUSTED_ORIGINS = [
-        "https://school-display.com",
-        "https://www.school-display.com",
-    ]
+    if DEBUG:
+        CSRF_TRUSTED_ORIGINS = [
+            "http://127.0.0.1:8000",
+            "http://localhost:8000",
+        ]
+    else:
+        CSRF_TRUSTED_ORIGINS = [
+            "https://school-display.com",
+            "https://www.school-display.com",
+        ]
 
 
-# =========================
-# Applications
-# =========================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -100,9 +99,6 @@ INSTALLED_APPS = [
 ]
 
 
-# =========================
-# Middleware
-# =========================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -120,9 +116,6 @@ MIDDLEWARE = [
 ]
 
 
-# =========================
-# URLs / Templates
-# =========================
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -145,22 +138,34 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-# =========================
-# Database
-# =========================
+
+# ✅ حل مشكلة: TypeError: 'sslmode' invalid keyword for sqlite
+# السبب: تمرير ssl_require مع sqlite يضيف sslmode داخل OPTIONS.
+# هنا نقرأ DATABASE_URL إن وجد، وإلا SQLite محليًا.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
 DATABASES = {
     "default": dj_database_url.config(
         env="DATABASE_URL",
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        ssl_require=not DEBUG,
+        conn_max_age=env_int("CONN_MAX_AGE", "600"),
     )
 }
 
+# أمان SSL فقط لبوستجرس وفي الإنتاج
+try:
+    engine = DATABASES["default"].get("ENGINE", "")
+    is_postgres = "postgres" in engine
+except Exception:
+    is_postgres = False
 
-# =========================
-# Cache
-# =========================
+if is_postgres and not DEBUG:
+    DATABASES["default"].setdefault("OPTIONS", {})
+    # لا نكسر إعدادات جاهزة إن كانت موجودة
+    DATABASES["default"]["OPTIONS"].setdefault("sslmode", os.getenv("PGSSLMODE", "require"))
+
+
+
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
 if REDIS_URL:
     CACHES = {
@@ -178,9 +183,7 @@ else:
     }
 
 
-# =========================
-# Auth
-# =========================
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -189,18 +192,13 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# =========================
-# Locale / Time
-# =========================
+
 LANGUAGE_CODE = "ar"
 TIME_ZONE = "Asia/Riyadh"
 USE_I18N = True
 USE_TZ = True
 
 
-# =========================
-# Static / Media
-# =========================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -211,18 +209,15 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# =========================
-# Cloudinary
-# =========================
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
 
 USE_CLOUD_STORAGE = (
-    not DEBUG
-    and CLOUDINARY_CLOUD_NAME
-    and CLOUDINARY_API_KEY
-    and CLOUDINARY_API_SECRET
+    (not DEBUG)
+    and bool(CLOUDINARY_CLOUD_NAME)
+    and bool(CLOUDINARY_API_KEY)
+    and bool(CLOUDINARY_API_SECRET)
 )
 
 STORAGES = {
@@ -241,13 +236,9 @@ STORAGES = {
 WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_MANIFEST_STRICT = env_bool("WHITENOISE_MANIFEST_STRICT", "True")
 
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# =========================
-# DRF
-# =========================
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -267,31 +258,29 @@ REST_FRAMEWORK = {
 }
 
 
-# =========================
-# Security (Render)
-# =========================
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# ✅ لا تفعّل Redirect/كوكيز secure محليًا عشان ما يتحول HTTPS في runserver
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "True") if not DEBUG else False
+SESSION_COOKIE_SECURE = (not DEBUG)
+CSRF_COOKIE_SECURE = (not DEBUG)
 
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
+# HSTS فقط في الإنتاج
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (not DEBUG)
+SECURE_HSTS_PRELOAD = (not DEBUG)
 
-# =========================
-# Logging
-# =========================
+
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -311,15 +300,10 @@ LOGGING = {
 }
 
 
-# =========================
-# Auth redirects
-# =========================
+
 LOGIN_URL = "dashboard:login"
 LOGIN_REDIRECT_URL = "dashboard:index"
 LOGOUT_REDIRECT_URL = "dashboard:login"
 
 
-# =========================
-# Site URL
-# =========================
 SITE_BASE_URL = "https://school-display.com"

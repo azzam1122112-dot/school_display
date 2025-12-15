@@ -46,6 +46,14 @@
       --sub: clamp(16px, 1.15vw, 24px);
       --meta: clamp(14px, 0.95vw, 20px);
       --chip: clamp(12px, 0.9vw, 18px);
+
+      /* Smaller slots */
+      --slot-pad: 11px;
+      --slot-gap: 9px;
+      --slot-radius: 16px;
+      --slot-chip: clamp(11px, 0.78vw, 16px);
+      --slot-sub: clamp(13px, 0.95vw, 20px);
+      --slot-meta: clamp(12px, 0.82vw, 18px);
     }
 
     body[data-theme="emerald"]{
@@ -160,7 +168,7 @@
     .chip-ok{color:var(--accent-ok);background:rgba(34,197,94,.16);border-color:rgba(34,197,94,.30);}
     .chip-warn{color:var(--accent-warn);background:rgba(251,113,133,.16);border-color:rgba(251,113,133,.30);}
 
-    /* Alerts (عنوان + تفاصيل) */
+    /* Alerts */
     .alert-title{
       font-size:var(--sub);
       font-weight:1000;
@@ -183,59 +191,48 @@
       -webkit-line-clamp:3;
       overflow:hidden;
     }
+
     @media (min-width:2200px){
       :root{ --pad:26px; --gap:22px; --radius:34px; }
       .alert-details{-webkit-line-clamp:4;}
     }
 
-    /* Period/Standby Card Markup (rendered by display.js) */
+    /* Slots smaller */
     .slot-item{
-      background: rgba(255,255,255,.06);
+      background: rgba(255,255,255,.055);
       border:1px solid rgba(255,255,255,.10);
-      border-radius: 18px;
-      padding: 14px 14px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.22);
+      border-radius: var(--slot-radius);
+      padding: var(--slot-pad);
+      box-shadow: 0 12px 26px rgba(0,0,0,.20);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       display:flex;
       flex-direction:column;
-      gap:12px;
+      gap: var(--slot-gap);
       min-width:0;
     }
-    .slot-top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .slot-badges{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      min-width:0;
-    }
+    .slot-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+    .slot-badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
     .slot-class{
       display:inline-flex; align-items:center;
-      padding:.38rem .85rem;
+      padding:.28rem .65rem;
       border-radius:999px;
       background: rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.14);
       color: rgba(255,255,255,.95);
-      font-weight:1000;
-      font-size: var(--chip);
+      font-weight:900;
+      font-size: var(--slot-chip);
       white-space:nowrap;
     }
     .slot-subject{
       display:inline-flex; align-items:center;
-      padding:.38rem .85rem;
+      padding:.28rem .65rem;
       border-radius:999px;
       background: rgba(14,165,233,.14);
       border:1px solid rgba(14,165,233,.28);
       color:#fff;
-      font-weight:1000;
-      font-size: var(--chip);
+      font-weight:900;
+      font-size: var(--slot-chip);
       white-space:nowrap;
       max-width:100%;
       overflow:hidden;
@@ -243,13 +240,14 @@
     }
     .slot-teacher{
       display:flex; align-items:center; gap:8px;
-      font-size: var(--sub);
+      font-size: var(--slot-sub);
       font-weight:900;
       color: rgba(255,255,255,.94);
       min-width:0;
+      line-height:1.25;
     }
     .slot-teacher .label{
-      font-size: var(--meta);
+      font-size: var(--slot-meta);
       font-weight:800;
       color: rgba(255,255,255,.70);
       white-space:nowrap;
@@ -263,7 +261,7 @@
       min-width:0;
     }
 
-    /* Honor board (bigger, clearer) */
+    /* Honor board */
     #exSlot img{
       width: clamp(120px, 6.2vw, 190px);
       height: clamp(120px, 6.2vw, 190px);
@@ -338,29 +336,31 @@
     </div>
   </header>
 
-  <!-- Alerts (moved, full, title + details) -->
-  <section class="bento-card px-6 py-4 animate-enter shrink-0">
-    <div id="alertContainer" class="bento-soft px-5 py-4">
-      <!-- display.js will fill these safely -->
-      <div id="alertTitle" class="alert-title">جاري تحميل التنبيه…</div>
-      <div class="alert-divider"></div>
-      <div id="alertDetails" class="alert-details">...</div>
-    </div>
-  </section>
-
+  <!-- ✅ Main: alerts moved into hero column -->
   <main class="flex-1 grid grid-cols-12 min-h-0" style="gap:var(--gap);">
+
+    <!-- HERO COLUMN (right on your layout) -->
     <div class="col-span-12 xl:col-span-8 flex flex-col min-h-0" style="gap:var(--gap);">
+
+      <!-- Alerts now same width as hero -->
+      <section class="bento-card px-6 py-4 animate-enter shrink-0">
+        <div id="alertContainer" class="px-5 py-4">
+          <div id="alertTitle" class="alert-title">جاري تحميل التنبيه…</div>
+          <div class="alert-divider"></div>
+          <div id="alertDetails" class="alert-details">...</div>
+        </div>
+      </section>
+
       <!-- Hero -->
-      <section class="bento-card hero-card-gradient flex-[2] flex flex-col relative group animate-enter shadow-2xl">
-        <div class="flex-1 flex items-center justify-between p-6 md:p-8 relative z-10">
+      <section class="bento-card hero-card-gradient flex-[2] flex flex-col relative group animate-enter shadow-2xl min-h-0">
+        <div class="flex-1 flex items-center justify-between p-6 md:p-8 relative z-10 min-h-0">
           <div class="flex flex-col justify-center gap-4 max-w-2xl min-w-0">
             <div class="flex items-center gap-3">
               <span id="badgeKind" class="chip">--</span>
               <span id="heroRange" class="text-slate-100 num-font opacity-90 tracking-wide" style="font-size:var(--sub);">--:--</span>
             </div>
 
-            <h2 id="heroTitle" class="font-black text-white tracking-tight drop-shadow-2xl leading-[1.1]"
-                style="font-size:var(--hero);">
+            <h2 id="heroTitle" class="font-black text-white tracking-tight drop-shadow-2xl leading-[1.1]" style="font-size:var(--hero);">
               جاري التحميل...
             </h2>
 
@@ -398,8 +398,7 @@
               <span>مسار اليوم</span>
             </div>
 
-            <div id="miniSchedule" class="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar mask-gradient-x"
-                 style="height: 56px;">
+            <div id="miniSchedule" class="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar mask-gradient-x" style="height: 56px;">
               <span class="text-slate-200/85 animate-pulse" style="font-size:var(--sub);">جاري جلب الجدول...</span>
             </div>
 
@@ -416,8 +415,8 @@
         </div>
       </section>
 
-      <!-- Honor board bigger -->
-      <section class="bento-card honor-card-style flex-1 flex items-stretch px-6 md:px-8 relative overflow-hidden animate-enter">
+      <!-- Honor board -->
+      <section class="bento-card honor-card-style flex-1 flex items-stretch px-6 md:px-8 relative overflow-hidden animate-enter min-h-0">
         <div class="flex items-center gap-6 md:gap-8 w-full z-10 h-full">
           <div class="flex flex-col gap-2 shrink-0 border-l border-[var(--accent-honor)]/45 pl-6 md:pl-8 justify-center min-w-[220px]">
             <div class="text-[var(--accent-honor)] font-black" style="font-size:clamp(22px,1.4vw,34px);">لوحة الشرف</div>
@@ -435,26 +434,25 @@
       </section>
     </div>
 
+    <!-- PERIODS COLUMN (left): now gets full height (no alerts above it) -->
     <aside class="col-span-12 xl:col-span-4 flex flex-col min-h-0" style="gap:var(--gap);">
-      <section class="bento-card flex-1 flex flex-col p-6 animate-enter">
-        <div class="flex justify-between items-center mb-4 pb-4 border-b border-white/5">
-          <h3 class="font-black" style="color:var(--accent-ok); font-size:clamp(18px,1.1vw,26px);">حصص جارية</h3>
-          <span id="pcCount" class="chip chip-ok num-font">0</span>
+      <section class="bento-card flex-1 flex flex-col px-5 py-5 animate-enter min-h-0">
+        <div class="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
+          <h3 class="font-black" style="color:var(--accent-ok); font-size:clamp(17px,1.05vw,24px);">حصص جارية</h3>
+          <span id="pcCount" class="chip chip-ok num-font" style="font-size:var(--slot-chip); padding:.26rem .65rem;">0</span>
         </div>
-        <div class="standby-viewport flex-1 pr-1">
-          <!-- IMPORTANT: display.js will render .slot-item nodes here (do not mutate in template) -->
-          <div id="periodClassesTrack" class="text-sm space-y-3"></div>
+        <div class="standby-viewport flex-1 pr-1 min-h-0">
+          <div id="periodClassesTrack" class="text-sm space-y-2"></div>
         </div>
       </section>
 
-      <section class="bento-card flex-1 flex flex-col p-6 animate-enter">
-        <div class="flex justify-between items-center mb-4 pb-4 border-b border-white/5">
-          <h3 class="font-black" style="color:var(--accent-warn); font-size:clamp(18px,1.1vw,26px);">حصص الانتظار</h3>
-          <span id="sbCount" class="chip chip-warn num-font">0</span>
+      <section class="bento-card flex-1 flex flex-col px-5 py-5 animate-enter min-h-0">
+        <div class="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
+          <h3 class="font-black" style="color:var(--accent-warn); font-size:clamp(17px,1.05vw,24px);">حصص الانتظار</h3>
+          <span id="sbCount" class="chip chip-warn num-font" style="font-size:var(--slot-chip); padding:.26rem .65rem;">0</span>
         </div>
-        <div class="standby-viewport flex-1 pr-1 bg-gradient-to-br from-transparent to-black/10 rounded-2xl">
-          <!-- IMPORTANT: display.js will render .slot-item nodes here (do not mutate in template) -->
-          <div id="standbyTrack" class="text-sm space-y-3"></div>
+        <div class="standby-viewport flex-1 pr-1 bg-gradient-to-br from-transparent to-black/10 rounded-2xl min-h-0">
+          <div id="standbyTrack" class="text-sm space-y-2"></div>
         </div>
       </section>
     </aside>
@@ -467,6 +465,6 @@
     aria-label="Fullscreen"
   >⛶</button>
 
-  <script src="{% static 'js/display.js' %}?v=20251213-ui-fixed"></script>
+  <script src="{% static 'js/display.js' %}?v=20251215-layout-alerts-rightcol"></script>
 </body>
 </html>
