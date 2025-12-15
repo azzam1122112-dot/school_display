@@ -1,22 +1,147 @@
 {% load static %}
 <!doctype html>
-<html lang="ar" dir="rtl" class="h-full antialiased">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="color-scheme" content="dark">
   <title>{% if school_name %}{{ school_name }} — {% endif %}لوحة العرض الذكية</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20251215-display">
+
+  <style>
+    html,body{height:100%} body{margin:0}
+    .display-board{font-family:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+    .hidden{display:none !important}
+
+    /* ===== TV Layout (احترافي + بدون ضغط الهيرو) ===== */
+    .display-board{
+      min-height: 100svh;
+      min-height: calc(var(--vh, 1vh) * 100);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .header-card{flex:0 0 auto}
+
+    .main-grid{
+      flex:1 1 auto;
+      min-height:0;
+      display:grid;
+      gap:16px;
+      padding:16px;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 36%);
+      align-items:stretch;
+    }
+
+    /* العمود الرئيسي: تنبيه صغير + هيرو يتمدد + شرف يأخذ المتبقي */
+    .col-main{
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    /* ✅ التنبيه: سطرين فقط + تكبير خط فقط بدون تكبير القسم */
+    .alert-card{
+      flex:0 0 auto;
+    }
+    .alert-inner{
+      padding:14px 16px; /* ثابت وصغير */
+    }
+    .alert-divider{
+      margin:8px 0;
+      opacity:.7;
+    }
+    .alert-title{
+      font-size: 26px;            /* تكبير الخط */
+      line-height: 1.2;
+      font-weight: 900;
+      white-space: nowrap;        /* سطر واحد */
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .alert-details{
+      font-size: 20px;            /* تكبير الخط */
+      line-height: 1.45;
+      opacity:.95;
+      white-space: nowrap;        /* سطر واحد */
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* الهيرو يتمدد طبيعي */
+    .hero-card{
+      flex: 1 1 auto;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+    .hero-top{flex:1 1 auto; min-height:0}
+    .hero-bottom{flex:0 0 auto}
+
+    /* لوحة الشرف: تأخذ الفراغ المتبقي لكن بدون تضخيم مبالغ */
+    .honor-card{
+      flex: 0 0 28%;
+      min-height: 220px;
+      max-height: 360px;
+      display:flex;
+      align-items:stretch;
+      gap:14px;
+      min-height:0;
+    }
+    .honor-left{
+      flex:0 0 auto;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width: 210px;
+    }
+    .honor-slot{
+      flex:1 1 auto;
+      min-height:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* العمود الجانبي (اليسار): كرتين ثابتين بدون تداخل */
+    .col-side{
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    .col-side .list-card{
+      flex:1 1 0;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+    .list-viewport,
+    .standby-viewport{
+      flex:1 1 0;
+      min-height:0;
+      overflow:hidden;
+    }
+    .track{will-change:transform}
+
+    /* تحسين بسيط للشاشات الأقصر */
+    @media (max-height: 820px){
+      .alert-title{font-size:24px}
+      .alert-details{font-size:18px}
+      .honor-card{min-height:200px; max-height:320px}
+    }
+  </style>
 </head>
 
 <body
-  class="display-board flex flex-col selection:bg-[var(--accent-main)] selection:text-white"
+  class="display-board"
   data-theme="{% if theme %}{{ theme }}{% else %}indigo{% endif %}"
   data-token="{% if api_token %}{{ api_token }}{% endif %}"
   data-api-token="{% if api_token %}{{ api_token }}{% endif %}"
@@ -27,159 +152,154 @@
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
 >
-  <div class="mesh-bg"></div>
+  <div class="mesh-bg" aria-hidden="true"></div>
 
-  <header class="bento-card px-6 py-3 flex items-center justify-between gap-4 shrink-0 min-h-[96px] z-10 animate-enter">
-    <div class="flex items-center gap-5">
-      <div class="h-16 w-16 rounded-3xl bg-white/5 border border-white/10 p-1.5 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
-        <img id="schoolLogo" src="{% if logo_url %}{{ logo_url }}{% endif %}" class="{% if logo_url %}h-full w-full object-contain{% else %}hidden{% endif %}" alt="Logo">
-        <div id="schoolLogoFallback" class="{% if logo_url %}hidden{% endif %}h-full w-full rounded-2xl bg-gradient-to-br from-[var(--accent-main)] to-[var(--accent-sub)] flex items-center justify-center text-3xl">
-          🏫
-        </div>
+  <header class="card header-card">
+    <div class="header-left">
+      <div class="logo-box" aria-label="شعار المدرسة">
+        <img
+          id="schoolLogo"
+          src="{% if logo_url %}{{ logo_url }}{% endif %}"
+          class="{% if logo_url %}logo-img{% else %}hidden{% endif %}"
+          alt="Logo"
+          loading="eager"
+          decoding="async"
+        >
+        <div
+          id="schoolLogoFallback"
+          class="{% if logo_url %}hidden{% endif %}logo-fallback"
+          aria-hidden="true"
+        >🏫</div>
       </div>
 
-      <div class="flex flex-col justify-center min-w-0">
-        <h1 id="schoolName" class="font-black text-white tracking-tight" style="font-size:var(--h1); line-height:1.15;">
+      <div class="header-text">
+        <h1 id="schoolName" class="header-title">
           {% if school_name %}{{ school_name }}{% else %}لوحة العرض الذكية{% endif %}
         </h1>
-        <div class="flex items-center gap-2 text-slate-200 mt-1 overflow-hidden" style="font-size:var(--meta);">
+
+        <div class="header-meta">
           <span id="dateGregorian" class="truncate"></span>
-          <span class="w-1 h-1 rounded-full bg-slate-500"></span>
-          <span id="dateHijri" class="truncate text-[var(--accent-sub)] opacity-90"></span>
+          <span class="dot" aria-hidden="true"></span>
+          <span id="dateHijri" class="truncate hijri"></span>
         </div>
       </div>
     </div>
 
-    <div class="flex items-center gap-4 pl-4 border-l border-white/10">
-      <div id="clock" class="num-font font-black text-white tracking-tight drop-shadow-lg" style="font-size:var(--clock); line-height:1;">
-        --:--
-      </div>
+    <div class="header-right">
+      <div id="clock" class="clock num-font">--:--</div>
     </div>
   </header>
 
-  <main class="flex-1 grid grid-cols-12 min-h-0" style="gap:var(--gap);">
-
-    <div class="col-span-12 xl:col-span-8 flex flex-col min-h-0" style="gap:var(--gap);">
-
-      <section class="bento-card px-6 py-4 animate-enter shrink-0">
-        <div id="alertContainer" class="px-5 py-4">
+  <main class="main-grid">
+    <section class="col-main">
+      <div class="card alert-card">
+        <div id="alertContainer" class="alert-inner">
           <div id="alertTitle" class="alert-title">جاري تحميل التنبيه…</div>
-          <div class="alert-divider"></div>
+          <div class="alert-divider" aria-hidden="true"></div>
           <div id="alertDetails" class="alert-details">...</div>
         </div>
-      </section>
+      </div>
 
-      <section class="bento-card hero-card-gradient flex-[2] flex flex-col relative group animate-enter shadow-2xl min-h-0">
-        <div class="flex-1 flex items-center justify-between p-6 md:p-8 relative z-10 min-h-0">
-          <div class="flex flex-col justify-center gap-4 max-w-2xl min-w-0">
-            <div class="flex items-center gap-3">
+      <div class="card hero-card">
+        <div class="hero-top">
+          <div class="hero-left">
+            <div class="hero-row">
               <span id="badgeKind" class="chip">--</span>
-              <span id="heroRange" class="text-slate-100 num-font opacity-90 tracking-wide" style="font-size:var(--sub);">--:--</span>
+              <span id="heroRange" class="hero-range num-font">--:--</span>
             </div>
 
-            <h2 id="heroTitle" class="font-black text-white tracking-tight drop-shadow-2xl leading-[1.1]" style="font-size:var(--hero);">
-              جاري التحميل...
-            </h2>
+            <h2 id="heroTitle" class="hero-title">جاري التحميل...</h2>
 
-            <div class="mt-2">
-              <span class="text-indigo-100/90 font-semibold block mb-2" style="font-size:var(--meta);">النشاط الحالي:</span>
-              <div id="currentScheduleList" class="flex flex-wrap gap-2">
-                <span class="chip opacity-70">...</span>
+            <div class="hero-schedule">
+              <div class="hero-schedule-label">النشاط الحالي:</div>
+              <div id="currentScheduleList" class="hero-schedule-list">
+                <span class="chip chip-muted">...</span>
               </div>
             </div>
           </div>
 
-          <div class="relative w-40 h-40 md:w-52 md:h-52 shrink-0 hidden lg:block mr-2 md:mr-4">
-            <svg class="w-full h-full -rotate-90 filter drop-shadow-[0_0_16px_rgba(99,102,241,0.55)]" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.2)" stroke-width="6" fill="none"/>
+          <div class="hero-progress" aria-label="المتبقي">
+            <svg class="progress-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="54" class="progress-track" />
               <circle
                 id="circleProgress"
                 cx="60" cy="60" r="54"
-                stroke="var(--accent-honor)"
-                stroke-width="6"
-                fill="none"
-                stroke-linecap="round"
-                style="stroke-dasharray:339.292; stroke-dashoffset:339.292; transition:stroke-dashoffset 1s linear;"
+                class="progress-bar"
+                style="stroke-dasharray:339.292; stroke-dashoffset:339.292;"
               />
             </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span id="countdown" class="num-font font-black text-white tracking-tight" style="font-size:clamp(34px,2.6vw,70px);">--:--</span>
-              <span class="text-indigo-50 mt-1 tracking-widest font-semibold" style="font-size:12px;">المتبقي</span>
+
+            <div class="progress-center">
+              <span id="countdown" class="countdown num-font">--:--</span>
+              <span class="countdown-label">المتبقي</span>
             </div>
           </div>
         </div>
 
-        <div class="relative z-20 bg-slate-950/45 backdrop-blur-xl border-t border-white/5 px-5 md:px-6 py-4">
-          <div class="flex items-center gap-4 md:gap-5">
-            <div class="flex items-center gap-2 font-black text-indigo-100 shrink-0" style="font-size:var(--meta);">
-              <span>مسار اليوم</span>
-            </div>
+        <div class="hero-bottom">
+          <div class="hero-bottom-title">مسار اليوم</div>
 
-            <div id="miniSchedule" class="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar mask-gradient-x" style="height: 56px;">
-              <span class="text-slate-200/85 animate-pulse" style="font-size:var(--sub);">جاري جلب الجدول...</span>
-            </div>
+          <div id="miniSchedule" class="mini-schedule no-scrollbar mask-gradient-x" aria-label="مسار اليوم">
+            <span class="mini-loading">جاري جلب الجدول...</span>
+          </div>
 
-            <div class="hidden xl:flex flex-col items-end border-r border-white/10 pr-4 mr-1 shrink-0 min-w-[180px]">
-              <span class="text-slate-200 uppercase tracking-wide" style="font-size:11px;">التالي مباشرة</span>
-              <span id="nextLabel" class="font-black text-white truncate" style="font-size:var(--sub); max-width: 240px;">--</span>
-            </div>
+          <div class="next-box">
+            <div class="next-hint">التالي مباشرة</div>
+            <div id="nextLabel" class="next-label truncate">--</div>
           </div>
         </div>
 
-        <div class="absolute bottom-0 left-0 right-0 h-1 bg-slate-900/60">
-          <div id="progressBar" class="h-full w-0 transition-all duration-1000"
-               style="background:linear-gradient(90deg,var(--accent-main),var(--accent-sub),var(--accent-honor));"></div>
+        <div class="hero-progressline" aria-hidden="true">
+          <div id="progressBar" class="hero-progressfill"></div>
         </div>
-      </section>
+      </div>
 
-      <section class="bento-card honor-card-style flex-1 flex items-stretch px-6 md:px-8 relative overflow-hidden animate-enter min-h-0">
-        <div class="flex items-center gap-6 md:gap-8 w-full z-10 h-full">
-          <div class="flex flex-col gap-2 shrink-0 border-l border-[var(--accent-honor)]/45 pl-6 md:pl-8 justify-center min-w-[220px]">
-            <div class="text-[var(--accent-honor)] font-black" style="font-size:clamp(22px,1.4vw,34px);">لوحة الشرف</div>
-            <div class="text-amber-100/80 flex items-center gap-2" style="font-size:var(--meta);">
-              <span><span id="exIndex" class="text-amber-50 font-black">0</span> / <span id="exTotal" class="font-black">0</span></span>
-            </div>
-          </div>
-
-          <div id="exSlot" class="flex-1 flex items-center justify-start h-full min-w-0">
-            <div class="h-full flex items-center justify-center text-slate-300 w-full" style="font-size:var(--sub);">
-              جاري التحميل...
-            </div>
+      <div class="card honor-card">
+        <div class="honor-left">
+          <div class="honor-title">لوحة الشرف</div>
+          <div class="honor-count">
+            <span><span id="exIndex">0</span> / <span id="exTotal">0</span></span>
           </div>
         </div>
-      </section>
-    </div>
 
-    <aside class="col-span-12 xl:col-span-4 flex flex-col min-h-0" style="gap:var(--gap);">
-      <section class="bento-card flex-1 flex flex-col px-5 py-5 animate-enter min-h-0">
-        <div class="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
-          <h3 class="font-black" style="color:var(--accent-ok); font-size:clamp(17px,1.05vw,24px);">حصص جارية</h3>
-          <span id="pcCount" class="chip chip-ok num-font" style="font-size:var(--slot-chip); padding:.26rem .65rem;">0</span>
+        <div id="exSlot" class="honor-slot">
+          <div class="honor-loading">جاري التحميل...</div>
         </div>
-        <div class="standby-viewport flex-1 pr-1 min-h-0">
-          <div id="periodClassesTrack" class="text-sm space-y-2"></div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="bento-card flex-1 flex flex-col px-5 py-5 animate-enter min-h-0">
-        <div class="flex justify-between items-center mb-3 pb-3 border-b border-white/5">
-          <h3 class="font-black" style="color:var(--accent-warn); font-size:clamp(17px,1.05vw,24px);">حصص الانتظار</h3>
-          <span id="sbCount" class="chip chip-warn num-font" style="font-size:var(--slot-chip); padding:.26rem .65rem;">0</span>
+    <aside class="col-side">
+      <div class="card list-card">
+        <div class="list-head">
+          <div class="list-title ok">حصص جارية</div>
+          <span id="pcCount" class="chip chip-ok num-font">0</span>
         </div>
-        <div class="standby-viewport flex-1 pr-1 bg-gradient-to-br from-transparent to-black/10 rounded-2xl min-h-0">
-          <div id="standbyTrack" class="text-sm space-y-2"></div>
+        <div class="list-viewport standby-viewport">
+          <div id="periodClassesTrack" class="track"></div>
         </div>
-      </section>
+      </div>
+
+      <div class="card list-card">
+        <div class="list-head">
+          <div class="list-title warn">حصص الانتظار</div>
+          <span id="sbCount" class="chip chip-warn num-font">0</span>
+        </div>
+        <div class="list-viewport standby-viewport">
+          <div id="standbyTrack" class="track"></div>
+        </div>
+      </div>
     </aside>
   </main>
 
-  <button
-    id="fsBtn"
-    class="fixed bottom-6 left-6 h-12 w-12 rounded-full bg-slate-950/85 backdrop-blur border border-slate-600/70 text-slate-300 hover:text-white hover:bg-[var(--accent-main)] transition-all flex items-center justify-center z-50 shadow-xl"
-    type="button"
-    aria-label="Fullscreen"
-  >⛶</button>
+  <button id="fsBtn" class="fs-btn" type="button" aria-label="Fullscreen" title="ملء الشاشة">⛶</button>
 
-  <script src="{% static 'js/display.js' %}?v=20251215-layout-alerts-rightcol"></script>
+  <noscript>
+    <div class="no-js">
+      هذه الصفحة تحتاج JavaScript للعمل على شاشة العرض.
+    </div>
+  </noscript>
+
+  <script src="{% static 'js/display.js' %}?v=20251215-final-3files-2"></script>
 </body>
 </html>
+  
