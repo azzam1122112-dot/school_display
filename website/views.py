@@ -1,22 +1,15 @@
-
 from __future__ import annotations
-from django.shortcuts import redirect
-# رابط مختصر: /s/<short_code> → إعادة توجيه للرابط الأصلي
-def short_display_redirect(request, short_code):
-    screen = DisplayScreen.objects.filter(short_code=short_code, is_active=True).first()
-    if not screen:
-        raise Http404("Invalid short code.")
-    # إعادة توجيه للرابط الأصلي
-    return redirect(f"/?token={screen.token}")
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
 from core.models import DisplayScreen
 from schedule.models import SchoolSettings
+
 
 THEME_MAP = {
     "default": "indigo",
@@ -46,13 +39,26 @@ def _abs_media_url(request, maybe_url: str | None) -> str | None:
         return s
 
 
-def _resolve_screen_and_settings(token: str | None) -> tuple[DisplayScreen | None, SchoolSettings | None, str | None]:
-    if not token:
+def _resolve_screen_and_settings(
+    key: str | None,
+) -> tuple[DisplayScreen | None, SchoolSettings | None, str | None]:
+    """
+    key قد يكون:
+    - token طويل (64)
+    - أو short_code قصير (6)
+    نُرجع دائمًا effective_token = screen.token حتى تعتمد الواجهة والـ API على token الحقيقي.
+    """
+    if not key:
+        return None, None, None
+
+    k = str(key).strip()
+    if not k:
         return None, None, None
 
     screen = (
         DisplayScreen.objects.select_related("school")
-        .filter(token__iexact=token, is_active=True)
+        .filter(is_active=True)
+        .filter(Q(token__iexact=k) | Q(short_code__iexact=k))
         .first()
     )
     if not screen:
@@ -61,27 +67,29 @@ def _resolve_screen_and_settings(token: str | None) -> tuple[DisplayScreen | Non
     try:
         settings_obj = screen.school.schedule_settings
     except SchoolSettings.DoesNotExist:
-        return screen, None, token
+        # نرجع token الحقيقي حتى لو الإعدادات ناقصة
+        return screen, None, screen.token
 
-    return screen, settings_obj, token
+    return screen, settings_obj, screen.token
 
 
-def _build_display_context(request, token: str | None) -> dict | None:
-    if not token:
+def _build_display_context(request, key: str | None) -> dict | None:
+    if not key:
         return None
 
     # ?nocache=1 مفيد أثناء التطوير
     bypass_cache = (request.GET.get("nocache") == "1")
 
-    cache_key = f"display_ctx:{token}"
+    screen, settings_obj, effective_token = _resolve_screen_and_settings(key)
+    if not screen or not settings_obj or not effective_token:
+        return None
+
+    # ✅ الكاش يعتمد على token الحقيقي للشاشة دائمًا (حتى لو دخلت بـ short_code)
+    cache_key = f"display_ctx:{effective_token}"
     if not bypass_cache:
         cached = cache.get(cache_key)
         if cached:
             return cached
-
-    screen, settings_obj, effective_token = _resolve_screen_and_settings(token)
-    if not screen or not settings_obj:
-        return None
 
     # شعار
     logo_url = None
@@ -110,6 +118,7 @@ def _build_display_context(request, token: str | None) -> dict | None:
         "now_hour": timezone.localtime().hour,
         "theme": theme,
         "theme_key": raw_theme,
+        # ✅ نعطي الواجهة token الحقيقي دائمًا
         "api_token": effective_token,
         "display_token": effective_token,
         "token": effective_token,
@@ -124,10 +133,14 @@ def _build_display_context(request, token: str | None) -> dict | None:
 
 
 def home(request):
-    token = request.GET.get("token") or None
-    ctx = _build_display_context(request, token)
+    """
+    /?token=XXXX
+    token قد يكون token طويل أو short_code بعد التحديث.
+    """
+    key = request.GET.get("token") or None
+    ctx = _build_display_context(request, key)
     if not ctx:
-        return render(request, "website/unconfigured_display.html", {"token": token})
+        return render(request, "website/unconfigured_display.html", {"token": key})
     return render(request, "website/display.html", ctx)
 
 
@@ -140,6 +153,10 @@ def display(request):
 
 
 def display_view(request, screen_key: str):
+    """
+    /display/<screen_key> أو استدعاء داخلي
+    screen_key قد يكون token أو short_code.
+    """
     if not screen_key:
         raise Http404("Missing screen key.")
 
@@ -148,3 +165,14 @@ def display_view(request, screen_key: str):
         raise Http404("Display is not configured or found.")
 
     return render(request, "website/display.html", ctx)
+
+
+def short_display_redirect(request, short_code):
+    """
+    ✅ الرابط المختصر: /s/<short_code>
+    بعد التحديث لا نعمل redirect للرابط الطويل،
+    بل نعرض الشاشة مباشرة (أفضل للتلفاز وأسهل للمستخدم).
+    """
+    if not short_code:
+        raise Http404("Invalid short code.")
+    return display_view(request, short_code)

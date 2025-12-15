@@ -1,4 +1,6 @@
 .venv\Scripts\activate
+python manage.py makemigrations
+
 python manage.py check
 
  python manage.py runserver      

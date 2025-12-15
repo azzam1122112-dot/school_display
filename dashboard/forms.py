@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 
 from django import forms
 from django.apps import apps
@@ -26,6 +27,7 @@ from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
 from core.models import DisplayScreen, School, UserProfile, SubscriptionPlan
 from subscriptions.models import SchoolSubscription
+logger = logging.getLogger(__name__)
 
 UserModel = get_user_model()
 
@@ -80,14 +82,72 @@ class SchoolSettingsForm(forms.ModelForm):
         ]
         widgets = {
             "theme": forms.Select(),
-            "refresh_interval_sec": forms.NumberInput(attrs={"min": 5, "step": 5}),
-            "standby_scroll_speed": forms.NumberInput(
-                attrs={"min": 0.05, "max": 5.0, "step": 0.05}
-            ),
-            "periods_scroll_speed": forms.NumberInput(
-                attrs={"min": 0.05, "max": 5.0, "step": 0.05}
-            ),
+
+            # ✅ حد أدنى 15 ثانية + خطوة 1 (أوضح للمستخدم)
+            "refresh_interval_sec": forms.NumberInput(attrs={"min": 15, "step": 1}),
+
+            # ✅ حد أدنى 0.5 + خطوة 0.1 (قيم عملية للعرض)
+            "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
+            "periods_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # تأكيد attrs حتى لو تغيّرت الـ widgets أو تم override من مكان آخر
+        if "refresh_interval_sec" in self.fields:
+            self.fields["refresh_interval_sec"].widget.attrs.update({"min": "15", "step": "1"})
+            self.fields["refresh_interval_sec"].help_text = (
+                "الحد الأدنى 15 ثانية. (موصى به 20–30 لتجربة ثابتة وتقليل الضغط)"
+            )
+
+        for fname in ["standby_scroll_speed", "periods_scroll_speed"]:
+            if fname in self.fields:
+                self.fields[fname].widget.attrs.update({"min": "0.5", "max": "5.0", "step": "0.1"})
+                # تنبيه قيم مفيدة للمستخدم
+                if fname == "standby_scroll_speed":
+                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.2"
+                else:
+                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.0"
+
+    # =========================
+    # ✅ Server-side validation
+    # =========================
+    def clean_refresh_interval_sec(self):
+        v = self.cleaned_data.get("refresh_interval_sec")
+        if v is None:
+            return v
+        try:
+            v_int = int(v)
+        except (TypeError, ValueError):
+            raise forms.ValidationError("الرجاء إدخال رقم صحيح لفاصل التحديث.")
+        if v_int < 15:
+            raise forms.ValidationError("الحد الأدنى لفاصل تحديث الشاشة هو 15 ثانية.")
+        return v_int
+
+    def clean_standby_scroll_speed(self):
+        v = self.cleaned_data.get("standby_scroll_speed")
+        if v is None:
+            return v
+        try:
+            v_f = float(v)
+        except (TypeError, ValueError):
+            raise forms.ValidationError("الرجاء إدخال رقم صحيح لسرعة تمرير الانتظار.")
+        if v_f < 0.5:
+            raise forms.ValidationError("الحد الأدنى لسرعة تمرير الانتظار هو 0.5.")
+        return v_f
+
+    def clean_periods_scroll_speed(self):
+        v = self.cleaned_data.get("periods_scroll_speed")
+        if v is None:
+            return v
+        try:
+            v_f = float(v)
+        except (TypeError, ValueError):
+            raise forms.ValidationError("الرجاء إدخال رقم صحيح لسرعة تمرير جدول الحصص.")
+        if v_f < 0.5:
+            raise forms.ValidationError("الحد الأدنى لسرعة تمرير جدول الحصص هو 0.5.")
+        return v_f
 
     def save(self, commit=True):
         """
@@ -97,16 +157,19 @@ class SchoolSettingsForm(forms.ModelForm):
         logo_file = self.cleaned_data.get("logo")
 
         if logo_file and getattr(instance, "school_id", None):
-            # تحديث شعار المدرسة المرتبطة
             try:
+                # تحديث شعار المدرسة المرتبطة
                 instance.school.logo = logo_file
                 instance.school.save(update_fields=["logo"])
-            except Exception:
+            except Exception as exc:
                 # لا نكسر الحفظ لو فشل تحديث الشعار لأي سبب
-                pass
+                logger.exception("Failed to update school logo for school_id=%s: %s", instance.school_id, exc)
 
         if commit:
             instance.save()
+            # إذا كان عندك many-to-many في الفورم مستقبلًا
+            self.save_m2m()
+
         return instance
 
 

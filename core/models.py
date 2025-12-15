@@ -103,18 +103,20 @@ class DisplayScreen(models.Model):
         verbose_name = "شاشة عرض"
         verbose_name_plural = "شاشات العرض"
 
-    def save(self, *args, **kwargs):
-        if not self.token:
-            self.token = secrets.token_hex(32)
-        if not self.short_code:
-            # Generate a unique short code (alphanumeric, 6 chars)
-            import string, random
-            for _ in range(10):
-                code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-                if not DisplayScreen.objects.filter(short_code=code).exists():
-                    self.short_code = code
-                    break
-        super().save(*args, **kwargs)
+def save(self, *args, **kwargs):
+    if not self.token:
+        self.token = secrets.token_hex(32)
+
+    if not self.short_code:
+        # ✅ كود قصير سهل للكتابة على TV (بدون 0/O و 1/I و l)
+        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+        for _ in range(20):
+            code = "".join(secrets.choice(alphabet) for _ in range(6))
+            if not DisplayScreen.objects.filter(short_code__iexact=code).exists():
+                self.short_code = code
+                break
+
+    super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.school.name} - {self.name}" if self.school else self.name

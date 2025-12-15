@@ -5,120 +5,366 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
-    <!-- رأس الصفحة -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
-                <p class="text-slate-600">إدارة شاشات العرض وروابط الوصول</p>
-            </div>
-            {% if can_create_screen %}
-            <a href="{% url 'dashboard:screen_create' %}"
-               class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                <span>شاشة جديدة</span>
-            </a>
-            {% endif %}
-            {% if show_screen_limit_message %}
-            <div class="mt-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-300">
-                لا يمكن إضافة أكثر من شاشة واحدة لهذه المدرسة
-            </div>
-            {% endif %}
-        </div>
-        </div>
-    </div>
+  <!-- رأس الصفحة -->
+  <div class="mb-8">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
+        <p class="text-slate-600">
+          أنشئ شاشة، انسخ الرابط  وافتحه على التلفاز بسهولة.
+        </p>
+      </div>
 
-    <!-- قائمة الشاشات -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {% if screens %}
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">اسم الشاشة</th>
-                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الحالة</th>
-                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">آخر ظهور</th>
-                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">رابط العرض</th>
-                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">إجراءات</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    {% for screen in screens %}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="font-semibold text-slate-800">{{ screen.name }}</div>
-                            <div class="text-xs text-slate-500 font-mono mt-1">{{ screen.token|truncatechars:10 }}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            {% if screen.is_active %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                نشط
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                                غير نشط
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600">
-                            {% if screen.last_seen %}
-                            {{ screen.last_seen|timesince }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center space-x-2 space-x-reverse">
-                                <input type="text" readonly value="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}" 
-                                       data-full-link="{{ request.scheme }}://{{ request.get_host }}/?token={{ screen.token }}"
-                                       class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-48 text-slate-600 select-all"
-                                       id="link-{{ screen.id }}">
-                                <button onclick="copyLink('link-{{ screen.id }}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
-                                    نسخ
-                                </button>
-                                <a href="/?token={{ screen.token }}" target="_blank" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
-                                    فتح
-                                </a>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}" onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
-                                {% csrf_token %}
-                                <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-medium">
-                                    حذف
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="p-12 text-center">
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
-            </div>
-            <h3 class="text-lg font-medium text-slate-900 mb-1">لا توجد شاشات</h3>
-            <p class="text-slate-500 mb-6">قم بإضافة شاشة جديدة للحصول على رابط العرض</p>
-            <a href="{% url 'dashboard:screen_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700">
-                إضافة شاشة
-            </a>
+      <div class="flex items-center gap-3">
+        {% if can_create_screen %}
+        <a href="{% url 'dashboard:screen_create' %}"
+           class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 inline-flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 6v6m0 0v6m-6-6h6m0 0h6"></path>
+          </svg>
+          <span>شاشة جديدة</span>
+        </a>
+        {% endif %}
+
+        {% if show_screen_limit_message %}
+        <div class="px-4 py-2 bg-yellow-50 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-200">
+          لا يمكن إضافة أكثر من شاشة واحدة لهذه المدرسة
         </div>
         {% endif %}
+      </div>
     </div>
+
+    <!-- بطاقة توجيه سريعة -->
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="rounded-2xl border border-slate-200 bg-white p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">الرابط علـى للتلفاز</div>
+            <div class="text-sm text-slate-600 mt-1">
+              افتح على التلفاز: <span class="font-mono">/s/ABC123</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">نسخ سريع</div>
+            <div class="text-sm text-slate-600 mt-1">
+              زر “نسخ” ينسخ الرابط بالكامل مباشرة بدون نوافذ مزعجة.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6l4 2"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">آخر ظهور</div>
+            <div class="text-sm text-slate-600 mt-1">
+              يساعدك على معرفة هل الشاشة متصلة وتستقبل التحديثات أم لا.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- قائمة الشاشات -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    {% if screens %}
+
+      <!-- Mobile cards -->
+      <div class="p-4 grid grid-cols-1 gap-4 md:hidden">
+        {% for screen in screens %}
+          {% if screen.short_code %}
+            {% with sc=screen.short_code %}
+              {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
+                <div class="rounded-2xl border border-slate-200 p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="font-bold text-slate-800">{{ screen.name }}</div>
+                      <div class="mt-2 flex items-center gap-2">
+                        {% if screen.is_active %}
+                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                            نشط
+                          </span>
+                        {% else %}
+                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
+                            غير نشط
+                          </span>
+                        {% endif %}
+                        <span class="text-xs text-slate-500">
+                          {% if screen.last_seen %}
+                            آخر ظهور: {{ screen.last_seen|timesince }}
+                          {% else %}
+                            آخر ظهور: -
+                          {% endif %}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="text-xs text-slate-500 font-mono bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                      CODE: {{ sc|upper }}
+                    </div>
+                  </div>
+
+                  <div class="mt-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-2">الرابط </label>
+                    <div class="flex items-center gap-2">
+                      <input id="link-{{ screen.id }}"
+                             type="text"
+                             readonly
+                             value="{{ short_url }}"
+                             data-full-link="{{ short_url }}"
+                             class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 select-all focus:outline-none focus:ring-2 focus:ring-blue-200">
+                      <button type="button"
+                              data-copy-target="link-{{ screen.id }}"
+                              class="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-semibold text-xs hover:bg-blue-100 transition">
+                        نسخ
+                      </button>
+                      <a href="/s/{{ sc|upper }}" target="_blank"
+                         class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-xs hover:bg-emerald-100 transition">
+                        فتح
+                      </a>
+                    </div>
+
+                    <div class="mt-2 text-xs text-slate-500">
+                      على التلفاز اكتب: <span class="font-mono">/s/{{ sc|upper }}</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 flex items-center justify-between">
+                    <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}"
+                          onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
+                      {% csrf_token %}
+                      <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-semibold">
+                        حذف
+                      </button>
+                    </form>
+                    <div class="text-xs text-slate-400">
+                      رمز الوصول مخفي عن المستخدمين لسهولة الاستخدام
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+            {% endwith %}
+          {% else %}
+            <div class="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+              <div class="font-semibold text-yellow-900">تنبيه</div>
+              <div class="text-sm text-yellow-800 mt-1">
+                هذه الشاشة لا تحتوي على رابط مختصر بعد. احفظ الشاشة أو أنشئ شاشة جديدة لإنتاج الكود تلقائيًا.
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <!-- Desktop table -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">اسم الشاشة</th>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الكود</th>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الحالة</th>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">آخر ظهور</th>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الرابط </th>
+              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">إجراءات</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-200">
+            {% for screen in screens %}
+              {% if screen.short_code %}
+                {% with sc=screen.short_code %}
+                  {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                      <td class="px-6 py-4">
+                        <div class="font-semibold text-slate-800">{{ screen.name }}</div>
+                        <div class="text-xs text-slate-500 mt-1">افتح على TV: <span class="font-mono">/s/{{ sc|upper }}</span></div>
+                      </td>
+
+                      <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-sm font-mono text-slate-700">
+                          {{ sc|upper }}
+                        </span>
+                      </td>
+
+                      <td class="px-6 py-4">
+                        {% if screen.is_active %}
+                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                            نشط
+                          </span>
+                        {% else %}
+                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
+                            غير نشط
+                          </span>
+                        {% endif %}
+                      </td>
+
+                      <td class="px-6 py-4 text-sm text-slate-600">
+                        {% if screen.last_seen %}
+                          {{ screen.last_seen|timesince }}
+                        {% else %}
+                          -
+                        {% endif %}
+                      </td>
+
+                      <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                          <input id="link-{{ screen.id }}"
+                                 type="text"
+                                 readonly
+                                 value="{{ short_url }}"
+                                 data-full-link="{{ short_url }}"
+                                 class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-72 text-slate-700 select-all focus:outline-none focus:ring-2 focus:ring-blue-200">
+                          <button type="button"
+                                  data-copy-target="link-{{ screen.id }}"
+                                  class="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-semibold text-xs hover:bg-blue-100 transition">
+                            نسخ
+                          </button>
+                          <a href="/s/{{ sc|upper }}" target="_blank"
+                             class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-xs hover:bg-emerald-100 transition">
+                            فتح
+                          </a>
+                        </div>
+                      </td>
+
+                      <td class="px-6 py-4">
+                        <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}"
+                              onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
+                          {% csrf_token %}
+                          <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-semibold">
+                            حذف
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endwith %}
+                {% endwith %}
+              {% else %}
+                <tr class="bg-yellow-50">
+                  <td class="px-6 py-4" colspan="6">
+                    <div class="text-sm text-yellow-900 font-semibold">تنبيه:</div>
+                    <div class="text-sm text-yellow-800 mt-1">
+                      توجد شاشة بدون رابط مختصر. احفظ الشاشة أو أنشئ شاشة جديدة ليتم توليد الكود تلقائيًا.
+                    </div>
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    {% else %}
+      <div class="p-12 text-center">
+        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-1">لا توجد شاشات</h3>
+        <p class="text-slate-500 mb-6">أضف شاشة للحصول على رابط مختصر مناسب للتلفاز</p>
+        {% if can_create_screen %}
+        <a href="{% url 'dashboard:screen_create' %}"
+           class="inline-flex items-center px-5 py-3 rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 font-semibold">
+          إضافة شاشة
+        </a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"
+       class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg px-4 py-3">
+    <div class="flex items-start gap-3">
+      <div class="mt-0.5 w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+        <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <div class="font-bold text-slate-800 text-sm" id="toastTitle">تم</div>
+        <div class="text-slate-600 text-sm mt-0.5" id="toastMsg">تم نسخ الرابط.</div>
+      </div>
+      <button type="button" class="text-slate-500 hover:text-slate-700" onclick="hideToast()">
+        ✕
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
-function copyLink(id) {
-    var copyText = document.getElementById(id);
-    var fullLink = copyText.getAttribute('data-full-link') || copyText.value;
-    navigator.clipboard.writeText(fullLink);
-    alert("تم نسخ الرابط: " + fullLink);
-}
+(function () {
+  "use strict";
+
+  function $(id) { return document.getElementById(id); }
+
+  function showToast(msg, title) {
+    var box = $("toast");
+    if (!box) return;
+    $("toastMsg").textContent = msg || "تم نسخ الرابط.";
+    $("toastTitle").textContent = title || "تم";
+    box.classList.remove("hidden");
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(hideToast, 2500);
+  }
+
+  window.hideToast = function () {
+    var box = $("toast");
+    if (!box) return;
+    box.classList.add("hidden");
+  };
+
+  async function copyFromInput(inputId) {
+    var el = $(inputId);
+    if (!el) return;
+    var fullLink = el.getAttribute("data-full-link") || el.value || "";
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(fullLink);
+      } else {
+        el.focus();
+        el.select();
+        document.execCommand("copy");
+      }
+      showToast("تم نسخ الرابط بنجاح.", "نسخ");
+    } catch (e) {
+      showToast("تعذر النسخ. انسخ يدويًا من الحقل.", "تنبيه");
+    }
+  }
+
+  // Bind buttons
+  var buttons = document.querySelectorAll("[data-copy-target]");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener("click", function (ev) {
+      var target = ev.currentTarget.getAttribute("data-copy-target");
+      if (target) copyFromInput(target);
+    });
+  }
+})();
 </script>
 {% endblock %}

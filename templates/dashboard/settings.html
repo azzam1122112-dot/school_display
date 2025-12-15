@@ -37,7 +37,7 @@
         </div>
 
         <!-- نموذج الإعدادات -->
-        <form method="post" enctype="multipart/form-data" class="p-6 space-y-6">
+        <form method="post" enctype="multipart/form-data" class="p-6 space-y-6" id="settingsForm" novalidate>
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -111,7 +111,6 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {% with value=form.theme.value|default:"default" %}
 
-                            <!-- افتراضي (أزرق) -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="theme" value="default" class="sr-only peer"
                                        {% if value == "default" %}checked{% endif %}>
@@ -124,29 +123,27 @@
                                 </div>
                             </label>
 
-                            <!-- مدارس البنين (أخضر) -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="theme" value="boys" class="sr-only peer"
                                        {% if value == "boys" %}checked{% endif %}>
                                 <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all duration-200">
                                     <div class="flex items-center space-x-2 space-x-reverse">
                                         <div class="w-4 h-4 rounded-full bg-emerald-500"></div>
-                                        <span class="text-sm font-medium text-slate-700"> أخضر</span>
+                                        <span class="text-sm font-medium text-slate-700">أخضر</span>
                                     </div>
-                                    <p class="mt-1 text-[11px] text-slate-500">ثيم أخضر   .</p>
+                                    <p class="mt-1 text-[11px] text-slate-500">ثيم أخضر.</p>
                                 </div>
                             </label>
 
-                            <!-- مدارس البنات (وردي) -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="theme" value="girls" class="sr-only peer"
                                        {% if value == "girls" %}checked{% endif %}>
                                 <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all duration-200">
                                     <div class="flex items-center space-x-2 space-x-reverse">
                                         <div class="w-4 h-4 rounded-full bg-rose-500"></div>
-                                        <span class="text-sm font-medium text-slate-700"> وردي</span>
+                                        <span class="text-sm font-medium text-slate-700">وردي</span>
                                     </div>
-                                    <p class="mt-1 text-[11px] text-slate-500">ثيم وردي .</p>
+                                    <p class="mt-1 text-[11px] text-slate-500">ثيم وردي.</p>
                                 </div>
                             </label>
 
@@ -167,12 +164,22 @@
                         <label class="block text-sm font-medium text-slate-700">
                             {{ form.refresh_interval_sec.label }}
                         </label>
+
                         <div class="relative">
                             {{ form.refresh_interval_sec }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
                                 <span class="text-slate-500 text-sm">ثانية</span>
                             </div>
                         </div>
+
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            الحد الأدنى المسموح به: <span class="font-bold">15 ثانية</span>. (موصى به: 20–30)
+                        </div>
+
+                        <div id="refreshWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            لا يمكن إدخال أقل من <span class="font-bold">15</span> ثانية.
+                        </div>
+
                         {% if form.refresh_interval_sec.errors %}
                             <div class="mt-1 text-red-600 text-sm">
                                 {% for error in form.refresh_interval_sec.errors %}
@@ -187,15 +194,27 @@
                         <label class="block text-sm font-medium text-slate-700">
                             {{ form.standby_scroll_speed.label }}
                         </label>
+
                         <div class="relative">
                             {{ form.standby_scroll_speed }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
                                 <span class="text-slate-500 text-sm">px/frame</span>
                             </div>
                         </div>
+
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
+                            قيم مقترحة: <span class="font-bold">0.5 – 1.2</span>.
+                        </div>
+
+                        <div id="standbyWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            لا يمكن إدخال أقل من <span class="font-bold">0.5</span>.
+                        </div>
+
                         {% if form.standby_scroll_speed.help_text %}
                             <p class="text-xs text-slate-500">{{ form.standby_scroll_speed.help_text }}</p>
                         {% endif %}
+
                         {% if form.standby_scroll_speed.errors %}
                             <div class="mt-1 text-red-600 text-sm">
                                 {% for error in form.standby_scroll_speed.errors %}
@@ -210,15 +229,27 @@
                         <label class="block text-sm font-medium text-slate-700">
                             {{ form.periods_scroll_speed.label }}
                         </label>
+
                         <div class="relative max-w-xs">
                             {{ form.periods_scroll_speed }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
                                 <span class="text-slate-500 text-sm">px/frame</span>
                             </div>
                         </div>
+
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 max-w-xl">
+                            الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
+                            قيم مقترحة: <span class="font-bold">0.5 – 1.0</span>.
+                        </div>
+
+                        <div id="periodsWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 max-w-xl">
+                            لا يمكن إدخال أقل من <span class="font-bold">0.5</span>.
+                        </div>
+
                         {% if form.periods_scroll_speed.help_text %}
                             <p class="text-xs text-slate-500">{{ form.periods_scroll_speed.help_text }}</p>
                         {% endif %}
+
                         {% if form.periods_scroll_speed.errors %}
                             <div class="mt-1 text-red-600 text-sm">
                                 {% for error in form.periods_scroll_speed.errors %}
@@ -252,16 +283,148 @@
             </div>
         </form>
     </div>
+
+    <!-- Toast -->
+    <div id="toast"
+         class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg px-4 py-3">
+        <div class="flex items-start gap-3">
+            <div id="toastIcon" class="mt-0.5 w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <div class="font-bold text-slate-800 text-sm" id="toastTitle">تنبيه</div>
+                <div class="text-slate-600 text-sm mt-0.5" id="toastMsg">تحقق من القيم.</div>
+            </div>
+            <button type="button" class="text-slate-500 hover:text-slate-700" onclick="hideToast()">✕</button>
+        </div>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ستايل عام للحقول (مع استثناء الراديو)
     const inputs = document.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
         if (input.type !== 'radio' && input.type !== 'checkbox' && !input.classList.contains('sr-only')) {
             input.className = 'w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white text-slate-700 placeholder-slate-400';
         }
     });
+
+    const form = document.getElementById('settingsForm');
+
+    const refreshEl = document.getElementById('id_refresh_interval_sec');
+    const standbyEl = document.getElementById('id_standby_scroll_speed');
+    const periodsEl = document.getElementById('id_periods_scroll_speed');
+
+    const refreshWarn = document.getElementById('refreshWarn');
+    const standbyWarn = document.getElementById('standbyWarn');
+    const periodsWarn = document.getElementById('periodsWarn');
+
+    function $(id){ return document.getElementById(id); }
+
+    function showToast(title, msg, kind) {
+        const box = $('toast');
+        const tTitle = $('toastTitle');
+        const tMsg = $('toastMsg');
+        const iconBox = $('toastIcon');
+
+        if (!box || !tTitle || !tMsg || !iconBox) return;
+
+        tTitle.textContent = title || 'تنبيه';
+        tMsg.textContent = msg || 'تحقق من القيم.';
+
+        // تغيير لون الأيقونة حسب النوع
+        iconBox.className = 'mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center';
+        if (kind === 'error') {
+            iconBox.classList.add('bg-red-50');
+            iconBox.innerHTML = '<svg class="w-4 h-4 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        } else {
+            iconBox.classList.add('bg-emerald-50');
+            iconBox.innerHTML = '<svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+        }
+
+        box.classList.remove('hidden');
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(hideToast, 2500);
+    }
+
+    window.hideToast = function() {
+        const box = $('toast');
+        if (box) box.classList.add('hidden');
+    };
+
+    function asNumber(v) {
+        const n = Number(v);
+        return isNaN(n) ? null : n;
+    }
+
+    function applyConstraints(el, minVal, stepVal) {
+        if (!el) return;
+        el.setAttribute('min', String(minVal));
+        el.setAttribute('step', String(stepVal));
+        el.setAttribute('inputmode', 'decimal');
+    }
+
+    function markInvalid(el, warnEl) {
+        if (warnEl) warnEl.classList.remove('hidden');
+        if (!el) return;
+        el.classList.add('border-red-400');
+        el.classList.remove('focus:ring-emerald-500', 'focus:border-emerald-500');
+        el.classList.add('focus:ring-red-200', 'focus:border-red-400');
+    }
+
+    function markValid(el, warnEl) {
+        if (warnEl) warnEl.classList.add('hidden');
+        if (!el) return;
+        el.classList.remove('border-red-400', 'focus:ring-red-200', 'focus:border-red-400');
+        el.classList.add('focus:ring-emerald-500', 'focus:border-emerald-500');
+    }
+
+    function validateMin(el, minVal, warnEl) {
+        if (!el) return true;
+        const n = asNumber(el.value);
+        if (n === null) {
+            markValid(el, warnEl);
+            return true;
+        }
+        if (n < minVal) {
+            markInvalid(el, warnEl);
+            return false;
+        }
+        markValid(el, warnEl);
+        return true;
+    }
+
+    // ضبط قيود HTML
+    applyConstraints(refreshEl, 15, 1);
+    applyConstraints(standbyEl, 0.5, 0.1);
+    applyConstraints(periodsEl, 0.5, 0.1);
+
+    // تحقق لحظي
+    if (refreshEl) refreshEl.addEventListener('input', function(){ validateMin(refreshEl, 15, refreshWarn); });
+    if (standbyEl) standbyEl.addEventListener('input', function(){ validateMin(standbyEl, 0.5, standbyWarn); });
+    if (periodsEl) periodsEl.addEventListener('input', function(){ validateMin(periodsEl, 0.5, periodsWarn); });
+
+    // منع الحفظ إذا كانت القيم أقل من الحد
+    if (form) {
+        form.addEventListener('submit', function(e){
+            const ok1 = validateMin(refreshEl, 15, refreshWarn);
+            const ok2 = validateMin(standbyEl, 0.5, standbyWarn);
+            const ok3 = validateMin(periodsEl, 0.5, periodsWarn);
+
+            if (!(ok1 && ok2 && ok3)) {
+                e.preventDefault();
+                e.stopPropagation();
+                showToast('قيمة غير مسموحة', 'تأكد من الحدود الدنيا: التحديث ≥ 15 ثانية، والسرعات ≥ 0.5', 'error');
+                // تمرير نحو أول حقل خاطئ
+                if (!ok1 && refreshEl) refreshEl.scrollIntoView({behavior:'smooth', block:'center'});
+                if (ok1 && !ok2 && standbyEl) standbyEl.scrollIntoView({behavior:'smooth', block:'center'});
+                if (ok1 && ok2 && !ok3 && periodsEl) periodsEl.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+        });
+    }
 });
 </script>
 
