@@ -132,6 +132,13 @@
     SERVER_TOKEN: "",
   };
 
+  // ===== Runtime (فلترة الانتظار/نهاية الدوام) =====
+  const rt = {
+    activePeriodIndex: null, // رقم الحصة الحالية/التالية
+    activeFromHM: null, // وقت بداية النشاط الحالي/التالي
+    dayOver: false, // انتهاء الدوام
+  };
+
   function pickTokenFromUrl() {
     try {
       const qs = new URLSearchParams(window.location.search);
@@ -208,9 +215,12 @@
     const raw =
       periodObj.index ??
       periodObj.period_index ??
+      periodObj.current_period_index ??
+      periodObj.current_idx ??
       periodObj.idx ??
       periodObj.period ??
       periodObj.period_no ??
+      periodObj.current_period_no ??
       periodObj.period_number ??
       periodObj.periodNum ??
       periodObj.slot_index ??
@@ -233,10 +243,50 @@
     const cur = payload.current_period || null;
     const n = getPeriodIndex(cur);
     if (n) return n;
+
     const st = payload.state || {};
-    // أحيانًا يجي رقم الحصة داخل state
-    const maybe = getPeriodIndex(st);
-    return maybe || null;
+    const n2 =
+      getPeriodIndex(st) ||
+      (st && typeof st.current_period_index !== "undefined" ? parseInt(st.current_period_index, 10) : NaN) ||
+      (st && typeof st.period_index !== "undefined" ? parseInt(st.period_index, 10) : NaN);
+
+    return isNaN(n2) ? null : n2;
+  }
+
+  // ===== Day over + standby filter =====
+  function computeDayOver(payload, baseMs) {
+    const s = (payload && payload.state) || {};
+    const stType = safeText(s.type || "");
+
+    if (stType === "off") return true;
+
+    if (Array.isArray(payload && payload.day_path) && payload.day_path.length) {
+      const anyNotEnded = payload.day_path.some((x) => x && !isEnded(x.to, baseMs));
+      if (!anyNotEnded) return true;
+    }
+
+    if (!payload.next_period && s.to && isEnded(s.to, baseMs)) return true;
+
+    return false;
+  }
+
+  function shouldKeepStandbyItem(x, baseMs) {
+    if (!x) return false;
+
+    // 1) فلترة بالأرقام (الأفضل)
+    const idx = getPeriodIndex(x);
+    if (rt.activePeriodIndex && idx) return idx >= rt.activePeriodIndex;
+
+    // 2) fallback بالوقت إذا ما فيه رقم
+    const from = x.from || x.start || x.starts_at;
+    if (rt.activeFromHM && from) {
+      const a = hmToMs(rt.activeFromHM, baseMs);
+      const b = hmToMs(from, baseMs);
+      if (a && b) return b >= a;
+    }
+
+    // إذا ما نقدر نحدد… نخليه
+    return true;
   }
 
   // ===== Render: Alert =====
@@ -521,7 +571,10 @@
   function findViewportForTrack(trackEl) {
     if (!trackEl) return null;
     let vp = trackEl.parentElement;
-    while (vp && !(vp.classList && (vp.classList.contains("standby-viewport") || vp.classList.contains("list-viewport")))) {
+    while (
+      vp &&
+      !(vp.classList && (vp.classList.contains("standby-viewport") || vp.classList.contains("list-viewport")))
+    ) {
       vp = vp.parentElement;
     }
     return vp || trackEl.parentElement || null;
@@ -547,10 +600,8 @@
     }
 
     function ensureSingleContentNode() {
-      // track children: [content, clone?]
       while (trackEl.children.length > 2) trackEl.removeChild(trackEl.lastElementChild);
       if (trackEl.children.length === 2 && !st.hasClone) {
-        // لو صار لسبب ما
         trackEl.removeChild(trackEl.lastElementChild);
       }
     }
@@ -563,7 +614,7 @@
     }
 
     function needScroll() {
-      // الشرط المتفق عليه: التمرير فقط إذا امتلأ الكرت (المحتوى أطول من مساحة العرض)
+      // ✅ التمرير فقط إذا امتلأ الكرت فعلاً
       return st.contentH > st.viewH + 4;
     }
 
@@ -583,7 +634,6 @@
         return;
       }
 
-      // احتاج scroll: تأكد وجود clone
       if (!st.hasClone) {
         const clone = content.cloneNode(true);
         clone.setAttribute("aria-hidden", "true");
@@ -591,9 +641,7 @@
         st.hasClone = true;
       }
 
-      // اضبط y داخل مدى المحتوى
       if (st.contentH > 0) st.y = st.y % st.contentH;
-
       if (!st.running) start();
     }
 
@@ -604,10 +652,9 @@
       }
 
       if (!st.lastTs) st.lastTs = ts;
-      const dt = Math.min(40, ts - st.lastTs); // ms
+      const dt = Math.min(40, ts - st.lastTs);
       st.lastTs = ts;
 
-      // speed عندك قيمة 0.15..4 (كانت px/frame تقريبًا) نخليها px/sec = v*60
       const v = Number(getSpeed()) || 0.5;
       const pxPerSec = clamp(v, 0.15, 4) * 60;
       const step = (pxPerSec * dt) / 1000;
@@ -628,7 +675,6 @@
     }
 
     function render(signature, contentBuilderFn) {
-      // لو ما تغيّر المحتوى: فقط حدّث القياسات والسرعة (بدون تصفير y)
       if (signature && signature === st.lastSig) {
         recalc();
         return;
@@ -636,17 +682,15 @@
 
       st.lastSig = signature || "";
 
-      // تغيير محتوى: ابقِ y كما هو (لن نعيده للصفر)، فقط نعيد بناء القائمة
+      // لا نصفر y — نحافظ على موضع التمرير قدر الإمكان
       stop();
       st.hasClone = false;
       trackEl.style.transform = "translateY(-" + st.y.toFixed(2) + "px)";
 
-      // rebuild
       while (trackEl.firstChild) trackEl.removeChild(trackEl.firstChild);
       const content = contentBuilderFn();
       trackEl.appendChild(content);
 
-      // بعد البناء احسب وقرر هل نمرر أم لا
       requestAnimationFrame(() => {
         ensureSingleContentNode();
         recalc();
@@ -729,28 +773,26 @@
   let periodsScroller = null;
   let standbyScroller = null;
 
-  // caches
-  let periodItemsCache = [];
-  let standbyItemsCache = [];
   let lastPayloadForFiltering = null;
-
-  function filterByCurrentPeriodIndex(items, currentIdx) {
-    if (!currentIdx) return items;
-    return items.filter((x) => {
-      const idx = getPeriodIndex(x);
-      if (!idx) return true; // لو ما فيه رقم نخليه
-      return idx >= currentIdx;
-    });
-  }
 
   function renderPeriodClasses(items) {
     const raw = Array.isArray(items) ? items.slice() : [];
-    const currentIdx = getCurrentPeriodIdxFromPayload(lastPayloadForFiltering);
-    const arr = filterByCurrentPeriodIndex(raw, currentIdx);
+    const baseMs = nowMs();
 
-    periodItemsCache = arr.slice();
+    let arr = raw;
+
+    // ✅ بعد نهاية الدوام: فاضي
+    if (rt.dayOver) arr = [];
+
+    // ✅ فلترة القديم (لو أرسل السيرفر عناصر أقل من الحصة الحالية)
+    if (!rt.dayOver && rt.activePeriodIndex) {
+      arr = arr.filter((x) => {
+        const idx = getPeriodIndex(x);
+        return !idx || idx >= rt.activePeriodIndex;
+      });
+    }
+
     if (dom.pcCount) setTextIfChanged(dom.pcCount, String(arr.length));
-
     if (!dom.periodClassesTrack || !periodsScroller) return;
 
     const sig = listSignature(arr, "periods");
@@ -760,7 +802,7 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = "لا توجد حصص جارية";
+        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا توجد حصص جارية";
         return msg;
       }
 
@@ -789,14 +831,19 @@
 
   function renderStandby(items) {
     const raw = Array.isArray(items) ? items.slice() : [];
-    const currentIdx = getCurrentPeriodIdxFromPayload(lastPayloadForFiltering);
+    const baseMs = nowMs();
 
-    // المطلوب: اخفاء أي حصة قبل الحصة الحالية (في الانتظار)
-    const arr = filterByCurrentPeriodIndex(raw, currentIdx);
+    let arr = raw;
 
-    standbyItemsCache = arr.slice();
+    // ✅ إذا انتهى الدوام: فاضي
+    if (rt.dayOver) arr = [];
+
+    // ✅ اخفاء أي انتظار قبل الحصة الحالية/التالية
+    if (!rt.dayOver && (rt.activePeriodIndex || rt.activeFromHM)) {
+      arr = arr.filter((x) => shouldKeepStandbyItem(x, baseMs));
+    }
+
     if (dom.sbCount) setTextIfChanged(dom.sbCount, String(arr.length));
-
     if (!dom.standbyTrack || !standbyScroller) return;
 
     const sig = listSignature(arr, "standby");
@@ -806,7 +853,7 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = "لا توجد حصص انتظار";
+        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا توجد حصص انتظار";
         return msg;
       }
 
@@ -1018,7 +1065,6 @@
       if (Math.abs(nInt - cfg.REFRESH_EVERY) > 0.001) cfg.REFRESH_EVERY = nInt;
     }
 
-    // السرعات تتحدث فورًا (والسكروول يقرأها لحظيًا)
     if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) {
       cfg.STANDBY_SPEED = normSpeed(settings.standby_scroll_speed, cfg.STANDBY_SPEED);
     }
@@ -1026,7 +1072,6 @@
       cfg.PERIODS_SPEED = normSpeed(settings.periods_scroll_speed, cfg.PERIODS_SPEED);
     }
 
-    // أعِد حساب قرار التمرير فورًا عند تغيير القياس/السرعة بدون إعادة بناء
     if (periodsScroller) periodsScroller.recalc();
     if (standbyScroller) standbyScroller.recalc();
 
@@ -1037,11 +1082,22 @@
     const current = payload.current_period || null;
     const nextP = payload.next_period || null;
 
+    // ===== تحديث runtime =====
+    rt.activePeriodIndex = getPeriodIndex(current) || getPeriodIndex(nextP) || getCurrentPeriodIdxFromPayload(payload) || null;
+    rt.activeFromHM =
+      (stType === "period"
+        ? (s.from || (current && current.from))
+        : ((nextP && nextP.from) || s.from)) || null;
+    rt.dayOver = computeDayOver(payload, baseMs);
+
     countdownSeconds = null;
     progressRange = { start: null, end: null };
     hasActiveCountdown = false;
 
-    if (typeof s.remaining_seconds === "number" && (stType === "period" || stType === "break" || stType === "before")) {
+    if (
+      typeof s.remaining_seconds === "number" &&
+      (stType === "period" || stType === "break" || stType === "before")
+    ) {
       countdownSeconds = Math.max(0, Math.floor(s.remaining_seconds));
       hasActiveCountdown = true;
     }
@@ -1182,7 +1238,7 @@
     const baseUrl = resolveSnapshotUrl();
 
     const u = new URL(baseUrl, window.location.origin);
-    u.searchParams.set("_t", String(Date.now())); // bust cache لو ما فيه ETag
+    u.searchParams.set("_t", String(Date.now()));
 
     if (ctrl) {
       try {
@@ -1277,7 +1333,6 @@
       renderAnnouncements(snap.announcements || []);
       renderExcellence(snap.excellence || []);
 
-      // القوائم: مستقلة + لا تعيد التمرير إذا نفس البيانات
       renderStandby(snap.standby || []);
       renderPeriodClasses(snap.period_classes || []);
 
@@ -1288,6 +1343,10 @@
         setDebugText(
           "ok " +
             new Date().toLocaleTimeString() +
+            " | idx=" +
+            (rt.activePeriodIndex || "-") +
+            " dayOver=" +
+            (rt.dayOver ? 1 : 0) +
             " | sb=" +
             (Array.isArray(snap.standby) ? snap.standby.length : 0) +
             " pc=" +
@@ -1353,7 +1412,7 @@
     );
   }
 
-  // ===== Resize: فقط إعادة القياس (بدون مسح التوقيعات) =====
+  // ===== Resize: فقط إعادة القياس =====
   let resizeT = null;
   window.addEventListener(
     "resize",
@@ -1370,7 +1429,6 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
-      // عند الرجوع: أعِد القياس ثم اسحب تحديث سريع
       if (periodsScroller) periodsScroller.recalc();
       if (standbyScroller) standbyScroller.recalc();
       scheduleNext(0.25);
@@ -1416,13 +1474,8 @@
     bindFullscreen();
 
     // init scrollers (مستقلين)
-    periodsScroller = dom.periodClassesTrack
-      ? createScroller(dom.periodClassesTrack, () => cfg.PERIODS_SPEED)
-      : null;
-
-    standbyScroller = dom.standbyTrack
-      ? createScroller(dom.standbyTrack, () => cfg.STANDBY_SPEED)
-      : null;
+    periodsScroller = dom.periodClassesTrack ? createScroller(dom.periodClassesTrack, () => cfg.PERIODS_SPEED) : null;
+    standbyScroller = dom.standbyTrack ? createScroller(dom.standbyTrack, () => cfg.STANDBY_SPEED) : null;
 
     renderAlert("جاري التحميل…", "يتم الآن جلب البيانات من الخادم.");
     scheduleNext(0.2);
