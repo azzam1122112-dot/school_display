@@ -1,11 +1,9 @@
 (function () {
   "use strict";
 
-  // -------------------------
-  // DOM helpers
-  // -------------------------
   const $ = (id) => document.getElementById(id);
   const body = document.body || document.documentElement;
+  const root = document.documentElement;
 
   const dom = {
     schoolLogo: $("schoolLogo"),
@@ -14,48 +12,44 @@
     dateG: $("dateGregorian"),
     dateH: $("dateHijri"),
     clock: $("clock"),
-
     alertContainer: $("alertContainer"),
-    // ✅ الجديد (عنوان + تفاصيل) — مع توافق للخلف لو كان عندك alertText قديم
     alertTitle: $("alertTitle"),
     alertDetails: $("alertDetails"),
     alertText: $("alertText"),
-
     badgeKind: $("badgeKind"),
     heroRange: $("heroRange"),
     heroTitle: $("heroTitle"),
     currentScheduleList: $("currentScheduleList"),
-
     circleProgress: $("circleProgress"),
     countdown: $("countdown"),
     progressBar: $("progressBar"),
-
     miniSchedule: $("miniSchedule"),
     nextLabel: $("nextLabel"),
-
     exSlot: $("exSlot"),
     exIndex: $("exIndex"),
     exTotal: $("exTotal"),
-
     pcCount: $("pcCount"),
     periodClassesTrack: $("periodClassesTrack"),
-
     sbCount: $("sbCount"),
     standbyTrack: $("standbyTrack"),
-
     fsBtn: $("fsBtn"),
   };
 
-  // -------------------------
-  // config (from dataset + snapshot.settings)
-  // -------------------------
+  function setVhVar() {
+    try {
+      const vh = (window.innerHeight || 0) * 0.01;
+      if (vh > 0) root.style.setProperty("--vh", vh + "px");
+    } catch (e) {}
+  }
+  setVhVar();
+  window.addEventListener("resize", setVhVar, { passive: true });
+
   let REFRESH_EVERY = parseFloat(body.dataset.refresh || "10") || 10;
   let STANDBY_SPEED = parseFloat(body.dataset.standby || "0.8") || 0.8;
   let PERIODS_SPEED = parseFloat(body.dataset.periodsSpeed || "0.5") || 0.5;
 
   const MEDIA_PREFIX = (body.dataset.mediaPrefix || "/media/").toString().trim();
   const SNAPSHOT_URL = (body.dataset.snapshotUrl || "").toString().trim();
-
   const SERVER_TOKEN = ((body.dataset.apiToken || body.dataset.token || "").trim());
 
   function pickTokenFromUrl() {
@@ -87,6 +81,16 @@
   function fmt2(n) { n = Number(n) || 0; return n < 10 ? "0" + n : String(n); }
   function clamp(n, a, b) { n = Number(n) || 0; return Math.max(a, Math.min(b, n)); }
 
+  function normSpeed(x, def) {
+    const v = Number(x);
+    if (!isFinite(v) || v <= 0) return def;
+    return clamp(v, 0.15, 4);
+  }
+
+  REFRESH_EVERY = clamp(REFRESH_EVERY, 5, 120);
+  STANDBY_SPEED = normSpeed(STANDBY_SPEED, 0.8);
+  PERIODS_SPEED = normSpeed(PERIODS_SPEED, 0.5);
+
   function resolveImageURL(raw) {
     if (!raw) return "";
     let s = String(raw).trim();
@@ -99,9 +103,6 @@
     return pref + s.replace(/^\.?\/*/, "");
   }
 
-  // -------------------------
-  // ✅ Arabic digits + period title helpers
-  // -------------------------
   function toArabicDigits(v) {
     if (v === null || v === undefined) return "";
     return String(v).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
@@ -120,12 +121,9 @@
   function formatPeriodTitle(p) {
     const idx = getPeriodIndex(p);
     if (!idx) return "حصة";
-    return `حصة (${toArabicDigits(idx)})`;
+    return "حصة (" + toArabicDigits(idx) + ")";
   }
 
-  // -------------------------
-  // Debug overlay
-  // -------------------------
   let dbgEl = null;
   function ensureDebugOverlay() {
     if (!isDebug()) return;
@@ -149,9 +147,6 @@
   }
   function setDebugText(txt) { if (dbgEl) dbgEl.textContent = txt; }
 
-  // -------------------------
-  // Server time sync
-  // -------------------------
   let serverOffsetMs = 0;
   function nowMs() { return Date.now() + serverOffsetMs; }
 
@@ -187,9 +182,6 @@
     return n >= s && n < e;
   }
 
-  // -------------------------
-  // Theme + brand
-  // -------------------------
   function applyTheme(name) {
     let n = (name || "").toString().trim().toLowerCase();
     if (!n) n = "indigo";
@@ -201,7 +193,6 @@
       const settings = (payload && payload.settings) || {};
       const name = safeText(settings.name || payload.school_name || "");
       const logo = resolveImageURL(settings.logo_url || payload.logo_url || "");
-
       if (name) document.title = name + " — لوحة العرض الذكية";
       if (dom.schoolName && name) dom.schoolName.textContent = name;
 
@@ -218,16 +209,7 @@
     } catch (e) {}
   }
 
-  // -------------------------
-  // Clock & Date
-  // -------------------------
-  let showHijri = false;
   let cachedDateInfo = null;
-
-  function toggleDateDisplay() {
-    showHijri = !showHijri;
-    // في قالبك الجديد ما عاد عندك انيميشن translate، فنعرض الاثنين دائمًا بدون مشاكل
-  }
 
   function tickClock(dateInfo) {
     const now = new Date(nowMs());
@@ -249,9 +231,6 @@
     }
   }
 
-  // -------------------------
-  // progress ring + bar
-  // -------------------------
   const CIRC_TOTAL = 339.292;
   let countdownSeconds = null;
   let progressRange = { start: null, end: null };
@@ -264,11 +243,19 @@
     dom.circleProgress.style.strokeDashoffset = String(off);
   }
 
-  // -------------------------
-  // fetch snapshot
-  // -------------------------
   let inflight = null;
   let ctrl = null;
+
+  function withTimeout(promise, ms, onTimeout) {
+    let t = null;
+    const timeout = new Promise((_, rej) => {
+      t = setTimeout(() => {
+        try { if (onTimeout) onTimeout(); } catch (e) {}
+        rej(new Error("timeout"));
+      }, ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => { if (t) clearTimeout(t); });
+  }
 
   async function safeFetchSnapshot() {
     if (inflight) return inflight;
@@ -280,53 +267,40 @@
     u.searchParams.set("_t", String(Date.now()));
 
     if (ctrl) { try { ctrl.abort(); } catch (e) {} }
-    ctrl = new AbortController();
+    ctrl = (window.AbortController ? new AbortController() : null);
 
-    inflight = fetch(u.toString(), {
+    const fetchPromise = fetch(u.toString(), {
       method: "GET",
-      headers: {
-        "Accept": "application/json",
-        "X-Display-Token": token || ""
-      },
+      headers: { "Accept": "application/json", "X-Display-Token": token || "" },
       cache: "no-store",
-      signal: ctrl.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      })
-      .catch((e) => {
-        console.error("snapshot fetch error:", e);
-        renderAlert("تعذر جلب البيانات", "تأكد من token ومن مسار snapshot.");
-        ensureDebugOverlay();
-        if (isDebug()) setDebugText("fetch error: " + (e && e.message ? e.message : String(e)));
-        return null;
-      })
-      .finally(() => { inflight = null; });
+      signal: ctrl ? ctrl.signal : undefined,
+    }).then(async (r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+
+    inflight = withTimeout(fetchPromise, 9000, () => {
+      if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+    }).catch((e) => {
+      renderAlert("تعذر جلب البيانات", "تأكد من token ومن مسار snapshot.");
+      ensureDebugOverlay();
+      if (isDebug()) setDebugText("fetch error: " + (e && e.message ? e.message : String(e)));
+      return null;
+    }).finally(() => { inflight = null; });
 
     return await inflight;
   }
 
-  // -------------------------
-  // ✅ Alerts (عنوان + تفاصيل) — بدون تمرير
-  // -------------------------
   function renderAlert(title, details) {
     const t = safeText(title || "");
     const d = safeText(details || "");
-
-    // قالب جديد
     if (dom.alertTitle) dom.alertTitle.textContent = t || "تنبيه";
     if (dom.alertDetails) dom.alertDetails.textContent = d || "—";
-
-    // توافق للخلف
     if (dom.alertText && !dom.alertTitle && !dom.alertDetails) {
       dom.alertText.textContent = (t && d) ? (t + " — " + d) : (t || d || "");
     }
   }
 
-  // -------------------------
-  // ✅ Announcements (يحافظ على موضعه ولا يرجع من البداية)
-  // -------------------------
   let annTimer = null;
   let annPtr = 0;
   let annList = [];
@@ -348,12 +322,8 @@
     const nextSig = annSignature(arr);
     const nextList = Array.isArray(arr) ? arr.slice() : [];
 
-    // ✅ إذا نفس البيانات: لا تعيد تشغيل التايمر ولا تعيد من الصفر
-    if (nextSig && nextSig === annSig && nextList.length) {
-      return;
-    }
+    if (nextSig && nextSig === annSig && nextList.length) return;
 
-    // تغيّر البيانات
     annSig = nextSig;
     annList = nextList;
     if (annTimer) { clearInterval(annTimer); annTimer = null; }
@@ -364,39 +334,31 @@
       return;
     }
 
-    // ✅ حافظ على التنبيه الحالي إذا كان ما زال موجوداً (حسب title+body)
     const current = annList[annPtr] || {};
     const curKey = safeText(current.title || current.heading || "") + "||" + safeText(current.body || current.details || current.text || current.message || "");
     let keepIndex = -1;
+
     for (let i = 0; i < annList.length; i++) {
       const x = annList[i] || {};
       const key = safeText(x.title || x.heading || "") + "||" + safeText(x.body || x.details || x.text || x.message || "");
       if (key && key === curKey) { keepIndex = i; break; }
     }
-    if (keepIndex >= 0) annPtr = keepIndex;
-    else annPtr = 0;
 
+    annPtr = keepIndex >= 0 ? keepIndex : 0;
     showAnnouncement(annPtr);
 
-    if (annList.length > 1) {
-      annTimer = setInterval(() => showAnnouncement(annPtr + 1), ANN_INT);
-    }
+    if (annList.length > 1) annTimer = setInterval(() => showAnnouncement(annPtr + 1), ANN_INT);
   }
 
   function showAnnouncement(i) {
     if (!annList.length) return;
     annPtr = (i + annList.length) % annList.length;
-
     const a = annList[annPtr] || {};
     const title = safeText(a.title || a.heading || "تنبيه");
     const body = safeText(a.body || a.details || a.text || a.message || "—");
-
     renderAlert(title, body);
   }
 
-  // -------------------------
-  // mini schedule (day_path)
-  // -------------------------
   let lastScheduleJSON = "";
   function renderMiniSchedule(payload, baseMs) {
     if (!dom.miniSchedule) return;
@@ -448,10 +410,6 @@
     });
   }
 
-  // -------------------------
-  // period classes + standby (with smooth scroll)
-  // ✅ لا تعيد البناء إذا نفس البيانات → تحافظ على الحركة
-  // -------------------------
   const PERIODS_MIN_ITEMS_FOR_SCROLL = 4;
   const STANDBY_MIN_ITEMS_FOR_SCROLL = 4;
 
@@ -503,16 +461,18 @@
     trackEl.appendChild(clone);
 
     let y = 0;
+    const maxStep = clamp(speed, 0.15, 4);
+
     function loop() {
-      y += speed;
+      y += maxStep;
       if (y >= contentHeight) y = 0;
       trackEl.style.transform = "translateY(-" + y + "px)";
       frameRefSetter(requestAnimationFrame(loop));
     }
+
     frameRefSetter(requestAnimationFrame(loop));
   }
 
-  // ✅ مارك-أب احترافي للحصص الجارية (class / subject / teacher منفصل)
   function buildSlotItem({ clsName, subj, teacher, badgeText, badgeKind }) {
     const item = document.createElement("div");
     item.className = "slot-item";
@@ -565,12 +525,12 @@
     const arr = Array.isArray(items) ? items.slice() : [];
     const sig = listSignature(arr, "periods");
 
-    // ✅ لا تعيد بناء DOM لو نفس البيانات (يحافظ على الحركة)
     if (sig && sig === lastPeriodSig) {
       periodItemsCache = arr.slice();
       if (dom.pcCount) dom.pcCount.textContent = String(arr.length);
       return;
     }
+
     lastPeriodSig = sig;
     periodItemsCache = arr.slice();
 
@@ -594,8 +554,8 @@
       const clsName = x.class_name || x["class"] || x.classroom || "—";
       const subj = x.subject_name || x.subject || x.label || "—";
       const teacher = x.teacher_name || x.teacher || "";
-
       const badgeText = formatPeriodTitle(x);
+
       list.appendChild(buildSlotItem({
         clsName,
         subj,
@@ -617,12 +577,12 @@
     const arr = Array.isArray(items) ? items.slice() : [];
     const sig = listSignature(arr, "standby");
 
-    // ✅ لا تعيد بناء DOM لو نفس البيانات (يحافظ على الحركة)
     if (sig && sig === lastStandbySig) {
       standbyItemsCache = arr.slice();
       if (dom.sbCount) dom.sbCount.textContent = String(arr.length);
       return;
     }
+
     lastStandbySig = sig;
     standbyItemsCache = arr.slice();
 
@@ -646,8 +606,6 @@
       const clsName = x.class_name || x["class"] || x.classroom || "—";
       const subj = x.subject_name || x.subject || x.label || "—";
       const teacher = x.teacher_name || x.teacher || x.teacher_full_name || "—";
-
-      // ✅ إصلاح: رقم الحصة من مفاتيح متعددة + عرض دائم
       const badgeText = formatPeriodTitle(x);
 
       contentDiv.appendChild(buildSlotItem({
@@ -667,10 +625,6 @@
     }, 120);
   }
 
-  // -------------------------
-  // excellence (honor board)
-  // ✅ يحافظ على الدوران ولا يرجع للبداية إذا نفس البيانات
-  // -------------------------
   let exTimer = null;
   let exPtr = 0;
   let exList = [];
@@ -697,9 +651,7 @@
     const nextList = Array.isArray(items) ? items.slice() : [];
     const filtered = nextList.filter((x) => x && (x.name || x.student_name || x.teacher_name || x.full_name || x.display_name || (x.student && x.student.name) || (x.teacher && x.teacher.name)));
 
-    if (nextSig && nextSig === exSig && filtered.length) {
-      return; // ✅ لا تعيد من البداية
-    }
+    if (nextSig && nextSig === exSig && filtered.length) return;
 
     exSig = nextSig;
     exList = filtered;
@@ -715,13 +667,8 @@
       return;
     }
 
-    if (dom.exIndex) dom.exIndex.textContent = String(exPtr + 1);
-
     showExcellence(exPtr);
-
-    if (exList.length > 1) {
-      exTimer = setInterval(() => showExcellence(exPtr + 1), EX_INT);
-    }
+    if (exList.length > 1) exTimer = setInterval(() => showExcellence(exPtr + 1), EX_INT);
   }
 
   function showExcellence(i) {
@@ -749,7 +696,6 @@
 
     const src = resolveImageURL(rawSrc);
 
-    // fade
     dom.exSlot.style.opacity = "0";
     setTimeout(() => {
       dom.exSlot.innerHTML = "";
@@ -785,9 +731,6 @@
     }, 220);
   }
 
-  // -------------------------
-  // hero state
-  // -------------------------
   function renderState(payload) {
     if (!payload) return;
 
@@ -802,14 +745,15 @@
     if (settings.theme) applyTheme(settings.theme);
 
     if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
-      const nInt = settings.refresh_interval_sec;
+      const nInt = clamp(settings.refresh_interval_sec, 5, 120);
       if (Math.abs(nInt - REFRESH_EVERY) > 0.001) {
         REFRESH_EVERY = nInt;
         resetMainTimer();
       }
     }
-    if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) STANDBY_SPEED = settings.standby_scroll_speed;
-    if (typeof settings.periods_scroll_speed === "number" && settings.periods_scroll_speed > 0) PERIODS_SPEED = settings.periods_scroll_speed;
+
+    if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) STANDBY_SPEED = normSpeed(settings.standby_scroll_speed, STANDBY_SPEED);
+    if (typeof settings.periods_scroll_speed === "number" && settings.periods_scroll_speed > 0) PERIODS_SPEED = normSpeed(settings.periods_scroll_speed, PERIODS_SPEED);
 
     hydrateBrand(payload);
     tickClock(payload.date_info || null);
@@ -868,12 +812,10 @@
       }
     }
 
-    // نشاط حالي (اختصار)
     if (dom.currentScheduleList) {
       dom.currentScheduleList.innerHTML = "";
       if (current && (current.label || current.from || current.to || current.index || current.period_index)) {
         const cls = safeText(current["class"] || current.class_name || "—");
-        const teacher = safeText(current.teacher || current.teacher_name || "—");
         const subj = (stType === "period") ? formatPeriodTitle(current) : safeText(current.label || s.label || "—");
         const tRange = toTimeStr(current.from || s.from) + " → " + toTimeStr(current.to || s.to);
 
@@ -893,11 +835,9 @@
         dom.currentScheduleList.appendChild(chip2);
         dom.currentScheduleList.appendChild(chip3);
 
-        // المعلم/ـة كسطر مستقل لتفادي التداخل
         const t = document.createElement("div");
         t.className = "mt-2 text-white/90 font-black";
         t.style.fontSize = "var(--sub)";
-        //t.textContent = "المعلم/ـة: " + teacher;
         dom.currentScheduleList.appendChild(t);
       } else {
         dom.currentScheduleList.innerHTML = '<div class="w-full rounded-xl border border-slate-600/40 bg-slate-900/40 px-3 py-3 text-center text-slate-400 text-xs md:text-sm">لا توجد حصص حالية الآن</div>';
@@ -907,11 +847,10 @@
     renderMiniSchedule(payload, baseMs);
   }
 
-  // -------------------------
-  // ticker (countdown/progress)
-  // -------------------------
+  let tickerId = null;
   function startTicker() {
-    setInterval(() => {
+    if (tickerId) return;
+    tickerId = setInterval(() => {
       tickClock();
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
@@ -943,9 +882,6 @@
     }, 1000);
   }
 
-  // -------------------------
-  // main refresh
-  // -------------------------
   let mainTimer = null;
   function resetMainTimer() {
     if (mainTimer) clearInterval(mainTimer);
@@ -958,8 +894,6 @@
 
     try {
       renderState(snap);
-
-      // ✅ هذه الآن “ذكية” ولن تعيد من البداية إذا لم تتغير البيانات
       renderAnnouncements(snap.announcements || []);
       renderExcellence(snap.excellence || []);
       renderStandby(snap.standby || []);
@@ -976,38 +910,64 @@
         );
       }
     } catch (e) {
-      console.error("render error:", e);
       renderAlert("حدث خطأ أثناء العرض", "افتح ?debug=1 لمزيد من التفاصيل.");
       ensureDebugOverlay();
       if (isDebug()) setDebugText("render error: " + (e && e.message ? e.message : String(e)));
     }
   }
 
-  // -------------------------
-  // fullscreen
-  // -------------------------
+  function requestFullscreenCompat(el) {
+    if (!el) return Promise.reject();
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (!fn) return Promise.reject();
+    try {
+      const res = fn.call(el);
+      return res && typeof res.then === "function" ? res : Promise.resolve();
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  function exitFullscreenCompat() {
+    const d = document;
+    const fn = d.exitFullscreen || d.webkitExitFullscreen || d.mozCancelFullScreen || d.msExitFullscreen;
+    if (!fn) return Promise.reject();
+    try {
+      const res = fn.call(d);
+      return res && typeof res.then === "function" ? res : Promise.resolve();
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  function isFullscreen() {
+    const d = document;
+    return !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement);
+  }
+
   function bindFullscreen() {
     if (!dom.fsBtn) return;
     dom.fsBtn.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+      if (!isFullscreen()) {
+        requestFullscreenCompat(document.documentElement).catch(() => {});
       } else {
-        document.exitFullscreen().catch(() => {});
+        exitFullscreenCompat().catch(() => {});
       }
-    });
+    }, { passive: true });
   }
 
+  let resizeT = null;
   window.addEventListener("resize", () => {
-    // على resize نعيد الحساب (طبيعي)
-    lastStandbySig = "";
-    lastPeriodSig = "";
-    if (standbyItemsCache.length) renderStandby(standbyItemsCache);
-    if (periodItemsCache.length) renderPeriodClasses(periodItemsCache);
+    if (resizeT) clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      lastStandbySig = "";
+      lastPeriodSig = "";
+      if (standbyItemsCache.length) renderStandby(standbyItemsCache);
+      if (periodItemsCache.length) renderPeriodClasses(periodItemsCache);
+    }, 120);
+  }, { passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    refreshAll();
   });
 
-  // -------------------------
-  // boot
-  // -------------------------
   document.addEventListener("DOMContentLoaded", () => {
     try {
       const initTheme = (body.dataset.theme || "").trim();
@@ -1019,8 +979,6 @@
     startTicker();
     refreshAll();
     resetMainTimer();
-    // toggleDateDisplay لا يؤثر الآن، لكن نتركه
-    setInterval(toggleDateDisplay, 5000);
     bindFullscreen();
   });
 })();
