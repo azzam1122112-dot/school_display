@@ -47,10 +47,14 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")
 if not DEBUG and (not SECRET_KEY or SECRET_KEY == "dev-insecure-key-change-me"):
     raise RuntimeError("SECRET_KEY must be set in production!")
 
-ALLOWED_HOSTS = env_list(
-    "ALLOWED_HOSTS",
-    "school-display.com,www.school-display.com,.onrender.com,127.0.0.1,localhost",
-)
+ALLOWED_HOSTS = [
+    "school-display.com",
+    "www.school-display.com",
+    ".school-display.com",
+    ".onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 # Django يتوقع list
 if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
