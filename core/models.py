@@ -87,6 +87,8 @@ class DisplayScreen(models.Model):
         unique=True,
         editable=False,
         verbose_name="رمز الوصول",
+        null=True,
+        blank=True,
     )
     is_active = models.BooleanField(
         default=True,
@@ -103,20 +105,31 @@ class DisplayScreen(models.Model):
         verbose_name = "شاشة عرض"
         verbose_name_plural = "شاشات العرض"
 
-def save(self, *args, **kwargs):
-    if not self.token:
-        self.token = secrets.token_hex(32)
+    @staticmethod
+    def _bad_value(v) -> bool:
+        v = (v or "").strip()
+        return (not v) or (v == "-") or (v.lower() == "none")
 
-    if not self.short_code:
-        # ✅ كود قصير سهل للكتابة على TV (بدون 0/O و 1/I و l)
-        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
-        for _ in range(20):
-            code = "".join(secrets.choice(alphabet) for _ in range(6))
-            if not DisplayScreen.objects.filter(short_code__iexact=code).exists():
-                self.short_code = code
-                break
+    def save(self, *args, **kwargs):
+        # ✅ توليد token حتى لو كان None أو "" أو " - "
+        if self._bad_value(self.token):
+            # 64 hex chars
+            for _ in range(30):
+                t = secrets.token_hex(32)
+                if not DisplayScreen.objects.filter(token=t).exclude(pk=self.pk).exists():
+                    self.token = t
+                    break
 
-    super().save(*args, **kwargs)
+        # ✅ توليد short_code سهل للكتابة على TV (بدون 0/O و 1/I و l)
+        if self._bad_value(self.short_code):
+            alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+            for _ in range(80):
+                code = "".join(secrets.choice(alphabet) for _ in range(6))
+                if not DisplayScreen.objects.filter(short_code__iexact=code).exclude(pk=self.pk).exists():
+                    self.short_code = code
+                    break
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.school.name} - {self.name}" if self.school else self.name
@@ -171,11 +184,8 @@ class SubscriptionPlan(models.Model):
         return self.name
 
 
-
 # ملاحظة: لا نضيف imports جديدة غير لازمة هنا
 # لأن هذا الموديل أصبح Legacy ولا يجب أن يتداخل مع subscriptions
-
-
 class SchoolSubscription(models.Model):
     """
     ⚠️ Legacy Model (للتوافق الخلفي فقط)
@@ -191,13 +201,13 @@ class SchoolSubscription(models.Model):
     school = models.ForeignKey(
         "core.School",
         on_delete=models.CASCADE,
-        related_name="+",  # منع School.subscriptions من هذا الموديل
+        related_name="+",
         verbose_name="المدرسة",
     )
     plan = models.ForeignKey(
         "core.SubscriptionPlan",
         on_delete=models.PROTECT,
-        related_name="+",  # منع SubscriptionPlan.subscriptions من هذا الموديل
+        related_name="+",
         verbose_name="الخطة",
     )
     start_date = models.DateField("تاريخ البداية")
