@@ -71,22 +71,6 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 bg-white p-4">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 6v6l4 2"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-slate-800">آخر ظهور</div>
-            <div class="text-sm text-slate-600 mt-1">
-              يساعدك على معرفة هل الشاشة متصلة وتستقبل التحديثات أم لا.
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -114,13 +98,7 @@
                             غير نشط
                           </span>
                         {% endif %}
-                        <span class="text-xs text-slate-500">
-                          {% if screen.last_seen %}
-                            آخر ظهور: {{ screen.last_seen|timesince }}
-                          {% else %}
-                            آخر ظهور: -
-                          {% endif %}
-                        </span>
+                        {# حُذف عرض آخر ظهور مؤقتًا لعدم توفر بيانات موثوقة #}
                       </div>
                     </div>
                     <div class="text-xs text-slate-500 font-mono bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
@@ -187,7 +165,6 @@
               <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">اسم الشاشة</th>
               <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الكود</th>
               <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الحالة</th>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">آخر ظهور</th>
               <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الرابط </th>
               <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">إجراءات</th>
             </tr>
@@ -219,14 +196,6 @@
                           <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
                             غير نشط
                           </span>
-                        {% endif %}
-                      </td>
-
-                      <td class="px-6 py-4 text-sm text-slate-600">
-                        {% if screen.last_seen %}
-                          {{ screen.last_seen|timesince }}
-                        {% else %}
-                          -
                         {% endif %}
                       </td>
 
