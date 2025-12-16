@@ -45,7 +45,7 @@ def _resolve_screen_and_settings(
     """
     key قد يكون:
     - token طويل (64)
-    - أو short_code قصير (6)
+    - أو short_code قصير (مثل 6)
     نُرجع دائمًا effective_token = screen.token حتى تعتمد الواجهة والـ API على token الحقيقي.
     """
     if not key:
@@ -134,6 +134,7 @@ def _build_display_context(request, key: str | None) -> dict | None:
 
 def home(request):
     """
+    الصفحة الرئيسية للشاشة:
     /?token=XXXX
     token قد يكون token طويل أو short_code بعد التحديث.
     """
@@ -154,7 +155,7 @@ def display(request):
 
 def display_view(request, screen_key: str):
     """
-    /display/<screen_key> أو استدعاء داخلي
+    /display/<screen_key> (اختياري)
     screen_key قد يكون token أو short_code.
     """
     if not screen_key:
@@ -167,12 +168,13 @@ def display_view(request, screen_key: str):
     return render(request, "website/display.html", ctx)
 
 
-def short_display_redirect(request, short_code):
+def short_display_redirect(request, short_code: str):
     """
-    ✅ الرابط المختصر: /s/<short_code>
+    ✅ الرابط المختصر: /s/<short_code> أو /s/<short_code>/
     بعد التحديث لا نعمل redirect للرابط الطويل،
     بل نعرض الشاشة مباشرة (أفضل للتلفاز وأسهل للمستخدم).
     """
-    if not short_code:
+    code = (short_code or "").strip()
+    if not code:
         raise Http404("Invalid short code.")
-    return display_view(request, short_code)
+    return display_view(request, code)

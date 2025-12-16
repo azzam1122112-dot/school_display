@@ -1,23 +1,14 @@
-# config/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 
-from website import views as website_views
-from website.views import short_display_redirect
-
 
 urlpatterns = [
     path("cpanel-123/", admin.site.urls),
 
-    path("", website_views.home, name="home"),
-
-    # صفحة الاشتراكات العامة (Landing)
-    path("subscriptions-page/", website_views.subscriptions, name="subscriptions"),
-
-    # موقع الويب
+    # موقع الويب (يشمل / و /subscriptions-page/ و /s/<code>)
     path("", include(("website.urls", "website"), namespace="website")),
 
     # لوحة التحكم
@@ -29,9 +20,6 @@ urlpatterns = [
     # Schedule (لو عندك صفحات غير API)
     path("schedule/", include(("schedule.urls", "schedule"), namespace="schedule")),
 
-    # رابط مختصر للشاشات
-    path("s/<str:short_code>", short_display_redirect, name="short_display_redirect"),
-
     # favicon
     path("favicon.ico", RedirectView.as_view(url="/static/favicon.ico", permanent=True)),
 ]
@@ -42,6 +30,7 @@ if any(app.startswith("subscriptions") for app in settings.INSTALLED_APPS):
     urlpatterns += [
         path("subscriptions/", include(("subscriptions.urls", "subscriptions"), namespace="subscriptions")),
     ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
