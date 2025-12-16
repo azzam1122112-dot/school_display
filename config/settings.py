@@ -116,6 +116,7 @@ MIDDLEWARE = [
     "core.middleware.ActiveSchoolMiddleware",
     "dashboard.middleware.SubscriptionRequiredMiddleware",
     "core.middleware.DisplayTokenMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
 ]
 
