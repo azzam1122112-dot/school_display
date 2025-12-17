@@ -621,6 +621,14 @@ class SystemUserCreateForm(UserCreationForm):
             attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
         ),
     )
+    mobile = forms.CharField(
+        label="رقم الجوال",
+        required=False,
+        max_length=20,
+        widget=forms.TextInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
 
     class Meta(UserCreationForm.Meta):
         model = UserModel
@@ -629,6 +637,7 @@ class SystemUserCreateForm(UserCreationForm):
             "email",
             "first_name",
             "last_name",
+            "mobile",
             "is_active",
             "is_staff",
             "is_superuser",
@@ -665,6 +674,7 @@ class SystemUserCreateForm(UserCreationForm):
         else:
             profile.active_school = profile.schools.order_by("id").first()
 
+        profile.mobile = self.cleaned_data.get("mobile")
         profile.save()
         return user
 
@@ -691,16 +701,24 @@ class SystemUserUpdateForm(forms.ModelForm):
             attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
         ),
     )
+    mobile = forms.CharField(
+        label="رقم الجوال",
+        required=False,
+        max_length=20,
+        widget=forms.TextInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
 
     new_password1 = forms.CharField(
         label="كلمة المرور الجديدة",
-        widget=forms.PasswordInput,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
         required=False,
         help_text="اترك الحقلين فارغين إذا لا تريد تغيير كلمة المرور."
     )
     new_password2 = forms.CharField(
         label="تأكيد كلمة المرور الجديدة",
-        widget=forms.PasswordInput,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
         required=False,
     )
 
@@ -711,6 +729,7 @@ class SystemUserUpdateForm(forms.ModelForm):
             "email",
             "first_name",
             "last_name",
+            "mobile",
             "is_active",
             "is_staff",
             "is_superuser",
@@ -733,6 +752,7 @@ class SystemUserUpdateForm(forms.ModelForm):
             if profile:
                 self.fields["schools"].initial = list(profile.schools.all())
                 self.fields["active_school"].initial = profile.active_school_id
+                self.fields["mobile"].initial = profile.mobile
 
     def clean(self):
         cleaned = super().clean()
@@ -777,9 +797,88 @@ class SystemUserUpdateForm(forms.ModelForm):
         else:
             profile.active_school = profile.schools.order_by("id").first()
 
+        profile.mobile = self.cleaned_data.get("mobile")
+
         # ضمان: لو active_school ليست ضمن المدارس بعد التعديل
         if profile.active_school_id and profile.schools.filter(id=profile.active_school_id).exists() is False:
             profile.active_school = profile.schools.order_by("id").first()
 
         profile.save()
         return user
+
+
+from core.models import SupportTicket
+
+class SubscriptionPlanForm(forms.ModelForm):
+    class Meta:
+        model = SubscriptionPlan
+        fields = "__all__"
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "code": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "price": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "max_users": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "max_screens": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "max_schools": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "sort_order": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "rounded border-slate-300 text-blue-600 focus:ring-blue-500"}),
+        }
+
+from core.models import SupportTicket, TicketComment
+
+class TicketCommentForm(forms.ModelForm):
+    class Meta:
+        model = TicketComment
+        fields = ["message"]
+        widgets = {
+            "message": forms.Textarea(attrs={"rows": 3, "class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500", "placeholder": "أضف ردك هنا..."}),
+        }
+
+class SupportTicketForm(forms.ModelForm):
+    class Meta:
+        model = SupportTicket
+        fields = ["subject", "message", "priority"]
+        widgets = {
+            "subject": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "message": forms.Textarea(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500", "rows": 4}),
+            "priority": forms.Select(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+        }
+
+
+class CustomerSupportTicketForm(forms.ModelForm):
+    school_name = forms.CharField(
+        label="اسم المدرسة",
+        required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500", "readonly": "readonly"})
+    )
+    admin_name = forms.CharField(
+        label="اسم المسؤول",
+        required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500", "readonly": "readonly"})
+    )
+    mobile_number = forms.CharField(
+        label="رقم الجوال",
+        required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500", "readonly": "readonly"})
+    )
+
+    class Meta:
+        model = SupportTicket
+        fields = ["subject", "message"]
+        widgets = {
+            "subject": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "message": forms.Textarea(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500", "rows": 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            profile = getattr(user, 'profile', None)
+            if profile and profile.active_school:
+                self.fields['school_name'].initial = profile.active_school.name
+            
+            self.fields['admin_name'].initial = user.get_full_name() or user.username
+            
+            if profile and profile.mobile:
+                self.fields['mobile_number'].initial = profile.mobile

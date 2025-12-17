@@ -293,6 +293,16 @@
         </div>
       </a>
 
+      <!-- Support -->
+      <a href="{% url 'dashboard:customer_support_tickets' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'customer_support_tickets' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🛟</span>
+          <span class="font-medium">الدعم الفني</span>
+        </div>
+      </a>
+
       <!-- SaaS Super Admin -->
       {% if request.user.is_superuser %}
         <div class="border-t border-slate-200 my-3"></div>

@@ -1,0 +1,72 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}التقارير والإحصائيات{% endblock %}
+{% block page_title %}التقارير والإحصائيات{% endblock %}
+{% block page_description %}عرض تقارير الأداء والإيرادات{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+  
+  <!-- Revenue Summary -->
+  <div class="bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl p-8 text-white shadow-lg">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-3xl font-bold mb-2">{{ total_revenue }} <span class="text-lg font-normal text-amber-100">ر.س</span></h2>
+        <p class="text-amber-100 text-lg">إجمالي الإيرادات (الاشتراكات النشطة)</p>
+      </div>
+      <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+        <span class="text-4xl">💰</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue by Plan -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-6 border-b border-slate-100">
+      <h3 class="text-xl font-bold text-slate-800">تفاصيل الإيرادات حسب الباقة</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-right">
+        <thead class="bg-slate-50 text-slate-600 font-medium">
+          <tr>
+            <th class="p-4">اسم الباقة</th>
+            <th class="p-4">عدد المشتركين</th>
+            <th class="p-4">إجمالي الإيرادات</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for item in revenue_by_plan %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-4 font-medium text-slate-800">{{ item.plan__name }}</td>
+            <td class="p-4 text-slate-600">{{ item.count }}</td>
+            <td class="p-4 font-bold text-emerald-600">{{ item.total_revenue }} ر.س</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="p-8 text-center text-slate-500">لا توجد بيانات إيرادات حالياً.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Other Reports Placeholders -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h3 class="text-lg font-bold text-slate-800 mb-4">نمو الاشتراكات</h3>
+      <div class="h-64 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
+        مخطط بياني (قريباً)
+      </div>
+    </div>
+    
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h3 class="text-lg font-bold text-slate-800 mb-4">توزيع المدارس</h3>
+      <div class="h-64 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
+        مخطط بياني (قريباً)
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

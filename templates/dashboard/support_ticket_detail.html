@@ -1,0 +1,106 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}تفاصيل التذكرة #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  
+  <!-- Ticket Details & Conversation -->
+  <div class="lg:col-span-2 space-y-6">
+    
+    <!-- Original Message -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-xl font-bold text-slate-800 mb-2">{{ ticket.subject }}</h3>
+      <div class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+        <span>{{ ticket.created_at|date:"Y-m-d H:i" }}</span>
+      </div>
+      <div class="prose max-w-none text-slate-700 bg-slate-50 p-4 rounded-lg">
+        {{ ticket.message|linebreaks }}
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div class="space-y-4">
+      <h4 class="font-bold text-slate-800">الردود والمناقشة</h4>
+      
+      {% for comment in ticket.comments.all %}
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 {% if comment.user.is_superuser %}border-l-4 border-l-blue-500{% endif %}">
+        <div class="flex justify-between items-start mb-2">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-800">
+              {% if comment.user == request.user %}أنت{% else %}الدعم الفني{% endif %}
+            </span>
+            {% if comment.user.is_superuser %}
+            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">دعم فني</span>
+            {% endif %}
+          </div>
+          <span class="text-xs text-slate-500">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+        </div>
+        <div class="text-slate-700">
+          {{ comment.message|linebreaks }}
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+        لا توجد ردود حتى الآن.
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Add Reply -->
+    {% if ticket.status != 'closed' %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h4 class="font-bold text-slate-800 mb-4">إضافة رد</h4>
+      <form method="post">
+        {% csrf_token %}
+        <div class="space-y-4">
+          {{ comment_form.message }}
+          <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+            إرسال الرد
+          </button>
+        </div>
+      </form>
+    </div>
+    {% else %}
+    <div class="bg-slate-100 rounded-xl p-6 text-center text-slate-600">
+      هذه التذكرة مغلقة ولا يمكن إضافة ردود جديدة.
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Sidebar Info -->
+  <div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h4 class="font-bold text-slate-800 mb-4">معلومات التذكرة</h4>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-500 mb-1">الحالة</label>
+          <div>
+            {% if ticket.status == 'open' %}
+            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">مفتوحة</span>
+            {% elif ticket.status == 'in_progress' %}
+            <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">قيد المعالجة</span>
+            {% else %}
+            <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm font-medium">مغلقة</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 space-y-3">
+          <div class="flex justify-between">
+            <span class="text-slate-500">الأولوية:</span>
+            <span class="font-medium">{{ ticket.get_priority_display }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">رقم التذكرة:</span>
+            <span class="font-medium">#{{ ticket.id }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

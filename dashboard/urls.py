@@ -118,6 +118,25 @@ urlpatterns = [
     path("admin-panel/subscriptions/<int:pk>/edit/", views.system_subscription_edit, name="system_subscription_edit"),
     path("admin-panel/subscriptions/<int:pk>/delete/", views.system_subscription_delete, name="system_subscription_delete"),
 
+    # Plans
+    path("admin-panel/plans/", views.system_plans_list, name="system_plans_list"),
+    path("admin-panel/plans/add/", views.system_plan_create, name="system_plan_create"),
+    path("admin-panel/plans/<int:pk>/edit/", views.system_plan_edit, name="system_plan_edit"),
+    path("admin-panel/plans/<int:pk>/delete/", views.system_plan_delete, name="system_plan_delete"),
+
+    # Reports
+    path("admin-panel/reports/", views.system_reports, name="system_reports"),
+
+    # Support
+    path("admin-panel/support/", views.system_support_tickets, name="system_support_tickets"),
+    path("admin-panel/support/<int:pk>/", views.system_support_ticket_detail, name="system_support_ticket_detail"),
+    path("admin-panel/support/add/", views.system_support_ticket_create, name="system_support_ticket_create"),
+
+    # Customer Support
+    path("support/", views.customer_support_tickets, name="customer_support_tickets"),
+    path("support/new/", views.customer_support_ticket_create, name="customer_support_ticket_create"),
+    path("support/<int:pk>/", views.customer_support_ticket_detail, name="customer_support_ticket_detail"),
+
     # My subscription
     path("my-subscription/", views.my_subscription, name="my_subscription"),
 ]

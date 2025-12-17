@@ -52,6 +52,12 @@ class UserProfile(models.Model):
         null=True,
         blank=True,
     )
+    mobile = models.CharField(
+        "رقم الجوال",
+        max_length=20,
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         verbose_name = "ملف المستخدم"
@@ -143,8 +149,8 @@ class SubscriptionPlan(models.Model):
         help_text="يُستخدم داخليًا، مثل: basic, pro, enterprise",
     )
     name = models.CharField("اسم الخطة", max_length=150)
-    price_monthly = models.DecimalField(
-        "السعر الشهري (ر.س)",
+    price = models.DecimalField(
+        "سعر الباقة (ر.س)",
         max_digits=8,
         decimal_places=2,
         default=0,
@@ -178,7 +184,7 @@ class SubscriptionPlan(models.Model):
     class Meta:
         verbose_name = "خطة اشتراك"
         verbose_name_plural = "خطط الاشتراك"
-        ordering = ("sort_order", "price_monthly")
+        ordering = ("sort_order", "price")
 
     def __str__(self) -> str:
         return self.name
@@ -257,3 +263,80 @@ class SchoolSubscription(models.Model):
         لأن هذا كان سبب التعارض مع subscriptions.SchoolSubscription.
         """
         return super().save(*args, **kwargs)
+
+
+class SupportTicket(models.Model):
+    STATUS_CHOICES = [
+        ("open", "مفتوحة"),
+        ("in_progress", "قيد المعالجة"),
+        ("closed", "مغلقة"),
+    ]
+    PRIORITY_CHOICES = [
+        ("low", "منخفضة"),
+        ("medium", "متوسطة"),
+        ("high", "عالية"),
+        ("urgent", "عاجلة"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="support_tickets",
+        verbose_name="المستخدم",
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.SET_NULL,
+        related_name="support_tickets",
+        verbose_name="المدرسة",
+        null=True,
+        blank=True,
+    )
+    subject = models.CharField("الموضوع", max_length=200)
+    message = models.TextField("الرسالة")
+    status = models.CharField(
+        "الحالة",
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="open",
+    )
+    priority = models.CharField(
+        "الأولوية",
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default="medium",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "تذكرة دعم"
+        verbose_name_plural = "تذاكر الدعم"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.subject
+
+
+class TicketComment(models.Model):
+    ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        verbose_name="التذكرة",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="كاتب التعليق",
+    )
+    message = models.TextField("الرسالة")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "تعليق تذكرة"
+        verbose_name_plural = "تعليقات التذاكر"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Comment by {self.user} on {self.ticket}"

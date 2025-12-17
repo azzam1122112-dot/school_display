@@ -93,7 +93,7 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-amber-400/30">
-        <a href="#" 
+        <a href="{% url 'dashboard:system_reports' %}" 
            class="inline-flex items-center text-sm text-amber-100 hover:text-white font-medium">
           تقرير الإيرادات
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,7 +183,7 @@
       </a>
 
       <!-- لوحة التقارير -->
-      <a href="#"
+      <a href="{% url 'dashboard:system_reports' %}"
          class="group bg-gradient-to-br from-white to-amber-50 rounded-2xl border border-amber-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
         <div class="flex items-start gap-4">
           <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -205,7 +205,7 @@
       </a>
 
       <!-- إدارة الخطط -->
-      <a href="#"
+      <a href="{% url 'dashboard:system_plans_list' %}"
          class="group bg-gradient-to-br from-white to-indigo-50 rounded-2xl border border-indigo-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
         <div class="flex items-start gap-4">
           <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -227,7 +227,7 @@
       </a>
 
       <!-- الدعم الفني -->
-      <a href="#"
+      <a href="{% url 'dashboard:system_support_tickets' %}"
          class="group bg-gradient-to-br from-white to-rose-50 rounded-2xl border border-rose-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
         <div class="flex items-start gap-4">
           <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">

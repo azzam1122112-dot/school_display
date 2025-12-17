@@ -9,7 +9,7 @@ from subscriptions.utils import school_has_active_subscription
 class SubscriptionSyncTests(TestCase):
     def setUp(self):
         self.school = School.objects.create(name="Test School", slug="test-school", is_active=False)
-        self.plan = SubscriptionPlan.objects.create(code="basic", name="Basic", price_monthly=0)
+        self.plan = SubscriptionPlan.objects.create(code="basic", name="Basic", price=0)
 
     def test_school_sync_active_on_save(self):
         SchoolSubscription.objects.create(

@@ -1,0 +1,58 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}إدارة الخطط{% endblock %}
+{% block page_title %}إدارة خطط الاشتراك{% endblock %}
+{% block page_description %}إدارة خطط الاشتراك والأسعار والميزات{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-slate-800">قائمة الخطط</h2>
+    <a href="{% url 'dashboard:system_plan_create' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+      <i class="fas fa-plus ml-2"></i> إضافة خطة
+    </a>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-right">
+      <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+        <tr>
+          <th class="p-4">الاسم</th>
+          <th class="p-4">الرمز</th>
+          <th class="p-4">السعر</th>
+          <th class="p-4">الحالة</th>
+          <th class="p-4">الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for plan in plans %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-4 font-medium text-slate-800">{{ plan.name }}</td>
+          <td class="p-4 text-slate-600">{{ plan.code }}</td>
+          <td class="p-4 text-slate-600">{{ plan.price }} ر.س</td>
+          <td class="p-4">
+            {% if plan.is_active %}
+            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">نشط</span>
+            {% else %}
+            <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs font-medium">غير نشط</span>
+            {% endif %}
+          </td>
+          <td class="p-4 flex gap-2">
+            <a href="{% url 'dashboard:system_plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800">
+              <i class="fas fa-edit"></i>
+            </a>
+            <a href="{% url 'dashboard:system_plan_delete' plan.pk %}" class="text-red-600 hover:text-red-800">
+              <i class="fas fa-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="p-8 text-center text-slate-500">لا توجد خطط مضافة حالياً.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

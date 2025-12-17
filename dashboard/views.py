@@ -24,7 +24,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, FieldError
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import Max, Q, Sum, Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, NoReverseMatch, get_resolver
@@ -48,7 +48,12 @@ from .forms import (
     SystemUserUpdateForm,
     PeriodFormSet,
     BreakFormSet,
+    SubscriptionPlanForm,
+    SupportTicketForm,
+    CustomerSupportTicketForm,
+    TicketCommentForm,
 )
+from core.models import SubscriptionPlan, SupportTicket, TicketComment
 
 logger = logging.getLogger(__name__)
 
@@ -1826,17 +1831,26 @@ def system_admin_dashboard(request):
 
     today = timezone.localdate()
     active_subs = 0
+    revenue = 0
+
     if SubModel is not None:
-        active_subs = (
-            SubModel.objects.filter(status="active")
-            .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
-            .count()
+        active_qs = SubModel.objects.filter(status="active").filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gte=today)
         )
+        active_subs = active_qs.count()
+        revenue = active_qs.aggregate(total=Sum("plan__price"))["total"] or 0
 
     return render(
         request,
         "admin/dashboard.html",
-        {"schools_count": school_count, "users_count": user_count, "subs_count": subs_count, "active_subs": active_subs},
+        {
+            "schools_count": school_count,
+            "users_count": user_count,
+            "subs_count": subs_count,
+            "active_subs": active_subs,
+            "subscriptions_count": active_subs,
+            "revenue": revenue,
+        },
     )
 
 
@@ -2309,3 +2323,182 @@ def my_subscription(request):
             "today": today,
         },
     )
+
+
+# ==================
+# Plans Management
+# ==================
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_plans_list(request):
+    plans = SubscriptionPlan.objects.all()
+    return render(request, "admin/plans_list.html", {"plans": plans})
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_plan_create(request):
+    if request.method == "POST":
+        form = SubscriptionPlanForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم إنشاء الخطة بنجاح")
+            return redirect("dashboard:system_plans_list")
+    else:
+        form = SubscriptionPlanForm()
+    return render(request, "admin/plan_form.html", {"form": form, "title": "إضافة خطة جديدة"})
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_plan_edit(request, pk):
+    plan = get_object_or_404(SubscriptionPlan, pk=pk)
+    if request.method == "POST":
+        form = SubscriptionPlanForm(request.POST, instance=plan)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث الخطة بنجاح")
+            return redirect("dashboard:system_plans_list")
+    else:
+        form = SubscriptionPlanForm(instance=plan)
+    return render(request, "admin/plan_form.html", {"form": form, "title": "تعديل الخطة"})
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_plan_delete(request, pk):
+    plan = get_object_or_404(SubscriptionPlan, pk=pk)
+    if request.method == "POST":
+        plan.delete()
+        messages.success(request, "تم حذف الخطة بنجاح")
+        return redirect("dashboard:system_plans_list")
+    return render(request, "admin/plan_confirm_delete.html", {"plan": plan})
+
+# ==================
+# Reports
+# ==================
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_reports(request):
+    SubModel = _get_subscription_model()
+    
+    total_revenue = 0
+    revenue_by_plan = []
+    
+    if SubModel is not None:
+        # Total Revenue (Active Subscriptions)
+        active_subs = SubModel.objects.filter(status="active")
+        total_revenue = active_subs.aggregate(total=Sum("plan__price"))["total"] or 0
+        
+        # Revenue by Plan
+        revenue_by_plan = (
+            active_subs.values("plan__name")
+            .annotate(total_revenue=Sum("plan__price"), count=Count("id"))
+            .order_by("-total_revenue")
+        )
+
+    context = {
+        "total_revenue": total_revenue,
+        "revenue_by_plan": revenue_by_plan,
+    }
+    return render(request, "admin/reports.html", context)
+
+# ==================
+# Support Tickets (Admin)
+# ==================
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_support_tickets(request):
+    tickets = SupportTicket.objects.all().order_by("-created_at")
+    return render(request, "admin/support_tickets.html", {"tickets": tickets})
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_support_ticket_detail(request, pk):
+    ticket = get_object_or_404(SupportTicket, pk=pk)
+    
+    if request.method == "POST":
+        # Handle status change
+        if "status" in request.POST:
+            ticket.status = request.POST["status"]
+            ticket.save()
+            messages.success(request, "تم تحديث حالة التذكرة.")
+            return redirect("dashboard:system_support_ticket_detail", pk=pk)
+            
+        # Handle comment
+        comment_form = TicketCommentForm(request.POST)
+        if comment_form.is_valid():
+            comment = comment_form.save(commit=False)
+            comment.ticket = ticket
+            comment.user = request.user
+            comment.save()
+            messages.success(request, "تم إضافة الرد بنجاح.")
+            return redirect("dashboard:system_support_ticket_detail", pk=pk)
+    else:
+        comment_form = TicketCommentForm()
+
+    return render(request, "admin/support_ticket_detail.html", {
+        "ticket": ticket,
+        "comment_form": comment_form
+    })
+
+@login_required
+def system_support_ticket_create(request):
+    if request.method == "POST":
+        form = SupportTicketForm(request.POST)
+        if form.is_valid():
+            ticket = form.save(commit=False)
+            ticket.user = request.user
+            ticket.save()
+            messages.success(request, "تم فتح التذكرة بنجاح")
+            return redirect("dashboard:system_support_tickets")
+    else:
+        form = SupportTicketForm()
+    return render(request, "admin/support_ticket_form.html", {"form": form})
+
+
+# ==================
+# Customer Support
+# ==================
+
+@login_required
+def customer_support_tickets(request):
+    tickets = SupportTicket.objects.filter(user=request.user).order_by("-created_at")
+    return render(request, "dashboard/support_tickets.html", {"tickets": tickets})
+
+@login_required
+def customer_support_ticket_detail(request, pk):
+    ticket = get_object_or_404(SupportTicket, pk=pk, user=request.user)
+    
+    if request.method == "POST":
+        comment_form = TicketCommentForm(request.POST)
+        if comment_form.is_valid():
+            comment = comment_form.save(commit=False)
+            comment.ticket = ticket
+            comment.user = request.user
+            comment.save()
+            messages.success(request, "تم إضافة الرد بنجاح.")
+            return redirect("dashboard:customer_support_ticket_detail", pk=pk)
+    else:
+        comment_form = TicketCommentForm()
+
+    return render(request, "dashboard/support_ticket_detail.html", {
+        "ticket": ticket,
+        "comment_form": comment_form
+    })
+
+@login_required
+def customer_support_ticket_create(request):
+    if request.method == "POST":
+        form = CustomerSupportTicketForm(request.POST, user=request.user)
+        if form.is_valid():
+            ticket = form.save(commit=False)
+            ticket.user = request.user
+            if hasattr(request.user, 'profile') and request.user.profile.active_school:
+                ticket.school = request.user.profile.active_school
+            ticket.save()
+            messages.success(request, "تم فتح التذكرة بنجاح")
+            return redirect("dashboard:customer_support_tickets")
+    else:
+        form = CustomerSupportTicketForm(user=request.user)
+    return render(request, "dashboard/support_ticket_form.html", {"form": form})

@@ -211,7 +211,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               {% for field in form %}
-                {% if field.name == "start_date" or field.name == "end_date" %}
+                {% if field.name == "starts_at" or field.name == "ends_at" %}
                   <div class="space-y-2">
                     <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
                     {{ field }}
@@ -254,7 +254,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               {% for field in form %}
-                {% if field.name != "school" and field.name != "plan" and field.name != "start_date" and field.name != "end_date" and field.name != "is_active" %}
+                {% if field.name != "school" and field.name != "plan" and field.name != "starts_at" and field.name != "ends_at" and field.name != "status" %}
                   <div class="space-y-2">
                     <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
                     {{ field }}
@@ -288,14 +288,12 @@
 
             <div class="mt-4">
               {% for field in form %}
-                {% if field.name == "is_active" %}
-                  <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition">
+                {% if field.name == "status" %}
+                  <div class="space-y-2">
+                    <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
                     {{ field }}
-                    <div class="min-w-0">
-                      <div class="text-sm font-extrabold text-slate-900">{{ field.label }}</div>
-                      <div class="text-[11px] text-slate-500">عند الإيقاف لن تُعرض شاشة المدرسة (حسب منطق النظام).</div>
-                    </div>
-                  </label>
+                    <div class="text-[11px] text-slate-500">حدد حالة الاشتراك (سارية، منتهية، إلخ).</div>
+                  </div>
 
                   {% if field.errors %}
                     <p class="text-xs text-rose-600 mt-2">
