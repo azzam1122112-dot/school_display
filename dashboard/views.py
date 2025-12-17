@@ -1645,7 +1645,8 @@ def system_school_delete(request, pk: int):
         school.delete()
         messages.warning(request, f"تم حذف المدرسة: {school.name}")
         return redirect("dashboard:system_schools_list")
-    return HttpResponseBadRequest("طريقة غير مدعومة.")
+    # عرض صفحة تأكيد الحذف عند GET
+    return render(request, "admin/school_confirm_delete.html", {"school": school})
 
 
 # =================
