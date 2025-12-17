@@ -52,6 +52,13 @@
               ينتهي الاشتراك في {{ subscription.ends_at }}.
             {% endif %}
           </p>
+          {% if subscription.days_left is not None and subscription.days_left <= 3 %}
+            <div class="mt-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 flex items-center gap-2 animate-pulse">
+              <span class="text-lg">⚠️</span>
+              <span class="font-semibold">تنبيه:</span>
+              <span>متبقي {{ subscription.days_left }} يوم فقط على نهاية الاشتراك. يرجى التجديد لضمان استمرار الخدمة.</span>
+            </div>
+          {% endif %}
         </div>
       </div>
     {% endif %}

@@ -260,12 +260,20 @@ def index(request):
         ).count(),
     }
     settings_obj = SchoolSettings.objects.filter(school=school).first()
+    # جلب الاشتراك الحالي للمدرسة
+    subscription = (
+        SchoolSubscription.objects
+        .filter(school=school)
+        .order_by("-starts_at")
+        .first()
+    )
     return render(
         request,
         "dashboard/index.html",
         {
             "stats": stats,
             "settings": settings_obj,
+            "subscription": subscription,
         },
     )
 

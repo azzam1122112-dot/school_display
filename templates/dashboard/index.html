@@ -9,6 +9,15 @@
 {% endblock %}
 
 {% block content %}
+
+{% if subscription and subscription.days_left is not None and subscription.days_left < 7 %}
+  <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 flex items-center gap-2 animate-pulse">
+    <span class="text-lg">⚠️</span>
+    <span class="font-semibold">تنبيه:</span>
+    <span>متبقي {{ subscription.days_left }} يوم فقط على نهاية الاشتراك. يرجى التجديد لضمان استمرار الخدمة.</span>
+  </div>
+{% endif %}
+
 <div class="space-y-6">
 
   <!-- هيرو رئيسي على نمط شاشة العرض -->
