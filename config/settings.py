@@ -134,6 +134,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "dashboard.context_processors.admin_support_ticket_badges",
             ],
         },
     },
@@ -202,6 +203,17 @@ LANGUAGE_CODE = "ar"
 TIME_ZONE = "Asia/Riyadh"
 USE_I18N = True
 USE_TZ = True
+
+
+# ==============================
+# Session: idle timeout (30 min)
+# ==============================
+# Logout/expire sessions after inactivity.
+# With SESSION_SAVE_EVERY_REQUEST=True, Django refreshes the session expiry on each request,
+# so if the user is idle for > SESSION_COOKIE_AGE seconds, the session becomes invalid.
+SESSION_COOKIE_AGE = env_int("SESSION_IDLE_TIMEOUT_SECONDS", "1800")
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 
 STATIC_URL = "/static/"

@@ -26,7 +26,7 @@ from schedule.models import (
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
 from core.models import DisplayScreen, School, UserProfile, SubscriptionPlan
-from subscriptions.models import SchoolSubscription
+from subscriptions.models import SchoolSubscription, SubscriptionScreenAddon
 logger = logging.getLogger(__name__)
 
 UserModel = get_user_model()
@@ -592,6 +592,49 @@ class SchoolSubscriptionForm(forms.ModelForm):
         if start and end and end < start:
             raise ValidationError("تاريخ النهاية يجب أن يكون بعد تاريخ البداية.")
         return cleaned
+
+
+class SubscriptionScreenAddonForm(forms.ModelForm):
+    class Meta:
+        model = SubscriptionScreenAddon
+        fields = [
+            "subscription",
+            "screens_added",
+            "pricing_cycle",
+            "validity_days",
+            "pricing_strategy",
+            "bundle_price",
+            "unit_price",
+            "starts_at",
+            "ends_at",
+            "status",
+            "notes",
+        ]
+        labels = {
+            "subscription": "الاشتراك",
+            "screens_added": "عدد الشاشات المضافة",
+            "pricing_cycle": "دورة تسعير الإضافة",
+            "validity_days": "مدة الصلاحية (أيام)",
+            "pricing_strategy": "طريقة التسعير",
+            "bundle_price": "سعر الإضافة للفترة",
+            "unit_price": "سعر للشاشة",
+            "starts_at": "بداية الإضافة",
+            "ends_at": "نهاية الإضافة",
+            "status": "الحالة",
+            "notes": "ملاحظات",
+        }
+        widgets = {
+            "starts_at": forms.DateInput(attrs={"type": "date"}),
+            "ends_at": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["subscription"].queryset = (
+            SchoolSubscription.objects.select_related("school", "plan")
+            .order_by("-starts_at", "-id")
+        )
 
 
 # =========================

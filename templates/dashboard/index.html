@@ -123,7 +123,15 @@
               {{ stats.standby_today|default:"0" }}
             </div>
             <div class="text-[11px] text-slate-500">
-              موزّعة على المعلم/ـةين والفصول.
+                موزّعة على
+                {% if settings and settings.school and settings.school.school_type == "boys" %}
+                  المعلمين
+                {% elif settings and settings.school and settings.school.school_type == "girls" %}
+                  المعلمات
+                {% else %}
+                  المعلم/ـةين
+                {% endif %}
+                والفصول.
             </div>
           </div>
         </div>
@@ -152,12 +160,29 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2 text-slate-800">
           <span class="text-lg">🏫</span>
-          <span class="font-semibold text-sm md:text-base">الفصول والمواد والمعلم/ـةون</span>
+          <span class="font-semibold text-sm md:text-base">
+            الفصول والمواد
+            {% if settings and settings.school and settings.school.school_type == "boys" %}
+              والمعلمين
+            {% elif settings and settings.school and settings.school.school_type == "girls" %}
+              والمعلمات
+            {% else %}
+              والمعلم/ـةون
+            {% endif %}
+          </span>
         </div>
         <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
       </div>
       <p class="text-xs md:text-sm text-slate-600">
-        إدارة بيانات الفصول، إضافة المواد الدراسية، وتعريف المعلم/ـةين المرتبطين بالمدرسة.
+        إدارة بيانات الفصول، إضافة المواد الدراسية، وتعريف
+        {% if settings and settings.school and settings.school.school_type == "boys" %}
+          المعلمين
+        {% elif settings and settings.school and settings.school.school_type == "girls" %}
+          المعلمات
+        {% else %}
+          المعلم/ـةين
+        {% endif %}
+        المرتبطين بالمدرسة.
       </p>
     </a>
 

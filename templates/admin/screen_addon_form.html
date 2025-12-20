@@ -1,0 +1,85 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}
+إضافة أو تعديل زيادة شاشات فوق حد الباقة. يمكن اختيار دورة تسعير شهرية حتى لو الاشتراك سنوي.
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <div class="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-2xl">🖥️</div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
+          <p class="text-slate-600 mt-1 text-sm md:text-base leading-relaxed">
+            التسعير التلقائي: 1=25، 2=40، 3=55 وفوق 3 +15 لكل شاشة. السنوي×10، نصف سنوي×5.
+          </p>
+        </div>
+      </div>
+
+      <a href="{% url 'dashboard:system_screen_addons_list' %}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
+                bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+        <span class="text-base">↩</span>
+        <span>العودة للقائمة</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100">
+      <p class="text-sm font-extrabold text-slate-900">بيانات الزيادة</p>
+      <p class="text-xs text-slate-500 mt-1">لو اخترت (تلقائي شرائح) سيحسب النظام السعر تلقائيًا عند الحفظ.</p>
+    </div>
+
+    <form method="post" class="p-6 space-y-6" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+        <div class="font-extrabold mb-1">تعذّر الحفظ</div>
+        {% for error in form.non_field_errors %}
+          <p class="leading-relaxed">{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">
+          {% for field in form %}
+            <div class="space-y-1.5 {% if field.name == 'notes' %}md:col-span-2{% endif %}">
+              <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
+              <div>
+                {{ field }}
+              </div>
+              {% if field.help_text %}
+                <p class="text-[11px] text-slate-400">{{ field.help_text }}</p>
+              {% endif %}
+              {% if field.errors %}
+                <p class="text-xs text-rose-600">{{ field.errors.0 }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-100 flex justify-end gap-3">
+        <a href="{% url 'dashboard:system_screen_addons_list' %}"
+           class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition">
+          إلغاء
+        </a>
+        <button type="submit"
+                class="px-8 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5">
+          حفظ
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

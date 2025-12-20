@@ -53,6 +53,8 @@
           <tr>
             <th class="p-3 text-right font-semibold border-b border-slate-200">اسم المدرسة</th>
             <th class="p-3 text-right font-semibold border-b border-slate-200">الرابط (slug)</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">شاشات نشطة الآن</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">زمن التحديث</th>
             <th class="p-3 text-right font-semibold border-b border-slate-200">الحالة</th>
             <th class="p-3 text-right font-semibold border-b border-slate-200">تاريخ الإنشاء</th>
             <th class="p-3 text-right font-semibold border-b border-slate-200">إجراءات</th>
@@ -64,6 +66,17 @@
       <tr>
         <td class="px-4 py-3">{{ s.name }}</td>
         <td class="px-4 py-3">{{ s.slug }}</td>
+        <td class="px-4 py-3">
+          <span class="font-semibold text-slate-900">{{ s.active_screens_now|default:0 }}</span>
+        </td>
+        <td class="px-4 py-3">
+          {% if s.refresh_interval_sec %}
+            <span class="text-slate-900 font-semibold">{{ s.refresh_interval_sec }}</span>
+            <span class="text-slate-500">ث</span>
+          {% else %}
+            <span class="text-slate-400">—</span>
+          {% endif %}
+        </td>
         <td class="px-4 py-3">
             {% if s.is_active %}
                 <span class="text-emerald-600 font-semibold">نشط</span>
@@ -86,7 +99,7 @@
       {% endfor %}
   {% else %}
       <tr>
-        <td colspan="5" class="text-center py-6 text-slate-500">
+        <td colspan="7" class="text-center py-6 text-slate-500">
           لا توجد مدارس حاليًا.
         </td>
       </tr>

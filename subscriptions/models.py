@@ -1,4 +1,6 @@
 from datetime import date
+from decimal import Decimal
+from datetime import timedelta
 
 from django.db import models
 from django.utils import timezone
@@ -98,3 +100,265 @@ class SchoolSubscription(models.Model):
         today = date.today()
         delta = (self.ends_at - today).days
         return delta if delta >= 0 else 0
+
+
+class SubscriptionScreenAddon(models.Model):
+    """شراء/إضافة عدد شاشات فوق حد الباقة لمدّة اشتراك معيّنة."""
+
+    STATUS_CHOICES = [
+        ("pending", "بانتظار الدفع"),
+        ("paid", "مدفوع"),
+        ("cancelled", "ملغي"),
+        ("refunded", "مُسترد"),
+    ]
+
+    PRICING_STRATEGY_CHOICES = [
+        ("auto_bundle", "تلقائي (شرائح)"),
+        ("manual_bundle", "يدوي (مبلغ إجمالي)"),
+        ("manual_per_screen", "يدوي (سعر لكل شاشة)"),
+    ]
+
+    PRICING_CYCLE_CHOICES = [
+        ("inherit", "حسب الاشتراك"),
+        ("monthly", "شهري"),
+        ("semiannual", "نصف سنوي"),
+        ("annual", "سنوي"),
+    ]
+
+    subscription = models.ForeignKey(
+        SchoolSubscription,
+        on_delete=models.CASCADE,
+        related_name="screen_addons",
+        verbose_name="الاشتراك",
+    )
+    screens_added = models.PositiveIntegerField(
+        verbose_name="عدد الشاشات المضافة",
+        help_text="عدد الشاشات الإضافية المطلوبة لهذه الفترة.",
+    )
+
+    pricing_strategy = models.CharField(
+        max_length=30,
+        choices=PRICING_STRATEGY_CHOICES,
+        default="auto_bundle",
+        verbose_name="طريقة التسعير",
+        help_text="التلقائي: 1=25،2=40،3=55 وفوق 3 +15 لكل شاشة. السنوي×10، نصف سنوي×5.",
+    )
+
+    bundle_price = models.DecimalField(
+        "سعر الإضافة للفترة (ر.س)",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="يُستخدم مع (يدوي مبلغ إجمالي) أو يتم تعبئته تلقائيًا في (تلقائي شرائح).",
+    )
+
+    unit_price = models.DecimalField(
+        "سعر للشاشة (ر.س)",
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+    )
+    proration_factor = models.DecimalField(
+        "معامل الاحتساب النسبي",
+        max_digits=6,
+        decimal_places=5,
+        default=Decimal("1.0"),
+        help_text="1.0 = كامل المدة. يتم حسابه تلقائيًا عند الحفظ إذا كان للمدة نهاية.",
+    )
+    total_price = models.DecimalField(
+        "الإجمالي (ر.س)",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="يتم حسابه تلقائيًا: screens_added × unit_price × proration_factor.",
+    )
+    starts_at = models.DateField(
+        default=timezone.localdate,
+        verbose_name="بداية الإضافة",
+    )
+
+    validity_days = models.PositiveIntegerField(
+        verbose_name="مدة الصلاحية بالأيام",
+        null=True,
+        blank=True,
+        help_text="اختياري: لو حددتها ستصبح نهاية الإضافة = البداية + (المدة-1). مثال شهر: 30 يوم.",
+    )
+
+    pricing_cycle = models.CharField(
+        max_length=20,
+        choices=PRICING_CYCLE_CHOICES,
+        default="inherit",
+        verbose_name="دورة تسعير الإضافة",
+        help_text="مثال: اشتراك سنوي لكن إضافة لمدة شهر → اختر (شهري) وحدد مدة 30 يوم.",
+    )
+    ends_at = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="نهاية الإضافة",
+        help_text="افتراضيًا تُضبط على نهاية الاشتراك إن وُجدت.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="paid",
+        verbose_name="الحالة",
+    )
+    notes = models.TextField(
+        blank=True,
+        verbose_name="ملاحظات",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="تاريخ الإنشاء",
+    )
+
+    class Meta:
+        verbose_name = "زيادة شاشات"
+        verbose_name_plural = "زيادات الشاشات"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.subscription.school} +{self.screens_added} شاشة"
+
+    @property
+    def is_effective_today(self) -> bool:
+        today = timezone.localdate()
+        if self.status != "paid":
+            return False
+        if self.starts_at and self.starts_at > today:
+            return False
+        if self.ends_at and self.ends_at < today:
+            return False
+        return True
+
+    def _calc_proration_factor(self, as_of=None) -> Decimal:
+        """احتساب نسبي بناءً على نافذة صلاحية الإضافة (starts_at→ends_at).
+
+        - إذا لم يكن هناك ends_at → 1.0
+        - يتم تثبيت الحساب على تاريخ الشراء/البداية (as_of)، وليس "اليوم"، لتجنب تغيّر الفاتورة لاحقًا.
+        """
+        as_of_date = as_of or self.starts_at or timezone.localdate()
+
+        if not self.ends_at or not self.starts_at:
+            return Decimal("1.0")
+
+        period_days = (self.ends_at - self.starts_at).days + 1
+        if period_days <= 0:
+            return Decimal("1.0")
+
+        remaining_days = (self.ends_at - as_of_date).days + 1
+        if remaining_days <= 0:
+            return Decimal("0")
+
+        factor = (Decimal(remaining_days) / Decimal(period_days))
+        if factor < 0:
+            return Decimal("0")
+        if factor > 1:
+            return Decimal("1")
+        return factor
+
+    def _infer_subscription_cycle_multiplier(self) -> Decimal:
+        """استنتاج معامل مدة الاشتراك من طول الاشتراك (fallback عند اختيار inherit)."""
+        sub_start = getattr(self.subscription, "starts_at", None)
+        sub_end = getattr(self.subscription, "ends_at", None)
+        if not sub_start or not sub_end:
+            return Decimal("1")
+
+        days = (sub_end - sub_start).days + 1
+        # حدود مرنة لتغطية اختلاف الأشهر/السنة
+        if days >= 330:
+            return Decimal("10")
+        if days >= 150:
+            return Decimal("5")
+        return Decimal("1")
+
+    def _cycle_multiplier(self) -> Decimal:
+        """معامل دورة تسعير الإضافة."""
+        c = (self.pricing_cycle or "inherit").strip().lower()
+        if c == "annual":
+            return Decimal("10")
+        if c == "semiannual":
+            return Decimal("5")
+        if c == "monthly":
+            return Decimal("1")
+        return self._infer_subscription_cycle_multiplier()
+
+    def _calc_auto_monthly_bundle_price(self) -> Decimal:
+        """تسعير الشرائح الشهري حسب العدد.
+
+        1=25، 2=40، 3=55، وفوق 3: 55 + (n-3)*15
+        """
+        n = int(self.screens_added or 0)
+        if n <= 0:
+            return Decimal("0")
+        if n == 1:
+            return Decimal("25")
+        if n == 2:
+            return Decimal("40")
+        if n == 3:
+            return Decimal("55")
+        return Decimal("55") + (Decimal(n - 3) * Decimal("15"))
+
+    def _calc_auto_bundle_price_for_cycle(self) -> Decimal:
+        monthly = self._calc_auto_monthly_bundle_price()
+        return (monthly * self._cycle_multiplier()).quantize(Decimal("0.01"))
+
+    def _default_ends_at_for_cycle(self):
+        """يضبط ends_at تلقائيًا عند عدم تحديدها.
+
+        - لو validity_days موجودة → تعتمد عليها
+        - لو دورة الإضافة محددة (شهري/نصف سنوي/سنوي) → مدة ثابتة تقريبية
+        - وإلا → توريث نهاية الاشتراك إن وُجدت
+        """
+        if self.starts_at and self.validity_days:
+            try:
+                days = int(self.validity_days)
+                if days > 0:
+                    return self.starts_at + timedelta(days=days - 1)
+            except Exception:
+                pass
+
+        c = (self.pricing_cycle or "inherit").strip().lower()
+        if self.starts_at:
+            if c == "monthly":
+                return self.starts_at + timedelta(days=30 - 1)
+            if c == "semiannual":
+                return self.starts_at + timedelta(days=182 - 1)
+            if c == "annual":
+                return self.starts_at + timedelta(days=365 - 1)
+
+        try:
+            return getattr(self.subscription, "ends_at", None)
+        except Exception:
+            return None
+
+    def _calc_total_price(self) -> Decimal:
+        factor = Decimal(str(self.proration_factor or 0))
+
+        if self.pricing_strategy == "manual_per_screen":
+            unit = Decimal(str(self.unit_price or 0))
+            qty = Decimal(int(self.screens_added or 0))
+            total = unit * qty * factor
+            return total.quantize(Decimal("0.01"))
+
+        # bundle strategies
+        bundle = Decimal(str(self.bundle_price or 0))
+        total = bundle * factor
+        return total.quantize(Decimal("0.01"))
+
+    def save(self, *args, **kwargs):
+        # default ends_at
+        if self.ends_at is None:
+            self.ends_at = self._default_ends_at_for_cycle()
+
+        # compute proration (freeze to starts_at)
+        self.proration_factor = self._calc_proration_factor(as_of=self.starts_at)
+
+        # auto pricing (bundle) if selected
+        if self.pricing_strategy == "auto_bundle":
+            self.bundle_price = self._calc_auto_bundle_price_for_cycle()
+
+        # compute total
+        self.total_price = self._calc_total_price()
+
+        super().save(*args, **kwargs)

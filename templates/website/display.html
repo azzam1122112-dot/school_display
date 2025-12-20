@@ -137,6 +137,31 @@
       .alert-details{font-size:18px}
       .honor-card{min-height:200px; max-height:320px}
     }
+
+    /* ===== Blocking overlay (device bound) ===== */
+    .blocker{
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(2, 6, 23, 0.78);
+      backdrop-filter: blur(10px);
+    }
+    .blocker-card{
+      width: min(920px, 100%);
+      text-align: center;
+      padding: 22px 22px;
+    }
+    .blocker-title{font-size: 34px; font-weight: 900; line-height: 1.2; margin: 0;}
+    .blocker-details{font-size: 20px; line-height: 1.6; opacity: .92; margin: 10px 0 0;}
+    .blocker-code{margin-top: 12px; font-size: 18px; opacity: .9;}
+    .blocker-code span{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;}
+    .blocker-hint{margin-top: 14px; font-size: 16px; opacity: .82;}
+    .blocker-steps{margin: 14px auto 0; max-width: 720px; text-align: right; direction: rtl;}
+    .blocker-steps .chip{display:inline-flex; margin-inline:4px;}
   </style>
 </head>
 
@@ -147,12 +172,32 @@
   data-api-token="{% if api_token %}{{ api_token }}{% endif %}"
   data-snapshot-url="{% if snapshot_url %}{{ snapshot_url }}{% endif %}"
   data-school-id="{% if school_id %}{{ school_id }}{% endif %}"
+  data-school-type="{% if school_type %}{{ school_type }}{% endif %}"
   data-media-prefix="{% if MEDIA_URL %}{{ MEDIA_URL }}{% else %}/media/{% endif %}"
   data-refresh="{% if refresh_interval_sec %}{{ refresh_interval_sec }}{% else %}10{% endif %}"
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
 >
   <div class="mesh-bg" aria-hidden="true"></div>
+
+  <!-- Blocking overlay (hidden by default) -->
+  <div id="blocker" class="blocker hidden" role="alert" aria-live="assertive">
+    <div class="card blocker-card">
+      <h2 id="blockerTitle" class="blocker-title">هذه الشاشة مرتبطة بجهاز آخر</h2>
+      <p id="blockerDetails" class="blocker-details">
+        لا يمكن استخدام نفس الرابط على أكثر من تلفاز.
+      </p>
+      <div class="blocker-code">الرابط الحالي: <span id="blockerLink">—</span></div>
+      <div class="blocker-hint">للنقل إلى تلفاز جديد: افصل الجهاز من لوحة التحكم.</div>
+      <div class="blocker-steps">
+        <div class="chip chip-muted">لوحة التحكم</div>
+        <span class="chip chip-muted">→</span>
+        <div class="chip chip-muted">شاشات العرض</div>
+        <span class="chip chip-muted">→</span>
+        <div class="chip chip-muted">فصل الجهاز</div>
+      </div>
+    </div>
+  </div>
 
   <header class="card header-card">
     <div class="header-left">

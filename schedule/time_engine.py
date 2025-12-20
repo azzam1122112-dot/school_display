@@ -165,7 +165,7 @@ def build_day_snapshot(settings, now=None):
     def fmt(block):
         if not block:
             return None
-        return {
+        out = {
             "kind": block["kind"],
             "label": block.get("label"),
             "class": block.get("class"),
@@ -173,6 +173,11 @@ def build_day_snapshot(settings, now=None):
             "from": block["start"].strftime("%H:%M"),
             "to": block["end"].strftime("%H:%M"),
         }
+        # ✅ important: keep period index so UI can show "حصة (رقم)" and
+        # server-side merge can build period_classes without fragile time matching.
+        if block.get("kind") == "period":
+            out["index"] = block.get("index")
+        return out
 
     day_path = [{
         "kind": b["kind"],
@@ -190,6 +195,8 @@ def build_day_snapshot(settings, now=None):
             "to": current["end"].strftime("%H:%M"),
             "remaining_seconds": max(0, int((current["end"] - now).total_seconds())),
         }
+        if current.get("kind") == "period":
+            state["period_index"] = current.get("index")
     elif next_item:
         first = timeline[0]
         if now < first["start"]:

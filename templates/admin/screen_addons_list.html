@@ -1,0 +1,158 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}زيادات الشاشات{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <div class="bg-gradient-to-r from-white to-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div class="space-y-2">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+            <span class="text-xl">🖥️</span>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">زيادات الشاشات</h1>
+            <p class="mt-1 text-sm text-slate-500">إدارة زيادات الشاشات فوق حد الباقة (مع تسعير تلقائي واحتساب نسبي).</p>
+          </div>
+        </div>
+      </div>
+
+      <a href="{% url 'dashboard:system_screen_addon_create' %}"
+         class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold
+                bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700
+                transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+        <span class="text-lg">＋</span>
+        إضافة زيادة
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <form method="get" class="flex-1">
+        <div class="relative">
+          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <span class="text-slate-400">🔎</span>
+          </div>
+          <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-10 text-sm focus:outline-none
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 transition-all duration-200"
+            placeholder="بحث باسم المدرسة أو الخطة..."
+          >
+          {% if status %}
+            <input type="hidden" name="status" value="{{ status }}">
+          {% endif %}
+        </div>
+      </form>
+
+      <div class="flex items-center gap-2">
+        <a href="?status=paid{% if q %}&q={{ q }}{% endif %}"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if status == 'paid' %}bg-emerald-100 text-emerald-700 border border-emerald-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          المدفوعة
+        </a>
+        <a href="?status=pending{% if q %}&q={{ q }}{% endif %}"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if status == 'pending' %}bg-amber-100 text-amber-800 border border-amber-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          بانتظار الدفع
+        </a>
+        <a href="?{% if q %}q={{ q }}{% endif %}"
+           class="px-4 py-2 rounded-lg text-xs font-medium transition-colors
+                  {% if not status %}bg-slate-100 text-slate-700 border border-slate-200
+                  {% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          الكل
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-100">
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">المدرسة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الخطة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الشاشات</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الدورة/المدة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الفترة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الحالة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الإجمالي</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600 whitespace-nowrap">الإجراءات</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-100">
+          {% if rows %}
+            {% for r in rows %}
+              <tr class="hover:bg-slate-50/60 transition-colors">
+                <td class="px-6 py-4 font-semibold text-slate-900">{{ r.school_name }}</td>
+                <td class="px-6 py-4 text-slate-700">{{ r.plan_name }}</td>
+                <td class="px-6 py-4 text-slate-700">+{{ r.screens_added }}</td>
+                <td class="px-6 py-4 text-slate-700">
+                  {{ r.pricing_cycle }}{% if r.validity_days %} — {{ r.validity_days }} يوم{% endif %}
+                </td>
+                <td class="px-6 py-4 text-slate-700">
+                  {{ r.starts_at|default:"—" }} → {{ r.ends_at|default:"—" }}
+                </td>
+                <td class="px-6 py-4">
+                  {% if r.status == 'paid' %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">مدفوع</span>
+                  {% elif r.status == 'pending' %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">بانتظار الدفع</span>
+                  {% elif r.status == 'cancelled' %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">ملغي</span>
+                  {% elif r.status == 'refunded' %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">مسترد</span>
+                  {% else %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">{{ r.status }}</span>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 text-slate-900 font-semibold">{{ r.total_price|default:"0" }}</td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <a href="{% url 'dashboard:system_screen_addon_edit' r.id %}"
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                      تعديل
+                    </a>
+                    <a href="{% url 'dashboard:system_screen_addon_delete' r.id %}"
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100">
+                      حذف
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="px-6 py-10 text-center text-slate-500">لا توجد زيادات مطابقة للبحث الحالي.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj %}
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
+      <div class="text-slate-500">صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</div>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+          <a class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}">السابق</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}">التالي</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

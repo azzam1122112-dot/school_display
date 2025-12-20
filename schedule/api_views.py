@@ -595,7 +595,12 @@ def snapshot(request, token: str | None = None):
                 kind = (snap.get("state") or {}).get("type")
 
             if kind == "period" and not snap.get("period_classes"):
-                weekday = int((snap.get("meta") or {}).get("weekday") or timezone.localdate().isoweekday())
+                meta = snap.get("meta") or {}
+                weekday_raw = meta.get("weekday")
+                try:
+                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+                except Exception:
+                    weekday = (timezone.localdate().weekday() + 1) % 7
                 period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
                 if period_index:
                     snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
@@ -606,7 +611,12 @@ def snapshot(request, token: str | None = None):
 
         # ✅ ✅ التحديث الأخير: ضمان ظهور رقم الحصة للـ current و next
         try:
-            weekday = int((snap.get("meta") or {}).get("weekday") or timezone.localdate().isoweekday())
+            meta = snap.get("meta") or {}
+            weekday_raw = meta.get("weekday")
+            try:
+                weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+            except Exception:
+                weekday = (timezone.localdate().weekday() + 1) % 7
 
             curp = snap.get("current_period")
             if isinstance(curp, dict) and _is_missing_index(curp):

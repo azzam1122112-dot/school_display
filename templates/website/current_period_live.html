@@ -69,7 +69,15 @@
                     </div>
 
                     <div>
-                      <div class="text-sm font-medium text-slate-400 mb-1">المعلم/ـة</div>
+                      <div class="text-sm font-medium text-slate-400 mb-1">
+                        {% if settings and settings.school and settings.school.school_type == "boys" %}
+                          المعلم
+                        {% elif settings and settings.school and settings.school.school_type == "girls" %}
+                          المعلمة
+                        {% else %}
+                          المعلم/ـة
+                        {% endif %}
+                      </div>
                       <div class="flex items-center gap-2">
                         <span class="text-teal-400">👤</span>
                         <div class="text-base font-medium text-slate-200">

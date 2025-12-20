@@ -6,6 +6,8 @@ from typing import Optional, Tuple, Any
 
 from django.apps import apps
 
+from core.screen_limits import enforce_school_screen_limit
+
 # ✅ نسمح بـ 64 hex (القياسي) + 32 hex (دعم انتقال لبيانات قديمة)
 TOKEN_RE = re.compile(r"^(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{32})$")
 
@@ -51,11 +53,29 @@ def validate_display_token(request, token: Optional[str] = None):
 
     # 2) جلب الشاشة من core فقط
     try:
+        # Fetch regardless of is_active so we can enforce the limit and potentially re-enable
+        # a previously auto-disabled screen after renewal.
+        scr_any = (
+            DisplayScreen.objects
+            .select_related("school")
+            .filter(token__iexact=tok)
+            .first()
+        )
+        if not scr_any:
+            return None, None
+
+        school = getattr(scr_any, "school", None)
+        if school is not None:
+            enforce_school_screen_limit(getattr(school, "id", None) or 0)
+
         scr = (
             DisplayScreen.objects
             .select_related("school")
-            .get(token__iexact=tok, is_active=True)
+            .filter(pk=scr_any.pk, is_active=True)
+            .first()
         )
+        if not scr:
+            return None, None
         return scr, getattr(scr, "school", None)
     except Exception:
         return None, None

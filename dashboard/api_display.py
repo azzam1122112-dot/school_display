@@ -357,6 +357,50 @@ def display_snapshot(request: HttpRequest, token: str) -> HttpResponse:
     if screen is None or getattr(screen, "school", None) is None:
         return JsonResponse({"error": "Token not found or screen has no school."}, status=404)
 
+    # ------------------------------------------------------------
+    # ✅ منع مشاركة رابط الشاشة على أكثر من جهاز (TV Binding)
+    # ------------------------------------------------------------
+    device_id = (request.COOKIES.get("sd_device") or "").strip()
+    if not device_id:
+        return JsonResponse(
+            {
+                "error": "missing_device_id",
+                "message": "فضلاً افتح رابط الشاشة في المتصفح أولاً ليتم تعريف الجهاز.",
+            },
+            status=403,
+        )
+
+    # نتأكد أن الموديل يدعم الربط (لتوافق البيئات القديمة)
+    has_binding_fields = True
+    try:
+        DisplayScreen._meta.get_field("bound_device_id")
+        DisplayScreen._meta.get_field("bound_at")
+    except Exception:
+        has_binding_fields = False
+
+    if has_binding_fields:
+        bound = (getattr(screen, "bound_device_id", None) or "").strip()
+        if not bound:
+            # ربط ذري لمنع سباق جهازين في نفس اللحظة
+            updated = (
+                DisplayScreen.objects.filter(pk=screen.pk)
+                .filter(Q(bound_device_id__isnull=True) | Q(bound_device_id=""))
+                .update(bound_device_id=device_id, bound_at=timezone.now())
+            )
+            if updated == 0:
+                # تم الربط من جهاز آخر قبلنا
+                screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
+                bound = (getattr(screen, "bound_device_id", None) or "").strip()
+
+        if bound and bound != device_id:
+            return JsonResponse(
+                {
+                    "error": "screen_bound",
+                    "message": "هذه الشاشة مرتبطة بجهاز آخر. قم بفصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد.",
+                },
+                status=403,
+            )
+
     # ✅ تحديث last_seen_at إذا موجود
     now = timezone.now()
     try:

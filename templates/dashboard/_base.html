@@ -345,6 +345,15 @@
             <span class="font-medium">اشتراكات المدارس</span>
           </div>
         </a>
+
+        <a href="{% url 'dashboard:system_screen_addons_list' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if 'system_screen_addon' in request.resolver_match.url_name %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🖥️</span>
+            <span class="font-medium">زيادات الشاشات</span>
+          </div>
+        </a>
       {% endif %}
     </nav>
 

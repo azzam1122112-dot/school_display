@@ -216,12 +216,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3 justify-end">
-              <a href="{{ subs_url }}"
-                 class="btnGhost rounded-2xl px-4 py-2.5 text-sm font-extrabold flex items-center gap-2"
-                 aria-label="أسعار الاشتراكات">
-                <span aria-hidden="true">💳</span>
-                <span>أسعار الاشتراكات</span>
-              </a>
+
 
               {% if login_url %}
                 <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
@@ -229,10 +224,7 @@
                 <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
               {% endif %}
 
-              <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
-                <span>طلب تجربة مجانية</span>
-                <span aria-hidden="true">→</span>
-              </a>
+
             </div>
           </div>
         </div>
@@ -260,14 +252,7 @@
               والإعلانات — مع تحديث تلقائي وتحكم كامل.
             </p>
 
-            <div class="flex flex-col sm:flex-row gap-4 pt-2">
-              <a href="#contact" class="btnBrand rounded-2xl px-8 py-4 text-center font-extrabold text-lg">
-                🚀 ابدأ تجربتك المجانية
-              </a>
-              <a href="#demo" class="btnGhost rounded-2xl px-8 py-4 text-center font-bold text-lg flex items-center justify-center gap-2">
-                <span>🎬 شاهد العرض التوضيحي</span>
-              </a>
-            </div>
+
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
               <div class="soft rounded-2xl p-5">
@@ -363,68 +348,6 @@
           <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </section>
 
-        <section id="contact" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-          <div class="text-center mb-10">
-            <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">جاهز للانطلاق؟</h2>
-            <p class="text-lg max-w-2xl mx-auto" style="color:var(--muted)">
-              عبّئ النموذج وسنفتح محادثة واتساب مُجهّزة بالبيانات لطلب الاشتراك/التجربة.
-            </p>
-
-            <div class="mt-5">
-              <a href="{{ subs_url }}"
-                 class="btnGhost rounded-2xl px-6 py-3 text-sm font-extrabold inline-flex items-center gap-2">
-                <span aria-hidden="true">💳</span>
-                <span>عرض أسعار الاشتراكات</span>
-              </a>
-            </div>
-          </div>
-
-          <div class="max-w-2xl mx-auto">
-            <form id="contactForm" class="space-y-6" autocomplete="on">
-              {% csrf_token %}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="block text-sm font-bold mb-3">الاسم الكامل *</label>
-                  <input name="name" type="text" class="inputX" placeholder="منصور" maxlength="60" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-bold mb-3">رقم الجوال *</label>
-                  <input name="phone" type="tel" class="inputX" placeholder="05XXXXXXXX" maxlength="20" required inputmode="tel">
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="block text-sm font-bold mb-3">اسم المدرسة *</label>
-                  <input name="school" type="text" class="inputX" placeholder="مدرسة ..." maxlength="80" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-bold mb-3">المدينة</label>
-                  <input name="city" type="text" class="inputX" placeholder="الرياض، جدة، الدمام..." maxlength="40">
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-sm font-bold mb-3">متطلباتك واحتياجاتك *</label>
-                <textarea name="requirements" class="inputX" rows="5" placeholder="عدد الشاشات، نوع المحتوى، أي متطلبات خاصة..." maxlength="600" required></textarea>
-              </div>
-
-              <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <button type="submit" class="btnBrand rounded-2xl px-10 py-4 font-extrabold text-lg">
-                  إرسال الطلب عبر واتساب
-                </button>
-                <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
-                   class="btnGold rounded-2xl px-10 py-4 font-bold text-lg text-center">
-                  محادثة واتساب مباشرة
-                </a>
-              </div>
-
-              <p class="text-center text-sm mt-6" style="color:var(--muted2)">
-                نلتزم بخصوصية بياناتك ولا نشارك معلوماتك مع أي جهة خارجية.
-              </p>
-            </form>
-          </div>
-        </section>
       </main>
 
       <footer class="border-t border-white/10 mt-20 py-10">
@@ -445,11 +368,8 @@
               <ul class="space-y-2">
                 <li><a href="#demo" class="text-sm hover:text-white transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
                 <li><a href="#features" class="text-sm hover:text-white transition" style="color:var(--muted2)">المميزات</a></li>
-                <li><a href="#contact" class="text-sm hover:text-white transition" style="color:var(--muted2)">طلب تجربة</a></li>
-                <li>
-                  <a href="{{ subs_url }}" class="text-sm hover:text-white transition" style="color:var(--muted2)">
-                    أسعار الاشتراكات
-                  </a>
+                 <li>
+
                 </li>
               </ul>
             </div>
@@ -457,7 +377,7 @@
             <div>
               <div class="font-bold mb-4">الدعم</div>
               <ul class="space-y-2">
-                <li><a href="tel:+966546868219" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966 54 686 8219</a></li>
+                <li><a href="tel:+966537720207" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966537720207</a></li>
                 {% if login_url %}
                   <li><a href="{{ login_url }}" class="text-sm hover:text-white transition" style="color:var(--muted2)">تسجيل الدخول</a></li>
                 {% else %}
@@ -469,7 +389,7 @@
             <div>
               <div class="font-bold mb-4">تابعنا</div>
               <div class="flex gap-4">
-                <a href="https://wa.me/966546868219" target="_blank" rel="noopener noreferrer"
+                <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer"
                    class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
                 <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
                 <a href="{{ subs_url }}"
@@ -506,13 +426,7 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-3 justify-end">
-            <a href="#"
-               class="btnGhost rounded-2xl px-4 py-2.5 text-sm font-extrabold flex items-center gap-2 opacity-60 cursor-not-allowed"
-               aria-disabled="true"
-               tabindex="-1">
-              <span aria-hidden="true">💳</span>
-              <span>أسعار الاشتراكات</span>
-            </a>
+
 
             {% if login_url %}
               <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
@@ -520,10 +434,7 @@
               <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
             {% endif %}
 
-            <a href="#contact" class="btnBrand rounded-2xl px-5 py-2.5 text-sm font-extrabold flex items-center gap-2">
-              <span>طلب تجربة مجانية</span>
-              <span aria-hidden="true">→</span>
-            </a>
+
           </div>
         </div>
       </div>
@@ -686,7 +597,7 @@ ${requirements}
         `.trim();
 
         showToast();
-        const url = `https://wa.me/966546868219?text=${encodeURIComponent(msg)}`;
+        const url = `https://wa.me/966537720207?text=${encodeURIComponent(msg)}`;
         window.open(url, '_blank', 'noopener,noreferrer');
 
         this.reset();

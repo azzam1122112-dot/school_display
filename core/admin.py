@@ -58,10 +58,10 @@ class SchoolScopedAdmin(admin.ModelAdmin):
 
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "is_active", "created_at")
+    list_display = ("name", "slug", "school_type", "is_active", "created_at")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
-    list_filter = ("is_active",)
+    list_filter = ("school_type", "is_active")
     ordering = ("name",)
 
 

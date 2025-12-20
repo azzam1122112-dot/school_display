@@ -75,7 +75,9 @@ urlpatterns = [
     # ==================
     path("screens/", views.screen_list, name="screen_list"),
     path("screens/new/", views.screen_create, name="screen_create"),
+    path("screens/<int:pk>/unbind/", views.screen_unbind_device, name="screen_unbind_device"),
     path("screens/<int:pk>/delete/", views.screen_delete, name="screen_delete"),
+    path("screens/request-addon/", views.request_screen_addon, name="request_screen_addon"),
 
     # ==================
     # School Data (Classes / Subjects / Teachers)
@@ -117,6 +119,12 @@ urlpatterns = [
     path("admin-panel/subscriptions/add/", views.system_subscription_create, name="system_subscription_create"),
     path("admin-panel/subscriptions/<int:pk>/edit/", views.system_subscription_edit, name="system_subscription_edit"),
     path("admin-panel/subscriptions/<int:pk>/delete/", views.system_subscription_delete, name="system_subscription_delete"),
+
+    # Screen Add-ons
+    path("admin-panel/screen-addons/", views.system_screen_addons_list, name="system_screen_addons_list"),
+    path("admin-panel/screen-addons/add/", views.system_screen_addon_create, name="system_screen_addon_create"),
+    path("admin-panel/screen-addons/<int:pk>/edit/", views.system_screen_addon_edit, name="system_screen_addon_edit"),
+    path("admin-panel/screen-addons/<int:pk>/delete/", views.system_screen_addon_delete, name="system_screen_addon_delete"),
 
     # Plans
     path("admin-panel/plans/", views.system_plans_list, name="system_plans_list"),

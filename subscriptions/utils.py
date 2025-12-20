@@ -3,7 +3,9 @@ from __future__ import annotations
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import SchoolSubscription
+from django.db.models import Sum
+
+from .models import SchoolSubscription, SubscriptionScreenAddon
 
 
 def school_has_active_subscription(school_id: int, on_date=None) -> bool:
@@ -18,3 +20,61 @@ def school_has_active_subscription(school_id: int, on_date=None) -> bool:
         .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
         .exists()
     )
+
+
+def school_effective_max_screens(school_id: int, on_date=None) -> int | None:
+    """يرجع حد الشاشات الفعلي = حد الخطة + زيادات الشاشات المدفوعة.
+
+    - None تعني غير محدود.
+    - 0 تعني لا يوجد اشتراك نشط.
+    """
+    today = on_date or timezone.localdate()
+
+    subs = (
+        SchoolSubscription.objects.filter(
+            school_id=school_id,
+            status="active",
+            starts_at__lte=today,
+        )
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
+        .select_related("plan")
+    )
+
+    subs_list = list(subs)
+    if not subs_list:
+        return 0
+
+    best: int = 0
+    for sub in subs_list:
+        plan = getattr(sub, "plan", None)
+        base = getattr(plan, "max_screens", None) if plan else 0
+        if base is None:
+            return None
+
+        try:
+            base_i = int(base or 0)
+        except Exception:
+            base_i = 0
+
+        extra = (
+            SubscriptionScreenAddon.objects.filter(
+                subscription=sub,
+                status="paid",
+                starts_at__lte=today,
+            )
+            .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
+            .aggregate(s=Sum("screens_added"))
+            .get("s")
+            or 0
+        )
+
+        try:
+            extra_i = int(extra or 0)
+        except Exception:
+            extra_i = 0
+
+        effective = base_i + extra_i
+        if effective > best:
+            best = effective
+
+    return best

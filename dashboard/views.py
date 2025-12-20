@@ -32,6 +32,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
+from urllib.parse import quote
 
 # ✅ عدّل هذه الاستيرادات حسب أسماء تطبيقاتك الفعلية
 from .decorators import manager_required
@@ -52,6 +53,7 @@ from .forms import (
     SupportTicketForm,
     CustomerSupportTicketForm,
     TicketCommentForm,
+    SubscriptionScreenAddonForm,
 )
 from core.models import SubscriptionPlan, SupportTicket, TicketComment
 
@@ -1078,6 +1080,134 @@ def standby_import(request):
 # شاشات العرض
 # ======================
 
+def _get_school_active_subscriptions_qs(school):
+    """يرجع QuerySet للاشتراكات السارية (قد تكون أكثر من اشتراك)."""
+    SubModel = _get_subscription_model()
+    if SubModel is None:
+        return None
+
+    today = timezone.localdate()
+    qs = SubModel.objects.all()
+
+    # school filter
+    try:
+        SubModel._meta.get_field("school")
+        qs = qs.filter(school=school)
+    except Exception:
+        try:
+            SubModel._meta.get_field("school_id")
+            qs = qs.filter(school_id=getattr(school, "id", school))
+        except Exception:
+            return None
+
+    # active status
+    try:
+        SubModel._meta.get_field("status")
+        qs = qs.filter(status="active")
+    except Exception:
+        try:
+            SubModel._meta.get_field("is_active")
+            qs = qs.filter(is_active=True)
+        except Exception:
+            pass
+
+    # start date
+    for f in ("starts_at", "start_date"):
+        try:
+            SubModel._meta.get_field(f)
+            qs = qs.filter(**{f"{f}__lte": today})
+            break
+        except Exception:
+            continue
+
+    # end date
+    for f in ("ends_at", "end_date"):
+        try:
+            SubModel._meta.get_field(f)
+            qs = qs.filter(Q(**{f"{f}__isnull": True}) | Q(**{f"{f}__gte": today}))
+            break
+        except Exception:
+            continue
+
+    # select plan if possible
+    try:
+        SubModel._meta.get_field("plan")
+        qs = qs.select_related("plan")
+    except Exception:
+        pass
+
+    return qs
+
+
+def _get_school_active_subscription(school):
+    """يرجع اشتراك المدرسة الساري (إن وجد) بشكل مرن بين subscriptions و legacy."""
+    qs = _get_school_active_subscriptions_qs(school)
+    if qs is None:
+        return None
+    # ملاحظة: قد يوجد أكثر من اشتراك نشط. سنختار "أفضل" اشتراك (الأعلى في max_screens أو غير محدود).
+    subs = list(qs)
+    if not subs:
+        return None
+
+    def _key(sub):
+        plan = getattr(sub, "plan", None)
+        ms = getattr(plan, "max_screens", None) if plan else None
+        # None = غير محدود => أعلى
+        return (1 if ms is None else 0, int(ms or 0))
+
+    subs.sort(key=_key, reverse=True)
+    return subs[0]
+
+
+def _get_school_max_screens_limit(school) -> int | None:
+    """يرجع الحد الأقصى للشاشات حسب خطة الاشتراك. None = غير محدود.
+
+    إذا كانت subscriptions.utils.school_effective_max_screens متاحة، سيتم استخدامها
+    لتضمين زيادات الشاشات (Add-ons) ضمن الحد.
+    """
+    try:
+        from subscriptions.utils import school_effective_max_screens  # local import لتجنب دورات الاستيراد
+
+        return school_effective_max_screens(getattr(school, "id", None))
+    except Exception:
+        # fallback للمنطق القديم (بدون Add-ons)
+        pass
+
+    qs = _get_school_active_subscriptions_qs(school)
+    if qs is None:
+        return 0
+    subs = list(qs)
+    if not subs:
+        return 0
+
+    # لو أي اشتراك نشط غير محدود => غير محدود
+    for sub in subs:
+        plan = getattr(sub, "plan", None)
+        if plan is not None and getattr(plan, "max_screens", None) is None:
+            return None
+
+    # اختر الحد الأعلى بين الاشتراكات النشطة
+    best = 0
+    for sub in subs:
+        plan = getattr(sub, "plan", None)
+        ms = getattr(plan, "max_screens", None) if plan else None
+        try:
+            ms_i = int(ms or 0)
+        except Exception:
+            ms_i = 0
+        if ms_i > best:
+            best = ms_i
+    return best
+
+
+def _get_school_effective_plan_label(school) -> str | None:
+    """اسم الخطة المستخدمة لعرض المعلومات في الواجهة (أفضل اشتراك)."""
+    sub = _get_school_active_subscription(school)
+    if not sub:
+        return None
+    plan = getattr(sub, "plan", None)
+    return getattr(plan, "name", None) if plan else None
+
 @manager_required
 def screen_list(request):
     DisplayScreen = DisplayScreenModel()
@@ -1085,13 +1215,62 @@ def screen_list(request):
     if response:
         return response
 
+    try:
+        from core.screen_limits import enforce_school_screen_limit
+        enforce_school_screen_limit(int(getattr(school, "id", 0) or 0))
+    except Exception:
+        pass
+
+    # عدد الشاشات التي تم إيقافها تلقائيًا بسبب تجاوز الحد
+    auto_disabled_count = 0
+    try:
+        if _model_has_field(DisplayScreen, "auto_disabled_by_limit"):
+            auto_disabled_count = DisplayScreen.objects.filter(
+                school=school,
+                auto_disabled_by_limit=True,
+            ).count()
+    except Exception:
+        auto_disabled_count = 0
+
     qs = DisplayScreen.objects.filter(school=school).order_by("-created_at", "-id")
-    can_create_screen = qs.count() == 0
-    show_screen_limit_message = not can_create_screen
+    current_count = qs.count()
+    max_screens = _get_school_max_screens_limit(school)
+    plan_name = _get_school_effective_plan_label(school)
+
+    if max_screens is None:
+        screens_remaining = None
+    else:
+        try:
+            screens_remaining = max(int(max_screens) - int(current_count), 0)
+        except Exception:
+            screens_remaining = 0
+
+    if max_screens is None:
+        can_create_screen = True
+        show_screen_limit_message = False
+        screen_limit_message = None
+    else:
+        can_create_screen = current_count < int(max_screens)
+        show_screen_limit_message = not can_create_screen
+        if max_screens <= 0:
+            screen_limit_message = "لا يمكن إضافة شاشات لهذه المدرسة (لا يوجد اشتراك نشط)."
+        else:
+            screen_limit_message = f"لا يمكن إضافة أكثر من {int(max_screens)} شاشة لهذه المدرسة"
+
     return render(
         request,
         "dashboard/screen_list.html",
-        {"screens": qs, "can_create_screen": can_create_screen, "show_screen_limit_message": show_screen_limit_message},
+        {
+            "screens": qs,
+            "can_create_screen": can_create_screen,
+            "show_screen_limit_message": show_screen_limit_message,
+            "screen_limit": None if max_screens is None else int(max_screens),
+            "screen_limit_message": screen_limit_message,
+            "screens_count": current_count,
+            "plan_name": plan_name,
+            "screens_remaining": screens_remaining,
+            "auto_disabled_count": auto_disabled_count,
+        },
     )
 
 
@@ -1102,8 +1281,13 @@ def screen_create(request):
     if response:
         return response
 
-    if DisplayScreen.objects.filter(school=school).exists():
-        messages.warning(request, "لا يمكن إنشاء أكثر من شاشة واحدة لهذه المدرسة.")
+    current_count = DisplayScreen.objects.filter(school=school).count()
+    max_screens = _get_school_max_screens_limit(school)
+    if (max_screens is not None) and (current_count >= int(max_screens)):
+        if max_screens <= 0:
+            messages.warning(request, "لا يمكن إنشاء شاشة بدون اشتراك نشط.")
+        else:
+            messages.warning(request, f"لا يمكن إنشاء أكثر من {int(max_screens)} شاشة لهذه المدرسة.")
         return redirect("dashboard:screen_list")
 
     if request.method == "POST":
@@ -1131,6 +1315,29 @@ def screen_delete(request, pk: int):
     obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
     obj.delete()
     messages.success(request, "تم حذف الشاشة.")
+    return redirect("dashboard:screen_list")
+
+
+@manager_required
+@require_POST
+def screen_unbind_device(request, pk: int):
+    DisplayScreen = DisplayScreenModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
+
+    # حقول الربط قد لا تكون موجودة في بيئات قديمة
+    try:
+        DisplayScreen._meta.get_field("bound_device_id")
+        DisplayScreen._meta.get_field("bound_at")
+    except Exception:
+        messages.error(request, "ميزة ربط الأجهزة غير متاحة حالياً.")
+        return redirect("dashboard:screen_list")
+
+    DisplayScreen.objects.filter(pk=obj.pk).update(bound_device_id=None, bound_at=None)
+    messages.success(request, "تم فصل الجهاز. افتح الرابط على التلفاز الجديد ليتم ربطه تلقائياً.")
     return redirect("dashboard:screen_list")
 
 
@@ -1799,7 +2006,20 @@ def _admin_school_form_class():
     class AdminSchoolForm(forms.ModelForm):
         class Meta:
             model = School
-            fields = ["name", "slug", "is_active"]
+
+            fields = ["name", "slug", "school_type", "is_active"]
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            if "school_type" in self.fields:
+                self.fields["school_type"].required = True
+                # خيار توضيحي بدل "---------"
+                choices = list(self.fields["school_type"].choices)
+                if choices and choices[0][0] in ("", None):
+                    choices[0] = ("", "اختر نوع المدرسة")
+                else:
+                    choices = [("", "اختر نوع المدرسة")] + choices
+                self.fields["school_type"].choices = choices
 
     return AdminSchoolForm
 
@@ -1857,6 +2077,7 @@ def system_admin_dashboard(request):
 @superuser_required
 def system_schools_list(request):
     School = SchoolModel()
+    DisplayScreen = DisplayScreenModel()
 
     q = (request.GET.get("q") or "").strip()
     schools = School.objects.all().order_by("-created_at", "-id")
@@ -1864,7 +2085,42 @@ def system_schools_list(request):
     if q:
         schools = schools.filter(Q(name__icontains=q) | Q(slug__icontains=q))
 
-    return render(request, "admin/schools_list.html", {"schools": schools, "q": q})
+    # attach live stats
+    try:
+        schools = schools.select_related("schedule_settings")
+    except Exception:
+        pass
+
+    active_window_seconds = 120
+    active_since = timezone.now() - timedelta(seconds=active_window_seconds)
+    screens_qs = DisplayScreen.objects.all()
+
+    if _model_has_field(DisplayScreen, "is_active"):
+        screens_qs = screens_qs.filter(is_active=True)
+    if _model_has_field(DisplayScreen, "last_seen_at"):
+        screens_qs = screens_qs.filter(last_seen_at__gte=active_since)
+
+    active_counts = {
+        row["school_id"]: row["c"]
+        for row in screens_qs.values("school_id").annotate(c=Count("id"))
+        if row.get("school_id")
+    }
+
+    schools_list = list(schools)
+    for s in schools_list:
+        setattr(s, "active_screens_now", int(active_counts.get(s.id, 0) or 0))
+        settings_obj = getattr(s, "schedule_settings", None)
+        setattr(s, "refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", None))
+
+    return render(
+        request,
+        "admin/schools_list.html",
+        {
+            "schools": schools_list,
+            "q": q,
+            "active_window_seconds": active_window_seconds,
+        },
+    )
 
 
 @superuser_required
@@ -2500,5 +2756,176 @@ def customer_support_ticket_create(request):
             messages.success(request, "تم فتح التذكرة بنجاح")
             return redirect("dashboard:customer_support_tickets")
     else:
-        form = CustomerSupportTicketForm(user=request.user)
+        initial = {}
+        subj = (request.GET.get("subject") or "").strip()
+        msg = (request.GET.get("message") or "").strip()
+        if subj:
+            initial["subject"] = subj
+        if msg:
+            initial["message"] = msg
+        form = CustomerSupportTicketForm(user=request.user, initial=initial)
     return render(request, "dashboard/support_ticket_form.html", {"form": form})
+
+
+@manager_required
+def request_screen_addon(request):
+    """زر/صفحة طلب زيادة شاشات: يفتح تذكرة دعم مُعبأة تلقائيًا."""
+    DisplayScreen = DisplayScreenModel()
+
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    current_count = DisplayScreen.objects.filter(school=school).count()
+    max_screens = _get_school_max_screens_limit(school)
+    plan_name = _get_school_effective_plan_label(school) or "—"
+
+    school_name = (getattr(school, "name", "") or "").strip()
+    subject = f"طلب زيادة شاشات - {school_name}" if school_name else "طلب زيادة شاشات"
+    msg_lines = [
+        f"المدرسة: {getattr(school, 'name', '')}",
+        f"الخطة الحالية: {plan_name}",
+        f"عدد الشاشات الحالية: {current_count}",
+        f"الحد الحالي: {'غير محدود' if max_screens is None else int(max_screens)}",
+        "",
+        "المطلوب:",
+        "- عدد الشاشات الإضافية: ",
+        "- المدة: (شهر / نصف سنوي / سنوي)",
+        "- ملاحظات: ",
+    ]
+    message_text = "\n".join(msg_lines)
+
+    url = reverse("dashboard:customer_support_ticket_create")
+    return redirect(f"{url}?subject={quote(subject)}&message={quote(message_text)}")
+
+
+def _get_screen_addon_model():
+    try:
+        return apps.get_model("subscriptions", "SubscriptionScreenAddon")
+    except Exception:
+        return None
+
+
+@superuser_required
+def system_screen_addons_list(request):
+    Addon = _get_screen_addon_model()
+    if Addon is None:
+        messages.error(request, "نظام زيادات الشاشات غير مثبت.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+
+    qs = Addon.objects.all()
+    try:
+        qs = qs.select_related("subscription", "subscription__school", "subscription__plan")
+    except Exception:
+        pass
+
+    if q:
+        qs = qs.filter(
+            Q(subscription__school__name__icontains=q)
+            | Q(subscription__school__slug__icontains=q)
+            | Q(subscription__plan__name__icontains=q)
+        )
+
+    if status:
+        qs = qs.filter(status=status)
+
+    qs = qs.order_by("-created_at", "-id")
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    rows = []
+    for obj in page_obj.object_list:
+        sub = getattr(obj, "subscription", None)
+        school_obj = getattr(sub, "school", None) if sub else None
+        plan_obj = getattr(sub, "plan", None) if sub else None
+        rows.append(
+            {
+                "id": obj.pk,
+                "school_name": getattr(school_obj, "name", "—") if school_obj else "—",
+                "plan_name": getattr(plan_obj, "name", "—") if plan_obj else "—",
+                "screens_added": getattr(obj, "screens_added", 0) or 0,
+                "pricing_cycle": getattr(obj, "pricing_cycle", "inherit") or "inherit",
+                "validity_days": getattr(obj, "validity_days", None),
+                "starts_at": getattr(obj, "starts_at", None),
+                "ends_at": getattr(obj, "ends_at", None),
+                "status": getattr(obj, "status", ""),
+                "total_price": getattr(obj, "total_price", None),
+            }
+        )
+
+    return render(
+        request,
+        "admin/screen_addons_list.html",
+        {
+            "rows": rows,
+            "page_obj": page_obj,
+            "q": q,
+            "status": status,
+        },
+    )
+
+
+@superuser_required
+def system_screen_addon_create(request):
+    Addon = _get_screen_addon_model()
+    if Addon is None:
+        messages.error(request, "نظام زيادات الشاشات غير مثبت.")
+        return redirect("dashboard:system_screen_addons_list")
+
+    if request.method == "POST":
+        form = SubscriptionScreenAddonForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم إنشاء زيادة الشاشات بنجاح.")
+            return redirect("dashboard:system_screen_addons_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SubscriptionScreenAddonForm()
+
+    return render(request, "admin/screen_addon_form.html", {"form": form, "title": "إضافة زيادة شاشات"})
+
+
+@superuser_required
+def system_screen_addon_edit(request, pk: int):
+    Addon = _get_screen_addon_model()
+    if Addon is None:
+        messages.error(request, "نظام زيادات الشاشات غير مثبت.")
+        return redirect("dashboard:system_screen_addons_list")
+
+    obj = get_object_or_404(Addon, pk=pk)
+
+    if request.method == "POST":
+        form = SubscriptionScreenAddonForm(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "تم تحديث زيادة الشاشات.")
+            return redirect("dashboard:system_screen_addons_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SubscriptionScreenAddonForm(instance=obj)
+
+    return render(
+        request,
+        "admin/screen_addon_form.html",
+        {"form": form, "title": "تعديل زيادة شاشات", "edit": True, "obj": obj},
+    )
+
+
+@superuser_required
+def system_screen_addon_delete(request, pk: int):
+    Addon = _get_screen_addon_model()
+    if Addon is None:
+        messages.error(request, "نظام زيادات الشاشات غير مثبت.")
+        return redirect("dashboard:system_screen_addons_list")
+
+    obj = get_object_or_404(Addon, pk=pk)
+    if request.method == "POST":
+        obj.delete()
+        messages.warning(request, "تم حذف زيادة الشاشات.")
+        return redirect("dashboard:system_screen_addons_list")
+
+    return render(request, "admin/screen_addon_confirm_delete.html", {"obj": obj})

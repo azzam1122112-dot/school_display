@@ -86,6 +86,42 @@
     dom.standbyTrack = $("standbyTrack");
 
     dom.fsBtn = $("fsBtn");
+
+    // Blocking overlay
+    dom.blocker = $("blocker");
+    dom.blockerTitle = $("blockerTitle");
+    dom.blockerDetails = $("blockerDetails");
+    dom.blockerLink = $("blockerLink");
+  }
+
+  // ===== Blocking overlay helpers =====
+  let isBlocked = false;
+  function showBlocker(title, details) {
+    isBlocked = true;
+    if (dom.blockerTitle) dom.blockerTitle.textContent = safeText(title);
+    if (dom.blockerDetails) dom.blockerDetails.textContent = safeText(details);
+    if (dom.blockerLink) {
+      try {
+        const p = safeText(window.location && window.location.pathname ? window.location.pathname : "");
+        const q = safeText(window.location && window.location.search ? window.location.search : "");
+        const shown = (p + q).trim() || "—";
+        dom.blockerLink.textContent = shown;
+      } catch (e) {
+        dom.blockerLink.textContent = "—";
+      }
+    }
+    toggleHidden(dom.blocker, false);
+  }
+  function stopPolling() {
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+    if (ctrl) {
+      try {
+        ctrl.abort();
+      } catch (e) {}
+    }
   }
 
   // ===== Viewport var =====
@@ -130,7 +166,15 @@
     MEDIA_PREFIX: "/media/",
     SNAPSHOT_URL: "",
     SERVER_TOKEN: "",
+    SCHOOL_TYPE: "",
   };
+
+  function teacherLabelText() {
+    const t = (cfg.SCHOOL_TYPE || "").toString().trim().toLowerCase();
+    if (t === "boys") return "المعلم";
+    if (t === "girls") return "المعلمة";
+    return "المعلم/ـة";
+  }
 
   // ===== Runtime (فلترة الانتظار/نهاية الدوام) =====
   const rt = {
@@ -739,7 +783,7 @@
 
     const lbl = document.createElement("span");
     lbl.className = "label";
-    lbl.textContent = "المعلم/ـة:";
+    lbl.textContent = teacherLabelText() + ":";
 
     const name = document.createElement("span");
     name.className = "name";
@@ -1258,10 +1302,53 @@
       method: "GET",
       headers,
       cache: "no-store",
+      credentials: "same-origin",
       signal: ctrl ? ctrl.signal : undefined,
     }).then(async (r) => {
       if (r.status === 304) return { _notModified: true };
-      if (!r.ok) throw new Error("HTTP " + r.status);
+
+      if (!r.ok) {
+        // 403 عادة تعني: الشاشة مرتبطة بجهاز آخر أو لا يوجد معرف جهاز
+        if (r.status === 403) {
+          let body = null;
+          try {
+            body = await r.json();
+          } catch (e) {
+            body = null;
+          }
+
+          const err = body && (body.error || body.code);
+          const msg = body && (body.message || body.detail);
+
+          if (err === "screen_bound") {
+            showBlocker(
+              "هذه الشاشة مرتبطة بجهاز آخر",
+              msg || "لا يمكن استخدام نفس الرابط على أكثر من تلفاز. افصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد."
+            );
+            stopPolling();
+            return null;
+          }
+
+          if (err === "missing_device_id") {
+            showBlocker(
+              "تعذر تعريف الجهاز",
+              msg || "أعد فتح رابط الشاشة من المتصفح ثم انتظر ثوانٍ ليتم تفعيل العرض."
+            );
+            stopPolling();
+            return null;
+          }
+
+          // 403 أخرى
+          showBlocker(
+            "لا يمكن عرض الشاشة",
+            msg || "تم رفض الوصول. تحقق من الرابط أو راجع إدارة النظام."
+          );
+          stopPolling();
+          return null;
+        }
+
+        throw new Error("HTTP " + r.status);
+      }
 
       const et = r.headers && r.headers.get ? (r.headers.get("ETag") || "") : "";
       if (et) {
@@ -1281,6 +1368,7 @@
       }
     })
       .catch((e) => {
+        if (isBlocked) return null;
         renderAlert("تعذر جلب البيانات", "تأكد من token ومن مسار snapshot.");
         ensureDebugOverlay();
         if (isDebug()) setDebugText("fetch error: " + (e && e.message ? e.message : String(e)));
@@ -1303,6 +1391,7 @@
   }
 
   async function refreshLoop() {
+    if (isBlocked) return;
     if (document.hidden) {
       scheduleNext(cfg.REFRESH_EVERY);
       return;
@@ -1462,6 +1551,7 @@
     cfg.MEDIA_PREFIX = (body.dataset.mediaPrefix || "/media/").toString().trim();
     cfg.SNAPSHOT_URL = (body.dataset.snapshotUrl || "").toString().trim();
     cfg.SERVER_TOKEN = (body.dataset.apiToken || body.dataset.token || "").toString().trim();
+    cfg.SCHOOL_TYPE = (body.dataset.schoolType || "").toString().trim();
 
     try {
       const initTheme = (body.dataset.theme || "").trim();

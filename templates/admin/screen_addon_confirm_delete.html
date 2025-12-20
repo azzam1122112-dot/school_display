@@ -1,0 +1,41 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}حذف زيادة شاشات{% endblock %}
+{% block page_title %}حذف زيادة شاشات{% endblock %}
+{% block page_description %}
+تأكيد حذف زيادة الشاشات. هذا لا يحذف الشاشات الحالية، لكنه قد يمنع إضافة شاشات جديدة لاحقًا.
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  <div class="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+      <div class="h-10 w-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">⚠️</div>
+      <div>
+        <p class="text-lg font-extrabold text-slate-900">تأكيد الحذف</p>
+        <p class="text-xs text-slate-500">سيتم حذف سجل الزيادة فقط.</p>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-4">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <div><span class="font-bold">الزيادة:</span> {{ obj }}</div>
+      </div>
+
+      <form method="post" class="flex items-center justify-end gap-3">
+        {% csrf_token %}
+        <a href="{% url 'dashboard:system_screen_addons_list' %}"
+           class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition">
+          إلغاء
+        </a>
+        <button type="submit"
+                class="px-6 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-sm hover:bg-rose-700 shadow-lg shadow-rose-200 transition">
+          حذف
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

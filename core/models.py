@@ -4,6 +4,11 @@ from django.utils import timezone
 import secrets
 
 
+class SchoolType(models.TextChoices):
+    BOYS = "boys", "بنين"
+    GIRLS = "girls", "بنات"
+
+
 class School(models.Model):
     name = models.CharField("اسم المدرسة", max_length=150)
     slug = models.SlugField(
@@ -20,6 +25,14 @@ class School(models.Model):
     is_active = models.BooleanField(
         "اشتراك نشط",
         default=True,
+    )
+
+    school_type = models.CharField(
+        "نوع المدرسة",
+        max_length=10,
+        choices=SchoolType.choices,
+        null=True,
+        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -100,11 +113,28 @@ class DisplayScreen(models.Model):
         default=True,
         verbose_name="نشط",
     )
+    auto_disabled_by_limit = models.BooleanField(
+        default=False,
+        verbose_name="موقوف تلقائياً بسبب الحد",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(
         null=True,
         blank=True,
         verbose_name="آخر ظهور",
+    )
+
+    # ربط الشاشة بجهاز واحد (TV) لمنع مشاركة الرابط
+    bound_device_id = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        verbose_name="معرّف الجهاز المرتبط",
+    )
+    bound_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="تاريخ ربط الجهاز",
     )
 
     class Meta:
