@@ -205,13 +205,13 @@ USE_I18N = True
 USE_TZ = True
 
 
-# ==============================
-# Session: idle timeout (30 min)
-# ==============================
+# ===============================
+# Session: idle timeout (60 min)
+# ===============================
 # Logout/expire sessions after inactivity.
 # With SESSION_SAVE_EVERY_REQUEST=True, Django refreshes the session expiry on each request,
 # so if the user is idle for > SESSION_COOKIE_AGE seconds, the session becomes invalid.
-SESSION_COOKIE_AGE = env_int("SESSION_IDLE_TIMEOUT_SECONDS", "1800")
+SESSION_COOKIE_AGE = env_int("SESSION_IDLE_TIMEOUT_SECONDS", "3600")
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
