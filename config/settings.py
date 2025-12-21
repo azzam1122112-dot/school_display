@@ -237,6 +237,18 @@ USE_CLOUD_STORAGE = (
     and bool(CLOUDINARY_API_SECRET)
 )
 
+if USE_CLOUD_STORAGE:
+    CLOUDINARY_STORAGE = {
+        "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+        "API_KEY": CLOUDINARY_API_KEY,
+        "API_SECRET": CLOUDINARY_API_SECRET,
+        # ضغط تلقائي للصور عند الرفع لتقليل الحجم والمساحة المستهلكة
+        "TRANSFORMATION": {
+            "quality": "auto:good",  # ضبط الجودة تلقائياً مع الحفاظ على جودة جيدة
+            "fetch_format": "auto",  # اختيار أفضل صيغة (مثل WebP/AVIF) تلقائياً
+        },
+    }
+
 STORAGES = {
     "default": {
         "BACKEND": (
