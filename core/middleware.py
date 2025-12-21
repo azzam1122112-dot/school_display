@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Optional
 import re
 import logging
+import secrets
 
 from django.apps import apps
 from django.db.models import Q
@@ -117,52 +118,55 @@ class DisplayTokenMiddleware:
 
         # ======================================================
         # ✅ Device Binding (منع مشاركة رابط الشاشة)
+        #    لو لم يوجد كوكي للجهاز ننشئ واحدًا تلقائيًا
         # ======================================================
+        new_device_id: Optional[str] = None
         device_id = (request.COOKIES.get("sd_device") or "").strip()
         if not device_id:
-            return JsonResponse(
-                {
-                    "error": "missing_device_id",
-                    "message": "فضلاً افتح رابط الشاشة في المتصفح أولاً ليتم تعريف الجهاز.",
-                },
-                status=403,
-            )
+            try:
+                new_device_id = secrets.token_hex(16)
+                device_id = new_device_id
+                # حتى ترى الـ view نفس الـ id في نفس الطلب
+                request.COOKIES["sd_device"] = device_id
+            except Exception:
+                device_id = ""
 
-        has_binding_fields = True
-        try:
-            DisplayScreen._meta.get_field("bound_device_id")
-            DisplayScreen._meta.get_field("bound_at")
-        except Exception:
-            has_binding_fields = False
+        if device_id:
+            has_binding_fields = True
+            try:
+                DisplayScreen._meta.get_field("bound_device_id")
+                DisplayScreen._meta.get_field("bound_at")
+            except Exception:
+                has_binding_fields = False
 
-        if has_binding_fields:
-            bound = (getattr(screen, "bound_device_id", None) or "").strip()
-            if not bound:
-                updated = (
-                    DisplayScreen.objects.filter(pk=screen.pk)
-                    .filter(Q(bound_device_id__isnull=True) | Q(bound_device_id=""))
-                    .update(bound_device_id=device_id, bound_at=timezone.now())
-                )
-                if updated:
-                    bound = device_id
-                else:
-                    # تم ربطها من جهاز آخر قبلنا
-                    try:
-                        screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
-                        request.display_screen = screen
-                        request.school = screen.school
-                        bound = (getattr(screen, "bound_device_id", None) or "").strip()
-                    except Exception:
-                        bound = bound
+            if has_binding_fields:
+                bound = (getattr(screen, "bound_device_id", None) or "").strip()
+                if not bound:
+                    updated = (
+                        DisplayScreen.objects.filter(pk=screen.pk)
+                        .filter(Q(bound_device_id__isnull=True) | Q(bound_device_id=""))
+                        .update(bound_device_id=device_id, bound_at=timezone.now())
+                    )
+                    if updated:
+                        bound = device_id
+                    else:
+                        # تم ربطها من جهاز آخر قبلنا
+                        try:
+                            screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
+                            request.display_screen = screen
+                            request.school = screen.school
+                            bound = (getattr(screen, "bound_device_id", None) or "").strip()
+                        except Exception:
+                            bound = bound
 
-            if bound and bound != device_id:
-                return JsonResponse(
-                    {
-                        "error": "screen_bound",
-                        "message": "هذه الشاشة مرتبطة بجهاز آخر. قم بفصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد.",
-                    },
-                    status=403,
-                )
+                if bound and bound != device_id:
+                    return JsonResponse(
+                        {
+                            "error": "screen_bound",
+                            "message": "هذه الشاشة مرتبطة بجهاز آخر. قم بفصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد.",
+                        },
+                        status=403,
+                    )
 
         # تحديث last_seen_at إن كان موجودًا
         now = timezone.now()
@@ -174,7 +178,20 @@ class DisplayTokenMiddleware:
         except Exception:
             pass
 
-        return self.get_response(request)
+        response = self.get_response(request)
+        if new_device_id and hasattr(response, "set_cookie"):
+            try:
+                # كوكي طويل المدى للجهاز (٥ سنوات تقريبًا)
+                response.set_cookie(
+                    "sd_device",
+                    new_device_id,
+                    max_age=60 * 60 * 24 * 365 * 5,
+                    samesite="Lax",
+                )
+            except Exception:
+                pass
+
+        return response
 
 
 # ==========================================================
