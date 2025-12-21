@@ -72,6 +72,21 @@ class SchoolSubscription(models.Model):
     def __str__(self) -> str:
         return f"{self.school} - {self.plan} ({self.starts_at})"
 
+    def save(self, *args, **kwargs):
+        # إذا لم يُحدد تاريخ نهاية يدويًا، احسبه تلقائيًا من مدة الباقة.
+        if self.ends_at is None and self.starts_at and getattr(self, "plan", None):
+            try:
+                days = getattr(self.plan, "duration_days", None)
+                if days is not None:
+                    days_int = int(days)
+                    if days_int > 0:
+                        # حسب المطلوب: النهاية = تاريخ البداية + عدد الأيام
+                        self.ends_at = self.starts_at + timedelta(days=days_int)
+            except Exception:
+                pass
+
+        super().save(*args, **kwargs)
+
     @property
     def is_active(self) -> bool:
         """

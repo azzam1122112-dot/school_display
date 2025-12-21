@@ -21,6 +21,15 @@ class SchoolSubscriptionForm(forms.ModelForm):
         for name, field in self.fields.items():
             field.widget.attrs.setdefault("class", "form-input")
 
+        # تاريخ النهاية يُحسب تلقائيًا من مدة الباقة.
+        if "ends_at" in self.fields:
+            self.fields["ends_at"].required = False
+            self.fields["ends_at"].disabled = True
+            self.fields["ends_at"].help_text = "يتم حسابه تلقائيًا من مدة الباقة عند الحفظ."
+            self.fields["ends_at"].widget.attrs.update(
+                {"readonly": "readonly", "disabled": "disabled", "aria-disabled": "true"}
+            )
+
     def clean(self):
         cleaned = super().clean()
         starts_at = cleaned.get("starts_at")

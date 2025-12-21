@@ -585,6 +585,21 @@ class SchoolSubscriptionForm(forms.ModelForm):
         self.fields["school"].queryset = School.objects.all().order_by("name")
         self.fields["plan"].queryset = SubscriptionPlan.objects.all().order_by("name")
 
+        # المطلوب: منع إدخال/تعديل تاريخ النهاية (يُحسب تلقائيًا من مدة الباقة).
+        if "ends_at" in self.fields:
+            self.fields["ends_at"].required = False
+            self.fields["ends_at"].disabled = True
+            self.fields["ends_at"].help_text = (
+                "يتم حساب تاريخ النهاية تلقائيًا من مدة الباقة عند الحفظ."
+            )
+            self.fields["ends_at"].widget.attrs.update(
+                {
+                    "readonly": "readonly",
+                    "disabled": "disabled",
+                    "aria-disabled": "true",
+                }
+            )
+
     def clean(self):
         cleaned = super().clean()
         start = cleaned.get("starts_at")
@@ -853,6 +868,12 @@ class SystemUserUpdateForm(forms.ModelForm):
 from core.models import SupportTicket
 
 class SubscriptionPlanForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # المطلوب حسب الطلب: كل خطة جديدة يجب تحديد عدد الأيام
+        if "duration_days" in self.fields:
+            self.fields["duration_days"].required = True
+
     class Meta:
         model = SubscriptionPlan
         fields = "__all__"
@@ -860,6 +881,7 @@ class SubscriptionPlanForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
             "code": forms.TextInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
             "price": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
+            "duration_days": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
             "max_users": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
             "max_screens": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),
             "max_schools": forms.NumberInput(attrs={"class": "w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500"}),

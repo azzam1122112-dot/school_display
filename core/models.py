@@ -185,6 +185,13 @@ class SubscriptionPlan(models.Model):
         decimal_places=2,
         default=0,
     )
+
+    duration_days = models.PositiveIntegerField(
+        "مدة الاشتراك (بالأيام)",
+        null=True,
+        blank=True,
+        help_text="عند إنشاء اشتراك وترك تاريخ النهاية فارغًا: النهاية = تاريخ البداية + عدد الأيام.",
+    )
     max_users = models.PositiveIntegerField(
         "الحد الأقصى للمستخدمين",
         null=True,

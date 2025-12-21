@@ -3,6 +3,7 @@ from django.db.models import Q
 
 from importlib import import_module
 from typing import Any, Callable, Dict, List, Tuple
+import secrets
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -359,16 +360,17 @@ def display_snapshot(request: HttpRequest, token: str) -> HttpResponse:
 
     # ------------------------------------------------------------
     # ✅ منع مشاركة رابط الشاشة على أكثر من جهاز (TV Binding)
+    #    لو لم يوجد كوكي للجهاز ننشئ واحدًا تلقائيًا
     # ------------------------------------------------------------
+    new_device_id: str | None = None
     device_id = (request.COOKIES.get("sd_device") or "").strip()
     if not device_id:
-        return JsonResponse(
-            {
-                "error": "missing_device_id",
-                "message": "فضلاً افتح رابط الشاشة في المتصفح أولاً ليتم تعريف الجهاز.",
-            },
-            status=403,
-        )
+        try:
+            new_device_id = secrets.token_hex(16)
+            device_id = new_device_id
+            request.COOKIES["sd_device"] = device_id
+        except Exception:
+            device_id = ""
 
     # نتأكد أن الموديل يدعم الربط (لتوافق البيئات القديمة)
     has_binding_fields = True
@@ -378,7 +380,7 @@ def display_snapshot(request: HttpRequest, token: str) -> HttpResponse:
     except Exception:
         has_binding_fields = False
 
-    if has_binding_fields:
+    if device_id and has_binding_fields:
         bound = (getattr(screen, "bound_device_id", None) or "").strip()
         if not bound:
             # ربط ذري لمنع سباق جهازين في نفس اللحظة
@@ -421,8 +423,21 @@ def display_snapshot(request: HttpRequest, token: str) -> HttpResponse:
     if cached is not None:
         cached = dict(cached)
         cached["server_time"] = now.isoformat()
-        return JsonResponse(cached)
+        response = JsonResponse(cached)
+    else:
+        data = _build_snapshot_payload(school)
+        cache.set(cache_key, data, timeout=10)
+        response = JsonResponse(data)
 
-    data = _build_snapshot_payload(school)
-    cache.set(cache_key, data, timeout=10)
-    return JsonResponse(data)
+    if new_device_id and hasattr(response, "set_cookie"):
+        try:
+            response.set_cookie(
+                "sd_device",
+                new_device_id,
+                max_age=60 * 60 * 24 * 365 * 5,
+                samesite="Lax",
+            )
+        except Exception:
+            pass
+
+    return response
