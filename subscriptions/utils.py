@@ -38,6 +38,7 @@ def school_effective_max_screens(school_id: int, on_date=None) -> int | None:
         )
         .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
         .select_related("plan")
+        .defer("plan__duration_days")
     )
 
     subs_list = list(subs)

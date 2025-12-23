@@ -1132,7 +1132,8 @@ def _get_school_active_subscriptions_qs(school):
     # select plan if possible
     try:
         SubModel._meta.get_field("plan")
-        qs = qs.select_related("plan")
+        # نستخدم defer لتجنب الحقول التي قد لا تكون موجودة في قاعدة البيانات (مثل duration_days في بعض البيئات)
+        qs = qs.select_related("plan").defer("plan__duration_days")
     except Exception:
         pass
 
