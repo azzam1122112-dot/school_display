@@ -6,11 +6,14 @@
   <title>{% block title %}لوحة التحكم{% endblock %}</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   {% load static %}
 
   <style>
+    [x-cloak] { display: none !important; }
     html, body {
       height: 100%;
       font-family: 'Cairo', sans-serif;
@@ -42,13 +45,19 @@
   </style>
 </head>
 
-<body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900">
+<body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900" x-data="{ mobileMenuOpen: false }">
 
 <!-- ░░ Header ░░ -->
 <header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
 
     <div class="flex items-center space-x-reverse space-x-3">
+      <!-- Mobile Menu Toggle -->
+      <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-lg bg-slate-100 text-slate-600">
+        <i class="fas fa-bars" x-show="!mobileMenuOpen"></i>
+        <i class="fas fa-times" x-show="mobileMenuOpen" x-cloak></i>
+      </button>
+
       {% if request.user.is_authenticated and request.user.profile.school and request.user.profile.school.logo %}
         <img src="{{ request.user.profile.school.logo.url }}"
              class="h-10 w-10 rounded-xl border bg-white object-contain">
@@ -108,7 +117,7 @@
 
       <div class="flex items-center gap-2">
         <div class="bg-slate-100 px-3 py-1.5 rounded-full text-sm">
-          <span>مرحبًا،</span>
+          <span class="hidden sm:inline">مرحبًا،</span>
           <span class="font-semibold">
             {% if request.user.is_authenticated %}
               {{ request.user.get_short_name|default:request.user.username }}
@@ -120,11 +129,13 @@
         {% if request.user.is_authenticated and request.user.profile.schools.all|length > 1 %}
         <div class="relative group">
           <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm text-xs font-semibold focus:outline-none">
-            {% if request.user.profile.active_school %}
-              {{ request.user.profile.active_school.name }}
-            {% else %}
-              اختر مدرسة
-            {% endif %}
+            <span class="max-w-[80px] truncate">
+              {% if request.user.profile.active_school %}
+                {{ request.user.profile.active_school.name }}
+              {% else %}
+                اختر مدرسة
+              {% endif %}
+            </span>
             <svg class="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-transform duration-200 transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
           <div class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform scale-95 group-hover:scale-100">
@@ -142,9 +153,10 @@
 
       {% if request.user.is_authenticated %}
         <a href="{% url 'dashboard:logout' %}"
-           class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-1.5 rounded-full
-                  hover:shadow-lg hover:scale-105 transition-all duration-300">
-          تسجيل الخروج
+           class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-3 py-1.5 md:px-4 rounded-full
+                  hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-1">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="hidden md:inline">تسجيل الخروج</span>
         </a>
       {% endif %}
     </div>
@@ -190,8 +202,16 @@
 <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
 
   <!-- ░░ Nav Sidebar ░░ -->
-  <aside class="col-span-12 md:col-span-3">
+  <aside class="col-span-12 md:col-span-3 transition-all duration-300 ease-in-out" 
+         :class="mobileMenuOpen ? 'block opacity-100 translate-y-0' : 'hidden md:block opacity-100 translate-y-0'">
     <nav class="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50 space-y-2">
+
+      <!-- Mobile Close Button -->
+      <div class="md:hidden flex justify-end mb-2">
+        <button @click="mobileMenuOpen = false" class="p-2 text-slate-500 hover:text-slate-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
 
       <!-- Home -->
       <a href="{% url 'dashboard:index' %}"
