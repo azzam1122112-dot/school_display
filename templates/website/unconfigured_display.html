@@ -69,6 +69,10 @@
       line-height: 1.6;
     }
 
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     img {
       max-width: 100%;
       height: auto;
@@ -797,8 +801,8 @@
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
+      gap: 22px;
+      margin-bottom: 18px;
     }
 
     .inputX {
@@ -844,7 +848,13 @@
       background: rgba(255, 255, 255, 0.96);
       border: 1px solid rgba(226, 232, 240, 1);
       box-shadow: 0 4px 16px rgba(148, 163, 184, 0.18);
-      margin-bottom: 8px;
+      margin-bottom: 0;
+    }
+
+    @media (min-width: 641px) {
+      #contactForm .form-row .inputX {
+        border-radius: 18px;
+      }
     }
 
     #contactForm .inputX:focus {
