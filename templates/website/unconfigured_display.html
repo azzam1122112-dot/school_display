@@ -5,601 +5,1365 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07231b">
-  <meta name="color-scheme" content="dark">
-  <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="color-scheme" content="light dark">
 
-  <!-- Favicon (بدون static tag لتجنب manifest errors) -->
+  <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
+  <meta name="description" content="حوّل شاشات مدرستك إلى منصة اتصال ذكية: الجداول، التنبيهات، التميز، والفعاليات في لوحة عرض احترافية متكاملة.">
+  <meta name="robots" content="index,follow">
+
+  <!-- Favicon -->
   <link rel="icon" href="{{ STATIC_PREFIX }}favicon.ico">
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
-    :root{
-      --bg1:#04150f;
-      --bg2:#07231b;
+    /* =========================
+       DESIGN SYSTEM (متوافق مع منصة التقارير)
+       ========================= */
+    :root {
+      --brand-primary: #2563eb;
+      --brand-dark: #1e40af;
+      --brand-light: #60a5fa;
+      --accent: #f59e0b;
 
-      --card:rgba(255,255,255,.06);
-      --stroke:rgba(255,255,255,.14);
-      --muted:rgba(255,255,255,.78);
-      --muted2:rgba(255,255,255,.58);
+      --surface-1: #ffffff;
+      --surface-2: #f8fafc;
+      --surface-3: #e5edff;
 
-      --green:#1f9d55;
-      --green2:#22c55e;
-      --gold:#d4af37;
-      --sky:#38bdf8;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-light: #e2e8f0;
 
-      --danger:#fb7185;
-      --radius: 22px;
+      --glass: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(148, 163, 184, 0.4);
+
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+
+      --shadow-soft: 0 10px 40px -10px rgba(15, 23, 42, 0.18);
+      --shadow-strong: 0 22px 60px -18px rgba(15, 23, 42, 0.35);
     }
 
-    html,body{height:100%}
-    body{
-      font-family:'Cairo',system-ui,-apple-system,Segoe UI,Arial,sans-serif;
-      color:#fff;
+    html, body {
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Tajawal', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        radial-gradient(900px 520px at 18% 12%, rgba(31,157,85,.26), transparent 62%),
-        radial-gradient(900px 520px at 85% 18%, rgba(56,189,248,.16), transparent 62%),
-        radial-gradient(800px 420px at 55% 102%, rgba(212,175,55,.12), transparent 60%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      overflow-x:hidden;
-      min-height:100vh;
+        radial-gradient(720px 420px at 10% 0%, rgba(37, 99, 235, 0.10), transparent 60%),
+        radial-gradient(720px 420px at 90% 10%, rgba(56, 189, 248, 0.10), transparent 60%),
+        radial-gradient(720px 420px at 50% 100%, rgba(59, 130, 246, 0.12), transparent 60%),
+        linear-gradient(180deg, #f8fafc, #e2e8f0);
+      min-height: 100vh;
+      color: var(--text-main);
+      line-height: 1.6;
     }
 
-    /* Glass with fallback */
-    .glass{
-      background:linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.04));
-      border:1px solid var(--stroke);
-      box-shadow:0 24px 90px rgba(0,0,0,.38);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-    }
-    @supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))){
-      .glass{ background: rgba(9, 30, 24, .78); }
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 20px;
     }
 
-    .soft{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.05);
-      transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+    a {
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.25s ease;
     }
-    .soft:hover{
-      background: rgba(255,255,255,.085);
+
+    /* Utilities */
+    .text-gradient {
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-light));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--brand-primary);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    .bg-glass {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+    }
+
+    .btn-primary {
+      background: linear-gradient(120deg, var(--brand-primary), var(--brand-dark));
+      color: #ffffff;
+      padding: 10px 24px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
+    }
+    .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      box-shadow: 0 16px 40px rgba(37, 99, 235, 0.45);
     }
 
-    .btnBrand{
-      background: linear-gradient(90deg, rgba(31,157,85,1), rgba(34,197,94,1));
-      box-shadow:0 16px 44px rgba(31,157,85,.22);
-      transition: transform .25s ease, filter .25s ease, box-shadow .25s ease;
+    .btn-outline {
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      background: #ffffff;
     }
-    .btnBrand:hover{
-      filter:brightness(1.08);
-      transform: translateY(-2px);
-      box-shadow:0 20px 50px rgba(31,157,85,.30);
-    }
-
-    .btnGold{
-      background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
-      color:#1b1b1b;
-      box-shadow:0 16px 44px rgba(212,175,55,.18);
-      transition: transform .25s ease, filter .25s ease;
-    }
-    .btnGold:hover{ filter:brightness(1.05); transform: translateY(-2px); }
-
-    .btnGhost{
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
-      transition: transform .25s ease, background .25s ease;
-    }
-    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-2px); }
-
-    .tag{
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
+    .btn-outline:hover {
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
+      box-shadow: 0 6px 20px rgba(148, 163, 184, 0.35);
     }
 
-    .inputX{
-      width:100%;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:16px;
-      padding:14px 16px;
-      outline:none;
-      color:#e5e7eb;
-      font-size:15px;
-      transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    .btn-ghost {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      background: rgba(255, 255, 255, 0.7);
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-main);
     }
-    .inputX:focus{
-      border-color: rgba(34,197,94,.65);
-      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
-      background: rgba(255,255,255,.09);
-    }
-    .inputX::placeholder{ color: rgba(255,255,255,.45); }
-
-    /* Video */
-    .video-wrap{
-      position:relative;
-      width:100%;
-      padding-bottom:56.25%;
-      border-radius: 22px;
-      overflow:hidden;
-      background:#000;
-      border:1px solid rgba(255,255,255,.14);
-    }
-    .video-wrap iframe{
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      border:0;
-    }
-    .video-overlay{
-      position:absolute; inset:0;
-      display:flex;
-      align-items:center; justify-content:center;
-      flex-direction:column;
-      gap:12px;
-      background: radial-gradient(600px 300px at 50% 30%, rgba(34,197,94,.22), rgba(7,35,27,.55));
-      cursor:pointer;
-      transition: opacity .25s ease;
-    }
-    .video-overlay.hide{ opacity:0; pointer-events:none; }
-    .play-btn{
-      width:78px; height:78px;
-      border-radius:999px;
-      display:flex; align-items:center; justify-content:center;
-      background: linear-gradient(135deg, var(--green2), rgba(56,189,248,.9));
-      box-shadow:0 16px 60px rgba(34,197,94,.35);
-      font-size:32px;
+    .btn-ghost:hover {
+      background: #ffffff;
+      box-shadow: 0 4px 16px rgba(148, 163, 184, 0.35);
     }
 
-    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-    .floating{ animation: float 3s ease-in-out infinite; }
+    .card {
+      background: var(--surface-1);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-soft);
+      padding: 24px;
+    }
 
-    @keyframes fadeUp { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
-    .fadeUp{ animation: fadeUp .5s ease both; }
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 16px 0;
+      transition: all 0.25s ease;
+    }
+    .header.scrolled {
+      padding: 10px 0;
+      background: rgba(248, 250, 252, 0.92);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border-light);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
 
-    /* Reduce motion */
-    @media (prefers-reduced-motion: reduce){
-      .floating, .fadeUp{ animation: none !important; }
-      .soft, .btnBrand, .btnGold, .btnGhost{ transition: none !important; }
+    .nav-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 1.1rem;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 10%, #e0f2fe, #2563eb);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
+      font-size: 1.2rem;
+    }
+    .logo span {
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 22px;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .nav-links a:hover {
+      color: var(--brand-primary);
+    }
+
+    .mobile-nav-controls,
+    .mobile-menu-btn {
+      display: none;
+    }
+
+    .mobile-menu-btn {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    /* Hero */
+    .hero {
+      padding-top: 130px;
+      padding-bottom: 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.55;
+      z-index: -1;
+    }
+    .blob-1 {
+      top: -120px;
+      right: -140px;
+      width: 420px;
+      height: 420px;
+      background: rgba(37, 99, 235, 0.28);
+    }
+    .blob-2 {
+      bottom: -120px;
+      left: -140px;
+      width: 420px;
+      height: 420px;
+      background: rgba(56, 189, 248, 0.20);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 40px;
+      align-items: center;
+    }
+
+    .hero-content h1 {
+      font-size: clamp(2.4rem, 4vw, 3.8rem);
+      line-height: 1.15;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 18px;
+    }
+
+    .hero-content p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin-bottom: 28px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 18px;
+      align-items: center;
+    }
+
+    .hero-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Video card / demo */
+    .hero-visual {
+      position: relative;
+    }
+
+    .demo-card {
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.99));
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: var(--shadow-strong);
+      padding: 22px 22px 24px;
+    }
+
+    .demo-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .demo-header-main {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .demo-title {
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .demo-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .demo-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #22c55e, #a3e635);
+      color: #052e16;
+      font-size: 1.4rem;
+      box-shadow: 0 10px 28px rgba(34, 197, 94, 0.35);
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #020617;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    .video-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: radial-gradient(580px 280px at 50% 30%, rgba(37, 99, 235, 0.40), rgba(15, 23, 42, 0.85));
+      cursor: pointer;
+      color: #ffffff;
+      text-align: center;
+      transition: opacity 0.25s ease;
+    }
+    .video-overlay.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .play-btn {
+      width: 78px;
+      height: 78px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 30% 20%, #e0f2fe, #2563eb);
+      box-shadow: 0 16px 55px rgba(37, 99, 235, 0.55);
+      font-size: 30px;
+    }
+
+    .demo-badges {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .demo-pill {
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid rgba(129, 140, 248, 0.5);
+    }
+
+    /* Features section */
+    .section {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .section-title h2 {
+      font-size: 2.1rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .section-title p {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .feature-card {
+      background: var(--surface-1);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-light);
+      padding: 20px;
+      box-shadow: 0 6px 22px rgba(148, 163, 184, 0.35);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(148, 163, 184, 0.6);
+      background: #ffffff;
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: #eff6ff;
+      border: 1px solid rgba(129, 140, 248, 0.6);
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* How it works */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .step-card {
+      background: var(--surface-1);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-light);
+      padding: 24px 18px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .step-number {
+      width: 60px;
+      height: 60px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--brand-primary);
+      background: radial-gradient(circle at 30% 10%, #e0f2fe, #bfdbfe);
+    }
+
+    /* CTA */
+    .cta-box {
+      background: linear-gradient(135deg, var(--brand-dark), var(--brand-primary));
+      border-radius: var(--radius-xl);
+      padding: 54px 32px;
+      color: #ffffff;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-strong);
+    }
+
+    .cta-box::before {
+      content: "";
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.35);
+      filter: blur(40px);
+      opacity: 0.8;
+    }
+    .cta-box::after {
+      content: "";
+      position: absolute;
+      bottom: -70px;
+      right: -70px;
+      width: 240px;
+      height: 240px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.25);
+      filter: blur(45px);
+      opacity: 0.8;
+    }
+
+    .cta-box h2 {
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-box p {
+      font-size: 1.02rem;
+      opacity: 0.94;
+      margin-bottom: 24px;
+      max-width: 520px;
+      margin-inline: auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Contact form */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 32px;
+      align-items: center;
+    }
+
+    .inputX {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      outline: none;
+      background: #ffffff;
+      color: var(--text-main);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .inputX:focus {
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+      background: #ffffff;
+    }
+
+    .inputX::placeholder {
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .inputX.textarea {
+      border-radius: 18px;
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 60px 0 28px;
+      background: var(--surface-2);
+      border-top: 1px solid var(--border-light);
+      margin-top: 80px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 32px;
+      margin-bottom: 28px;
+    }
+
+    .footer-col h4 {
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .footer-col a:hover {
+      color: var(--brand-primary);
+    }
+
+    .footer-copy {
+      border-top: 1px solid var(--border-light);
+      padding-top: 18px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
     }
 
     /* Toast */
-    .toast{
-      position:fixed;
-      left:16px; right:16px;
-      bottom:16px;
-      z-index:50;
-      max-width:640px;
-      margin:0 auto;
-      display:none;
+    .toast {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 50;
+      max-width: 640px;
+      margin: 0 auto;
+      display: none;
     }
-    .toast.show{ display:block; }
+    .toast.show {
+      display: block;
+    }
+    .toast-inner {
+      background: #ffffff;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-soft);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 1rem;
+    }
+    .toast-text {
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
 
-    @media (max-width: 768px){
-      .play-btn{ width:62px; height:62px; font-size:24px; }
-      .video-wrap{ border-radius:16px; }
+    /* Animations (خفيفة) */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .floating {
+      animation: float 3.5s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .floating { animation: none !important; }
+      .feature-card,
+      .btn-primary,
+      .btn-outline,
+      .btn-ghost {
+        transition: none !important;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .hero-content {
+        text-align: center;
+      }
+      .hero-content p {
+        margin-inline: auto;
+      }
+      .hero-actions {
+        justify-content: center;
+      }
+      .hero-meta {
+        justify-content: center;
+      }
+      .hero-visual {
+        max-width: 540px;
+        margin: 0 auto;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .features-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .steps-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .contact-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .nav-links {
+        display: none;
+      }
+      .mobile-nav-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mobile-menu-btn {
+        display: block;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .features-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .steps-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .footer-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .cta-box {
+        padding: 40px 20px;
+      }
+      .logo span {
+        display: none;
+      }
     }
   </style>
 </head>
 
 <body>
-  {# ✅ روابط آمنة (لا تسبب NoReverseMatch) #}
   {% url 'subscriptions' as subscriptions_url %}
   {% url 'website:subscriptions' as website_subscriptions_url %}
   {% url 'dashboard:login' as login_url %}
 
-  {# ✅ اختر الرابط المتاح أولاً #}
   {% with subs_url=subscriptions_url|default:website_subscriptions_url %}
   {% if subs_url %}
-      <header class="relative">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
-          <div class="glass rounded-3xl px-5 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-              <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
-              <div>
-                <div class="text-lg sm:text-xl font-extrabold leading-tight"
-                     style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
-                  لوحة العرض الذكية للمدارس
-                </div>
-                <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-                  التحول الرقمي المتكامل للشاشات المدرسية
-                </div>
-              </div>
+    <!-- HEADER -->
+    <header class="header" id="header">
+      <div class="container">
+        <div class="nav-wrap">
+          <a href="#" class="logo">
+            <div class="logo-icon floating">
+              <i class="fa-solid fa-display"></i>
             </div>
+            <span>لوحة العرض الذكية</span>
+          </a>
 
-            <div class="flex flex-wrap items-center gap-3 justify-end">
-
-
-              {% if login_url %}
-                <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
-              {% else %}
-                <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
-              {% endif %}
-
-
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16 space-y-16">
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <div class="space-y-8 fadeUp">
-            <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm">
-              <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
-              <span style="color:var(--muted)">تحديث تلقائي • هوية لكل مدرسة • لوحة تحكم مركزية</span>
-            </div>
-
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-              حوّل شاشات مدرستك إلى
-              <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
-                منصة اتصال ذكية
-              </span>
-            </h1>
-
-            <p class="text-lg leading-relaxed" style="color:var(--muted)">
-              نظام متكامل لعرض المعلومات المدرسية بشكل ديناميكي وجذاب:
-              <strong class="text-white">الحصص</strong>، <strong class="text-white">التنبيهات</strong>،
-              <strong class="text-white">جدول اليوم</strong>، <strong class="text-white">المتميزون</strong>
-              والإعلانات — مع تحديث تلقائي وتحكم كامل.
-            </p>
-
-
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-              <div class="soft rounded-2xl p-5">
-                <div class="text-lg font-extrabold">⚡ خفيف وسريع</div>
-                <div class="text-sm mt-2" style="color:var(--muted)">تحديثات منتظمة ومصممة لتناسب بيئة المدارس.</div>
-              </div>
-              <div class="soft rounded-2xl p-5">
-                <div class="text-lg font-extrabold">🔐 آمن ومعزول</div>
-                <div class="text-sm mt-2" style="color:var(--muted)">روابط عرض بتوكن + عزل بيانات كل مدرسة.</div>
-              </div>
-              <div class="soft rounded-2xl p-5">
-                <div class="text-lg font-extrabold">🎨 هوية قابلة للتخصيص</div>
-                <div class="text-sm mt-2" style="color:var(--muted)">ألوان/خلفية/شعار من لوحة الإعدادات.</div>
-              </div>
-            </div>
-
-            <div class="soft rounded-2xl p-5" style="border-color: rgba(212,175,55,.35); background: rgba(212,175,55,.06);">
-              <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-xl soft flex items-center justify-center" style="background: rgba(212,175,55,.10); border-color: rgba(212,175,55,.25);">
-                  ⚠️
-                </div>
-                <div class="flex-1">
-                  <div class="font-extrabold text-base sm:text-lg">تنبيه مهم:</div>
-                  <div class="text-sm sm:text-base leading-relaxed mt-1" style="color: var(--muted)">
-                    لعمل النظام بشكل صحيح، يجب توفر شاشة داخل المدرسة متصلة بالإنترنت لعرض لوحة العرض، وضمان تحديث المحتوى تلقائيًا.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="soft rounded-2xl p-5">
-              <div class="text-sm leading-relaxed" style="color:var(--muted)">
-                <strong class="text-white">توافق رؤية 2030:</strong>
-                يدعم التحول الرقمي داخل المدرسة عبر قناة تواصل مرئية لحظية تُعزز الانضباط، نشر الوعي، وتحسين تجربة الطالب والموظف والزائر.
-              </div>
-            </div>
-          </div>
-
-          <div id="demo" class="glass rounded-3xl p-6 lg:p-8 fadeUp">
-            <div class="flex items-center justify-between gap-4 mb-6">
-              <div>
-                <div class="font-extrabold text-2xl">🎥 عرض توضيحي سريع</div>
-                <div class="text-sm mt-2" style="color:var(--muted)">اضغط تشغيل لمشاهدة الفيديو</div>
-              </div>
-              <div class="h-14 w-14 rounded-2xl soft flex items-center justify-center text-2xl">⚡</div>
-            </div>
-
-            <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
-              <iframe
-                id="ytFrame"
-                loading="lazy"
-                title="عرض توضيحي لمنصة اللوحة الذكية للمدارس"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen>
-              </iframe>
-
-              <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
-                <div class="play-btn">▶</div>
-                <div class="text-white text-lg font-bold">تشغيل الفيديو</div>
-                <div class="text-sm" style="color:rgba(255,255,255,.75)">سيتم فتح التشغيل داخل الصفحة</div>
-              </div>
-            </div>
-
-            <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="soft rounded-2xl p-5 text-center">
-                <div class="text-xl font-extrabold mb-2">📱 تحكم مركزي</div>
-                <div class="text-sm" style="color:var(--muted)">لوحة واحدة لإدارة كل الشاشات</div>
-              </div>
-              <div class="soft rounded-2xl p-5 text-center">
-                <div class="text-xl font-extrabold mb-2">⚡ تحديث لحظي</div>
-                <div class="text-sm" style="color:var(--muted)">تغييرات تظهر بسرعة على الشاشات</div>
-              </div>
-              <div class="soft rounded-2xl p-5 text-center">
-                <div class="text-xl font-extrabold mb-2">🎨 تخصيص الهوية</div>
-                <div class="text-sm" style="color:var(--muted)">ألوان وشعار وخلفيات لكل مدرسة</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="features" class="glass rounded-3xl p-8 lg:p-12 fadeUp">
-          <div class="text-center mb-12">
-            <div class="inline-flex items-center gap-2 rounded-full px-4 py-2 tag text-sm mb-4">
-              <span class="h-2 w-2 rounded-full inline-block" style="background:var(--sky)"></span>
-              <span style="color:var(--muted)">مميزات مبتكرة تخدم المدرسة</span>
-            </div>
-            <h2 class="text-3xl lg:text-4xl font-extrabold mb-4">كل ما تحتاجه لإدارة شاشات مدرستك</h2>
-            <p class="text-lg max-w-3xl mx-auto" style="color:var(--muted)">
-              صُممت المنصة لتكون سريعة، جميلة، وسهلة الإدارة — مع قابلية توسع لعدد كبير من المدارس.
-            </p>
-          </div>
-
-          <div id="featuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-        </section>
-
-      </main>
-
-      <footer class="border-t border-white/10 mt-20 py-10">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div class="text-xl font-extrabold mb-4"
-                   style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
-                لوحة العرض الذكية
-              </div>
-              <p class="text-sm" style="color:var(--muted2)">
-                منصة التحول الرقمي للشاشات المدرسية
-              </p>
-            </div>
-
-            <div>
-              <div class="font-bold mb-4">روابط سريعة</div>
-              <ul class="space-y-2">
-                <li><a href="#demo" class="text-sm hover:text-white transition" style="color:var(--muted2)">العرض التوضيحي</a></li>
-                <li><a href="#features" class="text-sm hover:text-white transition" style="color:var(--muted2)">المميزات</a></li>
-                 <li>
-
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <div class="font-bold mb-4">الدعم</div>
-              <ul class="space-y-2">
-                <li><a href="tel:+966537720207" class="text-sm hover:text-white transition" style="color:var(--muted2)">+966537720207</a></li>
-                {% if login_url %}
-                  <li><a href="{{ login_url }}" class="text-sm hover:text-white transition" style="color:var(--muted2)">تسجيل الدخول</a></li>
-                {% else %}
-                  <li><span class="text-sm opacity-60" style="color:var(--muted2)">تسجيل الدخول</span></li>
-                {% endif %}
-              </ul>
-            </div>
-
-            <div>
-              <div class="font-bold mb-4">تابعنا</div>
-              <div class="flex gap-4">
-                <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer"
-                   class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🟢</a>
-                <a href="#demo" class="h-10 w-10 rounded-full soft flex items-center justify-center hover:bg-white/10 transition">🎥</a>
-              </div>
-            </div>
-          </div>
-
-          <div class="border-t border-white/10 mt-8 pt-8 text-center">
-            <p class="text-sm" style="color:var(--muted2)">
-              © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
-            </p>
-          </div>
-        </div>
-      </footer>
-
-  {% else %}
-    {# ✅ fallback: اعرض الصفحة بدون كسر (الزر معطل) #}
-    <header class="relative">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
-        <div class="glass rounded-3xl px-5 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="flex items-center gap-4">
-            <div class="h-12 w-12 rounded-2xl soft flex items-center justify-center text-2xl floating">🏫</div>
-            <div>
-              <div class="text-lg sm:text-xl font-extrabold leading-tight"
-                   style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
-                لوحة العرض الذكية للمدارس
-              </div>
-              <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-                التحول الرقمي المتكامل للشاشات المدرسية
-              </div>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-3 justify-end">
-
-
+          <nav class="nav-links">
+            <a href="#features">المميزات</a>
+            <a href="#how">كيف يعمل النظام؟</a>
+            <a href="#contact">تواصل معنا</a>
+            <a href="{{ subs_url }}" class="btn-ghost">
+              <i class="fa-solid fa-tags"></i>
+              خطط الاشتراك
+            </a>
             {% if login_url %}
-              <a href="{{ login_url }}" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold">تسجيل الدخول</a>
+              <a href="{{ login_url }}" class="btn-primary">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                دخول المنصة
+              </a>
             {% else %}
-              <a href="#" class="btnGhost rounded-2xl px-5 py-2.5 text-sm font-bold opacity-60 cursor-not-allowed" aria-disabled="true" tabindex="-1">تسجيل الدخول</a>
+              <span class="btn-ghost" style="opacity:.6; cursor:not-allowed;">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                دخول المنصة
+              </span>
             {% endif %}
+          </nav>
 
-
+          <div class="mobile-nav-controls">
+            {% if login_url %}
+              <a href="{{ login_url }}" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem;">
+                دخول
+              </a>
+            {% endif %}
+            <button class="mobile-menu-btn" aria-label="القائمة">
+              <i class="fa-solid fa-bars"></i>
+            </button>
           </div>
         </div>
       </div>
     </header>
 
-    <main class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
-      <div class="glass rounded-3xl p-8 lg:p-12">
-        <div class="text-2xl font-extrabold mb-3">تنبيه</div>
-        <p class="text-base" style="color:var(--muted)">
-          رابط صفحة “أسعار الاشتراكات” غير مُعرّف حاليًا داخل URLs. تم تعطيل الزر مؤقتًا لتجنب ظهور أخطاء في الصفحة.
-        </p>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+
+      <div class="container">
+        <div class="hero-grid">
+          <div class="hero-content">
+            <div class="badge" style="margin-bottom: 18px;">
+              <i class="fa-solid fa-bolt"></i>
+              تحديث لحظي • هوية لكل مدرسة • تحكم مركزي في الشاشات
+            </div>
+
+            <h1>
+              حوّل شاشات مدرستك إلى
+              <span class="text-gradient">منصة اتصال ذكية</span>
+            </h1>
+
+            <p>
+              نظام مخصص لعرض كل ما يهم المدرسة على الشاشات: جدول اليوم، التنبيهات، حصص الانتظار،
+              فعاليات المدرسة، وركن المتميزين — بتحديث تلقائي وواجهة تعكس هوية مدرستك.
+            </p>
+
+            <div class="hero-actions" style="display:flex; flex-wrap:wrap; gap:12px;">
+              <a href="https://wa.me/966537720207" target="_blank" rel="noopener" class="btn-primary">
+                <i class="fa-brands fa-whatsapp"></i>
+                اطلب عرضًا وتجربة
+              </a>
+              <a href="#demo" class="btn-outline">
+                <i class="fa-solid fa-play"></i>
+                شاهد العرض التوضيحي
+              </a>
+            </div>
+
+            <div class="hero-meta">
+              <span class="hero-meta-item">
+                <i class="fa-solid fa-shield-halved" style="color:var(--brand-primary);"></i>
+                بيانات المدرسة معزولة وآمنة
+              </span>
+              <span>•</span>
+              <span class="hero-meta-item">
+                <i class="fa-solid fa-tv" style="color:var(--brand-primary);"></i>
+                تعمل على أي شاشة متصلة بالإنترنت
+              </span>
+            </div>
+          </div>
+
+          <!-- Demo / Video -->
+          <div class="hero-visual" id="demo">
+            <div class="demo-card">
+              <div class="demo-header">
+                <div class="demo-header-main">
+                  <div class="demo-title">🎥 عرض سريع للوحة العرض</div>
+                  <div class="demo-sub">شاهد كيف تظهر الجداول والتنبيهات على الشاشة</div>
+                </div>
+                <div class="demo-chip">
+                  ⚡
+                </div>
+              </div>
+
+              <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
+                <iframe
+                  id="ytFrame"
+                  loading="lazy"
+                  title="عرض توضيحي لمنصة لوحة العرض الذكية للمدارس"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowfullscreen>
+                </iframe>
+
+                <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
+                  <div class="play-btn">▶</div>
+                  <div class="text" style="font-weight:800; font-size:1rem;">تشغيل الفيديو</div>
+                  <div style="font-size:0.85rem; opacity:0.9;">سيتم تشغيل العرض داخل الصفحة</div>
+                </div>
+              </div>
+
+              <div class="demo-badges">
+                <div class="demo-pill">
+                  <i class="fa-solid fa-calendar-day"></i>
+                  جدول اليوم بشكل حي
+                </div>
+                <div class="demo-pill">
+                  <i class="fa-solid fa-bullhorn"></i>
+                  تنبيهات فورية للطلاب
+                </div>
+                <div class="demo-pill">
+                  <i class="fa-solid fa-trophy"></i>
+                  إبراز المتميزين
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- تنبيه تشغيل فعلي -->
+        <div style="margin-top: 26px; max-width: 760px;">
+          <div class="card" style="display:flex; gap:14px; align-items:flex-start; background:rgba(248,250,252,0.9);">
+            <div style="width:40px; height:40px; border-radius:14px; display:grid; place-items:center; background:#fef3c7; color:#92400e;">
+              <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div>
+              <div style="font-weight:800; font-size:0.98rem; margin-bottom:4px;">معلومة مهمة لعمل النظام</div>
+              <div style="font-size:0.9rem; color:var(--text-muted);">
+                تحتاج كل مدرسة إلى شاشة (أو أكثر) متصلة بالإنترنت داخل المبنى، يتم ربطها برابط عرض خاص (Token)
+                ليتم تحديث المحتوى تلقائيًا من لوحة التحكم.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-title">
+          <div class="badge" style="margin-bottom: 14px;">
+            <i class="fa-solid fa-sparkles"></i>
+            مميزات مبتكرة تخدم المدرسة
+          </div>
+          <h2>كل ما تحتاجه لإدارة محتوى شاشات مدرستك</h2>
+          <p>من جدول اليوم إلى ركن التميز؛ صُممت لوحة العرض الذكية لتكون واجهة المدرسة أمام الطلاب والزوار.</p>
+        </div>
+
+        <div id="featuresContainer" class="features-grid"></div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="section" id="how" style="background: var(--surface-2);">
+      <div class="container">
+        <div class="section-title">
+          <h2>كيف يعمل النظام في مدرستك؟</h2>
+          <p>خطوات بسيطة لتفعيل لوحة العرض الذكية وربطها بشاشات المدرسة.</p>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3 style="font-weight:800; margin-bottom:6px;">التسجيل وتهيئة المدرسة</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem;">
+              نقوم بإنشاء حساب لمدرستك، وإضافة الشعار، والألوان، ونوع الخلفية بما يتوافق مع هوية المدرسة.
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3 style="font-weight:800; margin-bottom:6px;">إضافة الشاشات وربطها</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem;">
+              تحصل على روابط عرض خاصة (Token) لكل شاشة، يتم فتحها في المتصفح على الشاشة داخل المدرسة.
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3 style="font-weight:800; margin-bottom:6px;">إدارة المحتوى من لوحة التحكم</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem;">
+              من لوحة واحدة، تضبط الجداول، التنبيهات، الحصص، وركن التميز — والتحديث يظهر فورًا على الشاشات.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section" style="padding-top: 20px;">
+      <div class="container">
+        <div class="cta-box">
+          <h2>جاهز تنقل شاشات مدرستك إلى مستوى جديد؟</h2>
+          <p>خطوة واحدة كفيلة بتحويل الشاشات من مجرد عرض ثابت إلى منصة تواصل يومية فعّالة داخل المدرسة.</p>
+          <div class="cta-actions">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener" class="btn-primary" style="background:#ffffff; color:var(--brand-primary); box-shadow:none;">
+              <i class="fa-brands fa-whatsapp"></i>
+              تواصل عبر واتساب
+            </a>
+            <a href="{{ subs_url }}" class="btn-outline" style="background:rgba(15,23,42,0.12); color:#e5edff; border-color:rgba(191,219,254,0.7);">
+              <i class="fa-solid fa-tags"></i>
+              اطّلع على خطط الاشتراك
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="contact-grid">
+          <div>
+            <div class="badge" style="margin-bottom: 14px;">
+              <i class="fa-solid fa-headset"></i>
+              تواصل سريع مع فريق المنصة
+            </div>
+            <h2 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 10px;">
+              دعنا نساعدك في تفعيل لوحة العرض في مدرستك
+            </h2>
+            <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 18px;">
+              ارسل لنا بيانات مدرستك واحتياجاتك، وسيتم التواصل معك لتقديم عرض تفصيلي يناسب عدد الشاشات والمراحل الدراسية.
+            </p>
+
+            <ul style="list-style:none; padding:0; margin:0; display:grid; gap:8px; font-size:0.9rem; color:var(--text-muted);">
+              <li>
+                <i class="fa-solid fa-circle-check" style="color:var(--brand-primary); margin-left:6px;"></i>
+                دعم كامل أثناء التجربة والتركيب الأولي.
+              </li>
+              <li>
+                <i class="fa-solid fa-circle-check" style="color:var(--brand-primary); margin-left:6px;"></i>
+                إمكانية ربط لوحة العرض مع نظام التقارير مستقبلاً.
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <form id="contactForm" class="card" style="box-shadow: var(--shadow-soft);">
+              <div style="display:grid; gap:10px; margin-bottom: 10px;">
+                <input type="text" name="name" class="inputX" placeholder="الاسم الكامل" autocomplete="name">
+                <input type="tel" name="phone" class="inputX" placeholder="رقم الجوال" autocomplete="tel">
+              </div>
+              <div style="display:grid; gap:10px; margin-bottom: 10px;">
+                <input type="text" name="school" class="inputX" placeholder="اسم المدرسة">
+                <input type="text" name="city" class="inputX" placeholder="المدينة (اختياري)">
+              </div>
+              <div style="margin-bottom: 12px;">
+                <textarea name="requirements" class="inputX textarea" placeholder="اذكر باختصار عدد الشاشات، المراحل، وأي ملاحظات تهمك..."></textarea>
+              </div>
+              <button type="submit" class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;">
+                <i class="fa-brands fa-whatsapp"></i>
+                إرسال الطلب عبر واتساب
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <a href="#" class="logo" style="margin-bottom: 10px;">
+              <div class="logo-icon">
+                <i class="fa-solid fa-display"></i>
+              </div>
+              <span>لوحة العرض الذكية</span>
+            </a>
+            <p style="font-size:0.9rem; color:var(--text-muted); max-width:300px;">
+              منصة مخصصة لعرض الجداول والتنبيهات والتكريمات على شاشات المدرسة، بهوية بصرية تعكس تميّز مدرستك.
+            </p>
+          </div>
+
+          <div class="footer-col">
+            <h4>روابط سريعة</h4>
+            <a href="#demo">العرض التوضيحي</a>
+            <a href="#features">المميزات</a>
+            <a href="#how">كيف يعمل النظام؟</a>
+          </div>
+
+          <div class="footer-col">
+            <h4>الدعم والتواصل</h4>
+            <a href="tel:+966537720207">+966 53 772 0207</a>
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">واتساب الدعم</a>
+            {% if login_url %}
+              <a href="{{ login_url }}">تسجيل الدخول</a>
+            {% endif %}
+          </div>
+
+          <div class="footer-col">
+            <h4>الاشتراكات</h4>
+            <a href="{{ subs_url }}">خطط الاشتراك</a>
+          </div>
+        </div>
+
+        <div class="footer-copy">
+          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
+        </div>
+      </div>
+    </footer>
+
+  {% else %}
+    <!-- FALLBACK: لا يوجد رابط اشتراكات -->
+    <header class="header" id="header">
+      <div class="container">
+        <div class="nav-wrap">
+          <a href="#" class="logo">
+            <div class="logo-icon">
+              <i class="fa-solid fa-display"></i>
+            </div>
+            <span>لوحة العرض الذكية</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="hero">
+      <div class="container">
+        <div class="card" style="margin-top: 90px;">
+          <h1 style="font-size:1.4rem; font-weight:800; margin-bottom:8px;">تنبيه إعدادات</h1>
+          <p style="font-size:0.95rem; color:var(--text-muted);">
+            رابط صفحة "خطط الاشتراك" غير مهيأ حاليًا في إعدادات الروابط (URLs)، لذلك تم تعطيل الأزرار المتعلقة به
+            مؤقتًا لتفادي ظهور أخطاء في الصفحة.
+          </p>
+        </div>
       </div>
     </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-copy">
+          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس.
+        </div>
+      </div>
+    </footer>
   {% endif %}
   {% endwith %}
 
-  <!-- Toast -->
+  <!-- TOAST -->
   <div id="toast" class="toast" aria-live="polite" aria-atomic="true">
-    <div class="glass rounded-2xl p-4 flex items-start gap-3">
-      <div class="h-10 w-10 rounded-xl soft flex items-center justify-center">✅</div>
-      <div class="flex-1">
-        <div class="font-extrabold">تم تجهيز رسالة واتساب</div>
-        <div class="text-sm mt-1" style="color:var(--muted)">سيتم فتح واتساب الآن لإرسال طلبك.</div>
+    <div class="toast-inner">
+      <div class="toast-icon">✅</div>
+      <div class="toast-text">
+        تم تجهيز رسالة واتساب، سيتم فتح التطبيق الآن لإرسال الطلب.
       </div>
-      <button id="toastClose" type="button" class="btnGhost rounded-xl px-3 py-2 text-sm font-bold">إغلاق</button>
+      <button id="toastClose" type="button" class="btn-ghost" style="border-radius:999px; padding:6px 10px; font-size:0.8rem;">
+        إغلاق
+      </button>
     </div>
   </div>
 
   <script>
-    // ---------- Year ----------
-    const yearEl = document.getElementById('currentYear');
-    if (yearEl) yearEl.textContent = new Date().getFullYear();
+    // سنة ديناميكية
+    (function() {
+      var yearEl = document.getElementById('currentYear');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+    })();
 
-    // ---------- Smooth scroll ----------
-    document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener('click', (e) => {
-        const id = a.getAttribute('href');
+    // تأثير الهيدر مع التمرير
+    window.addEventListener('scroll', function () {
+      var header = document.getElementById('header');
+      if (!header) return;
+      if (window.scrollY > 40) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    // سكرول سلس
+    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        var id = a.getAttribute('href');
         if (!id || id === '#') return;
-        const el = document.querySelector(id);
+        var el = document.querySelector(id);
         if (!el) return;
         e.preventDefault();
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
 
-    // ---------- Features ----------
-    const features = [
-      { icon:'📅', title:'جدول حصص ذكي', description:'عرض ديناميكي للحصص مع تمييز الحالية والتالية بتحديث تلقائي.' },
-      { icon:'📢', title:'مركز الإعلانات', description:'تنبيهات مهمة وفورية تظهر على الشاشات بمجرد نشرها.' },
-      { icon:'🏆', title:'ركن التميز', description:'إبراز الطلاب/المعلم/ـةين المتميزين لتحفيز بيئة إيجابية.' },
-      { icon:'🎨', title:'هوية لكل مدرسة', description:'ألوان وشعار وخلفيات تناسب هوية مدرستك.' },
-      { icon:'⚡', title:'أداء سريع', description:'تحديثات منتظمة وخفيفة على السيرفر تدعم التوسع لعدد كبير من المدارس.' },
-      { icon:'🔐', title:'صلاحيات وإدارة', description:'صلاحيات متعددة ولوحة تحكم سهلة لإدارة المحتوى والشاشات.' },
-    ];
-    const fCont = document.getElementById('featuresContainer');
-    if (fCont){
-      fCont.innerHTML = features.map(f => `
-        <div class="soft rounded-2xl p-6">
-          <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-2xl"
-               style="background:linear-gradient(135deg, var(--green), var(--green2)); border:1px solid rgba(255,255,255,.14)">
-            ${f.icon}
-          </div>
-          <h3 class="text-xl font-extrabold mt-4 mb-3">${f.title}</h3>
-          <p class="text-sm" style="color:var(--muted)">${f.description}</p>
-        </div>
-      `).join('');
-    }
+    // قائمة الجوال
+    (function() {
+      var mobileBtn = document.querySelector('.mobile-menu-btn');
+      var navLinks = document.querySelector('.nav-links');
+      if (!mobileBtn || !navLinks) return;
 
-    // ---------- YouTube ----------
+      mobileBtn.addEventListener('click', function () {
+        var isHidden = window.getComputedStyle(navLinks).display === 'none';
+        if (isHidden) {
+          navLinks.style.display = 'flex';
+          navLinks.style.flexDirection = 'column';
+          navLinks.style.position = 'absolute';
+          navLinks.style.top = '64px';
+          navLinks.style.left = '0';
+          navLinks.style.right = '0';
+          navLinks.style.padding = '14px 20px 18px';
+          navLinks.style.background = 'rgba(255,255,255,0.98)';
+          navLinks.style.borderBottom = '1px solid #e2e8f0';
+          navLinks.style.boxShadow = '0 18px 30px rgba(15,23,42,0.12)';
+          navLinks.style.gap = '14px';
+          navLinks.style.zIndex = '900';
+        } else {
+          navLinks.style.display = '';
+          navLinks.style.position = '';
+          navLinks.style.boxShadow = '';
+          navLinks.style.borderBottom = '';
+        }
+      });
+    })();
+
+    // مميزات اللوحة (تُبنى ديناميكياً)
+    (function() {
+      var features = [
+        { icon:'📅', title:'جدول حصص ذكي', description:'عرض ديناميكي للحصص مع تمييز الحصة الحالية والتالية بتحديث تلقائي من لوحة التحكم.' },
+        { icon:'📢', title:'مركز التنبيهات', description:'إظهار التنبيهات المهمة والفعاليات بشكل فوري على الشاشات في الممرات والفصول.' },
+        { icon:'🏆', title:'ركن التميز والتكريم', description:'إبراز الطلاب والمعلمين المتميزين بصورهم وأسمائهم لتحفيز بيئة إيجابية داخل المدرسة.' },
+        { icon:'🎨', title:'هوية بصرية مخصصة', description:'ألوان، خلفيات، وشعار يتوافق تماماً مع هوية مدرستك الرسمية.' },
+        { icon:'⚡', title:'تحديث لحظي وآمن', description:'أي تعديل من لوحة التحكم ينعكس مباشرة على الشاشات مع عزل تام لبيانات كل مدرسة.' },
+        { icon:'🖥️', title:'تعدد الشاشات', description:'ربط أكثر من شاشة في أرجاء المدرسة مع إمكانية تخصيص محتوى لكل شاشة عند الحاجة.' }
+      ];
+      var fCont = document.getElementById('featuresContainer');
+      if (!fCont) return;
+      fCont.innerHTML = features.map(function(f) {
+        return (
+          '<div class="feature-card">' +
+            '<div class="feature-icon">' + f.icon + '</div>' +
+            '<h3>' + f.title + '</h3>' +
+            '<p>' + f.description + '</p>' +
+          '</div>'
+        );
+      }).join('');
+    })();
+
+    // YouTube helpers
     function extractYouTubeId(url) {
       try {
-        const u = new URL(url);
-        if (u.hostname.includes('youtu.be')) return u.pathname.replace('/', '');
+        var u = new URL(url);
+        if (u.hostname.indexOf('youtu.be') !== -1) return u.pathname.replace('/', '');
         if (u.searchParams.get('v')) return u.searchParams.get('v');
-        const parts = u.pathname.split('/').filter(Boolean);
-        const embedIndex = parts.indexOf('embed');
+        var parts = u.pathname.split('/').filter(Boolean);
+        var embedIndex = parts.indexOf('embed');
         if (embedIndex >= 0 && parts[embedIndex + 1]) return parts[embedIndex + 1];
       } catch (e) {}
       return '';
     }
 
-    const videoWrap = document.querySelector('.video-wrap');
-    const overlay = document.getElementById('videoOverlay');
-    const frame = document.getElementById('ytFrame');
+    (function() {
+      var videoWrap = document.querySelector('.video-wrap');
+      var overlay = document.getElementById('videoOverlay');
+      var frame = document.getElementById('ytFrame');
+      if (!videoWrap || !overlay || !frame) return;
 
-    if (videoWrap && overlay && frame){
-      const youtubeUrl = videoWrap.getAttribute('data-youtube-url') || '';
-      const videoId = extractYouTubeId(youtubeUrl) || 'yqa9aT460GM';
-      const baseSrc = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
+      var youtubeUrl = videoWrap.getAttribute('data-youtube-url') || '';
+      var videoId = extractYouTubeId(youtubeUrl) || 'yqa9aT460GM';
+      var baseSrc = 'https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1&playsinline=1';
       frame.src = baseSrc;
 
       function playYouTube() {
         frame.src = baseSrc + '&autoplay=1';
         overlay.classList.add('hide');
-        setTimeout(() => overlay.style.display = 'none', 250);
+        setTimeout(function() {
+          overlay.style.display = 'none';
+        }, 260);
       }
 
       overlay.addEventListener('click', playYouTube);
-      overlay.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playYouTube(); }
+      overlay.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          playYouTube();
+        }
       });
-    }
+    })();
 
-    // ---------- Contact Form -> WhatsApp ----------
-    const toast = document.getElementById('toast');
-    const toastClose = document.getElementById('toastClose');
-
-    function cleanText(v){
-      const s = String(v || '').trim();
-      return s.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
-    }
-    function validPhone(v){
-      const s = cleanText(v).replace(/[^\d+]/g,'');
-      return s.length >= 9;
-    }
+    // Toast helpers
+    var toast = document.getElementById('toast');
+    var toastClose = document.getElementById('toastClose');
 
     function showToast() {
       if (!toast) return;
       toast.classList.add('show');
-      const t = setTimeout(() => toast.classList.remove('show'), 4500);
-      if (toastClose){
-        toastClose.onclick = () => { clearTimeout(t); toast.classList.remove('show'); };
+      var t = setTimeout(function() {
+        toast.classList.remove('show');
+      }, 4500);
+      if (toastClose) {
+        toastClose.onclick = function() {
+          clearTimeout(t);
+          toast.classList.remove('show');
+        };
       }
     }
 
-    const form = document.getElementById('contactForm');
-    if (form){
+    function cleanText(v) {
+      var s = String(v || '').trim();
+      return s.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function validPhone(v) {
+      var s = cleanText(v).replace(/[^\d+]/g, '');
+      return s.length >= 9;
+    }
+
+    // Contact form -> WhatsApp
+    (function() {
+      var form = document.getElementById('contactForm');
+      if (!form) return;
+
       form.addEventListener('submit', function(e) {
         e.preventDefault();
+        var fd = new FormData(form);
+        var data = Object.fromEntries(fd.entries());
 
-        const fd = new FormData(this);
-        const data = Object.fromEntries(fd.entries());
+        var name = cleanText(data.name);
+        var phone = cleanText(data.phone);
+        var school = cleanText(data.school);
+        var city = cleanText(data.city);
+        var requirements = cleanText(data.requirements);
 
-        const name = cleanText(data.name);
-        const phone = cleanText(data.phone);
-        const school = cleanText(data.school);
-        const city = cleanText(data.city);
-        const requirements = cleanText(data.requirements);
+        if (!name || name.length < 2) {
+          alert('فضلاً اكتب اسمًا صحيحًا.');
+          return;
+        }
+        if (!validPhone(phone)) {
+          alert('فضلاً اكتب رقم جوال صحيح.');
+          return;
+        }
+        if (!school || school.length < 2) {
+          alert('فضلاً اكتب اسم المدرسة.');
+          return;
+        }
+        if (!requirements || requirements.length < 5) {
+          alert('فضلاً اذكر احتياجاتك ومتطلباتك بشكل أوضح.');
+          return;
+        }
 
-        if (!name || name.length < 2) return alert('فضلاً اكتب اسمًا صحيحًا.');
-        if (!validPhone(phone)) return alert('فضلاً اكتب رقم جوال صحيح.');
-        if (!school || school.length < 2) return alert('فضلاً اكتب اسم المدرسة.');
-        if (!requirements || requirements.length < 5) return alert('فضلاً اكتب متطلباتك واحتياجاتك.');
-
-        const msg = `
-السلام عليكم ورحمة الله وبركاته،
-
-أرغب في تجربة/الاشتراك في منصة لوحة العرض الذكية للمدارس.
-
-*البيانات:*
-- الاسم: ${name}
-- الجوال: ${phone}
-- المدرسة: ${school}
-- المدينة: ${city || '-'}
-
-*المتطلبات:*
-${requirements}
-
-شاكرين لكم.
-        `.trim();
+        var msg = (
+          'السلام عليكم ورحمة الله وبركاته،\n\n' +
+          'أرغب في تجربة/الاشتراك في منصة لوحة العرض الذكية للمدارس.\n\n' +
+          '*البيانات:*\n' +
+          '- الاسم: ' + name + '\n' +
+          '- الجوال: ' + phone + '\n' +
+          '- المدرسة: ' + school + '\n' +
+          '- المدينة: ' + (city || '-') + '\n\n' +
+          '*المتطلبات:*\n' +
+          requirements + '\n\n' +
+          'شاكرين لكم.'
+        );
 
         showToast();
-        const url = `https://wa.me/966537720207?text=${encodeURIComponent(msg)}`;
+        var url = 'https://wa.me/966537720207?text=' + encodeURIComponent(msg);
         window.open(url, '_blank', 'noopener,noreferrer');
-
-        this.reset();
+        form.reset();
       });
-    }
+    })();
   </script>
 </body>
 </html>
