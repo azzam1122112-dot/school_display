@@ -1,257 +1,209 @@
 {% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#063b2e">
+  <meta name="theme-color" content="#2563eb">
   <title>تسجيل الدخول — لوحة العرض الذكية</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="{{ STATIC_PREFIX }}favicon.ico">
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Tailwind CDN (إذا منصتك مبنية على Tailwind محلي احذف هذا) -->
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    :root{
-      /* Vision 2030-inspired palette (Saudi green + deep navy + sky) */
-      --bg1:#04110d;
-      --bg2:#063b2e;
-      --navy:#071b2a;
+    :root {
+      --brand-primary: #2563eb;
+      --brand-dark: #1e40af;
+      --brand-light: #60a5fa;
+      --accent: #f59e0b;
 
-      --card:rgba(255,255,255,.06);
-      --stroke:rgba(255,255,255,.14);
+      --surface-1: #ffffff;
+      --surface-2: #f8fafc;
+      --surface-3: #e5edff;
 
-      --text:rgba(255,255,255,.94);
-      --muted:rgba(255,255,255,.74);
-      --muted2:rgba(255,255,255,.56);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-light: #e2e8f0;
 
-      --green:#1f9d55;
-      --green2:#22c55e;
-      --sky:#38bdf8;
-      --gold:#d4af37;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
 
-      --danger:#fb7185;
-      --radius: 24px;
+      --shadow-soft: 0 10px 40px -10px rgba(15, 23, 42, 0.18);
+      --shadow-strong: 0 22px 60px -18px rgba(15, 23, 42, 0.35);
     }
 
-    html,body{height:100%}
-    body{
-      font-family:"IBM Plex Sans Arabic", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-      color:var(--text);
+    body {
+      font-family: 'Tajawal', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        radial-gradient(900px 460px at 15% 10%, rgba(34,197,94,.22), transparent 60%),
-        radial-gradient(900px 460px at 85% 18%, rgba(56,189,248,.14), transparent 60%),
-        radial-gradient(700px 350px at 45% 105%, rgba(212,175,55,.10), transparent 60%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      overflow-x:hidden;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+        radial-gradient(720px 420px at 10% 0%, rgba(37, 99, 235, 0.10), transparent 60%),
+        radial-gradient(720px 420px at 90% 10%, rgba(56, 189, 248, 0.10), transparent 60%),
+        radial-gradient(720px 420px at 50% 100%, rgba(59, 130, 246, 0.12), transparent 60%),
+        linear-gradient(180deg, #f8fafc, #e2e8f0);
+      min-height: 100vh;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
     }
 
-    .bgGrid::before{
-      content:"";
-      position:absolute; inset:0;
-      background-image:
-        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
-      background-size: 48px 48px;
-      opacity:.06;
-      pointer-events:none;
-      mask-image: radial-gradient(ellipse at center, black 35%, transparent 70%);
+    .card {
+      background: var(--surface-1);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-strong);
+      padding: 32px;
     }
 
-    .glass{
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
-      border:1px solid var(--stroke);
-      box-shadow: 0 26px 90px rgba(0,0,0,.38);
-      backdrop-filter: blur(12px);
+    .btn-primary {
+      background: linear-gradient(120deg, var(--brand-primary), var(--brand-dark));
+      color: #ffffff;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
+      transition: all 0.25s ease;
+      width: 100%;
     }
-
-    .soft{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.05);
-      transition: all .25s ease;
-    }
-    .soft:hover{
-      background: rgba(255,255,255,.085);
+    .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 14px 44px rgba(0,0,0,.22);
+      box-shadow: 0 16px 40px rgba(37, 99, 235, 0.45);
     }
 
-    .tag{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-    }
-
-    .miniLine{
-      height:1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
-    }
-
-    .inputX{
-      width:100%;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 16px;
-      padding: 12px 14px;
+    .inputX {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border-light);
+      padding: 12px 16px;
+      font-size: 0.95rem;
       outline: none;
-      color: #e5e7eb;
-      transition: all .2s ease;
+      background: #ffffff;
+      color: var(--text-main);
+      transition: all 0.2s ease;
     }
-    .inputX::placeholder{ color: rgba(255,255,255,.45); }
-    .inputX:focus{
-      border-color: rgba(34,197,94,.55);
-      box-shadow: 0 0 0 4px rgba(34,197,94,.14);
-      background: rgba(255,255,255,.09);
-    }
-
-    .btnBrand{
-      background: linear-gradient(90deg, rgba(31,157,85,1), rgba(56,189,248,.95));
-      box-shadow: 0 16px 46px rgba(34,197,94,.18);
-      transition: all .25s ease;
-    }
-    .btnBrand:hover{ filter: brightness(1.06); transform: translateY(-1px); }
-
-    .btnGhost{
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
-      transition: all .25s ease;
-    }
-    .btnGhost:hover{ background: rgba(255,255,255,.12); transform: translateY(-1px); }
-
-    .btnGold{
-      background: linear-gradient(90deg, rgba(212,175,55,.95), rgba(255,225,120,.92));
-      color:#1b1b1b;
-      box-shadow:0 16px 44px rgba(212,175,55,.18);
-      transition: all .25s ease;
-    }
-    .btnGold:hover{ filter:brightness(1.05); transform: translateY(-1px); }
-
-    .badgeGrad{
-      background: linear-gradient(90deg, rgba(34,197,94,.22), rgba(56,189,248,.16));
-      border:1px solid rgba(255,255,255,.14);
+    .inputX:focus {
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
-    /* Floating WhatsApp */
-    .waFloat{
-      position: fixed;
-      left: 16px;
-      bottom: 16px;
-      z-index: 60;
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 10%, #e0f2fe, #2563eb);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
+      font-size: 1.3rem;
     }
 
-    /* Toast */
-    .toast{
-      position:fixed;
-      right:16px; left:16px;
-      bottom: 86px;
-      max-width: 720px;
-      margin:0 auto;
-      z-index:70;
-      display:none;
-    }
-    .toast.show{ display:block; }
-
-    @keyframes fadeUp { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
-    .fadeUp{ animation: fadeUp .5s ease both; }
+    @keyframes fadeUp { from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:translateY(0)} }
+    .fadeUp { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
   </style>
 </head>
 
 <body>
-  <div class="absolute inset-0 bgGrid pointer-events-none"></div>
-
-  <!-- Top Bar -->
-  <header class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6">
-    <div class="glass rounded-3xl px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl">🏫</div>
-        <div>
-          <div class="text-base sm:text-lg font-extrabold leading-tight"
-               style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; color:transparent;">
-            لوحة العرض الذكية للمدارس
-          </div>
-          <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-            التحول الرقمي للشاشات المدرسية — رؤية 2030
-          </div>
+  <header class="py-8">
+    <div class="container mx-auto px-4 flex justify-center">
+      <a href="/" class="flex items-center gap-3">
+        <div class="logo-icon">
+          <i class="fa-solid fa-display"></i>
         </div>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <a href="/" class="btnGhost rounded-2xl px-4 py-2 text-sm font-bold">الصفحة الرئيسية</a>
-
-      </div>
+        <span class="text-xl font-black tracking-tight">لوحة العرض الذكية</span>
+      </a>
     </div>
   </header>
 
-  <main class="relative mx-auto max-w-md px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
-    <!-- Login card only -->
-    <section class="fadeUp">
-      <div class="glass rounded-3xl p-6 sm:p-8">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <h2 class="text-2xl font-extrabold">تسجيل الدخول</h2>
-              <p class="mt-1 text-sm" style="color:var(--muted)">لإدارة المدارس، الشاشات، والإعدادات.</p>
-            </div>
-            <div class="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl soft">
-              <span class="text-xl">🔑</span>
-            </div>
-          </div>
+  <main class="flex-1 flex items-center justify-center px-4 pb-12">
+    <div class="w-full max-w-[420px] fadeUp">
+      <div class="card">
+        <div class="text-center mb-8">
+          <h1 class="text-2xl font-black mb-2">تسجيل الدخول</h1>
+          <p class="text-slate-500 text-sm">أهلاً بك مجدداً، قم بتسجيل الدخول لإدارة مدرستك</p>
+        </div>
 
-          {% if messages %}
-            <div class="mt-4 space-y-2">
-              {% for message in messages %}
-                <div class="rounded-2xl px-4 py-3 soft text-sm">
-                  {{ message }}
-                </div>
-              {% endfor %}
-            </div>
+        {% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for message in messages %}
+              <div class="rounded-xl px-4 py-3 bg-red-50 border border-red-100 text-red-600 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" autocomplete="on" class="space-y-5">
+          {% csrf_token %}
+          {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
           {% endif %}
 
-          <form class="mt-5 space-y-4" method="post" autocomplete="on" novalidate>
-            {% csrf_token %}
-            {% if next %}
-              <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
-
-            <div>
-              <label class="block text-sm font-medium mb-2">اسم المستخدم</label>
+          <div>
+            <label class="block text-sm font-bold mb-2 mr-1">اسم المستخدم</label>
+            <div class="relative">
               <input
                 class="inputX"
                 type="text"
                 name="username"
                 autocomplete="username"
                 placeholder="اكتب اسم المستخدم"
-                maxlength="64"
                 required
               >
             </div>
+          </div>
 
-            <div>
-              <label class="block text-sm font-medium mb-2">كلمة المرور</label>
+          <div>
+            <label class="block text-sm font-bold mb-2 mr-1">كلمة المرور</label>
+            <div class="relative">
               <input
                 class="inputX"
                 type="password"
                 name="password"
                 autocomplete="current-password"
                 placeholder="••••••••"
-                maxlength="128"
                 required
               >
             </div>
+          </div>
 
-            <button type="submit" class="w-full rounded-2xl px-4 py-3 font-extrabold btnBrand">
-              دخول النظام
+          <div class="pt-2">
+            <button type="submit" class="btn-primary">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              دخول المنصة
             </button>
-          </form>
+          </div>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+          <a href="/" class="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+            <i class="fa-solid fa-arrow-right ml-1"></i>
+            العودة للرئيسية
+          </a>
         </div>
-      <footer class="mt-6 text-center text-xs" style="color:var(--muted2)">
-        © {{ now|date:"Y" }} — جميع الحقوق محفوظة
+      </div>
+
+      <footer class="mt-8 text-center text-slate-400 text-xs font-medium">
+        © {% now "Y" %} لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
       </footer>
-    </section>
+    </div>
   </main>
 </body>
 </html>
