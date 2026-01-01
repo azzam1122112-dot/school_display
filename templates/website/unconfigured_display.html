@@ -25,7 +25,7 @@
 
   <style>
     /* =========================
-       DESIGN SYSTEM (متوافق مع منصة التقارير)
+       DESIGN SYSTEM
        ========================= */
     :root {
       --brand-primary: #2563eb;
@@ -101,6 +101,19 @@
       background: rgba(37, 99, 235, 0.08);
       color: var(--brand-primary);
       border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    .badge-soft {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted);
+      border: 1px dashed rgba(148, 163, 184, 0.6);
     }
 
     .bg-glass {
@@ -423,7 +436,7 @@
       border: 1px solid rgba(129, 140, 248, 0.5);
     }
 
-    /* Features section */
+    /* Sections */
     .section {
       padding: 80px 0;
     }
@@ -444,6 +457,7 @@
       margin: 0 auto;
     }
 
+    /* Features section */
     .features-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -516,6 +530,153 @@
       background: radial-gradient(circle at 30% 10%, #e0f2fe, #bfdbfe);
     }
 
+    /* Comparison (مقارنة الطريقة التقليدية) */
+    .comparison-wrap {
+      background: var(--surface-1);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-soft);
+      padding: 22px 20px;
+    }
+    .comparison-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      font-size: 0.9rem;
+    }
+    .comparison-table th,
+    .comparison-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: right;
+    }
+    .comparison-table thead th {
+      background: #eff6ff;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+    .comparison-table tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    .comparison-table b {
+      font-weight: 800;
+    }
+
+    /* Pricing section */
+    .pricing-badge {
+      margin-bottom: 10px;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      margin-top: 24px;
+    }
+    .price-card {
+      background: var(--surface-1);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-soft);
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .price-card.featured {
+      border-color: rgba(37, 99, 235, 0.7);
+      box-shadow: 0 18px 50px rgba(37, 99, 235, 0.28);
+      position: relative;
+    }
+    .price-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .price-name {
+      font-weight: 800;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .price-tag {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .price-value {
+      font-weight: 900;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .price-value span {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .price-duration {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: left;
+    }
+    .price-features {
+      list-style: none;
+      padding: 0;
+      margin: 4px 0 10px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      display: grid;
+      gap: 4px;
+    }
+    .price-features li::before {
+      content: "• ";
+      color: var(--brand-primary);
+      margin-left: 4px;
+    }
+    .price-footer {
+      margin-top: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .price-tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.06);
+      margin-top: 14px;
+    }
+    .price-tab-btn {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 6px 16px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .price-tab-btn.active {
+      background: #ffffff;
+      color: var(--brand-primary);
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+    }
+    .price-row {
+      margin-top: 14px;
+    }
+
+    .extra-note {
+      margin-top: 18px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
     /* CTA */
     .cta-box {
       background: linear-gradient(135deg, var(--brand-dark), var(--brand-primary));
@@ -578,7 +739,7 @@
       z-index: 1;
     }
 
-    /* Contact form */
+    /* Contact form grid */
     .contact-grid {
       display: grid;
       grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
@@ -612,6 +773,58 @@
       border-radius: 18px;
       resize: vertical;
       min-height: 120px;
+    }
+
+    /* تحسين نموذج التواصل */
+    #contactForm.card {
+      border-radius: 28px;
+      padding: 22px 22px 18px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      box-shadow: 0 18px 45px -18px rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    #contactForm .inputX {
+      border-radius: 999px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(226, 232, 240, 1);
+      box-shadow: 0 4px 16px rgba(148, 163, 184, 0.18);
+      margin-bottom: 8px;
+    }
+
+    #contactForm .inputX:focus {
+      border-color: rgba(37, 99, 235, 0.85);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+      background: #ffffff;
+    }
+
+    #contactForm .inputX.textarea {
+      border-radius: 18px;
+      min-height: 130px;
+      box-shadow: 0 4px 16px rgba(148, 163, 184, 0.16);
+    }
+
+    #contactForm .btn-primary {
+      border-radius: 999px;
+      margin-top: 10px;
+      font-size: 0.95rem;
+      box-shadow: 0 16px 40px rgba(37, 99, 235, 0.45);
+    }
+
+    @media (min-width: 1024px) {
+      #contactForm.card {
+        max-width: 520px;
+        margin-left: auto;
+        margin-right: 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      #contactForm.card {
+        border-radius: 22px;
+        padding: 18px 16px 16px;
+      }
     }
 
     /* Footer */
@@ -683,8 +896,8 @@
       border-radius: 999px;
       display: grid;
       place-items: center;
-      background: #dbeafe;   /* أزرق فاتح */
-      color: #1d4ed8;        /* أزرق للنص */
+      background: #dbeafe;
+      color: #1d4ed8;
       font-size: 1rem;
     }
     .toast-text {
@@ -692,7 +905,7 @@
       color: var(--text-main);
     }
 
-    /* Animations (خفيفة) */
+    /* Animations */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
@@ -741,6 +954,9 @@
       .steps-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+      .pricing-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
       .contact-grid {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -767,6 +983,9 @@
       .steps-grid {
         grid-template-columns: minmax(0, 1fr);
       }
+      .pricing-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
       .footer-grid {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -775,6 +994,9 @@
       }
       .logo span {
         display: none;
+      }
+      .comparison-table {
+        min-width: 520px;
       }
     }
   </style>
@@ -799,8 +1021,11 @@
           </a>
 
           <nav class="nav-links">
+            <a href="#demo">العرض التوضيحي</a>
             <a href="#features">المميزات</a>
-            <a href="#how">كيف يعمل النظام؟</a>
+            <a href="#how">كيف يعمل؟</a>
+            <a href="#comparison">مقارنة</a>
+            <a href="#pricing">الخطط والأسعار</a>
             <a href="#contact">تواصل معنا</a>
             <a href="{{ subs_url }}" class="btn-ghost">
               <i class="fa-solid fa-tags"></i>
@@ -843,7 +1068,7 @@
           <div class="hero-content">
             <div class="badge" style="margin-bottom: 18px;">
               <i class="fa-solid fa-bolt"></i>
-              تحديث لحظي • هوية لكل مدرسة • تحكم مركزي في الشاشات
+              تحديث لحظي • هوية لكل مدرسة • يعمل على جميع الأجهزة
             </div>
 
             <h1>
@@ -853,7 +1078,8 @@
 
             <p>
               نظام مخصص لعرض كل ما يهم المدرسة على الشاشات: جدول اليوم، التنبيهات، حصص الانتظار،
-              فعاليات المدرسة، وركن المتميزين — بتحديث تلقائي وواجهة تعكس هوية مدرستك.
+              فعاليات المدرسة، وركن المتميزين — بتحديث تلقائي وواجهة تعكس هوية مدرستك، ويدعم الشاشات
+              وTV/4K بالإضافة إلى الجوال والكمبيوتر لمتابعة لوحة التحكم.
             </p>
 
             <div class="hero-actions" style="display:flex; flex-wrap:wrap; gap:12px;">
@@ -865,6 +1091,10 @@
                 <i class="fa-solid fa-play"></i>
                 شاهد العرض التوضيحي
               </a>
+              <a href="#pricing" class="btn-ghost">
+                <i class="fa-solid fa-tags"></i>
+                الخطط والأسعار
+              </a>
             </div>
 
             <div class="hero-meta">
@@ -875,7 +1105,12 @@
               <span>•</span>
               <span class="hero-meta-item">
                 <i class="fa-solid fa-tv" style="color:var(--brand-primary);"></i>
-                تعمل على أي شاشة متصلة بالإنترنت
+                تعمل على أي شاشة أو TV متصل بالإنترنت
+              </span>
+              <span>•</span>
+              <span class="hero-meta-item">
+                <i class="fa-solid fa-mobile-screen-button" style="color:var(--brand-primary);"></i>
+                تحكم كامل من الجوال أو الكمبيوتر
               </span>
             </div>
           </div>
@@ -937,7 +1172,7 @@
               <div style="font-weight:800; font-size:0.98rem; margin-bottom:4px;">معلومة مهمة لعمل النظام</div>
               <div style="font-size:0.9rem; color:var(--text-muted);">
                 تحتاج كل مدرسة إلى شاشة (أو أكثر) متصلة بالإنترنت داخل المبنى، يتم ربطها برابط عرض خاص (Token)
-                ليتم تحديث المحتوى تلقائيًا من لوحة التحكم.
+                ليتم تحديث المحتوى تلقائيًا من لوحة التحكم، مع دعم كامل للشاشات وTV/4K.
               </div>
             </div>
           </div>
@@ -954,7 +1189,7 @@
             مميزات مبتكرة تخدم المدرسة
           </div>
           <h2>كل ما تحتاجه لإدارة محتوى شاشات مدرستك</h2>
-          <p>من جدول اليوم إلى ركن التميز؛ صُممت لوحة العرض الذكية لتكون واجهة المدرسة أمام الطلاب والزوار.</p>
+          <p>من جدول اليوم إلى ركن التميز؛ صُممت لوحة العرض الذكية لتكون واجهة المدرسة أمام الطلاب والزوار، وتعمل على جميع الأجهزة المتصلة بالإنترنت.</p>
         </div>
 
         <div id="featuresContainer" class="features-grid"></div>
@@ -981,16 +1216,293 @@
             <div class="step-number">2</div>
             <h3 style="font-weight:800; margin-bottom:6px;">إضافة الشاشات وربطها</h3>
             <p style="color:var(--text-muted); font-size:0.9rem;">
-              تحصل على روابط عرض خاصة (Token) لكل شاشة، يتم فتحها في المتصفح على الشاشة داخل المدرسة.
+              تحصل على روابط عرض خاصة (Token) لكل شاشة، يتم فتحها في المتصفح على الشاشة داخل المدرسة (TV أو شاشة عادية).
             </p>
           </div>
           <div class="step-card">
             <div class="step-number">3</div>
             <h3 style="font-weight:800; margin-bottom:6px;">إدارة المحتوى من لوحة التحكم</h3>
             <p style="color:var(--text-muted); font-size:0.9rem;">
-              من لوحة واحدة، تضبط الجداول، التنبيهات، الحصص، وركن التميز — والتحديث يظهر فورًا على الشاشات.
+              من لوحة واحدة، تضبط الجداول، التنبيهات، الحصص، وركن التميز — والتحديث يظهر فورًا على الشاشات، ويمكن متابعته من الجوال أو الكمبيوتر.
             </p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section class="section" id="comparison">
+      <div class="container">
+        <div class="section-title">
+          <div class="badge-soft" style="margin-bottom: 14px;">
+            <i class="fa-solid fa-scale-balanced"></i>
+            مقارنة بين الطريقة التقليدية واللوحة الذكية
+          </div>
+          <h2>الطريقة التقليدية vs لوحة العرض الذكية</h2>
+          <p>مقارنة مباشرة تساعد الإدارة على رؤية الفرق بين اللوحات الورقية القديمة وشاشة ذكية محدثة لحظيًا.</p>
+        </div>
+
+        <div class="comparison-wrap">
+          <div class="badge-soft" style="margin-bottom:10px;">
+            <i class="fa-solid fa-circle-info"></i>
+            المقارنة تركز على ما يراه الطلاب والزوار يوميًا في الممرات وبهو المدرسة.
+          </div>
+
+          <div class="comparison-table-wrap">
+            <table class="comparison-table" aria-label="مقارنة لوحة العرض الذكية مع الطريقة التقليدية">
+              <thead>
+                <tr>
+                  <th>المحور</th>
+                  <th>الطريقة التقليدية (لوحات ورقية)</th>
+                  <th>لوحة العرض الذكية</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>التنبيهات</b></td>
+                  <td>إعلانات ورقية تحتاج طباعة وتعليق وقد تُنسى إزالتها بعد انتهاء المناسبة.</td>
+                  <td>تنبيهات تظهر وتختفي تلقائيًا حسب التاريخ والوقت المحدد من لوحة التحكم.</td>
+                </tr>
+                <tr>
+                  <td><b>جدول اليوم</b></td>
+                  <td>غالبًا غير محدث، أو مكتوب بخط اليد، وصعب تعديله يوميًا.</td>
+                  <td>عرض واضح للجدول اليومي/الحصص/الانتظار، يتحدث تلقائيًا حسب إعدادات المدرسة.</td>
+                </tr>
+                <tr>
+                  <td><b>وضوح القراءة</b></td>
+                  <td>النصوص صغيرة وتبهت مع الوقت، وصعب قراءتها من مسافة.</td>
+                  <td>واجهة كبيرة مخصصة للشاشات وTV/4K مع خطوط وتباين مدروس لسهولة القراءة.</td>
+                </tr>
+                <tr>
+                  <td><b>الجهد اليومي</b></td>
+                  <td>كتابة، طباعة، قص، وتعليق أوراق جديدة باستمرار.</td>
+                  <td>إدارة المحتوى من لوحة تحكم، بدون قصاصات ورقية أو تعليق يدوي متكرر.</td>
+                </tr>
+                <tr>
+                  <td><b>التكلفة على المدى البعيد</b></td>
+                  <td>حبر، ورق، لوحات، ووقت موظفين للتجهيز والمتابعة.</td>
+                  <td>اشتراك ثابت يغطي النظام والدعم، مع توفير واضح في الوقت والاستهلاك الورقي.</td>
+                </tr>
+                <tr>
+                  <td><b>الانطباع العام</b></td>
+                  <td>لوحات تقليدية قد تبدو مزدحمة وغير محدثة.</td>
+                  <td>واجهة احترافية تعكس تنظيم المدرسة وتميزها أمام الطلاب والزوار.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="section" id="pricing" style="background: var(--surface-2);">
+      <div class="container">
+        <div class="section-title">
+          <div class="badge pricing-badge">
+            <i class="fa-solid fa-tags"></i>
+            خطط اشتراك مرنة حسب عدد الشاشات
+          </div>
+          <h2>الخطط والأسعار — لوحة العرض الذكية للمدارس</h2>
+          <p>الأسعار التالية أمثلة توضّح مستوى الاشتراك، ويمكن ضبط العرض النهائي حسب عدد الشاشات واحتياج كل مدرسة.</p>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:800; font-size:0.98rem; margin-bottom:4px;">خيارات الفترة الزمنية</div>
+              <p style="font-size:0.9rem; color:var(--text-muted); margin:0;">
+                يمكنك الاشتراك نصف سنوي أو سنوي، مع إمكانية إضافة شاشات إضافية شهريًا حسب الحاجة.
+              </p>
+            </div>
+            <div class="price-tabs" aria-label="اختيار فترة الاشتراك">
+              <button type="button" class="price-tab-btn active" data-plan-period="6m">
+                نصف سنوي (6 أشهر)
+              </button>
+              <button type="button" class="price-tab-btn" data-plan-period="12m">
+                سنوي (12 شهر)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- نصف سنوي -->
+        <div class="price-row" data-plan-panel="6m">
+          <div class="pricing-grid">
+            <div class="price-card">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة أساسية</div>
+                  <div class="price-tag">حتى 1 شاشة عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">465 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 6 أشهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>مناسبة للمدارس الصغيرة أو شاشة رئيسية واحدة.</li>
+                <li>واجهة TV/4K واضحة مع هوية المدرسة.</li>
+                <li>تحديث تلقائي للجدول والتنبيهات.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض لهذه الخطة
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+
+            <div class="price-card featured">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة متقدمة ⭐</div>
+                  <div class="price-tag">حتى 3 شاشات عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">775 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 6 أشهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>أفضل اختيار لمعظم المدارس (ممرات + بهو + إدارة).</li>
+                <li>إدارة شاشات متعددة من لوحة تحكم واحدة.</li>
+                <li>دعم فني محسّن أثناء فترة الاشتراك.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض لهذه الخطة
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+
+            <div class="price-card">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة مؤسسية</div>
+                  <div class="price-tag">حتى 5 شاشات عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">1,055 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 6 أشهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>للمدارس الكبيرة أو المجمّعات التعليمية.</li>
+                <li>مرونة أعلى في توزيع الشاشات على الأدوار والمباني.</li>
+                <li>أولوية في الدعم والتحديثات.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض لهذه الخطة
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- سنوي -->
+        <div class="price-row" data-plan-panel="12m" style="display:none;">
+          <div class="pricing-grid">
+            <div class="price-card">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة أساسية</div>
+                  <div class="price-tag">حتى 1 شاشة عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">745 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 12 شهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>للمدارس التي ترغب في تشغيل شاشة رئيسية طوال العام الدراسي.</li>
+                <li>واجهة متوافقة مع TV/4K وتصفح من جميع الأجهزة.</li>
+                <li>تحديث تلقائي يومي للجدول والتنبيهات.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض سنوي
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+
+            <div class="price-card featured">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة متقدمة ⭐</div>
+                  <div class="price-tag">حتى 3 شاشات عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">1,245 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 12 شهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>أفضل خيار لمدارس المراحل المتعددة أو المباني المتعددة.</li>
+                <li>إدارة كاملة للشاشات من أي جهاز متصل بالإنترنت.</li>
+                <li>دعم فني متواصل طوال السنة.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض سنوي
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+
+            <div class="price-card">
+              <div class="price-header">
+                <div>
+                  <div class="price-name">خطة مؤسسية</div>
+                  <div class="price-tag">حتى 5 شاشات عرض</div>
+                </div>
+                <div>
+                  <div class="price-value">1,695 <span>ريال</span></div>
+                  <div class="price-duration">لمدة 12 شهر</div>
+                </div>
+              </div>
+              <ul class="price-features">
+                <li>للمدارس الكبيرة جدًا أو المجمّعات المدرسية.</li>
+                <li>مرونة واسعة لتوزيع الشاشات على عدة مواقع.</li>
+                <li>أولوية دعم وتخصيص الهوية بشكل أعمق.</li>
+              </ul>
+              <div class="price-footer">
+                <a href="#contact" class="btn-primary" style="font-size:0.85rem; padding:8px 16px;">
+                  طلب عرض سنوي
+                </a>
+                <a href="{{ subs_url }}" class="btn-ghost" style="font-size:0.85rem; padding:8px 16px;">
+                  تفاصيل الخطط
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card extra-note">
+          <div style="font-weight:800; font-size:0.95rem; margin-bottom:6px;">
+            إضافة شاشات عرض إضافية
+          </div>
+          <p style="margin:0 0 4px;">
+            يمكن إضافة شاشات إضافية فوق الباقة المتفق عليها بسعر تقديري
+            <b>55 ريال شهريًا لكل شاشة إضافية</b>، مع ربطها بنفس لوحة التحكم.
+          </p>
+          <p style="margin:0;">
+            اذكر عدد الشاشات والمراحل الدراسية في نموذج التواصل، وسيتم تجهيز عرض مخصص لمدرستك.
+          </p>
         </div>
       </div>
     </section>
@@ -1000,7 +1512,7 @@
       <div class="container">
         <div class="cta-box">
           <h2>جاهز تنقل شاشات مدرستك إلى مستوى جديد؟</h2>
-          <p>خطوة واحدة كفيلة بتحويل الشاشات من مجرد عرض ثابت إلى منصة تواصل يومية فعّالة داخل المدرسة.</p>
+          <p>خطوة واحدة كفيلة بتحويل الشاشات من مجرد عرض ثابت إلى منصة تواصل يومية فعّالة داخل المدرسة، تعمل على أي شاشة متصلة بالإنترنت.</p>
           <div class="cta-actions">
             <a href="https://wa.me/966537720207" target="_blank" rel="noopener" class="btn-primary" style="background:#ffffff; color:var(--brand-primary); box-shadow:none;">
               <i class="fa-brands fa-whatsapp"></i>
@@ -1028,7 +1540,8 @@
               دعنا نساعدك في تفعيل لوحة العرض في مدرستك
             </h2>
             <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 18px;">
-              ارسل لنا بيانات مدرستك واحتياجاتك، وسيتم التواصل معك لتقديم عرض تفصيلي يناسب عدد الشاشات والمراحل الدراسية.
+              ارسل لنا بيانات مدرستك واحتياجاتك، وسيتم التواصل معك لتقديم عرض تفصيلي يناسب عدد الشاشات والمراحل الدراسية،
+              مع ضمان التوافق مع الشاشات وTV/4K والأجهزة المختلفة داخل المدرسة.
             </p>
 
             <ul style="list-style:none; padding:0; margin:0; display:grid; gap:8px; font-size:0.9rem; color:var(--text-muted);">
@@ -1038,13 +1551,13 @@
               </li>
               <li>
                 <i class="fa-solid fa-circle-check" style="color:var(--brand-primary); margin-left:6px;"></i>
-                إمكانية ربط لوحة العرض مع نظام التقارير مستقبلاً.
+                إمكانية ربط لوحة العرض مع أنظمة أخرى للمدرسة مستقبلًا.
               </li>
             </ul>
           </div>
 
           <div>
-            <form id="contactForm" class="card" style="box-shadow: var(--shadow-soft);">
+            <form id="contactForm" class="card">
               <div style="display:grid; gap:10px; margin-bottom: 10px;">
                 <input type="text" name="name" class="inputX" placeholder="الاسم الكامل" autocomplete="name">
                 <input type="tel" name="phone" class="inputX" placeholder="رقم الجوال" autocomplete="tel">
@@ -1054,9 +1567,9 @@
                 <input type="text" name="city" class="inputX" placeholder="المدينة (اختياري)">
               </div>
               <div style="margin-bottom: 12px;">
-                <textarea name="requirements" class="inputX textarea" placeholder="اذكر باختصار عدد الشاشات، المراحل، وأي ملاحظات تهمك..."></textarea>
+                <textarea name="requirements" class="inputX textarea" placeholder="اذكر باختصار عدد الشاشات، المراحل، وهل ترغب في ربطها مع أنظمة أخرى..."></textarea>
               </div>
-              <button type="submit" class="btn-primary" style="width:100%; justify-content:center; margin-top:4px;">
+              <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">
                 <i class="fa-brands fa-whatsapp"></i>
                 إرسال الطلب عبر واتساب
               </button>
@@ -1078,7 +1591,7 @@
               <span>لوحة العرض الذكية</span>
             </a>
             <p style="font-size:0.9rem; color:var(--text-muted); max-width:300px;">
-              منصة مخصصة لعرض الجداول والتنبيهات والتكريمات على شاشات المدرسة، بهوية بصرية تعكس تميّز مدرستك.
+              منصة مخصصة لعرض الجداول والتنبيهات والتكريمات على شاشات المدرسة، بهوية بصرية تعكس تميّز مدرستك وتعمل على جميع الأجهزة المتصلة بالإنترنت.
             </p>
           </div>
 
@@ -1087,6 +1600,7 @@
             <a href="#demo">العرض التوضيحي</a>
             <a href="#features">المميزات</a>
             <a href="#how">كيف يعمل النظام؟</a>
+            <a href="#comparison">مقارنة</a>
           </div>
 
           <div class="footer-col">
@@ -1101,6 +1615,7 @@
           <div class="footer-col">
             <h4>الاشتراكات</h4>
             <a href="{{ subs_url }}">خطط الاشتراك</a>
+            <a href="#pricing">الخطط والأسعار</a>
           </div>
         </div>
 
@@ -1228,7 +1743,7 @@
         { icon:'🏆', title:'ركن التميز والتكريم', description:'إبراز الطلاب والمعلمين المتميزين بصورهم وأسمائهم لتحفيز بيئة إيجابية داخل المدرسة.' },
         { icon:'🎨', title:'هوية بصرية مخصصة', description:'ألوان، خلفيات، وشعار يتوافق تماماً مع هوية مدرستك الرسمية.' },
         { icon:'⚡', title:'تحديث لحظي وآمن', description:'أي تعديل من لوحة التحكم ينعكس مباشرة على الشاشات مع عزل تام لبيانات كل مدرسة.' },
-        { icon:'🖥️', title:'تعدد الشاشات', description:'ربط أكثر من شاشة في أرجاء المدرسة مع إمكانية تخصيص محتوى لكل شاشة عند الحاجة.' }
+        { icon:'🖥️', title:'تعدد الشاشات والأجهزة', description:'ربط أكثر من شاشة في أرجاء المدرسة، مع عمل النظام على أي متصفح في الشاشات وTV/4K والجوال والكمبيوتر.' }
       ];
       var fCont = document.getElementById('featuresContainer');
       if (!fCont) return;
@@ -1363,6 +1878,41 @@
         window.open(url, '_blank', 'noopener,noreferrer');
         form.reset();
       });
+    })();
+
+    // تبديل تبويبات الأسعار (نصف سنوي / سنوي)
+    (function() {
+      var tabButtons = document.querySelectorAll('.price-tab-btn');
+      var panels = document.querySelectorAll('[data-plan-panel]');
+      if (!tabButtons.length || !panels.length) return;
+
+      function activate(period) {
+        tabButtons.forEach(function(btn) {
+          var p = btn.getAttribute('data-plan-period');
+          if (p === period) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+        panels.forEach(function(panel) {
+          var p = panel.getAttribute('data-plan-panel');
+          if (p === period) {
+            panel.style.display = '';
+          } else {
+            panel.style.display = 'none';
+          }
+        });
+      }
+
+      tabButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var period = btn.getAttribute('data-plan-period') || '6m';
+          activate(period);
+        });
+      });
+
+      activate('6m');
     })();
   </script>
 </body>
