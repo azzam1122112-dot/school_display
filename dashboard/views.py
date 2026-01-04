@@ -450,17 +450,18 @@ def logout_view(request):
 
 @manager_required
 def change_password(request):
+    next_url = _safe_next_url(request, default_name="dashboard:index")
     if request.method == "POST":
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)
             messages.success(request, "تم تغيير كلمة المرور بنجاح!")
-            return redirect("dashboard:index")
+            return redirect(next_url)
         messages.error(request, "الرجاء تصحيح الأخطاء أدناه.")
     else:
         form = PasswordChangeForm(request.user)
-    return render(request, "dashboard/change_password.html", {"form": form})
+    return render(request, "dashboard/change_password.html", {"form": form, "next": next_url})
 
 
 @manager_required
