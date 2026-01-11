@@ -15,6 +15,10 @@ class StandbyAssignment(models.Model):
         verbose_name = "تكليف انتظار"
         verbose_name_plural = "تكليفات انتظار"
         ordering = ("-date", "period_index")
+        indexes = [
+            models.Index(fields=["school", "date"], name="standby_school_date_idx"),
+            models.Index(fields=["school", "date", "period_index"], name="standby_school_date_pidx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.date} — حصة {self.period_index} — {self.class_name} — {self.teacher_name}"

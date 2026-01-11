@@ -1,13 +1,14 @@
 from django.test import TestCase
 from core.models import School, DisplayScreen
 
+from core.tests_utils import make_active_school_with_screen
+
 
 class NoticesAPITests(TestCase):
     def test_active_announcements_empty_ok(self):
-        school = School.objects.create(name="Test School", slug="test-school")
-        screen = DisplayScreen.objects.create(school=school, name="Screen 1")
+        bundle = make_active_school_with_screen(max_screens=3)
 
-        resp = self.client.get(f"/api/announcements/active/?token={screen.token}")
+        resp = self.client.get(f"/api/announcements/active/?token={bundle.screen.token}")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["items"], [])
 
@@ -43,11 +44,9 @@ from notices.models import Announcement, Excellence
 
 class AnnouncementsApiSuccessTests(TestCase):
     def setUp(self):
-        # School يحتاج slug في موديل core
-        self.school = School.objects.create(name="مدرسة الاختبار", slug="test-school")
-
-        # core.DisplayScreen يولد token تلقائياً (64-hex)
-        self.screen = DisplayScreen.objects.create(school=self.school, name="Screen 1")
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.school = bundle.school
+        self.screen = bundle.screen
 
         self.now = timezone.now()
 

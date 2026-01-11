@@ -111,6 +111,11 @@ class Announcement(models.Model):
         verbose_name = "تنبيه"
         verbose_name_plural = "تنبيهات"
         ordering = ("-starts_at",)
+        indexes = [
+            models.Index(fields=["school", "is_active"], name="ann_school_active_idx"),
+            models.Index(fields=["school", "starts_at"], name="ann_school_starts_idx"),
+            models.Index(fields=["school", "expires_at"], name="ann_school_expires_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"[{self.get_level_display()}] {self.title}"
@@ -238,6 +243,10 @@ class Excellence(models.Model):
         verbose_name = "تميّز"
         verbose_name_plural = "تميّز"
         ordering = ("priority", "-start_at")
+        indexes = [
+            # active_for_today filters on (school, start_at__date__lte)
+            models.Index(fields=["school", "start_at"], name="exc_school_day_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.teacher_name} — {self.reason}"

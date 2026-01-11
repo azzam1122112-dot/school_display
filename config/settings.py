@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 import os
+# Snapshot cache TTL (seconds)
+# Used by schedule.api_views.snapshot server-side caching.
+try:
+    DISPLAY_SNAPSHOT_CACHE_TTL = int(os.environ.get("DISPLAY_SNAPSHOT_CACHE_TTL", "15"))
+except Exception:
+    DISPLAY_SNAPSHOT_CACHE_TTL = 15
+DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
+
 from pathlib import Path
 from urllib.parse import urlparse
 
