@@ -26,23 +26,18 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
-    /* 
-     * PROFESSIONAL DESIGN SYSTEM 
-     * Clean, Modern, Trustworthy
-     */
     :root {
-      /* Palette: Trust Blue & Growth Green mix */
-      --primary: #2563eb;       /* Royal Blue */
+      --primary: #2563eb;
       --primary-dark: #1e40af;
       --primary-light: #eff6ff;
-      
-      --accent: #10b981;        /* Emerald */
+
+      --accent: #10b981;
       --accent-glow: rgba(16, 185, 129, 0.4);
 
-      --dark: #0f172a;          /* Slate 900 */
-      --text: #334155;          /* Slate 700 */
-      --text-light: #64748b;    /* Slate 500 */
-      
+      --dark: #0f172a;
+      --text: #334155;
+      --text-light: #64748b;
+
       --bg-page: #ffffff;
       --bg-surface: #f8fafc;
       --border: #e2e8f0;
@@ -56,9 +51,14 @@
       --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
       --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
       --shadow-brand: 0 20px 25px -5px rgba(37, 99, 235, 0.15), 0 8px 10px -6px rgba(37, 99, 235, 0.1);
+
+      /* Launch promo */
+      --launch-bg: rgba(37, 99, 235, 0.08);
+      --launch-border: rgba(37, 99, 235, 0.18);
+      --warn: #f59e0b;
+      --danger: #ef4444;
     }
 
-    /* Reset & Base */
     * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
     html { scroll-behavior: smooth; font-size: 16px; }
     body {
@@ -73,7 +73,7 @@
     p { margin: 0; }
     a { text-decoration: none; color: inherit; transition: 0.2s; }
     ul { list-style: none; padding: 0; margin: 0; }
-    
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
@@ -81,13 +81,13 @@
       width: 100%;
     }
 
-    /* Utility */
     .text-gradient {
       background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -99,6 +99,7 @@
       font-size: 0.85rem;
       font-weight: 700;
     }
+
     .section-spacing { padding: 100px 0; }
 
     /* Buttons */
@@ -113,6 +114,7 @@
       cursor: pointer;
       transition: all 0.25s ease;
       font-size: 1rem;
+      border: 0;
     }
     .btn-primary {
       background: var(--primary);
@@ -130,10 +132,7 @@
       box-shadow: var(--shadow-md);
       border: 1px solid var(--border);
     }
-    .btn-white:hover {
-      background: #f8fafc;
-      transform: translateY(-2px);
-    }
+    .btn-white:hover { background: #f8fafc; transform: translateY(-2px); }
 
     /* Header */
     header {
@@ -150,19 +149,9 @@
       padding: 14px 0;
       border-bottom: 1px solid var(--border);
     }
-    .nav-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 900;
-      font-size: 1.25rem;
-      color: var(--dark);
-    }
+
+    .nav-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.25rem; color: var(--dark); }
     .logo-icon {
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--primary), #a855f7);
@@ -172,50 +161,30 @@
       place-items: center;
       font-size: 1.2rem;
     }
-    .nav-links {
-      display: flex;
-      gap: 32px;
-    }
-    .nav-links a {
-      font-weight: 600;
-      color: var(--text);
-      font-size: 0.95rem;
-    }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { font-weight: 600; color: var(--text); font-size: 0.95rem; }
     .nav-links a:hover { color: var(--primary); }
 
     /* Hero */
     .hero {
       padding-top: 160px;
       padding-bottom: 100px;
-      background: 
+      background:
         radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
         radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
     }
-    .hero-content {
-      text-align: center;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .hero h1 {
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      margin-bottom: 24px;
-      letter-spacing: -1px;
-    }
+    .hero-content { text-align: center; max-width: 900px; margin: 0 auto; }
+    .hero h1 { font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 18px; letter-spacing: -1px; }
     .hero p {
       font-size: 1.25rem;
       color: var(--text-light);
-      margin-bottom: 40px;
-      max-width: 650px;
+      margin-bottom: 26px;
+      max-width: 680px;
       margin-left: auto;
       margin-right: auto;
     }
-    .hero-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
-    }
-    
+    .hero-buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
     .hero-visual {
       margin-top: 60px;
       position: relative;
@@ -229,29 +198,150 @@
       margin-left: auto;
       margin-right: auto;
     }
-    .hero-visual iframe {
-      width: 100%; height: 100%; border: 0;
+    .hero-visual iframe { width: 100%; height: 100%; border: 0; }
+
+    /* Launch Banner (NEW) */
+    .launch-banner {
+      margin: 22px auto 0;
+      max-width: 920px;
+      border: 1px solid var(--launch-border);
+      background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(16,185,129,0.08));
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+    .launch-banner::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 10%, rgba(99,102,241,0.18) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 60%, rgba(16,185,129,0.14) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .launch-inner {
+      position: relative;
+      padding: 18px 18px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .launch-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--dark);
+      font-weight: 900;
+      font-size: 1.05rem;
+    }
+    .launch-title i { color: var(--primary); }
+    .launch-sub {
+      margin-top: 6px;
+      color: var(--text-light);
+      font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .launch-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(226,232,240,0.9);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--dark);
+      box-shadow: var(--shadow-sm);
+      white-space: nowrap;
+    }
+    .pill i { color: var(--accent); }
+    .pill.warn i { color: var(--warn); }
+    .pill.danger i { color: var(--danger); }
+
+    .launch-cta {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: center;
+      min-width: 240px;
+    }
+    .mini-note {
+      font-size: 0.85rem;
+      color: rgba(15, 23, 42, 0.75);
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .mini-note i { color: var(--primary); }
+    .countdown {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(226,232,240,0.9);
+      box-shadow: var(--shadow-sm);
+      width: 100%;
+      justify-content: space-between;
+      font-weight: 900;
+      color: var(--dark);
+    }
+    .countdown small { font-weight: 800; color: var(--text-light); }
+    .countdown span { font-variant-numeric: tabular-nums; }
+
+    .launch-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), #22c55e);
+      color: white;
+      font-weight: 900;
+      box-shadow: 0 10px 20px rgba(16,185,129,0.25);
+      border: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    .launch-btn:hover { transform: translateY(-2px); opacity: .96; }
+    .launch-fineprint {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: rgba(51, 65, 85, 0.9);
+      font-weight: 700;
     }
 
-    /* Features Grid */
-    .features {
-      background: var(--bg-surface);
-      position: relative;
-      overflow: hidden;
-    }
-    .section-header {
+    /* Proof */
+    .proof-section {
+      background: var(--dark);
+      color: white;
+      padding: 60px 0;
       text-align: center;
-      max-width: 700px;
-      margin: 0 auto 60px;
     }
+    .proof-grid { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+    .stat-item h3 { color: white; font-size: 2.5rem; margin-bottom: 5px; }
+    .stat-item p { color: #94a3b8; font-size: 1rem; }
+
+    /* Features */
+    .features { background: var(--bg-surface); position: relative; overflow: hidden; }
+    .section-header { text-align: center; max-width: 700px; margin: 0 auto 60px; }
     .section-header h2 { font-size: 2.5rem; margin-bottom: 16px; }
     .section-header p { font-size: 1.1rem; color: var(--text-light); }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 32px;
-    }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; }
     .feature-card {
       background: white;
       padding: 32px;
@@ -259,11 +349,7 @@
       border: 1px solid var(--border);
       transition: 0.3s;
     }
-    .feature-card:hover {
-      transform: translateY(-5px);
-      box-shadow: var(--shadow-lg);
-      border-color: var(--primary-light);
-    }
+    .feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
     .feature-icon {
       width: 54px; height: 54px;
       background: var(--primary-light);
@@ -277,36 +363,24 @@
     .feature-card h3 { font-size: 1.25rem; margin-bottom: 12px; }
     .feature-card p { color: var(--text-light); font-size: 0.95rem; }
 
-    /* Pricing Section (The Core Request) */
-    .pricing-container {
-      position: relative;
-      z-index: 2;
-    }
-    
-    /* Toggle Switch */
+    /* Pricing */
+    .pricing-container { position: relative; z-index: 2; }
+
     .pricing-toggle {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 16px;
-      margin-bottom: 50px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
     }
-    .toggle-label {
-      font-weight: 700;
-      color: var(--text-light);
-      font-size: 1rem;
-      cursor: pointer;
-    }
+    .toggle-label { font-weight: 700; color: var(--text-light); font-size: 1rem; cursor: pointer; }
     .toggle-label.active { color: var(--dark); }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 56px; height: 30px;
-    }
+
+    .switch { position: relative; display: inline-block; width: 56px; height: 30px; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute;
-      cursor: pointer;
+      position: absolute; cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: #cbd5e1;
       transition: .4s;
@@ -323,7 +397,7 @@
     }
     input:checked + .slider { background-color: var(--primary); }
     input:checked + .slider:before { transform: translateX(26px); }
-    
+
     .discount-badge {
       background: #dcfce7;
       color: #15803d;
@@ -336,14 +410,44 @@
     }
     @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100%{transform: scale(1);} }
 
-    /* Pricing Cards Grid */
+    /* Launch mini-bar above pricing cards (NEW) */
+    .launch-mini {
+      max-width: 1000px;
+      margin: 0 auto 26px;
+      border: 1px dashed rgba(37, 99, 235, 0.35);
+      background: rgba(37, 99, 235, 0.05);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .launch-mini strong { color: var(--dark); font-weight: 900; }
+    .launch-mini span { color: var(--text-light); font-weight: 700; }
+    .launch-mini .mini-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: white;
+      border: 1px solid rgba(226,232,240,0.95);
+      box-shadow: var(--shadow-sm);
+      font-weight: 900;
+      color: var(--dark);
+      font-size: 0.85rem;
+    }
+    .mini-chip i { color: var(--primary); }
+
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr); /* 5 cols for 1,2,3,4,5 screens */
+      grid-template-columns: repeat(5, 1fr);
       gap: 20px;
       align-items: stretch;
     }
-    
     .price-card {
       background: white;
       border-radius: var(--radius-lg);
@@ -354,10 +458,8 @@
       display: flex;
       flex-direction: column;
     }
-    /* Hover effect */
     .price-card:hover { border-color: var(--primary); transform: translateY(-8px); box-shadow: var(--shadow-lg); z-index: 10; }
 
-    /* Popular Card Styling */
     .price-card.popular {
       background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
       border: 2px solid var(--accent);
@@ -386,24 +488,14 @@
       align-items: center;
       gap: 8px;
     }
-    .screen-icon {
-      color: var(--primary);
-    }
-    
-    .price-wrap {
-      margin: 16px 0;
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-    }
+    .screen-icon { color: var(--primary); }
+
+    .price-wrap { margin: 16px 0; display: flex; align-items: baseline; gap: 4px; }
     .currency { font-size: 0.9rem; font-weight: 700; color: var(--text-light); }
     .amount { font-size: 2rem; font-weight: 900; color: var(--dark); line-height: 1; }
     .period { font-size: 0.85rem; color: var(--text-light); }
 
-    .features-list {
-      margin: 20px 0 auto 0;
-      font-size: 0.9rem;
-    }
+    .features-list { margin: 20px 0 auto 0; font-size: 0.9rem; }
     .features-list li {
       margin-bottom: 10px;
       display: flex;
@@ -433,21 +525,169 @@
     }
     .btn-plan:hover { opacity: 0.9; }
 
-    /* Testimonials / Social Proof */
-    .proof-section {
-      background: var(--dark);
-      color: white;
-      padding: 60px 0;
-      text-align: center;
-    }
-    .proof-grid {
-      display: flex;
+    /* Launch modal (NEW) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
       justify-content: center;
-      gap: 40px;
-      flex-wrap: wrap;
+      padding: 18px;
+      z-index: 2000;
     }
-    .stat-item h3 { color: white; font-size: 2.5rem; margin-bottom: 5px; }
-    .stat-item p { color: #94a3b8; font-size: 1rem; }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      width: min(920px, 100%);
+      background: white;
+      border-radius: 22px;
+      border: 1px solid rgba(226,232,240,0.95);
+      box-shadow: 0 30px 80px rgba(2,6,23,0.25);
+      overflow: hidden;
+      transform: translateY(8px);
+      opacity: 0;
+      transition: .18s ease;
+    }
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .modal-head {
+      padding: 16px 18px;
+      background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.10));
+      border-bottom: 1px solid rgba(226,232,240,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .modal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 1000;
+      color: var(--dark);
+    }
+    .modal-title i { color: var(--primary); }
+    .modal-close {
+      border: 0;
+      background: white;
+      border-radius: 12px;
+      padding: 8px 10px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(226,232,240,0.95);
+      font-weight: 900;
+      color: var(--dark);
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .modal-body { padding: 18px; }
+    .launch-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .launch-card {
+      border: 1px solid rgba(226,232,240,0.95);
+      border-radius: 18px;
+      padding: 14px;
+      background: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+    .launch-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .launch-card h3 i { color: var(--accent); }
+    .launch-card p { color: var(--text-light); font-weight: 700; margin-bottom: 10px; line-height: 1.8; }
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(226,232,240,0.95);
+      background: #fff;
+    }
+    .step .num {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: rgba(37,99,235,0.10);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      font-weight: 1000;
+      flex: 0 0 auto;
+    }
+    .step strong { color: var(--dark); font-weight: 1000; }
+    .step span { display: block; color: var(--text-light); font-weight: 700; margin-top: 3px; }
+
+    .launch-offer {
+      background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(37,99,235,0.10));
+      border: 1px solid rgba(16,185,129,0.20);
+    }
+    .offer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(226,232,240,0.95);
+      margin-top: 8px;
+      font-weight: 900;
+      color: var(--dark);
+    }
+    .offer-row small { color: var(--text-light); font-weight: 800; }
+    .offer-row b { font-variant-numeric: tabular-nums; }
+    .offer-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .offer-actions a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 1000;
+      border: 1px solid rgba(226,232,240,0.95);
+    }
+    .offer-actions .wa {
+      background: #25d366;
+      color: white;
+      border-color: rgba(0,0,0,0.0);
+      box-shadow: 0 12px 20px rgba(37, 211, 102, 0.18);
+    }
+    .offer-actions .wa:hover { opacity: .95; transform: translateY(-1px); }
+    .offer-actions .ghost {
+      background: white;
+      color: var(--primary);
+    }
+    .tiny {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: rgba(51,65,85,0.85);
+      font-weight: 800;
+      line-height: 1.8;
+    }
 
     /* Contact */
     .contact-cta {
@@ -473,23 +713,23 @@
 
     /* Responsive */
     @media (max-width: 1024px) {
-      .pricing-grid {
-        grid-template-columns: repeat(2, 1fr); /* 2 columns tablet */
-      }
-      .price-card.popular { grid-column: span 2; } /* Highlight takes full width */
+      .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+      .price-card.popular { grid-column: span 2; }
+      .launch-inner { grid-template-columns: 1fr; }
+      .launch-cta { min-width: auto; align-items: stretch; }
+      .launch-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
       .hero h1 { font-size: 2.2rem; }
-      .nav-links { display: none; } /* Simplified for mobile */
-      .pricing-grid {
-        grid-template-columns: 1fr; /* Stack mobile */
-      }
+      .nav-links { display: none; }
+      .pricing-grid { grid-template-columns: 1fr; }
       .price-card.popular { grid-column: span 1; }
+      .launch-mini { justify-content: center; text-align: center; }
+      .launch-mini .mini-actions { justify-content: center; }
     }
   </style>
 </head>
 <body>
-  
   {% url 'subscriptions' as subscriptions_url %}
   {% url 'website:subscriptions' as website_subscriptions_url %}
   {% url 'dashboard:login' as login_url %}
@@ -522,14 +762,17 @@
   <section class="hero">
     <div class="container">
       <div class="hero-content">
-        <div class="badge" style="margin-bottom: 20px;">
+        <div class="badge" style="margin-bottom: 12px;">
           🚀 الإصدار الجديد 2.0 متاح الآن
         </div>
+
         <h1>مدرستك تستحق <span class="text-gradient">واجهة رقمية</span> تواكب المستقبل</h1>
+
         <p>
           نظام متكامل لإدارة شاشات المدرسة: عرض الجداول، حصص الانتظار، أخبار المدرسة، ولوحة الشرف..
           كل هذا بتحديث لحظي وتصميم احترافي.
         </p>
+
         <div class="hero-buttons">
           <a href="#pricing" class="btn btn-primary">
             ابدأ الاشتراك الآن
@@ -540,6 +783,57 @@
             شاهد العرض
           </a>
         </div>
+
+        <!-- LAUNCH BANNER (NEW) -->
+        <div class="launch-banner" id="launch">
+          <div class="launch-inner">
+            <div>
+              <div class="launch-title">
+                <i class="fa-solid fa-rocket"></i>
+                <span>عرض الإطلاق للعام الدراسي 1447–1448</span>
+              </div>
+
+              <div class="launch-sub">
+                باقة خاصة <strong>لمدة 6 أشهر (الفصل الدراسي الحالي فقط)</strong> — مخصصة <strong>لأول 10 مدارس</strong> للتجربة المبكرة مع أولوية دعم وتجهيز.
+              </div>
+
+              <div class="launch-pills">
+                <span class="pill danger"><i class="fa-solid fa-users"></i> المتاح: <span id="slotsLeft">10</span> مدارس</span>
+                <span class="pill warn"><i class="fa-solid fa-clock"></i> ينتهي تلقائيًا بعد اكتمال المقاعد</span>
+                <span class="pill"><i class="fa-solid fa-headset"></i> أولوية دعم وتجهيز</span>
+                <span class="pill"><i class="fa-solid fa-shield"></i> حماية وتحديثات مستمرة</span>
+              </div>
+
+              <div class="launch-fineprint">
+                * العرض مخصص للمدارس المسجلة ضمن العرض فقط، وبعد انتهاء الـ 6 أشهر يتم التجديد وفق الأسعار الرسمية في الموقع.
+              </div>
+            </div>
+
+            <div class="launch-cta">
+              <div class="mini-note">
+                <i class="fa-solid fa-bolt"></i>
+                أسرع طريقة للحجز: واتساب خلال دقيقة
+              </div>
+
+              <div class="countdown" aria-label="عداد انتهاء العرض">
+                <small>ينتهي خلال</small>
+                <span id="countdownText">—</span>
+              </div>
+
+              <button class="launch-btn" type="button" id="openLaunchModal">
+                <i class="fa-solid fa-sparkles"></i>
+                شاهد تفاصيل عرض الإطلاق
+              </button>
+
+              <a class="btn btn-primary" href="#pricing" style="width:100%; justify-content:center; padding: 12px 14px; border-radius: 14px;">
+                احجز الآن من قسم الأسعار
+                <i class="fa-solid fa-arrow-left"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- END LAUNCH BANNER -->
+
       </div>
 
       <div class="hero-visual" id="demo">
@@ -601,12 +895,26 @@
     </div>
   </section>
 
-  <!-- Pricing Section 5 Tiers -->
+  <!-- Pricing Section -->
   <section class="section-spacing" id="pricing">
     <div class="container pricing-container">
       <div class="section-header">
         <h2>اختر الباقة المناسبة لعدد شاشاتك</h2>
         <p>أسعار مدروسة تناسب جميع المدارس، من شاشة واحدة وحتى المجمعات التعليمية.</p>
+      </div>
+
+      <!-- NEW: Launch mini bar -->
+      <div class="launch-mini">
+        <div>
+          <strong><i class="fa-solid fa-rocket" style="color:var(--primary);"></i> عرض الإطلاق</strong>
+          <span>— 6 أشهر للفصل الدراسي الحالي 1447–1448، متاح لأول 10 مدارس فقط.</span>
+        </div>
+        <div class="mini-actions">
+          <span class="mini-chip"><i class="fa-solid fa-users"></i> المتبقي: <span id="slotsLeft2">10</span></span>
+          <button type="button" class="mini-chip" id="openLaunchModal2" style="cursor:pointer;">
+            <i class="fa-solid fa-circle-info"></i> التفاصيل
+          </button>
+        </div>
       </div>
 
       <!-- Toggle Switch -->
@@ -623,7 +931,6 @@
       </div>
 
       <div class="pricing-grid">
-        
         <!-- Tier 1 -->
         <div class="price-card">
           <div class="plan-screens">
@@ -634,8 +941,8 @@
             <span class="amount" data-price-6="460" data-price-12="750">460</span>
             <span class="currency">ريال</span>
           </div>
-          <span class="period" id="periodText1">لمدة 6 أشهر</span>
-          
+          <span class="period">لمدة 6 أشهر</span>
+
           <ul class="features-list">
             <li><i class="fa-solid fa-check"></i> شاشة رئيسية</li>
             <li><i class="fa-solid fa-check"></i> تحكم كامل</li>
@@ -657,8 +964,8 @@
             <span class="amount" data-price-6="720" data-price-12="1150">720</span>
             <span class="currency">ريال</span>
           </div>
-          <span class="period" id="periodText2">لمدة 6 أشهر</span>
-          
+          <span class="period">لمدة 6 أشهر</span>
+
           <ul class="features-list">
             <li><i class="fa-solid fa-check"></i> للممرات والإدارة</li>
             <li><i class="fa-solid fa-check"></i> نفس المميزات الكاملة</li>
@@ -669,7 +976,7 @@
           </div>
         </div>
 
-        <!-- Tier 3 (STAR) -->
+        <!-- Tier 3 -->
         <div class="price-card popular">
           <div class="popular-tag"><i class="fa-solid fa-star"></i> الأكثر طلباً</div>
           <div class="plan-screens">
@@ -680,8 +987,8 @@
             <span class="amount" data-price-6="960" data-price-12="1550">960</span>
             <span class="currency">ريال</span>
           </div>
-          <span class="period" id="periodText3">لمدة 6 أشهر</span>
-          
+          <span class="period">لمدة 6 أشهر</span>
+
           <ul class="features-list">
             <li><i class="fa-solid fa-check"></i> تغطية مثالية</li>
             <li><i class="fa-solid fa-check"></i> دعم فني مميز</li>
@@ -702,8 +1009,8 @@
             <span class="amount" data-price-6="1180" data-price-12="1900">1180</span>
             <span class="currency">ريال</span>
           </div>
-          <span class="period" id="periodText4">لمدة 6 أشهر</span>
-          
+          <span class="period">لمدة 6 أشهر</span>
+
           <ul class="features-list">
             <li><i class="fa-solid fa-check"></i> للمدارس الكبيرة</li>
             <li><i class="fa-solid fa-check"></i> لوحة تحكم موحدة</li>
@@ -724,8 +1031,8 @@
             <span class="amount" data-price-6="1380" data-price-12="2200">1380</span>
             <span class="currency">ريال</span>
           </div>
-          <span class="period" id="periodText5">لمدة 6 أشهر</span>
-          
+          <span class="period">لمدة 6 أشهر</span>
+
           <ul class="features-list">
             <li><i class="fa-solid fa-check"></i> باقة المجمعات</li>
             <li><i class="fa-solid fa-check"></i> أقل تكلفة للشاشة</li>
@@ -735,7 +1042,6 @@
             <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
           </div>
         </div>
-
       </div>
 
       <!-- Note -->
@@ -744,6 +1050,10 @@
         يمكنك إضافة شاشات إضافية في أي وقت بسعر 55 ريال/شهر للشاشة.
       </div>
 
+      <div style="text-align:center; margin-top:14px; font-size:0.85rem; color:rgba(51,65,85,0.85); font-weight:800; line-height:1.8;">
+        <i class="fa-solid fa-shield" style="color:var(--primary);"></i>
+        ملاحظة: <strong>عرض الإطلاق</strong> (6 أشهر للفصل الدراسي الحالي 1447–1448) متاح لأول 10 مدارس فقط، وبعدها يكون التجديد حسب <strong>الأسعار الرسمية</strong> أعلاه.
+      </div>
     </div>
   </section>
 
@@ -760,7 +1070,7 @@
           </a>
           {% if subs_url %}
           <a href="{{ subs_url }}" class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4);">
-             استعراض تفاصيل الاشتراك
+            استعراض تفاصيل الاشتراك
           </a>
           {% endif %}
         </div>
@@ -801,14 +1111,101 @@
 
   {% endwith %}
 
+  <!-- Launch Modal (NEW) -->
+  <div class="modal-overlay" id="launchModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="launchModalTitle">
+      <div class="modal-head">
+        <div class="modal-title" id="launchModalTitle">
+          <i class="fa-solid fa-rocket"></i>
+          <span>تفاصيل عرض الإطلاق (1447–1448)</span>
+        </div>
+        <button type="button" class="modal-close" id="closeLaunchModal">
+          <i class="fa-solid fa-xmark"></i>
+          إغلاق
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="launch-grid">
+          <div class="launch-card">
+            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> لماذا عرض الإطلاق؟</h3>
+            <p>
+              لأننا نختار معكم أول تجربة تشغيل حقيقية داخل المدارس — ونمنح المدارس الأولى
+              <strong>سعرًا مميزًا</strong> مقابل مشاركة الملاحظات لتحسين التجربة بأسرع وقت.
+            </p>
+
+            <div class="steps">
+              <div class="step">
+                <div class="num">1</div>
+                <div>
+                  <strong>تفعيل سريع</strong>
+                  <span>نجهز لكم الشاشة والهوية خلال وقت قصير ونضمن جاهزية العرض.</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="num">2</div>
+                <div>
+                  <strong>تشغيل عملي داخل المدرسة</strong>
+                  <span>جداول + حصص انتظار + إعلانات + لوحة شرف.. بتحديث لحظي.</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="num">3</div>
+                <div>
+                  <strong>دعم وأولوية</strong>
+                  <span>أولوية في الدعم والتجهيز أثناء فترة الإطلاق.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="launch-card launch-offer">
+            <h3><i class="fa-solid fa-gift"></i> شروط العرض بشكل واضح</h3>
+
+            <div class="offer-row">
+              <small>المدة</small>
+              <b>6 أشهر (الفصل الدراسي الحالي)</b>
+            </div>
+            <div class="offer-row">
+              <small>المستهدف</small>
+              <b>أول 10 مدارس فقط</b>
+            </div>
+            <div class="offer-row">
+              <small>التجديد</small>
+              <b>حسب الأسعار الرسمية بعد انتهاء المدة</b>
+            </div>
+            <div class="offer-row">
+              <small>المتبقي الآن</small>
+              <b><span id="slotsLeft3">10</span> مدارس</b>
+            </div>
+
+            <div class="offer-actions">
+              <a class="wa" href="https://wa.me/966537720207" target="_blank" rel="noopener">
+                <i class="fa-brands fa-whatsapp"></i>
+                احجز مقعد الإطلاق عبر واتساب
+              </a>
+              <a class="ghost" href="#pricing">
+                <i class="fa-solid fa-tags"></i>
+                الرجوع إلى الأسعار الرسمية
+              </a>
+            </div>
+
+            <div class="tiny">
+              * الهدف من “عرض الإطلاق” هو منح المدارس الأولى أفضل سعر وتجربة دعم أعلى، وبعدها يتم اعتماد الأسعار الرسمية للجميع بشكل عادل وواضح.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script>
     (function () {
       // Update Year
       var yearEl = document.getElementById('year');
-      if (yearEl) {
-        yearEl.textContent = new Date().getFullYear();
-      }
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
 
       // Scroll Header
       window.addEventListener('scroll', function () {
@@ -825,41 +1222,28 @@
       var amounts = document.querySelectorAll('.amount');
       var periods = document.querySelectorAll('.period');
 
-      if (!toggle || !amounts || !amounts.length) return;
-
       function readAttr(el, attr) {
         var v = el.getAttribute(attr);
         return (v === null || typeof v === 'undefined') ? '' : v;
       }
-
       function getPrice(el, isAnnual) {
         var v = readAttr(el, isAnnual ? 'data-price-12' : 'data-price-6');
-        if (!v && el.dataset) {
-          v = isAnnual ? el.dataset.price12 : el.dataset.price6;
-        }
+        if (!v && el.dataset) v = isAnnual ? el.dataset.price12 : el.dataset.price6;
         return v;
       }
-
       function updatePricing() {
+        if (!toggle) return;
         var isAnnual = !!toggle.checked;
 
         if (label6 && label12) {
-          if (isAnnual) {
-            label12.classList.add('active');
-            label6.classList.remove('active');
-          } else {
-            label6.classList.add('active');
-            label12.classList.remove('active');
-          }
+          if (isAnnual) { label12.classList.add('active'); label6.classList.remove('active'); }
+          else { label6.classList.add('active'); label12.classList.remove('active'); }
         }
 
         for (var i = 0; i < amounts.length; i++) {
           var el = amounts[i];
           var v = getPrice(el, isAnnual);
-          if (!v) {
-            // If attribute missing, never hide the price.
-            v = el.textContent;
-          }
+          if (!v) v = el.textContent;
           el.textContent = v;
           el.style.opacity = '1';
         }
@@ -868,9 +1252,95 @@
           periods[j].textContent = isAnnual ? 'لمدة 12 شهر (سنة)' : 'لمدة 6 أشهر';
         }
       }
+      if (toggle) {
+        toggle.addEventListener('change', updatePricing);
+        updatePricing();
+      }
 
-      toggle.addEventListener('change', updatePricing);
-      updatePricing();
+      // ---------------------------
+      // Launch Promo (NEW)
+      // ---------------------------
+
+      // (1) Slots left: you can later wire it to backend; for now it's a single number.
+      var LAUNCH_SLOTS_TOTAL = 10;
+      var LAUNCH_SLOTS_TAKEN = 0; // change this manually or bind from backend later
+      function slotsLeft() {
+        var left = LAUNCH_SLOTS_TOTAL - LAUNCH_SLOTS_TAKEN;
+        return left < 0 ? 0 : left;
+      }
+      function updateSlotsUI() {
+        var left = slotsLeft();
+        var ids = ['slotsLeft', 'slotsLeft2', 'slotsLeft3'];
+        for (var i = 0; i < ids.length; i++) {
+          var el = document.getElementById(ids[i]);
+          if (el) el.textContent = String(left);
+        }
+      }
+      updateSlotsUI();
+
+      // (2) Countdown: set an end date/time for the promo (adjust as you like)
+      // Note: uses local browser time; keeps it simple and lightweight.
+      var countdownEl = document.getElementById('countdownText');
+      // مثال: نهاية العرض بعد 21 يومًا من الآن (بدون تواريخ حساسة)
+      var END_AT = new Date();
+      END_AT.setDate(END_AT.getDate() + 21);
+      END_AT.setHours(23, 59, 0, 0);
+
+      function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+      function tickCountdown() {
+        if (!countdownEl) return;
+        var now = new Date();
+        var diff = END_AT.getTime() - now.getTime();
+        if (diff <= 0) {
+          countdownEl.textContent = 'انتهى العرض';
+          return;
+        }
+        var sec = Math.floor(diff / 1000);
+        var days = Math.floor(sec / 86400);
+        sec -= days * 86400;
+        var hrs = Math.floor(sec / 3600);
+        sec -= hrs * 3600;
+        var mins = Math.floor(sec / 60);
+
+        countdownEl.textContent = days + ' يوم • ' + pad2(hrs) + ':' + pad2(mins);
+      }
+      tickCountdown();
+      setInterval(tickCountdown, 60000);
+
+      // (3) Modal open/close
+      var modalOverlay = document.getElementById('launchModal');
+      var openBtn1 = document.getElementById('openLaunchModal');
+      var openBtn2 = document.getElementById('openLaunchModal2');
+      var closeBtn = document.getElementById('closeLaunchModal');
+
+      function openModal() {
+        if (!modalOverlay) return;
+        modalOverlay.classList.add('open');
+        modalOverlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        if (!modalOverlay) return;
+        modalOverlay.classList.remove('open');
+        modalOverlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+
+      if (openBtn1) openBtn1.addEventListener('click', openModal);
+      if (openBtn2) openBtn2.addEventListener('click', openModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+      if (modalOverlay) {
+        modalOverlay.addEventListener('click', function (e) {
+          if (e.target === modalOverlay) closeModal();
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+      });
+
     })();
   </script>
 </body>
