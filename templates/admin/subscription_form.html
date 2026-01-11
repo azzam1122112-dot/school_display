@@ -210,22 +210,31 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {% for field in form %}
-                {% if field.name == "starts_at" or field.name == "ends_at" %}
-                  <div class="space-y-2">
-                    <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                      <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
-                    {% endif %}
-                    {% if field.errors %}
-                      <p class="text-xs text-rose-600">
-                        {% for error in field.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
-                      </p>
-                    {% endif %}
-                  </div>
+              
+              <div class="space-y-2">
+                <label class="block text-xs font-extrabold text-slate-700">{{ form.starts_at.label }}</label>
+                {{ form.starts_at }}
+                {% if form.starts_at.help_text %}
+                  <p class="text-[11px] text-slate-500">{{ form.starts_at.help_text }}</p>
                 {% endif %}
-              {% endfor %}
+                {% if form.starts_at.errors %}
+                  <p class="text-xs text-rose-600">
+                    {% for error in form.starts_at.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                  </p>
+                {% endif %}
+              </div>
+
+              <div class="space-y-2">
+                <label class="block text-xs font-extrabold text-slate-700">{{ form.ends_at.label }}</label>
+                {{ form.ends_at }}
+                <p class="text-[11px] text-slate-500">يتم حساب تاريخ النهاية تلقائياً من مدة الباقة عند الحفظ.</p>
+                {% if form.ends_at.errors %}
+                  <p class="text-xs text-rose-600">
+                    {% for error in form.ends_at.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                  </p>
+                {% endif %}
+              </div>
+              
             </div>
 
             <div class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -444,10 +453,8 @@
             const dd = String(endDate.getUTCDate()).padStart(2, "0");
             const iso = `${yyyy}-${mm}-${dd}`;
 
-            // إذا كانت النهاية فارغة (أو حقل معطّل) نملأها للعرض.
-            if (!endEl.value || endEl.disabled || endEl.hasAttribute("readonly")) {
-              endEl.value = iso;
-            }
+            // يتم حساب تاريخ النهاية تلقائياً من مدة الباقة.
+            endEl.value = iso;
           }
 
           function update() {
