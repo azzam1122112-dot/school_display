@@ -836,7 +836,7 @@
         // Animate change
         el.style.opacity = 0;
         setTimeout(() => {
-          el.textContent = isAnnual ? el.dataset.price12 : el.dataset.price6;
+          el.textContent = isAnnual ? el.getAttribute('data-price-12') : el.getAttribute('data-price-6');
           el.style.opacity = 1;
         }, 200);
       });
