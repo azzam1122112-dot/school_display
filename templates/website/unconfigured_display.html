@@ -495,6 +495,35 @@
     .amount { font-size: 2rem; font-weight: 900; color: var(--dark); line-height: 1; }
     .period { font-size: 0.85rem; color: var(--text-light); }
 
+    /* Launch price meta (shown in 6-month mode only) */
+    .price-meta {
+      margin-top: -6px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .price-meta .strike {
+      text-decoration: line-through;
+      color: rgba(100, 116, 139, 0.95);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .price-meta .launch-tag {
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.26);
+      color: #92400e;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+
     .features-list { margin: 20px 0 auto 0; font-size: 0.9rem; }
     .features-list li {
       margin-bottom: 10px;
@@ -794,18 +823,19 @@
               </div>
 
               <div class="launch-sub">
-                باقة خاصة <strong>لمدة 6 أشهر (الفصل الدراسي الحالي فقط)</strong> — مخصصة <strong>لأول 10 مدارس</strong> للتجربة المبكرة مع أولوية دعم وتجهيز.
+                <strong>خصم 20%</strong> على باقة <strong>6 أشهر فقط</strong> — مخصص <strong>لأول 15 مدرسة</strong> ضمن الفصل الدراسي الحالي.
+                <span style="display:block; margin-top:6px;">الفصل الحالي حوالي <strong>5 أشهر</strong> — تحصل على <strong>6 أشهر</strong> ضمن عرض الإطلاق.</span>
               </div>
 
               <div class="launch-pills">
-                <span class="pill danger"><i class="fa-solid fa-users"></i> المتاح: <span id="slotsLeft">10</span> مدارس</span>
+                <span class="pill danger"><i class="fa-solid fa-users"></i> المتاح: <span id="slotsLeft">15</span> مدرسة</span>
                 <span class="pill warn"><i class="fa-solid fa-clock"></i> ينتهي تلقائيًا بعد اكتمال المقاعد</span>
                 <span class="pill"><i class="fa-solid fa-headset"></i> أولوية دعم وتجهيز</span>
                 <span class="pill"><i class="fa-solid fa-shield"></i> حماية وتحديثات مستمرة</span>
               </div>
 
               <div class="launch-fineprint">
-                * العرض مخصص للمدارس المسجلة ضمن العرض فقط، وبعد انتهاء الـ 6 أشهر يتم التجديد وفق الأسعار الرسمية في الموقع.
+                * العرض مخصص للمدارس المسجلة ضمن العرض فقط، ولا يمكن التجديد بنفس سعر العرض بعد انتهاء المدة.
               </div>
             </div>
 
@@ -815,9 +845,9 @@
                 أسرع طريقة للحجز: واتساب خلال دقيقة
               </div>
 
-              <div class="countdown" aria-label="عداد انتهاء العرض">
-                <small>ينتهي خلال</small>
-                <span id="countdownText">—</span>
+              <div class="countdown" aria-label="مدة العرض">
+                <small>المدة</small>
+                <span>حتى اكتمال 15 مدرسة</span>
               </div>
 
               <button class="launch-btn" type="button" id="openLaunchModal">
@@ -907,10 +937,10 @@
       <div class="launch-mini">
         <div>
           <strong><i class="fa-solid fa-rocket" style="color:var(--primary);"></i> عرض الإطلاق</strong>
-          <span>— 6 أشهر للفصل الدراسي الحالي 1447–1448، متاح لأول 10 مدارس فقط.</span>
+          <span>— خصم 20% على 6 أشهر فقط، متاح لأول 15 مدرسة ضمن الفصل الدراسي الحالي 1447–1448.</span>
         </div>
         <div class="mini-actions">
-          <span class="mini-chip"><i class="fa-solid fa-users"></i> المتبقي: <span id="slotsLeft2">10</span></span>
+          <span class="mini-chip"><i class="fa-solid fa-users"></i> المتبقي: <span id="slotsLeft2">15</span></span>
           <button type="button" class="mini-chip" id="openLaunchModal2" style="cursor:pointer;">
             <i class="fa-solid fa-circle-info"></i> التفاصيل
           </button>
@@ -919,7 +949,7 @@
 
       <!-- Toggle Switch -->
       <div class="pricing-toggle">
-        <span class="toggle-label active" id="label6m">6 أشهر (فصلين)</span>
+        <span class="toggle-label active" id="label6m">6 أشهر (عرض الإطلاق)</span>
         <label class="switch">
           <input type="checkbox" id="billingToggle">
           <span class="slider"></span>
@@ -938,8 +968,14 @@
             1 شاشة
           </div>
           <div class="price-wrap">
-            <span class="amount" data-price-6="460" data-price-12="750">460</span>
+            <span class="amount" data-price-6="460" data-price-12="750" data-launch-6="369">369</span>
             <span class="currency">ريال</span>
+          </div>
+          <div class="price-meta">
+            <span class="launch-tag">إطلاق -20%</span>
+            <span>بدلاً من</span>
+            <span class="strike">460</span>
+            <span>ريال</span>
           </div>
           <span class="period">لمدة 6 أشهر</span>
 
@@ -961,8 +997,14 @@
             2 شاشة
           </div>
           <div class="price-wrap">
-            <span class="amount" data-price-6="720" data-price-12="1150">720</span>
+            <span class="amount" data-price-6="720" data-price-12="1150" data-launch-6="579">579</span>
             <span class="currency">ريال</span>
+          </div>
+          <div class="price-meta">
+            <span class="launch-tag">إطلاق -20%</span>
+            <span>بدلاً من</span>
+            <span class="strike">720</span>
+            <span>ريال</span>
           </div>
           <span class="period">لمدة 6 أشهر</span>
 
@@ -984,8 +1026,14 @@
             3 شاشات
           </div>
           <div class="price-wrap">
-            <span class="amount" data-price-6="960" data-price-12="1550">960</span>
+            <span class="amount" data-price-6="960" data-price-12="1550" data-launch-6="769">769</span>
             <span class="currency">ريال</span>
+          </div>
+          <div class="price-meta">
+            <span class="launch-tag">إطلاق -20%</span>
+            <span>بدلاً من</span>
+            <span class="strike">960</span>
+            <span>ريال</span>
           </div>
           <span class="period">لمدة 6 أشهر</span>
 
@@ -1006,8 +1054,14 @@
             4 شاشات
           </div>
           <div class="price-wrap">
-            <span class="amount" data-price-6="1180" data-price-12="1900">1180</span>
+            <span class="amount" data-price-6="1180" data-price-12="1900" data-launch-6="949">949</span>
             <span class="currency">ريال</span>
+          </div>
+          <div class="price-meta">
+            <span class="launch-tag">إطلاق -20%</span>
+            <span>بدلاً من</span>
+            <span class="strike">1180</span>
+            <span>ريال</span>
           </div>
           <span class="period">لمدة 6 أشهر</span>
 
@@ -1028,8 +1082,14 @@
             5 شاشات
           </div>
           <div class="price-wrap">
-            <span class="amount" data-price-6="1380" data-price-12="2200">1380</span>
+            <span class="amount" data-price-6="1380" data-price-12="2200" data-launch-6="1099">1099</span>
             <span class="currency">ريال</span>
+          </div>
+          <div class="price-meta">
+            <span class="launch-tag">إطلاق -20%</span>
+            <span>بدلاً من</span>
+            <span class="strike">1380</span>
+            <span>ريال</span>
           </div>
           <span class="period">لمدة 6 أشهر</span>
 
@@ -1052,7 +1112,7 @@
 
       <div style="text-align:center; margin-top:14px; font-size:0.85rem; color:rgba(51,65,85,0.85); font-weight:800; line-height:1.8;">
         <i class="fa-solid fa-shield" style="color:var(--primary);"></i>
-        ملاحظة: <strong>عرض الإطلاق</strong> (6 أشهر للفصل الدراسي الحالي 1447–1448) متاح لأول 10 مدارس فقط، وبعدها يكون التجديد حسب <strong>الأسعار الرسمية</strong> أعلاه.
+        ملاحظة: <strong>عرض الإطلاق</strong> (خصم 20% على <strong>6 أشهر فقط</strong>) متاح لأول <strong>15 مدرسة</strong> ضمن الفصل الدراسي الحالي 1447–1448، وبعدها يكون التجديد حسب <strong>الأسعار الرسمية</strong> أعلاه.
       </div>
     </div>
   </section>
@@ -1163,20 +1223,25 @@
             <h3><i class="fa-solid fa-gift"></i> شروط العرض بشكل واضح</h3>
 
             <div class="offer-row">
+              <small>الخصم</small>
+              <b>20% على سعر 6 أشهر فقط</b>
+            </div>
+
+            <div class="offer-row">
               <small>المدة</small>
               <b>6 أشهر (الفصل الدراسي الحالي)</b>
             </div>
             <div class="offer-row">
               <small>المستهدف</small>
-              <b>أول 10 مدارس فقط</b>
+              <b>أول 15 مدرسة فقط</b>
             </div>
             <div class="offer-row">
               <small>التجديد</small>
-              <b>حسب الأسعار الرسمية بعد انتهاء المدة</b>
+              <b>لا يمكن التجديد بنفس سعر العرض</b>
             </div>
             <div class="offer-row">
               <small>المتبقي الآن</small>
-              <b><span id="slotsLeft3">10</span> مدارس</b>
+              <b><span id="slotsLeft3">15</span> مدرسة</b>
             </div>
 
             <div class="offer-actions">
@@ -1231,6 +1296,21 @@
         if (!v && el.dataset) v = isAnnual ? el.dataset.price12 : el.dataset.price6;
         return v;
       }
+
+      function getLaunchPrice6(el) {
+        var v = readAttr(el, 'data-launch-6');
+        if (!v && el.dataset) v = el.dataset.launch6;
+        return v;
+      }
+
+      function findPriceCard(el) {
+        var cur = el;
+        while (cur && cur !== document.body) {
+          if (cur.classList && cur.classList.contains('price-card')) return cur;
+          cur = cur.parentNode;
+        }
+        return null;
+      }
       function updatePricing() {
         if (!toggle) return;
         var isAnnual = !!toggle.checked;
@@ -1242,10 +1322,21 @@
 
         for (var i = 0; i < amounts.length; i++) {
           var el = amounts[i];
-          var v = getPrice(el, isAnnual);
+          var v;
+          if (isAnnual) {
+            v = getPrice(el, true);
+          } else {
+            v = getLaunchPrice6(el) || getPrice(el, false);
+          }
           if (!v) v = el.textContent;
           el.textContent = v;
           el.style.opacity = '1';
+
+          var card = findPriceCard(el);
+          if (card) {
+            var meta = card.querySelector('.price-meta');
+            if (meta) meta.style.display = isAnnual ? 'none' : 'flex';
+          }
         }
 
         for (var j = 0; j < periods.length; j++) {
@@ -1262,7 +1353,7 @@
       // ---------------------------
 
       // (1) Slots left: you can later wire it to backend; for now it's a single number.
-      var LAUNCH_SLOTS_TOTAL = 10;
+      var LAUNCH_SLOTS_TOTAL = 15;
       var LAUNCH_SLOTS_TAKEN = 0; // change this manually or bind from backend later
       function slotsLeft() {
         var left = LAUNCH_SLOTS_TOTAL - LAUNCH_SLOTS_TAKEN;
@@ -1278,35 +1369,7 @@
       }
       updateSlotsUI();
 
-      // (2) Countdown: set an end date/time for the promo (adjust as you like)
-      // Note: uses local browser time; keeps it simple and lightweight.
-      var countdownEl = document.getElementById('countdownText');
-      // مثال: نهاية العرض بعد 21 يومًا من الآن (بدون تواريخ حساسة)
-      var END_AT = new Date();
-      END_AT.setDate(END_AT.getDate() + 21);
-      END_AT.setHours(23, 59, 0, 0);
-
-      function pad2(n) { return (n < 10 ? '0' : '') + n; }
-
-      function tickCountdown() {
-        if (!countdownEl) return;
-        var now = new Date();
-        var diff = END_AT.getTime() - now.getTime();
-        if (diff <= 0) {
-          countdownEl.textContent = 'انتهى العرض';
-          return;
-        }
-        var sec = Math.floor(diff / 1000);
-        var days = Math.floor(sec / 86400);
-        sec -= days * 86400;
-        var hrs = Math.floor(sec / 3600);
-        sec -= hrs * 3600;
-        var mins = Math.floor(sec / 60);
-
-        countdownEl.textContent = days + ' يوم • ' + pad2(hrs) + ':' + pad2(mins);
-      }
-      tickCountdown();
-      setInterval(tickCountdown, 60000);
+      // (2) No time-based countdown: promo ends when slots fill.
 
       // (3) Modal open/close
       var modalOverlay = document.getElementById('launchModal');
