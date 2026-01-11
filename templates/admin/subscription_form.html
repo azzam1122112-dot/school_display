@@ -374,15 +374,29 @@
       </style>
 
       <!-- Date preview JS -->
+      {% if plan_durations %}
+        {{ plan_durations|json_script:"planDurations" }}
+      {% endif %}
       <script>
         (function () {
           "use strict";
 
-          const startEl = document.getElementById("id_start_date");
-          const endEl = document.getElementById("id_end_date");
+          const startEl = document.getElementById("id_starts_at") || document.getElementById("id_start_date");
+          const endEl = document.getElementById("id_ends_at") || document.getElementById("id_end_date");
+          const planEl = document.getElementById("id_plan");
           const previewEl = document.getElementById("rangePreview");
           const hintEl = document.getElementById("rangeHint");
           const daysEl = document.getElementById("daysCount");
+
+          let planDurations = null;
+          const planDurationsEl = document.getElementById("planDurations");
+          if (planDurationsEl) {
+            try {
+              planDurations = JSON.parse(planDurationsEl.textContent || "{}");
+            } catch (e) {
+              planDurations = null;
+            }
+          }
 
           function parseDate(v) {
             if (!v) return null;
@@ -402,14 +416,63 @@
             }
           }
 
+          function addDaysUTC(dt, days) {
+            if (!dt || typeof days !== "number") return null;
+            const next = new Date(dt.getTime());
+            next.setUTCDate(next.getUTCDate() + days);
+            return next;
+          }
+
+          function maybeAutofillEndDate(startDate) {
+            if (!endEl || !startDate || !planEl || !planDurations) return;
+
+            const planId = String(planEl.value || "").trim();
+            if (!planId) return;
+
+            const rawDays = planDurations[planId];
+            if (rawDays === null || rawDays === undefined || rawDays === "") return;
+
+            const days = Number(rawDays);
+            if (!Number.isFinite(days) || days <= 0) return;
+
+            // النهاية = البداية + عدد الأيام
+            const endDate = addDaysUTC(startDate, days);
+            if (!endDate) return;
+
+            const yyyy = endDate.getUTCFullYear();
+            const mm = String(endDate.getUTCMonth() + 1).padStart(2, "0");
+            const dd = String(endDate.getUTCDate()).padStart(2, "0");
+            const iso = `${yyyy}-${mm}-${dd}`;
+
+            // إذا كانت النهاية فارغة (أو حقل معطّل) نملأها للعرض.
+            if (!endEl.value || endEl.disabled || endEl.hasAttribute("readonly")) {
+              endEl.value = iso;
+            }
+          }
+
           function update() {
             if (!previewEl || !hintEl || !daysEl) return;
             const s = parseDate(startEl ? startEl.value : "");
+
+            // تعبئة تاريخ النهاية تلقائيًا من مدة الباقة إن أمكن.
+            if (s) {
+              maybeAutofillEndDate(s);
+            }
+
             const e = parseDate(endEl ? endEl.value : "");
 
-            if (!s || !e) {
+            if (!s) {
               previewEl.textContent = "—";
-              hintEl.textContent = "اختر تاريخ البداية والنهاية لعرض المعاينة.";
+              hintEl.textContent = "اختر تاريخ البداية لعرض المعاينة.";
+              hintEl.classList.remove("text-rose-600");
+              hintEl.classList.add("text-slate-500");
+              daysEl.textContent = "—";
+              return;
+            }
+
+            if (!e) {
+              previewEl.textContent = fmt(s) + "  →  " + "—";
+              hintEl.textContent = "اختر الخطة (أو حدّد تاريخ النهاية) لعرض نهاية الاشتراك.";
               hintEl.classList.remove("text-rose-600");
               hintEl.classList.add("text-slate-500");
               daysEl.textContent = "—";
@@ -436,6 +499,7 @@
 
           if (startEl) startEl.addEventListener("change", update);
           if (endEl) endEl.addEventListener("change", update);
+          if (planEl) planEl.addEventListener("change", update);
           update();
         })();
       </script>

@@ -74,7 +74,7 @@ class SchoolSubscription(models.Model):
 
     def save(self, *args, **kwargs):
         # إذا لم يُحدد تاريخ نهاية يدويًا، احسبه تلقائيًا من مدة الباقة.
-        if self.ends_at is None and self.starts_at and getattr(self, "plan", None):
+        if not self.ends_at and self.starts_at and getattr(self, "plan", None):
             try:
                 days = getattr(self.plan, "duration_days", None)
                 if days is not None:

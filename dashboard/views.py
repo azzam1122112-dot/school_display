@@ -2476,17 +2476,34 @@ def system_subscription_create(request):
         messages.error(request, "نظام الاشتراكات غير مثبت.")
         return redirect("dashboard:system_subscriptions_list")
 
+    plan_durations = {p.id: p.duration_days for p in SubscriptionPlan.objects.all().only("id", "duration_days")}
+
     if request.method == "POST":
         form = SchoolSubscriptionForm(request.POST)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            # احسب تاريخ النهاية تلقائيًا من مدة الخطة إذا كانت النهاية غير محددة.
+            try:
+                if not getattr(obj, "ends_at", None) and getattr(obj, "starts_at", None) and getattr(obj, "plan", None):
+                    days = getattr(obj.plan, "duration_days", None)
+                    if days is not None:
+                        days_int = int(days)
+                        if days_int > 0:
+                            obj.ends_at = obj.starts_at + timedelta(days=days_int)
+            except Exception:
+                pass
+            obj.save()
             messages.success(request, "تم إنشاء الاشتراك بنجاح.")
             return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm()
 
-    return render(request, "admin/subscription_form.html", {"form": form, "title": "إضافة اشتراك"})
+    return render(
+        request,
+        "admin/subscription_form.html",
+        {"form": form, "title": "إضافة اشتراك", "plan_durations": plan_durations},
+    )
 
 
 @superuser_required
@@ -2496,19 +2513,36 @@ def system_subscription_edit(request, pk: int):
         messages.error(request, "نظام الاشتراكات غير مثبت.")
         return redirect("dashboard:system_subscriptions_list")
 
+    plan_durations = {p.id: p.duration_days for p in SubscriptionPlan.objects.all().only("id", "duration_days")}
+
     obj = get_object_or_404(SubModel, pk=pk)
 
     if request.method == "POST":
         form = SchoolSubscriptionForm(request.POST, instance=obj)
         if form.is_valid():
-            form.save()
+            obj2 = form.save(commit=False)
+            # احسب تاريخ النهاية تلقائيًا من مدة الخطة إذا كانت النهاية غير محددة.
+            try:
+                if not getattr(obj2, "ends_at", None) and getattr(obj2, "starts_at", None) and getattr(obj2, "plan", None):
+                    days = getattr(obj2.plan, "duration_days", None)
+                    if days is not None:
+                        days_int = int(days)
+                        if days_int > 0:
+                            obj2.ends_at = obj2.starts_at + timedelta(days=days_int)
+            except Exception:
+                pass
+            obj2.save()
             messages.success(request, "تم تحديث بيانات الاشتراك.")
             return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SchoolSubscriptionForm(instance=obj)
 
-    return render(request, "admin/subscription_form.html", {"form": form, "title": "تعديل اشتراك", "edit": True})
+    return render(
+        request,
+        "admin/subscription_form.html",
+        {"form": form, "title": "تعديل اشتراك", "edit": True, "plan_durations": plan_durations},
+    )
 
 
 @superuser_required
