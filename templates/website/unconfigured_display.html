@@ -803,50 +803,80 @@
 
   <!-- Scripts -->
   <script>
-    // Update Year
-    document.getElementById('year').textContent = new Date().getFullYear();
-
-    // Scroll Header
-    window.addEventListener('scroll', () => {
-      const header = document.getElementById('header');
-      if(window.scrollY > 20) header.classList.add('scrolled');
-      else header.classList.remove('scrolled');
-    });
-
-    // Pricing Logic
-    const toggle = document.getElementById('billingToggle');
-    const label6 = document.getElementById('label6m');
-    const label12 = document.getElementById('label12m');
-    const amounts = document.querySelectorAll(".amount");
-    const periods = document.querySelectorAll(".period");
-
-    function updatePricing() {
-      // If checked => Annual (12m)
-      const isAnnual = toggle.checked;
-
-      if(isAnnual) {
-        label12.classList.add("active");
-        label6.classList.remove("active");
-      } else {
-        label6.classList.add("active");
-        label12.classList.remove("active");
+    (function () {
+      // Update Year
+      var yearEl = document.getElementById('year');
+      if (yearEl) {
+        yearEl.textContent = new Date().getFullYear();
       }
 
-      amounts.forEach(el => {
-        // Animate change
-        el.style.opacity = 0;
-        setTimeout(() => {
-          el.textContent = isAnnual ? el.getAttribute('data-price-12') : el.getAttribute('data-price-6');
-          el.style.opacity = 1;
-        }, 200);
+      // Scroll Header
+      window.addEventListener('scroll', function () {
+        var header = document.getElementById('header');
+        if (!header) return;
+        if (window.scrollY > 20) header.classList.add('scrolled');
+        else header.classList.remove('scrolled');
       });
 
-      periods.forEach(el => {
-        el.textContent = isAnnual ? "لمدة 12 شهر (سنة)" : "لمدة 6 أشهر";
-      });
-    }
+      // Pricing Logic
+      var toggle = document.getElementById('billingToggle');
+      var label6 = document.getElementById('label6m');
+      var label12 = document.getElementById('label12m');
+      var amounts = document.querySelectorAll('.amount');
+      var periods = document.querySelectorAll('.period');
 
-    toggle.addEventListener("change", updatePricing);
+      if (!toggle || !amounts || !amounts.length) return;
+
+      function readAttr(el, attr) {
+        var v = el.getAttribute(attr);
+        return (v === null || typeof v === 'undefined') ? '' : v;
+      }
+
+      function getPrice(el, isAnnual) {
+        var v = readAttr(el, isAnnual ? 'data-price-12' : 'data-price-6');
+        if (!v && el.dataset) {
+          v = isAnnual ? el.dataset.price12 : el.dataset.price6;
+        }
+        return v;
+      }
+
+      function updatePricing() {
+        var isAnnual = !!toggle.checked;
+
+        if (label6 && label12) {
+          if (isAnnual) {
+            label12.classList.add('active');
+            label6.classList.remove('active');
+          } else {
+            label6.classList.add('active');
+            label12.classList.remove('active');
+          }
+        }
+
+        for (var i = 0; i < amounts.length; i++) {
+          (function (el) {
+            el.style.opacity = '0';
+            window.setTimeout(function () {
+              var v = getPrice(el, isAnnual);
+              if (!v) {
+                // If attribute missing, never hide the price.
+                v = el.textContent;
+              }
+              el.textContent = v;
+              el.style.opacity = '1';
+            }, 200);
+          })(amounts[i]);
+        }
+
+        for (var j = 0; j < periods.length; j++) {
+          periods[j].textContent = isAnnual ? 'لمدة 12 شهر (سنة)' : 'لمدة 6 أشهر';
+        }
+      }
+
+      toggle.addEventListener('change', updatePricing);
+      toggle.addEventListener('click', updatePricing);
+      updatePricing();
+    })();
   </script>
 </body>
 </html>
