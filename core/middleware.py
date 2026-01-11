@@ -5,11 +5,14 @@ from typing import Optional
 import re
 import logging
 import secrets
+import hashlib
+import json
 
 from django.apps import apps
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
+from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
@@ -93,28 +96,75 @@ class DisplayTokenMiddleware:
         if not token or not self.TOKEN_RE.match(token):
             return JsonResponse({"error": "Invalid display token"}, status=403)
 
+        # ------------------------------------------------------------------
+        # Performance: Search Redis First
+        # ------------------------------------------------------------------
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        neg_key = f"display:token_neg:{token_hash}"
+        map_key = f"display:token_map:{token_hash}"
+
+        # 1. Negative Cache (Invalid Token)
+        if cache.get(neg_key):
+            return JsonResponse({"error": "Invalid or inactive display token (cached)"}, status=403)
+
+        # 2. Positive Cache (Valid Token)
+        cached_data = cache.get(map_key)
+        screen = None
         DisplayScreen = apps.get_model("core", "DisplayScreen")
+        School = apps.get_model("core", "School") # Might be needed
 
-        token_field = self._pick_token_field(DisplayScreen)
-        lookup = {f"{token_field}__iexact": token}
+        if isinstance(cached_data, dict):
+            # Reconstruct minimal objects to avoid DB
+            try:
+                screen = DisplayScreen()
+                screen.id = cached_data["id"]
+                screen.pk = cached_data["id"]
+                screen.school_id = cached_data["school_id"]
+                screen.bound_device_id = cached_data.get("bound_device_id")
+                # Also attach a dummy school object if needed
+                request.school = School()
+                request.school.id = screen.school_id
+                request.school.pk = screen.school_id
+            except Exception:
+                screen = None
 
-        # is_active اختياري حسب موديلك
-        try:
-            DisplayScreen._meta.get_field("is_active")
-            lookup["is_active"] = True
-        except Exception:
-            pass
+        if not screen:
+            token_field = self._pick_token_field(DisplayScreen)
+            lookup = {f"{token_field}__iexact": token}
 
-        try:
-            screen = DisplayScreen.objects.select_related("school").get(**lookup)
-        except DisplayScreen.DoesNotExist:
-            return JsonResponse({"error": "Invalid or inactive display token"}, status=403)
-        except Exception:
-            logger.exception("DisplayTokenMiddleware failed while fetching screen")
-            return JsonResponse({"error": "Display token lookup failed"}, status=500)
+            # is_active اختياري حسب موديلك
+            try:
+                DisplayScreen._meta.get_field("is_active")
+                lookup["is_active"] = True
+            except Exception:
+                pass
+
+            try:
+                screen = DisplayScreen.objects.select_related("school").get(**lookup)
+                
+                # Cache Success
+                cache_payload = {
+                    "id": screen.pk,
+                    "school_id": screen.school_id,
+                    "bound_device_id": getattr(screen, "bound_device_id", None)
+                }
+                cache.set(map_key, cache_payload, timeout=86400) # 24 hours
+
+                request.school = screen.school
+
+            except DisplayScreen.DoesNotExist:
+                # Cache Failure
+                cache.set(neg_key, "1", timeout=60)
+                return JsonResponse({"error": "Invalid or inactive display token"}, status=403)
+            except Exception:
+                logger.exception("DisplayTokenMiddleware failed while fetching screen")
+                return JsonResponse({"error": "Display token lookup failed"}, status=500)
 
         request.display_screen = screen
-        request.school = screen.school
+        if not hasattr(request, "school") or not request.school:
+             # Should be set above, but safe fallback (though caching dummy object avoids DB here)
+             # If we are here from cache hit, request.school is a dummy.
+             pass
 
         # ======================================================
         # ✅ Device Binding (منع مشاركة رابط الشاشة)
@@ -149,9 +199,22 @@ class DisplayTokenMiddleware:
                     )
                     if updated:
                         bound = device_id
+                        # ✅ Update Cache to reflect binding
+                        try:
+                            new_payload = {
+                                "id": screen.pk,
+                                "school_id": getattr(screen, "school_id", getattr(request.school, "pk", None)),
+                                "bound_device_id": bound
+                            }
+                            # Ensure we have a valid map number
+                            if map_key:
+                                cache.set(map_key, new_payload, timeout=86400)
+                        except Exception:
+                            pass
                     else:
                         # تم ربطها من جهاز آخر قبلنا
                         try:
+                            # Re-fetch from DB if concurrency issue
                             screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
                             request.display_screen = screen
                             request.school = screen.school

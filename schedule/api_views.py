@@ -620,22 +620,67 @@ def snapshot(request, token: str | None = None):
     """
     try:
         token_value = _extract_token(request, token)
+        settings_obj = None
+        hashed_token = _sha256(token_value) if token_value else None
+        cached_school_id = None
 
-        # 1) DisplayScreen
-        settings_obj = _match_settings_via_display_screen(token_value) if token_value else None
+        # 0) ✅ Cache Hit: Check if token is already mapped to school_id
+        if token_value and len(token_value) > 10:
+            # Negative cache check
+            neg_key = f"display:token_neg:{hashed_token}"
+            if cache.get(neg_key):
+                 return JsonResponse(_fallback_payload("رمز الدخول غير صحيح (cached)"), json_dumps_params={"ensure_ascii": False})
 
-        # 2) fallback token search
+            # Positive cache check
+            map_key = f"display:token_map:{hashed_token}"
+            cached_map = cache.get(map_key)
+            if cached_map:
+                if isinstance(cached_map, dict):
+                    cached_school_id = cached_map.get("school_id")
+                else:
+                    # Legacy or simple integer fallback
+                    try:
+                        cached_school_id = int(cached_map)
+                    except:
+                        pass
+        
+        # 1) If we have school_id, try to fetch Snapshot directly from cache
+        if cached_school_id:
+             snap_key = f"snapshot:v1:school:{cached_school_id}"
+             cached_snap = cache.get(snap_key)
+             if isinstance(cached_snap, dict):
+                 # HUGE WIN: Returned without ANY DB query
+                 resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
+                 resp["Cache-Control"] = "no-store"
+                 return resp
+             
+             # If snapshot missing, we need settings_obj to build it
+             try:
+                 settings_obj = _get_settings_by_school_id(int(cached_school_id))
+             except Exception:
+                 pass
+
+        # 2) DisplayScreen (DB Lookup if not found yet)
+        if not settings_obj:
+            settings_obj = _match_settings_via_display_screen(token_value) if token_value else None
+
+        # 3) fallback token search
         if not settings_obj and token_value:
             settings_obj = _get_settings_by_token(token_value)
 
-        # 3) school_id param
+        # 4) school_id param
         if not settings_obj:
             school_id_raw = (request.GET.get("school_id") or request.GET.get("school") or "").strip()
             if school_id_raw.isdigit():
                 settings_obj = _get_settings_by_school_id(int(school_id_raw))
 
-        # 4) single settings fallback
+        # 5) single settings fallback
         if not settings_obj:
+            # ✅ Negative Cache: Cache invalid token to prevent DB hammering
+            if token_value and len(token_value) > 10:
+                neg_key = f"display:token_neg:{hashed_token}"
+                cache.set(neg_key, "1", timeout=60) # 60 seconds
+
             total = SchoolSettings.objects.count()
             if total == 1:
                 settings_obj = SchoolSettings.objects.select_related("school").first()
@@ -648,8 +693,21 @@ def snapshot(request, token: str | None = None):
                         total,
                     )
                 return JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
+        
+        # ✅ Cache Update: Store valid token mapping if not cached (24h)
+        if token_value and settings_obj and len(token_value) > 10 and not cached_school_id:
+            map_key = f"display:token_map:{hashed_token}"
+            try:
+                if getattr(settings_obj, 'school_id', None):
+                   # Store dict compatible with middleware
+                   payload = {"school_id": settings_obj.school_id}
+                   # We don't have screen ID here easily unless we fetched via _match_settings_via_display_screen
+                   # But middleware will update it with full details on next hit.
+                   cache.set(map_key, payload, timeout=86400) # 24 hours
+            except Exception:
+                pass
 
-        # 5) snapshot (with short-lived server-side cache + lock)
+        # 6) snapshot (with short-lived server-side cache + lock)
         cache_key = _snapshot_cache_key(settings_obj)
         lock_key = f"{cache_key}:lock"
         ttl_s = _snapshot_cache_ttl_seconds()
