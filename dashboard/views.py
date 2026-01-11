@@ -2536,48 +2536,156 @@ def my_subscription(request):
         return response
 
     SubModel = _get_subscription_model()
-    subscription = None
-    if SubModel is not None:
-        subscription = SubModel.objects.filter(school=school).order_by("-starts_at", "-id").first()
-
     today = timezone.localdate()
 
-    status_code = "none"
-    status_label = "لا يوجد اشتراك"
-    status_badge_class = "bg-rose-50 text-rose-700"
+    current_subscription = None
+    upcoming_subscription = None
+    primary_subscription = None
+    primary_label = ""
 
-    if subscription is not None:
-        if subscription.status == "cancelled":
-            status_code = "cancelled"
-            status_label = "ملغى"
-            status_badge_class = "bg-rose-50 text-rose-700"
-        elif subscription.status == "active":
-            if subscription.starts_at and subscription.starts_at > today:
-                status_code = "upcoming"
-                status_label = "لم يبدأ بعد"
-                status_badge_class = "bg-amber-50 text-amber-700"
-            elif subscription.ends_at and subscription.ends_at < today:
-                status_code = "expired"
-                status_label = "منتهي"
-                status_badge_class = "bg-rose-50 text-rose-700"
+    current_status_code = "none"
+    current_status_label = "لا يوجد اشتراك"
+    current_status_badge_class = "bg-rose-50 text-rose-700"
+
+    def _field_exists(model_cls, field_name: str) -> bool:
+        try:
+            model_cls._meta.get_field(field_name)
+            return True
+        except Exception:
+            return False
+
+    def _get_attr(obj, name: str, default=None):
+        try:
+            return getattr(obj, name)
+        except Exception:
+            return default
+
+    def _compute_display_ends_at(sub, start_field: str | None, end_field: str | None):
+        if sub is None:
+            return None
+        end_value = _get_attr(sub, end_field) if end_field else None
+        if end_value:
+            return end_value
+
+        plan = _get_attr(sub, "plan")
+        start_value = _get_attr(sub, start_field) if start_field else None
+        if plan is not None and start_value:
+            try:
+                days = _get_attr(plan, "duration_days")
+                if days is not None:
+                    days_int = int(days)
+                    if days_int > 0:
+                        return start_value + timedelta(days=days_int)
+            except Exception:
+                pass
+
+        return None
+
+    def _attach_display_fields(sub, start_field: str | None, end_field: str | None):
+        if sub is None:
+            return
+        display_starts_at = _get_attr(sub, start_field) if start_field else None
+        display_ends_at = _compute_display_ends_at(sub, start_field, end_field)
+        try:
+            setattr(sub, "display_starts_at", display_starts_at)
+            setattr(sub, "display_ends_at", display_ends_at)
+            if display_ends_at:
+                setattr(sub, "display_days_left", max(0, int((display_ends_at - today).days)))
             else:
-                status_code = "active"
-                status_label = "سارية"
-                status_badge_class = "bg-emerald-50 text-emerald-700"
+                setattr(sub, "display_days_left", None)
+        except Exception:
+            pass
+
+    def _status_for(sub, start_field: str | None, end_field: str | None, status_field: str | None, is_active_field: str | None):
+        if sub is None:
+            return "none", "لا يوجد اشتراك", "bg-rose-50 text-rose-700"
+
+        raw_status = _get_attr(sub, status_field) if status_field else None
+        is_active_flag = _get_attr(sub, is_active_field) if is_active_field else None
+
+        start_value = _get_attr(sub, start_field) if start_field else None
+        end_value = _compute_display_ends_at(sub, start_field, end_field)
+
+        if raw_status == "cancelled" or (raw_status is None and is_active_flag is False):
+            return "cancelled", "ملغى", "bg-rose-50 text-rose-700"
+
+        if raw_status == "pending":
+            return "pending", "قيد الإعداد", "bg-amber-50 text-amber-700"
+
+        if raw_status == "active" or (raw_status is None and is_active_flag is True):
+            if start_value and start_value > today:
+                return "upcoming", "لم يبدأ بعد", "bg-amber-50 text-amber-700"
+            if end_value and end_value < today:
+                return "expired", "منتهي", "bg-rose-50 text-rose-700"
+            return "active", "سارية", "bg-emerald-50 text-emerald-700"
+
+        if isinstance(raw_status, str) and raw_status:
+            return raw_status, "غير معروف", "bg-slate-100 text-slate-700"
+
+        return "unknown", "غير معروف", "bg-slate-100 text-slate-700"
+
+    if SubModel is not None:
+        start_field = "starts_at" if _field_exists(SubModel, "starts_at") else ("start_date" if _field_exists(SubModel, "start_date") else None)
+        end_field = "ends_at" if _field_exists(SubModel, "ends_at") else ("end_date" if _field_exists(SubModel, "end_date") else None)
+        status_field = "status" if _field_exists(SubModel, "status") else None
+        is_active_field = "is_active" if _field_exists(SubModel, "is_active") else None
+
+        qs = SubModel.objects.filter(school=school)
+
+        # الاشتراك الحالي (ساري ضمن اليوم)
+        current_qs = qs
+        if status_field:
+            current_qs = current_qs.filter(status="active")
+        elif is_active_field:
+            current_qs = current_qs.filter(is_active=True)
+        if start_field:
+            current_qs = current_qs.filter(**{f"{start_field}__lte": today})
+        if end_field:
+            current_qs = current_qs.filter(Q(**{f"{end_field}__isnull": True}) | Q(**{f"{end_field}__gte": today}))
+        if start_field:
+            current_qs = current_qs.order_by(f"-{start_field}", "-id")
         else:
-            status_code = subscription.status or "unknown"
-            status_label = "غير معروف"
-            status_badge_class = "bg-slate-100 text-slate-700"
+            current_qs = current_qs.order_by("-id")
+        current_subscription = current_qs.first()
+
+        # الاشتراك القادم (أقرب اشتراك يبدأ في المستقبل)
+        upcoming_qs = qs
+        if status_field:
+            upcoming_qs = upcoming_qs.filter(status__in=["active", "pending"])
+        elif is_active_field:
+            upcoming_qs = upcoming_qs.filter(is_active=True)
+        if start_field:
+            upcoming_qs = upcoming_qs.filter(**{f"{start_field}__gt": today}).order_by(start_field, "id")
+            upcoming_subscription = upcoming_qs.first()
+
+        _attach_display_fields(current_subscription, start_field, end_field)
+        _attach_display_fields(upcoming_subscription, start_field, end_field)
+
+        current_status_code, current_status_label, current_status_badge_class = _status_for(
+            current_subscription,
+            start_field,
+            end_field,
+            status_field,
+            is_active_field,
+        )
+
+        primary_subscription = current_subscription or upcoming_subscription
+        primary_label = "الاشتراك الحالي" if current_subscription else ("الاشتراك القادم" if upcoming_subscription else "")
 
     return render(
         request,
         "dashboard/my_subscription.html",
         {
             "school": school,
-            "subscription": subscription,
-            "status_code": status_code,
-            "status_label": status_label,
-            "status_badge_class": status_badge_class,
+            "subscription": primary_subscription,
+            "primary_label": primary_label,
+
+            "current_subscription": current_subscription,
+            "current_status_code": current_status_code,
+            "current_status_label": current_status_label,
+            "current_status_badge_class": current_status_badge_class,
+
+            "upcoming_subscription": upcoming_subscription,
             "today": today,
         },
     )
