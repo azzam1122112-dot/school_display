@@ -72,8 +72,8 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 # Hosts / CSRF
 # =========================
 # يسمح بإضافة hosts من env (مفيد عند تغيير الدومين أو إضافة subdomains)
-_env_hosts = env_list("ALLOWED_HOSTS", "")
-ALLOWED_HOSTS = _env_hosts or [
+# ملاحظة: لا نخلي env يكتب فوق الافتراضي بالكامل حتى لا يتسبب بقطع الخدمة لو كانت القيمة ناقصة.
+_default_allowed_hosts = [
     "school-display.com",
     "www.school-display.com",
     ".school-display.com",
@@ -81,6 +81,11 @@ ALLOWED_HOSTS = _env_hosts or [
     "localhost",
     "127.0.0.1",
 ]
+_env_hosts = env_list("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS: list[str] = []
+for _h in [*_default_allowed_hosts, *_env_hosts]:
+    if _h and _h not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_h)
 
 # CSRF_TRUSTED_ORIGINS يجب أن تحتوي scheme
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
