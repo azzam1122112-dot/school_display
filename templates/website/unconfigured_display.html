@@ -1,2066 +1,852 @@
-{% load static %}
+﻿{% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#2563eb">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
 
-  <title>لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية</title>
-  <meta name="description" content="حوّل شاشات مدرستك إلى منصة اتصال ذكية: الجداول، التنبيهات، التميز، والفعاليات في لوحة عرض احترافية متكاملة.">
-  <meta name="robots" content="index,follow">
-
+  <title>لوحة العرض الذكية — شاشات مدرسية تفاعلية</title>
+  <meta name="description" content="النظام الأول لإدارة شاشات المدارس: جداول، حصص انتظار، تكريم، وفعاليات.. بتحديث لحظي وتصميم يليق بمدرستك.">
+  
   <!-- Open Graph -->
-  <meta property="og:title" content="لوحة العرض الذكية — التحول الرقمي للشاشات المدرسية">
-  <meta property="og:description" content="نظام مخصص لعرض جدول اليوم والتنبيهات وركن التميز على شاشات المدرسة بتحديث لحظي وهوية مخصصة.">
+  <meta property="og:title" content="لوحة العرض الذكية">
+  <meta property="og:description" content="حوّل شاشات المدرسة الجامدة إلى منصة تفاعلية حية.">
   <meta property="og:type" content="website">
-  <meta property="og:locale" content="ar_SA">
 
   <!-- Favicons -->
   <link rel="icon" href="{% static 'favicon.ico' %}">
 
-  <!-- Font -->
+  <!-- Font & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
-
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
-    /* =========================
-       DESIGN SYSTEM (Light/Dark)
-       ========================= */
+    /* 
+     * PROFESSIONAL DESIGN SYSTEM 
+     * Clean, Modern, Trustworthy
+     */
     :root {
-      --brand-primary: #2563eb;
-      --brand-dark: #1e40af;
-      --brand-light: #60a5fa;
-      --accent: #f59e0b;
+      /* Palette: Trust Blue & Growth Green mix */
+      --primary: #2563eb;       /* Royal Blue */
+      --primary-dark: #1e40af;
+      --primary-light: #eff6ff;
+      
+      --accent: #10b981;        /* Emerald */
+      --accent-glow: rgba(16, 185, 129, 0.4);
 
-      --surface-1: #ffffff;
-      --surface-2: #f8fafc;
-      --surface-3: #eef2ff;
+      --dark: #0f172a;          /* Slate 900 */
+      --text: #334155;          /* Slate 700 */
+      --text-light: #64748b;    /* Slate 500 */
+      
+      --bg-page: #ffffff;
+      --bg-surface: #f8fafc;
+      --border: #e2e8f0;
 
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-light: #e2e8f0;
-
-      --glass: rgba(255, 255, 255, 0.68);
-      --glass-border: rgba(148, 163, 184, 0.40);
-
+      --radius-sm: 8px;
       --radius-md: 16px;
       --radius-lg: 24px;
       --radius-xl: 32px;
 
-      --shadow-soft: 0 10px 40px -10px rgba(15, 23, 42, 0.18);
-      --shadow-strong: 0 22px 60px -18px rgba(15, 23, 42, 0.35);
-
-      --focus: 0 0 0 4px rgba(37, 99, 235, 0.25);
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-brand: 0 20px 25px -5px rgba(37, 99, 235, 0.15), 0 8px 10px -6px rgba(37, 99, 235, 0.1);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --surface-1: #0b1220;
-        --surface-2: #0a1020;
-        --surface-3: #0f1a33;
-
-        --text-main: #e5e7eb;
-        --text-muted: #a3a3a3;
-        --border-light: rgba(148, 163, 184, 0.18);
-
-        --glass: rgba(15, 23, 42, 0.55);
-        --glass-border: rgba(148, 163, 184, 0.18);
-
-        --shadow-soft: 0 10px 40px -10px rgba(0, 0, 0, 0.35);
-        --shadow-strong: 0 22px 60px -18px rgba(0, 0, 0, 0.55);
-      }
-    }
-
-    * { box-sizing: border-box; }
-    html, body { overflow-x: hidden; scroll-behavior: smooth; }
+    /* Reset & Base */
+    * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; font-size: 16px; }
     body {
+      font-family: 'Tajawal', sans-serif;
+      background: var(--bg-page);
+      color: var(--text);
+      line-height: 1.6;
       margin: 0;
-      font-family: 'Tajawal', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text-main);
-      line-height: 1.65;
-      background:
-        radial-gradient(720px 420px at 10% 0%, rgba(37, 99, 235, 0.12), transparent 60%),
-        radial-gradient(720px 420px at 90% 10%, rgba(56, 189, 248, 0.10), transparent 60%),
-        radial-gradient(720px 420px at 50% 100%, rgba(59, 130, 246, 0.12), transparent 60%),
-        linear-gradient(180deg, var(--surface-2), rgba(226, 232, 240, 0.7));
-      min-height: 100vh;
+      overflow-x: hidden;
     }
-
-    img { max-width: 100%; height: auto; display: block; }
-    a { text-decoration: none; color: inherit; transition: all 0.25s ease; }
-    button, input, textarea { font-family: inherit; }
-
-    :focus-visible { outline: none; box-shadow: var(--focus); border-radius: 12px; }
-
+    h1, h2, h3, h4 { margin: 0; font-weight: 800; color: var(--dark); line-height: 1.25; }
+    p { margin: 0; }
+    a { text-decoration: none; color: inherit; transition: 0.2s; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    
     .container {
-      width: 100%;
-      max-width: 1280px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 0 20px;
+      padding: 0 24px;
+      width: 100%;
     }
 
-    /* Skip link */
-    .skip-link {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: var(--surface-1);
-      border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-soft);
-      transform: translateY(-120%);
-      z-index: 2000;
-    }
-    .skip-link:focus { transform: translateY(0); }
-
-    /* Utilities */
+    /* Utility */
     .text-gradient {
-      background: linear-gradient(135deg, var(--brand-primary), var(--brand-light));
+      background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
       -webkit-background-clip: text;
       background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: transparent;
     }
-
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       padding: 6px 12px;
+      background: var(--primary-light);
+      color: var(--primary);
       border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 800;
-      background: rgba(37, 99, 235, 0.10);
-      color: var(--brand-primary);
-      border: 1px solid rgba(37, 99, 235, 0.28);
-      user-select: none;
+      font-size: 0.85rem;
+      font-weight: 700;
     }
+    .section-spacing { padding: 100px 0; }
 
-    .badge-soft {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 800;
-      background: rgba(148, 163, 184, 0.12);
-      color: var(--text-muted);
-      border: 1px dashed rgba(148, 163, 184, 0.55);
-      user-select: none;
-    }
-
-    .bg-glass {
-      background: var(--glass);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--glass-border);
-    }
-
-    .card {
-      background: var(--surface-1);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-soft);
-      padding: 24px;
-    }
-
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      padding: 10px 22px;
+      gap: 8px;
+      padding: 12px 28px;
       border-radius: 999px;
-      font-weight: 900;
-      font-size: 0.95rem;
-      border: 1px solid transparent;
+      font-weight: 700;
       cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-      user-select: none;
-      white-space: nowrap;
+      transition: all 0.25s ease;
+      font-size: 1rem;
     }
-
     .btn-primary {
-      background: linear-gradient(120deg, var(--brand-primary), var(--brand-dark));
-      color: #ffffff;
-      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(37, 99, 235, 0.45); }
-
-    .btn-outline {
-      background: rgba(255, 255, 255, 0.75);
-      color: var(--text-main);
-      border-color: var(--border-light);
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
     }
-    .btn-outline:hover {
-      border-color: rgba(37, 99, 235, 0.65);
-      color: var(--brand-primary);
-      box-shadow: 0 8px 26px rgba(148, 163, 184, 0.30);
+    .btn-white {
+      background: white;
+      color: var(--primary);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
     }
-
-    .btn-ghost {
-      background: rgba(255, 255, 255, 0.55);
-      color: var(--text-main);
-      border-color: var(--border-light);
-    }
-    .btn-ghost:hover {
-      background: rgba(255, 255, 255, 0.85);
-      box-shadow: 0 8px 26px rgba(148, 163, 184, 0.24);
-    }
-
-    .btn-disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-      pointer-events: none;
+    .btn-white:hover {
+      background: #f8fafc;
+      transform: translateY(-2px);
     }
 
     /* Header */
-    .header {
+    header {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 1000;
-      padding: 16px 0;
-      transition: all 0.25s ease;
+      padding: 20px 0;
+      transition: 0.3s;
     }
-    .header.scrolled {
-      padding: 10px 0;
-      background: rgba(248, 250, 252, 0.88);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border-light);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    header.scrolled {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-sm);
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
     }
-    @media (prefers-color-scheme: dark) {
-      .header.scrolled {
-        background: rgba(10, 16, 32, 0.72);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
-      }
-    }
-
-    .nav-wrap {
+    .nav-wrapper {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 16px;
+      justify-content: space-between;
     }
-
     .logo {
       display: flex;
       align-items: center;
       gap: 10px;
       font-weight: 900;
-      font-size: 1.08rem;
+      font-size: 1.25rem;
+      color: var(--dark);
     }
     .logo-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 14px;
-      background: radial-gradient(circle at 30% 10%, #e0f2fe, #2563eb);
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      border-radius: 12px;
       display: grid;
       place-items: center;
-      color: #ffffff;
-      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
       font-size: 1.2rem;
     }
-    .logo span { white-space: nowrap; }
-
     .nav-links {
       display: flex;
-      gap: 18px;
-      align-items: center;
+      gap: 32px;
+    }
+    .nav-links a {
+      font-weight: 600;
+      color: var(--text);
       font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text-muted);
     }
-    .nav-links a:hover { color: var(--brand-primary); }
-
-    .mobile-nav-controls,
-    .mobile-menu-btn { display: none; }
-
-    .mobile-menu-btn {
-      background: transparent;
-      border: 1px solid var(--border-light);
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
-      font-size: 1.2rem;
-      cursor: pointer;
-      color: var(--text-main);
-    }
-
-    /* Mobile menu panel */
-    .mobile-panel {
-      display: none;
-      position: fixed;
-      inset: 70px 16px auto 16px;
-      z-index: 1100;
-      padding: 18px;
-      border-radius: 24px;
-      background: var(--surface-1);
-      border: 1px solid var(--border-light);
-      box-shadow: 0 25px 55px -18px rgba(0, 0, 0, 0.35);
-      transform: translateY(-10px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-    .mobile-panel.active {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-    .mobile-panel a {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 12px;
-      border-radius: 16px;
-      color: var(--text-main);
-      font-weight: 800;
-    }
-    .mobile-panel a:hover { background: rgba(37, 99, 235, 0.08); color: var(--brand-primary); }
-
-    .backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(2, 6, 23, 0.45);
-      z-index: 1050;
-      display: none;
-    }
-    .backdrop.active { display: block; }
+    .nav-links a:hover { color: var(--primary); }
 
     /* Hero */
     .hero {
-      padding-top: 130px;
-      padding-bottom: 80px;
+      padding-top: 160px;
+      padding-bottom: 100px;
+      background: 
+        radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+    }
+    .hero-content {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      margin-bottom: 24px;
+      letter-spacing: -1px;
+    }
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-light);
+      margin-bottom: 40px;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+    
+    .hero-visual {
+      margin-top: 60px;
+      position: relative;
+      border-radius: var(--radius-lg);
+      border: 8px solid rgba(255,255,255,0.8);
+      box-shadow: var(--shadow-brand);
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 16/9;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-visual iframe {
+      width: 100%; height: 100%; border: 0;
+    }
+
+    /* Features Grid */
+    .features {
+      background: var(--bg-surface);
       position: relative;
       overflow: hidden;
     }
-
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(90px);
-      opacity: 0.55;
-      z-index: -1;
-    }
-    .blob-1 {
-      top: -120px;
-      right: -140px;
-      width: 420px;
-      height: 420px;
-      background: rgba(37, 99, 235, 0.28);
-    }
-    .blob-2 {
-      bottom: -120px;
-      left: -140px;
-      width: 420px;
-      height: 420px;
-      background: rgba(56, 189, 248, 0.20);
-    }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 40px;
-      align-items: center;
-    }
-
-    .hero-content h1 {
-      font-size: clamp(2.3rem, 4vw, 3.7rem);
-      line-height: 1.15;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      margin: 0 0 16px;
-    }
-
-    .hero-content p {
-      font-size: 1.05rem;
-      color: var(--text-muted);
-      max-width: 560px;
-      margin: 0 0 26px;
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .hero-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px 14px;
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      margin-top: 18px;
-      align-items: center;
-    }
-
-    .hero-meta-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(148, 163, 184, 0.10);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-    }
-    .hero-meta-item i { color: var(--brand-primary); }
-
-    /* Demo card */
-    .hero-visual { position: relative; }
-    .demo-card {
-      border-radius: var(--radius-xl);
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.98));
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      box-shadow: var(--shadow-strong);
-      padding: 22px 22px 20px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .demo-card {
-        background: linear-gradient(145deg, rgba(11, 18, 32, 0.92), rgba(10, 16, 32, 0.98));
-      }
-    }
-
-    .demo-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-
-    .demo-title { font-weight: 900; font-size: 1.1rem; }
-    .demo-sub { font-size: 0.88rem; color: var(--text-muted); }
-
-    .demo-chip {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 46px;
-      height: 46px;
-      border-radius: 18px;
-      background: radial-gradient(circle at 30% 20%, #e0f2fe, #2563eb);
-      color: #ffffff;
-      font-size: 1.35rem;
-      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.45);
-    }
-
-    .video-wrap {
-      position: relative;
-      width: 100%;
-      padding-bottom: 56.25%;
-      border-radius: 18px;
-      overflow: hidden;
-      background: #020617;
-      border: 1px solid rgba(148, 163, 184, 0.45);
-    }
-    .video-wrap iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-
-    .video-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: radial-gradient(580px 280px at 50% 30%, rgba(37, 99, 235, 0.42), rgba(2, 6, 23, 0.88));
-      cursor: pointer;
-      color: #ffffff;
+    .section-header {
       text-align: center;
-      transition: opacity 0.25s ease;
+      max-width: 700px;
+      margin: 0 auto 60px;
     }
-    .video-overlay.hide { opacity: 0; pointer-events: none; }
+    .section-header h2 { font-size: 2.5rem; margin-bottom: 16px; }
+    .section-header p { font-size: 1.1rem; color: var(--text-light); }
 
-    .play-btn {
-      width: 78px;
-      height: 78px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at 30% 20%, #e0f2fe, #2563eb);
-      box-shadow: 0 16px 55px rgba(37, 99, 235, 0.55);
-      font-size: 28px;
-    }
-
-    .demo-badges {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 10px;
-      margin-top: 14px;
-    }
-    .demo-pill {
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.10);
-      color: var(--text-main);
-      font-size: 0.86rem;
-      padding: 8px 10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border: 1px solid rgba(37, 99, 235, 0.18);
-    }
-    .demo-pill i { color: var(--brand-primary); }
-
-    /* Sections */
-    .section { padding: 80px 0; }
-    .section-title { text-align: center; margin-bottom: 50px; }
-    .section-title h2 { font-size: 2.15rem; font-weight: 900; margin: 10px 0; }
-    .section-title p { font-size: 1rem; color: var(--text-muted); max-width: 620px; margin: 0 auto; }
-
-    /* Stats */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 18px;
-    }
-    .stat {
-      padding: 18px 16px;
-      border-radius: 22px;
-      border: 1px solid var(--border-light);
-      background: rgba(255, 255, 255, 0.65);
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-      text-align: center;
-    }
-    @media (prefers-color-scheme: dark) {
-      .stat { background: rgba(11, 18, 32, 0.55); }
-    }
-    .stat .num { font-size: 1.45rem; font-weight: 900; }
-    .stat .lbl { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-top: 6px; }
-
-    /* Features */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 22px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
     }
     .feature-card {
-      background: var(--surface-1);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-light);
-      padding: 20px;
-      box-shadow: 0 8px 26px rgba(148, 163, 184, 0.22);
-      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 18px 44px rgba(148, 163, 184, 0.40); }
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: rgba(37, 99, 235, 0.10);
-      border: 1px solid rgba(37, 99, 235, 0.18);
-      font-size: 1.25rem;
-      margin-bottom: 12px;
-    }
-    .feature-card h3 { font-size: 1.06rem; font-weight: 900; margin: 0 0 8px; }
-    .feature-card p { font-size: 0.92rem; color: var(--text-muted); margin: 0; }
-
-    /* Steps */
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 24px;
-    }
-    .step-card {
-      background: var(--surface-1);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-light);
-      padding: 24px 18px;
-      text-align: center;
-      box-shadow: var(--shadow-soft);
-    }
-    .step-number {
-      width: 60px;
-      height: 60px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      margin: 0 auto 16px;
-      font-size: 1.3rem;
-      font-weight: 900;
-      color: var(--brand-primary);
-      background: radial-gradient(circle at 30% 10%, #e0f2fe, #bfdbfe);
-    }
-
-    /* Comparison */
-    .comparison-wrap {
-      background: var(--surface-1);
+      background: white;
+      padding: 32px;
       border-radius: var(--radius-lg);
-      border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-soft);
-      padding: 22px 20px;
+      border: 1px solid var(--border);
+      transition: 0.3s;
     }
-    .comparison-table-wrap { width: 100%; overflow-x: auto; margin-top: 12px; }
-    .comparison-table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 680px;
-      font-size: 0.92rem;
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-light);
     }
-    .comparison-table th, .comparison-table td {
-      padding: 11px 12px;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.75);
-      text-align: right;
-      vertical-align: top;
+    .feature-icon {
+      width: 54px; height: 54px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-size: 1.5rem;
+      margin-bottom: 24px;
     }
-    .comparison-table thead th {
-      background: rgba(37, 99, 235, 0.10);
-      font-weight: 900;
-    }
-    .comparison-table tbody tr:nth-child(even) { background: rgba(148, 163, 184, 0.06); }
-    .comparison-table b { font-weight: 900; }
+    .feature-card h3 { font-size: 1.25rem; margin-bottom: 12px; }
+    .feature-card p { color: var(--text-light); font-size: 0.95rem; }
 
-    /* Pricing */
+    /* Pricing Section (The Core Request) */
+    .pricing-container {
+      position: relative;
+      z-index: 2;
+    }
+    
+    /* Toggle Switch */
+    .pricing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 50px;
+    }
+    .toggle-label {
+      font-weight: 700;
+      color: var(--text-light);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .toggle-label.active { color: var(--dark); }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 56px; height: 30px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px; width: 22px;
+      left: 4px; bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(26px); }
+    
+    .discount-badge {
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100%{transform: scale(1);} }
+
+    /* Pricing Cards Grid */
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 22px;
-      margin-top: 24px;
+      grid-template-columns: repeat(5, 1fr); /* 5 cols for 1,2,3,4,5 screens */
+      gap: 20px;
+      align-items: stretch;
     }
+    
     .price-card {
-      background: var(--surface-1);
+      background: white;
       border-radius: var(--radius-lg);
-      border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-soft);
-      padding: 20px 18px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      position: relative;
+      transition: 0.3s;
       display: flex;
       flex-direction: column;
-      gap: 10px;
     }
-    .price-card.featured {
-      border-color: rgba(37, 99, 235, 0.6);
-      box-shadow: 0 18px 50px rgba(37, 99, 235, 0.22);
-      position: relative;
+    /* Hover effect */
+    .price-card:hover { border-color: var(--primary); transform: translateY(-8px); box-shadow: var(--shadow-lg); z-index: 10; }
+
+    /* Popular Card Styling */
+    .price-card.popular {
+      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+      border: 2px solid var(--accent);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+      z-index: 5;
     }
-    .price-card.featured::before {
-      content: "الأكثر اختيارًا";
+    .popular-tag {
       position: absolute;
-      top: 14px;
-      left: 14px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.12);
-      border: 1px solid rgba(37, 99, 235, 0.18);
-      color: var(--brand-primary);
-      font-weight: 900;
-      font-size: 0.78rem;
-    }
-    .price-header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
-    .price-name { font-weight: 900; font-size: 1.02rem; margin-bottom: 4px; }
-    .price-tag { font-size: 0.86rem; color: var(--text-muted); }
-    .price-value { font-weight: 900; font-size: 1.5rem; display: flex; align-items: baseline; gap: 6px; }
-    .price-value span { font-size: 0.88rem; font-weight: 900; color: var(--text-muted); }
-    .price-duration { font-size: 0.86rem; color: var(--text-muted); text-align: left; }
-    .price-features {
-      list-style: none;
-      padding: 0;
-      margin: 6px 0 10px;
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      display: grid;
-      gap: 7px;
-    }
-    .price-features li {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-    .price-features li::before {
-      content: "✔";
-      color: var(--brand-primary);
-      font-weight: 900;
-      margin-top: 1px;
-    }
-    .price-footer { margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px; }
-
-    .price-tabs-container { display: flex; justify-content: center; margin-bottom: 24px; }
-    .price-tabs {
-      display: inline-flex;
-      gap: 6px;
-      padding: 6px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.06);
-      margin-top: 14px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .price-tabs { background: rgba(148, 163, 184, 0.14); }
-    }
-    .price-tab-btn {
-      border-radius: 999px;
-      border: 1px solid transparent;
-      font-size: 0.92rem;
-      font-weight: 900;
-      padding: 9px 18px;
-      cursor: pointer;
-      background: transparent;
-      color: var(--text-muted);
-      transition: all 0.2s ease;
-    }
-    .price-tab-btn.active {
-      background: var(--surface-1);
-      color: var(--brand-primary);
-      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
-      border-color: rgba(37, 99, 235, 0.12);
+      top: -14px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      white-space: nowrap;
     }
 
-    .extra-note { margin-top: 18px; font-size: 0.92rem; color: var(--text-muted); }
-
-    /* FAQ */
-    .faq-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-top: 26px;
-    }
-    details.faq {
-      background: var(--surface-1);
-      border: 1px solid var(--border-light);
-      border-radius: 18px;
-      padding: 14px 14px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-    }
-    details.faq summary {
-      cursor: pointer;
-      font-weight: 900;
-      list-style: none;
+    .plan-screens {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
-    details.faq summary::-webkit-details-marker { display: none; }
-    details.faq summary .chev { color: var(--brand-primary); transition: transform 0.2s ease; }
-    details.faq[open] summary .chev { transform: rotate(180deg); }
-    details.faq .ans { color: var(--text-muted); font-weight: 700; margin-top: 10px; }
+    .screen-icon {
+      color: var(--primary);
+    }
+    
+    .price-wrap {
+      margin: 16px 0;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .currency { font-size: 0.9rem; font-weight: 700; color: var(--text-light); }
+    .amount { font-size: 2rem; font-weight: 900; color: var(--dark); line-height: 1; }
+    .period { font-size: 0.85rem; color: var(--text-light); }
 
-    /* CTA */
-    .cta-box {
-      background: linear-gradient(135deg, var(--brand-dark), var(--brand-primary));
-      border-radius: var(--radius-xl);
-      padding: 54px 32px;
-      color: #ffffff;
+    .features-list {
+      margin: 20px 0 auto 0;
+      font-size: 0.9rem;
+    }
+    .features-list li {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--text);
+    }
+    .features-list i { color: var(--accent); margin-top: 4px; font-size: 0.8rem; }
+
+    .card-footer { margin-top: 24px; }
+    .btn-plan {
+      width: 100%;
+      padding: 10px;
+      border-radius: 12px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 0.9rem;
+      border: 1px solid transparent;
+      display: block;
       text-align: center;
-      position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-strong);
     }
-    .cta-box::before {
-      content: "";
-      position: absolute;
-      top: -60px;
-      left: -60px;
-      width: 220px;
-      height: 220px;
-      border-radius: 999px;
-      background: rgba(59, 130, 246, 0.35);
-      filter: blur(40px);
-      opacity: 0.8;
+    .price-card.popular .btn-plan {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
-    .cta-box::after {
-      content: "";
-      position: absolute;
-      bottom: -70px;
-      right: -70px;
-      width: 240px;
-      height: 240px;
-      border-radius: 999px;
-      background: rgba(56, 189, 248, 0.25);
-      filter: blur(45px);
-      opacity: 0.8;
+    .btn-plan:hover { opacity: 0.9; }
+
+    /* Testimonials / Social Proof */
+    .proof-section {
+      background: var(--dark);
+      color: white;
+      padding: 60px 0;
+      text-align: center;
     }
-    .cta-box h2 { font-size: 2rem; font-weight: 900; margin: 0 0 10px; position: relative; z-index: 1; }
-    .cta-box p {
-      font-size: 1.05rem;
-      opacity: 0.94;
-      margin: 0 auto 24px;
-      max-width: 580px;
-      position: relative;
-      z-index: 1;
+    .proof-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
     }
-    .cta-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; position: relative; z-index: 1; }
+    .stat-item h3 { color: white; font-size: 2.5rem; margin-bottom: 5px; }
+    .stat-item p { color: #94a3b8; font-size: 1rem; }
 
     /* Contact */
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: start;
+    .contact-cta {
+      background: linear-gradient(120deg, var(--primary) 0%, #4338ca 100%);
+      border-radius: var(--radius-xl);
+      padding: 60px 20px;
+      text-align: center;
+      color: white;
+      box-shadow: var(--shadow-brand);
     }
-    .contact-info h2 {
-      font-size: 2.15rem;
-      font-weight: 900;
-      margin: 0 0 14px;
-      line-height: 1.3;
-    }
-    .contact-info p { color: var(--text-muted); font-size: 1.08rem; margin: 0 0 22px; }
-    .contact-features {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 12px;
-    }
-    .contact-features li {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1rem;
-      color: var(--text-main);
-      font-weight: 800;
-    }
-    .contact-features i { color: var(--brand-primary); font-size: 1.1rem; }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 14px;
-    }
-    .inputX {
-      width: 100%;
-      border-radius: 16px;
-      border: 1px solid var(--border-light);
-      padding: 12px 14px;
-      font-size: 0.96rem;
-      outline: none;
-      background: rgba(255, 255, 255, 0.86);
-      color: var(--text-main);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-    @media (prefers-color-scheme: dark) {
-      .inputX { background: rgba(11, 18, 32, 0.75); }
-    }
-    .inputX:focus { border-color: rgba(37, 99, 235, 0.85); box-shadow: var(--focus); background: var(--surface-1); }
-    .inputX::placeholder { color: rgba(148, 163, 184, 0.95); font-weight: 700; }
-    .inputX.textarea { min-height: 130px; resize: vertical; }
-
-    #contactForm.card {
-      border-radius: 28px;
-      padding: 22px 22px 18px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98));
-      box-shadow: 0 18px 45px -18px rgba(15, 23, 42, 0.35);
-      border: 1px solid rgba(226, 232, 240, 0.9);
-    }
-    @media (prefers-color-scheme: dark) {
-      #contactForm.card {
-        background: linear-gradient(180deg, rgba(11, 18, 32, 0.92), rgba(10, 16, 32, 0.98));
-        border-color: rgba(148, 163, 184, 0.18);
-      }
-    }
-    .form-help {
-      font-size: 0.88rem;
-      color: var(--text-muted);
-      font-weight: 700;
-      margin-top: 6px;
-    }
-    .form-error {
-      display: none;
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(239, 68, 68, 0.22);
-      background: rgba(239, 68, 68, 0.08);
-      color: #b91c1c;
-      font-weight: 900;
-      font-size: 0.92rem;
-    }
-    .form-error.show { display: block; }
+    .contact-cta h2 { color: white; margin-bottom: 16px; }
+    .contact-cta p { color: #e0e7ff; margin-bottom: 32px; font-size: 1.1rem; }
 
     /* Footer */
-    .footer {
-      padding: 60px 0 28px;
-      background: var(--surface-2);
-      border-top: 1px solid var(--border-light);
-      margin-top: 80px;
+    footer {
+      background: #fff;
+      padding: 60px 0 30px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
     }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr;
-      gap: 32px;
-      margin-bottom: 28px;
-    }
-    .footer-col h4 { font-size: 1rem; font-weight: 900; margin: 0 0 14px; }
-    .footer-col a {
-      display: block;
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      margin-bottom: 9px;
-      font-weight: 800;
-    }
-    .footer-col a:hover { color: var(--brand-primary); }
-    .footer-copy {
-      border-top: 1px solid var(--border-light);
-      padding-top: 18px;
-      font-size: 0.86rem;
-      color: var(--text-muted);
-      text-align: center;
-      font-weight: 800;
-    }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      left: 16px;
-      right: 16px;
-      bottom: 16px;
-      z-index: 2000;
-      max-width: 680px;
-      margin: 0 auto;
-      display: none;
-    }
-    .toast.show { display: block; }
-    .toast-inner {
-      background: var(--surface-1);
-      border-radius: 999px;
-      border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-soft);
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .toast-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.18);
-      color: rgba(21, 128, 61, 1);
-      font-size: 1rem;
-    }
-    .toast-text { font-size: 0.92rem; color: var(--text-main); font-weight: 900; }
-    .toast-close {
-      margin-inline-start: auto;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border-light);
-      background: rgba(148, 163, 184, 0.10);
-      cursor: pointer;
-      font-weight: 900;
-      color: var(--text-main);
-    }
-
-    /* Reveal animation */
-    .reveal { opacity: 0; transform: translateY(10px); transition: opacity 0.35s ease, transform 0.35s ease; }
-    .reveal.show { opacity: 1; transform: translateY(0); }
-
-    /* Floating */
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-    .floating { animation: float 3.5s ease-in-out infinite; }
-
-    @media (prefers-reduced-motion: reduce) {
-      html, body { scroll-behavior: auto; }
-      .floating { animation: none !important; }
-      .reveal { transition: none !important; }
-      .btn, .feature-card { transition: none !important; }
-    }
+    .footer-links a { color: var(--text-light); display: block; margin-bottom: 10px; }
+    .footer-links a:hover { color: var(--primary); }
 
     /* Responsive */
     @media (max-width: 1024px) {
-      .hero { padding-top: 105px; padding-bottom: 60px; }
-      .hero-grid { grid-template-columns: minmax(0, 1fr); }
-      .hero-content { text-align: center; }
-      .hero-content p { margin-inline: auto; }
-      .hero-actions { justify-content: center; }
-      .hero-meta { justify-content: center; }
-      .hero-visual { max-width: 580px; margin: 0 auto; }
-      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 960px) {
-      .features-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .steps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .contact-grid { grid-template-columns: 1fr; gap: 32px; }
-      .contact-info { text-align: center; }
-      .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-      .nav-links { display: none; }
-      .mobile-nav-controls { display: flex; align-items: center; gap: 10px; }
-      .mobile-menu-btn { display: grid; }
-
-      .mobile-panel { display: block; }
-    }
-
-    @media (max-width: 640px) {
-      .section { padding: 52px 0; }
-      .features-grid { grid-template-columns: 1fr; }
-      .steps-grid { grid-template-columns: 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; }
-      .footer-grid { grid-template-columns: 1fr; }
-      .form-row { grid-template-columns: 1fr; }
-      .hero-actions { flex-direction: column; align-items: stretch; }
-      .cta-box { padding: 40px 18px; }
-
-      .logo span {
-        font-size: 0.9rem;
-        max-width: 140px;
-        white-space: normal;
-        line-height: 1.2;
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns tablet */
       }
-      .logo-icon { width: 34px; height: 34px; font-size: 1rem; }
-      .comparison-table { min-width: 640px; }
-      .faq-grid { grid-template-columns: 1fr; }
+      .price-card.popular { grid-column: span 2; } /* Highlight takes full width */
+    }
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2.2rem; }
+      .nav-links { display: none; } /* Simplified for mobile */
+      .pricing-grid {
+        grid-template-columns: 1fr; /* Stack mobile */
+      }
+      .price-card.popular { grid-column: span 1; }
     }
   </style>
 </head>
-
 <body>
-  <a class="skip-link" href="#main">تخطي إلى المحتوى</a>
-
+  
   {% url 'subscriptions' as subscriptions_url %}
   {% url 'website:subscriptions' as website_subscriptions_url %}
   {% url 'dashboard:login' as login_url %}
-
   {% with subs_url=subscriptions_url|default:website_subscriptions_url %}
-  {% if subs_url %}
 
-    <!-- HEADER -->
-    <header class="header" id="header" role="banner">
-      <div class="container">
-        <div class="nav-wrap">
-          <a href="#" class="logo" aria-label="العودة للأعلى">
-            <div class="logo-icon floating" aria-hidden="true">
-              <i class="fa-solid fa-display"></i>
-            </div>
-            <span>لوحة العرض الذكية</span>
-          </a>
-
-          <nav class="nav-links" aria-label="التنقل الرئيسي">
-            <a href="#demo">العرض التوضيحي</a>
-            <a href="#features">المميزات</a>
-            <a href="#how">كيف يعمل؟</a>
-            <a href="#comparison">مقارنة</a>
-            <a href="#pricing">الخطط والأسعار</a>
-            <a href="#faq">الأسئلة الشائعة</a>
-            <a href="#contact">تواصل معنا</a>
-
-            {% if login_url %}
-              <a href="{{ login_url }}" class="btn btn-primary" style="padding:10px 18px;">
-                <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-                دخول المنصة
-              </a>
-            {% else %}
-              <span class="btn btn-ghost btn-disabled">
-                <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-                دخول المنصة
-              </span>
-            {% endif %}
-          </nav>
-
-          <div class="mobile-nav-controls" aria-label="أدوات الجوال">
-            {% if login_url %}
-              <a href="{{ login_url }}" class="btn btn-primary" style="padding: 9px 12px; font-size: 0.9rem;">
-                دخول
-              </a>
-            {% endif %}
-            <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="فتح القائمة" aria-expanded="false" aria-controls="mobilePanel">
-              <i class="fa-solid fa-bars" aria-hidden="true"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <div class="backdrop" id="backdrop" aria-hidden="true"></div>
-
-    <!-- Mobile Panel -->
-    <div class="mobile-panel" id="mobilePanel" role="dialog" aria-label="قائمة الجوال" aria-modal="true">
-      <a href="#demo">العرض التوضيحي <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#features">المميزات <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#how">كيف يعمل؟ <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#comparison">مقارنة <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#pricing">الخطط والأسعار <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#faq">الأسئلة الشائعة <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-      <a href="#contact">تواصل معنا <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></a>
-
-      {% if login_url %}
-        <a href="{{ login_url }}" style="margin-top:6px; background: rgba(37, 99, 235, 0.10); border: 1px solid rgba(37, 99, 235, 0.18);">
-          دخول المنصة <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+  <!-- Header -->
+  <header id="header">
+    <div class="container">
+      <div class="nav-wrapper">
+        <a href="#" class="logo">
+          <div class="logo-icon"><i class="fa-solid fa-display"></i></div>
+          <span>لوحة العرض الذكية</span>
         </a>
-      {% endif %}
-    </div>
-
-    <!-- MAIN -->
-    <main id="main" tabindex="-1">
-      <!-- HERO -->
-      <section class="hero" aria-label="مقدمة">
-        <div class="blob blob-1" aria-hidden="true"></div>
-        <div class="blob blob-2" aria-hidden="true"></div>
-
-        <div class="container">
-          <div class="hero-grid">
-            <div class="hero-content reveal">
-              <div class="badge" style="margin-bottom: 18px;">
-                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
-                تحديث لحظي • هوية لكل مدرسة • يعمل على جميع الأجهزة
-              </div>
-
-              <h1>
-                حوّل شاشات مدرستك إلى
-                <span class="text-gradient">منصة اتصال ذكية</span>
-              </h1>
-
-              <p>
-                نظام مخصص لعرض كل ما يهم المدرسة على الشاشات: جدول اليوم، التنبيهات، حصص الانتظار،
-                فعاليات المدرسة، وركن المتميزين — بتحديث تلقائي وواجهة تعكس هوية مدرستك، ويدعم الشاشات
-                وTV/4K بالإضافة إلى الجوال والكمبيوتر لمتابعة لوحة التحكم.
-              </p>
-
-              <div class="hero-actions">
-                <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                  <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
-                  اطلب عرضًا وتجربة
-                </a>
-                <a href="#demo" class="btn btn-outline">
-                  <i class="fa-solid fa-play" aria-hidden="true"></i>
-                  شاهد العرض التوضيحي
-                </a>
-                <a href="#pricing" class="btn btn-ghost">
-                  الخطط والأسعار
-                </a>
-              </div>
-
-              <div class="hero-meta" aria-label="نقاط سريعة">
-                <span class="hero-meta-item">
-                  <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-                  بيانات المدرسة معزولة وآمنة
-                </span>
-                <span class="hero-meta-item">
-                  <i class="fa-solid fa-tv" aria-hidden="true"></i>
-                  تعمل على أي شاشة أو TV متصل بالإنترنت
-                </span>
-                <span class="hero-meta-item">
-                  <i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>
-                  تحكم كامل من الجوال أو الكمبيوتر
-                </span>
-              </div>
-
-              <div class="stats-grid" aria-label="مؤشرات">
-                <div class="stat">
-                  <div class="num">TV/4K</div>
-                  <div class="lbl">واجهة مهيأة للشاشات</div>
-                </div>
-                <div class="stat">
-                  <div class="num">تحديث لحظي</div>
-                  <div class="lbl">بدون إعادة تحميل</div>
-                </div>
-                <div class="stat">
-                  <div class="num">هوية المدرسة</div>
-                  <div class="lbl">شعار + ألوان + خلفيات</div>
-                </div>
-                <div class="stat">
-                  <div class="num">متعدد الشاشات</div>
-                  <div class="lbl">روابط عرض لكل شاشة</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Demo / Video -->
-            <div class="hero-visual reveal" id="demo">
-              <div class="demo-card">
-                <div class="demo-header">
-                  <div>
-                    <div class="demo-title">🎥 عرض سريع للوحة العرض</div>
-                    <div class="demo-sub">شاهد كيف تظهر الجداول والتنبيهات على الشاشة</div>
-                  </div>
-                  <div class="demo-chip" aria-hidden="true">⚡</div>
-                </div>
-
-                <div class="video-wrap" data-youtube-url="https://www.youtube.com/watch?v=yqa9aT460GM">
-                  <iframe
-                    id="ytFrame"
-                    loading="lazy"
-                    title="عرض توضيحي لمنصة لوحة العرض الذكية للمدارس"
-                    referrerpolicy="strict-origin-when-cross-origin"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen>
-                  </iframe>
-
-                  <div class="video-overlay" id="videoOverlay" aria-label="تشغيل الفيديو" role="button" tabindex="0">
-                    <div class="play-btn" aria-hidden="true">▶</div>
-                    <div style="font-weight:900; font-size:1rem;">تشغيل الفيديو</div>
-                    <div style="font-size:0.88rem; opacity:0.92;">سيتم تشغيل العرض داخل الصفحة</div>
-                  </div>
-                </div>
-
-                <div class="demo-badges" aria-label="مزايا العرض">
-                  <div class="demo-pill">
-                    <i class="fa-solid fa-calendar-day" aria-hidden="true"></i>
-                    جدول اليوم بشكل حي
-                  </div>
-                  <div class="demo-pill">
-                    <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
-                    تنبيهات فورية
-                  </div>
-                  <div class="demo-pill">
-                    <i class="fa-solid fa-trophy" aria-hidden="true"></i>
-                    ركن التميز
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Important note -->
-          <div class="reveal" style="margin-top: 26px; max-width: 820px;">
-            <div class="card" style="display:flex; gap:14px; align-items:flex-start; background: rgba(248,250,252,0.70);">
-              <div style="width:42px; height:42px; border-radius:14px; display:grid; place-items:center; background:rgba(245,158,11,0.18); color:#92400e; border:1px solid rgba(245,158,11,0.22);">
-                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div style="font-weight:900; font-size:1rem; margin-bottom:4px;">معلومة مهمة لعمل النظام</div>
-                <div style="font-size:0.94rem; color:var(--text-muted); font-weight:700;">
-                  تحتاج كل مدرسة إلى شاشة أو أكثر متصلة بالإنترنت داخل المبنى، يتم ربطها برابط عرض خاص (Token)
-                  ليتم تحديث المحتوى تلقائيًا من لوحة التحكم، مع دعم كامل للشاشات وTV/4K.
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- FEATURES -->
-      <section class="section" id="features" aria-label="المميزات">
-        <div class="container">
-          <div class="section-title reveal">
-            <div class="badge" style="margin-bottom: 14px;">
-              <i class="fa-solid fa-sparkles" aria-hidden="true"></i>
-              مميزات مبتكرة تخدم المدرسة
-            </div>
-            <h2>كل ما تحتاجه لإدارة محتوى شاشات مدرستك</h2>
-            <p>من جدول اليوم إلى ركن التميز؛ صُممت لوحة العرض الذكية لتكون واجهة المدرسة أمام الطلاب والزوار، وتعمل على جميع الأجهزة المتصلة بالإنترنت.</p>
-          </div>
-
-          <div id="featuresContainer" class="features-grid"></div>
-        </div>
-      </section>
-
-      <!-- HOW IT WORKS -->
-      <section class="section" id="how" style="background: var(--surface-2);" aria-label="كيف يعمل">
-        <div class="container">
-          <div class="section-title reveal">
-            <h2>كيف يعمل النظام في مدرستك؟</h2>
-            <p>خطوات بسيطة لتفعيل لوحة العرض الذكية وربطها بشاشات المدرسة.</p>
-          </div>
-
-          <div class="steps-grid">
-            <div class="step-card reveal">
-              <div class="step-number">1</div>
-              <h3 style="font-weight:900; margin:0 0 8px;">التسجيل وتهيئة المدرسة</h3>
-              <p style="color:var(--text-muted); font-size:0.95rem; margin:0; font-weight:700;">
-                إنشاء حساب المدرسة، وإضافة الشعار والألوان والخلفية بما يتوافق مع هوية المدرسة.
-              </p>
-            </div>
-            <div class="step-card reveal">
-              <div class="step-number">2</div>
-              <h3 style="font-weight:900; margin:0 0 8px;">إضافة الشاشات وربطها</h3>
-              <p style="color:var(--text-muted); font-size:0.95rem; margin:0; font-weight:700;">
-                روابط عرض خاصة (Token) لكل شاشة، تُفتح في المتصفح على TV أو شاشة عادية داخل المدرسة.
-              </p>
-            </div>
-            <div class="step-card reveal">
-              <div class="step-number">3</div>
-              <h3 style="font-weight:900; margin:0 0 8px;">إدارة المحتوى من لوحة التحكم</h3>
-              <p style="color:var(--text-muted); font-size:0.95rem; margin:0; font-weight:700;">
-                تعديل الجداول والتنبيهات وركن التميز، وتظهر التغييرات فورًا على الشاشات، ويمكن المتابعة من الجوال أو الكمبيوتر.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- COMPARISON -->
-      <section class="section" id="comparison" aria-label="مقارنة">
-        <div class="container">
-          <div class="section-title reveal">
-            <div class="badge-soft" style="margin-bottom: 14px;">
-              <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
-              مقارنة بين الطريقة التقليدية واللوحة الذكية
-            </div>
-            <h2>الطريقة التقليدية vs لوحة العرض الذكية</h2>
-            <p>مقارنة مباشرة تساعد الإدارة على رؤية الفرق بين اللوحات الورقية القديمة وشاشة ذكية محدثة لحظيًا.</p>
-          </div>
-
-          <div class="comparison-wrap reveal">
-            <div class="badge-soft" style="margin-bottom:10px;">
-              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-              المقارنة تركز على ما يراه الطلاب والزوار يوميًا في الممرات وبهو المدرسة.
-            </div>
-
-            <div class="comparison-table-wrap">
-              <table class="comparison-table" aria-label="مقارنة لوحة العرض الذكية مع الطريقة التقليدية">
-                <thead>
-                  <tr>
-                    <th>المحور</th>
-                    <th>الطريقة التقليدية (لوحات ورقية)</th>
-                    <th>لوحة العرض الذكية</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><b>التنبيهات</b></td>
-                    <td>إعلانات ورقية تحتاج طباعة وتعليق وقد تُنسى إزالتها بعد انتهاء المناسبة.</td>
-                    <td>تنبيهات تظهر وتختفي تلقائيًا حسب التاريخ والوقت المحدد من لوحة التحكم.</td>
-                  </tr>
-                  <tr>
-                    <td><b>جدول اليوم</b></td>
-                    <td>غالبًا غير محدث، أو مكتوب بخط اليد، وصعب تعديله يوميًا.</td>
-                    <td>عرض واضح للجدول اليومي/الحصص/الانتظار، يتحدث تلقائيًا حسب إعدادات المدرسة.</td>
-                  </tr>
-                  <tr>
-                    <td><b>وضوح القراءة</b></td>
-                    <td>النصوص صغيرة وتبهت مع الوقت، وصعب قراءتها من مسافة.</td>
-                    <td>واجهة كبيرة مخصصة للشاشات وTV/4K مع خطوط وتباين مدروس لسهولة القراءة.</td>
-                  </tr>
-                  <tr>
-                    <td><b>الجهد اليومي</b></td>
-                    <td>كتابة، طباعة، قص، وتعليق أوراق جديدة باستمرار.</td>
-                    <td>إدارة المحتوى من لوحة تحكم، بدون قصاصات ورقية أو تعليق يدوي متكرر.</td>
-                  </tr>
-                  <tr>
-                    <td><b>التكلفة على المدى البعيد</b></td>
-                    <td>حبر، ورق، لوحات، ووقت موظفين للتجهيز والمتابعة.</td>
-                    <td>اشتراك ثابت يغطي النظام والدعم، مع توفير واضح في الوقت والاستهلاك الورقي.</td>
-                  </tr>
-                  <tr>
-                    <td><b>الانطباع العام</b></td>
-                    <td>لوحات تقليدية قد تبدو مزدحمة وغير محدثة.</td>
-                    <td>واجهة احترافية تعكس تنظيم المدرسة وتميزها أمام الطلاب والزوار.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PRICING -->
-      <section class="section" id="pricing" style="background: var(--surface-2);" aria-label="الأسعار">
-        <div class="container">
-          <div class="section-title reveal">
-            <div class="badge" style="margin-bottom: 14px;">
-              <i class="fa-solid fa-tags" aria-hidden="true"></i>
-              خطط اشتراك مرنة حسب عدد الشاشات
-            </div>
-            <h2>الخطط والأسعار — لوحة العرض الذكية للمدارس</h2>
-            <p>الأسعار التالية أمثلة توضّح مستوى الاشتراك، ويمكن ضبط العرض النهائي حسب عدد الشاشات واحتياج كل مدرسة.</p>
-          </div>
-
-          <div class="card reveal" style="margin-bottom: 20px;">
-            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
-              <div>
-                <div style="font-weight:900; font-size:1rem; margin-bottom:6px;">خيارات الفترة الزمنية</div>
-                <p style="font-size:0.95rem; color:var(--text-muted); margin:0; font-weight:700;">
-                  يمكنك الاشتراك نصف سنوي أو سنوي، مع إمكانية إضافة شاشات إضافية شهريًا حسب الحاجة.
-                </p>
-              </div>
-
-              <div class="price-tabs-container">
-                <div class="price-tabs" aria-label="اختيار فترة الاشتراك">
-                  <button type="button" class="price-tab-btn active" data-plan-period="6m">نصف سنوي (6 أشهر)</button>
-                  <button type="button" class="price-tab-btn" data-plan-period="12m">سنوي (12 شهر)</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 6 months -->
-          <div class="price-row" data-plan-panel="6m">
-            <div class="pricing-grid">
-              <div class="price-card reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة أساسية</div>
-                    <div class="price-tag">حتى 1 شاشة عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">465 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 6 أشهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>مناسبة للمدارس الصغيرة أو شاشة رئيسية واحدة.</li>
-                  <li>واجهة TV/4K واضحة مع هوية المدرسة.</li>
-                  <li>تحديث تلقائي للجدول والتنبيهات.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض لهذه الخطة</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-
-              <div class="price-card featured reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة متقدمة ⭐</div>
-                    <div class="price-tag">حتى 3 شاشات عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">775 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 6 أشهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>أفضل اختيار لمعظم المدارس (ممرات + بهو + إدارة).</li>
-                  <li>إدارة شاشات متعددة من لوحة تحكم واحدة.</li>
-                  <li>دعم فني محسّن أثناء فترة الاشتراك.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض لهذه الخطة</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-
-              <div class="price-card reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة مؤسسية</div>
-                    <div class="price-tag">حتى 5 شاشات عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">1,055 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 6 أشهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>للمدارس الكبيرة أو المجمّعات التعليمية.</li>
-                  <li>مرونة أعلى في توزيع الشاشات على الأدوار والمباني.</li>
-                  <li>أولوية في الدعم والتحديثات.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض لهذه الخطة</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 12 months -->
-          <div class="price-row" data-plan-panel="12m" style="display:none;">
-            <div class="pricing-grid">
-              <div class="price-card reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة أساسية</div>
-                    <div class="price-tag">حتى 1 شاشة عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">745 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 12 شهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>للمدارس التي ترغب في تشغيل شاشة رئيسية طوال العام الدراسي.</li>
-                  <li>واجهة متوافقة مع TV/4K وتصفح من جميع الأجهزة.</li>
-                  <li>تحديث تلقائي يومي للجدول والتنبيهات.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض سنوي</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-
-              <div class="price-card featured reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة متقدمة ⭐</div>
-                    <div class="price-tag">حتى 3 شاشات عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">1,245 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 12 شهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>أفضل خيار لمدارس المراحل المتعددة أو المباني المتعددة.</li>
-                  <li>إدارة كاملة للشاشات من أي جهاز متصل بالإنترنت.</li>
-                  <li>دعم فني متواصل طوال السنة.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض سنوي</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-
-              <div class="price-card reveal">
-                <div class="price-header">
-                  <div>
-                    <div class="price-name">خطة مؤسسية</div>
-                    <div class="price-tag">حتى 5 شاشات عرض</div>
-                  </div>
-                  <div>
-                    <div class="price-value">1,695 <span>ريال</span></div>
-                    <div class="price-duration">لمدة 12 شهر</div>
-                  </div>
-                </div>
-                <ul class="price-features">
-                  <li>للمدارس الكبيرة جدًا أو المجمّعات المدرسية.</li>
-                  <li>مرونة واسعة لتوزيع الشاشات على عدة مواقع.</li>
-                  <li>أولوية دعم وتخصيص الهوية بشكل أعمق.</li>
-                </ul>
-                <div class="price-footer">
-                  <a href="#contact" class="btn btn-primary" style="font-size:0.9rem; padding:10px 16px;">طلب عرض سنوي</a>
-                  <a href="{{ subs_url }}" class="btn btn-ghost" style="font-size:0.9rem; padding:10px 16px;">تفاصيل الخطط</a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card extra-note reveal">
-            <div style="font-weight:900; font-size:1rem; margin-bottom:8px;">
-              إضافة شاشات عرض إضافية
-            </div>
-            <p style="margin:0 0 6px; font-weight:700;">
-              يمكن إضافة شاشات إضافية فوق الباقة المتفق عليها بسعر تقديري
-              <b>55 ريال شهريًا لكل شاشة إضافية</b>، مع ربطها بنفس لوحة التحكم.
-            </p>
-            <p style="margin:0; font-weight:700;">
-              اذكر عدد الشاشات والمراحل الدراسية في نموذج التواصل، وسيتم تجهيز عرض مخصص لمدرستك.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- FAQ -->
-      <section class="section" id="faq" aria-label="الأسئلة الشائعة">
-        <div class="container">
-          <div class="section-title reveal">
-            <div class="badge-soft" style="margin-bottom: 14px;">
-              <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
-              إجابات واضحة قبل الاشتراك
-            </div>
-            <h2>الأسئلة الشائعة</h2>
-            <p>أهم الأسئلة التي تطرحها إدارات المدارس قبل تفعيل لوحة العرض وربط الشاشات.</p>
-          </div>
-
-          <div class="faq-grid">
-            <details class="faq reveal">
-              <summary>
-                هل أحتاج أجهزة خاصة؟
-                <span class="chev"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
-              </summary>
-              <div class="ans">يكفي شاشة أو TV متصل بالإنترنت ومتصفح حديث. تحصل على رابط عرض لكل شاشة وتفتحه مباشرة.</div>
-            </details>
-
-            <details class="faq reveal">
-              <summary>
-                هل تعمل على شاشات 4K؟
-                <span class="chev"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
-              </summary>
-              <div class="ans">نعم، الواجهة مصممة لتكون واضحة على TV/4K مع تباين وخطوط مناسبة للممرات والمسافات.</div>
-            </details>
-
-            <details class="faq reveal">
-              <summary>
-                هل يمكن تخصيص الهوية لكل مدرسة؟
-                <span class="chev"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
-              </summary>
-              <div class="ans">نعم، شعار المدرسة وألوانها وخلفياتها تظهر على اللوحة لتعكس هوية المدرسة الرسمية.</div>
-            </details>
-
-            <details class="faq reveal">
-              <summary>
-                ماذا عن الأمان وعزل البيانات؟
-                <span class="chev"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
-              </summary>
-              <div class="ans">لكل مدرسة عزل كامل للبيانات، وروابط العرض تكون مخصصة لكل شاشة، ولا تظهر لوحة التحكم إلا للمخولين.</div>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      <!-- CTA -->
-      <section class="section" style="padding-top: 10px;" aria-label="دعوة للإجراء">
-        <div class="container">
-          <div class="cta-box reveal">
-            <h2>جاهز تنقل شاشات مدرستك إلى مستوى جديد؟</h2>
-            <p>حوّل الشاشات من عرض ثابت إلى منصة تواصل يومية فعّالة داخل المدرسة، تعمل على أي شاشة متصلة بالإنترنت.</p>
-            <div class="cta-actions">
-              <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="background:#ffffff; color:var(--brand-primary); box-shadow:none;">
-                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
-                تواصل عبر واتساب
-              </a>
-              <a href="{{ subs_url }}" class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#e5edff; border-color:rgba(191,219,254,0.55);">
-                اطّلع على خطط الاشتراك
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CONTACT -->
-      <section class="section" id="contact" aria-label="تواصل معنا">
-        <div class="container">
-          <div class="contact-grid">
-            <div class="contact-info reveal">
-              <div class="badge" style="margin-bottom: 16px;">
-                <i class="fa-solid fa-headset" aria-hidden="true"></i>
-                تواصل سريع مع فريق المنصة
-              </div>
-              <h2>دعنا نساعدك في تفعيل لوحة العرض في مدرستك</h2>
-              <p>
-                ارسل لنا بيانات مدرستك واحتياجاتك، وسيتم التواصل معك لتقديم عرض تفصيلي يناسب عدد الشاشات والمراحل الدراسية،
-                مع ضمان التوافق مع الشاشات وTV/4K والأجهزة المختلفة داخل المدرسة.
-              </p>
-
-              <ul class="contact-features">
-                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> دعم كامل أثناء التجربة والتركيب الأولي.</li>
-                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> إمكانية ربط لوحة العرض مع أنظمة أخرى مستقبلًا.</li>
-                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> تخصيص كامل للهوية البصرية (شعار، ألوان، خلفيات).</li>
-              </ul>
-            </div>
-
-            <div class="contact-form-container reveal">
-              <form id="contactForm" class="card" novalidate>
-                <!-- Honeypot (anti-bot) -->
-                <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute; right:-9999px; width:1px; height:1px; opacity:0;">
-
-                <div class="form-row">
-                  <input type="text" name="name" class="inputX" placeholder="الاسم الكامل" autocomplete="name" required>
-                  <input type="tel" name="phone" class="inputX" placeholder="رقم الجوال" autocomplete="tel" inputmode="tel" required>
-                </div>
-                <div class="form-row">
-                  <input type="text" name="school" class="inputX" placeholder="اسم المدرسة" required>
-                  <input type="text" name="city" class="inputX" placeholder="المدينة (اختياري)">
-                </div>
-                <div style="margin-bottom: 12px;">
-                  <textarea name="requirements" class="inputX textarea" placeholder="اذكر باختصار عدد الشاشات، المراحل، وهل ترغب في ربطها مع أنظمة أخرى..." required></textarea>
-                  <div class="form-help">مثال: 3 شاشات (بهو + ممرات) — ابتدائي — نرغب بتنبيهات + جدول + ركن تميز.</div>
-                </div>
-
-                <div id="formError" class="form-error" role="alert" aria-live="polite"></div>
-
-                <button type="submit" class="btn btn-primary" style="width:100%; padding: 14px;">
-                  <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
-                  إرسال الطلب عبر واتساب
-                </button>
-              </form>
-            </div>
-
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="footer" role="contentinfo">
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-col">
-            <a href="#" class="logo" style="margin-bottom: 10px;">
-              <div class="logo-icon" aria-hidden="true">
-                <i class="fa-solid fa-display"></i>
-              </div>
-              <span>لوحة العرض الذكية</span>
-            </a>
-            <p style="font-size:0.95rem; color:var(--text-muted); max-width:320px; margin:0; font-weight:700;">
-              منصة مخصصة لعرض الجداول والتنبيهات والتكريمات على شاشات المدرسة، بهوية بصرية تعكس تميّز مدرستك وتعمل على جميع الأجهزة المتصلة بالإنترنت.
-            </p>
-          </div>
-
-          <div class="footer-col">
-            <h4>روابط سريعة</h4>
-            <a href="#demo">العرض التوضيحي</a>
-            <a href="#features">المميزات</a>
-            <a href="#how">كيف يعمل النظام؟</a>
-            <a href="#comparison">مقارنة</a>
-            <a href="#faq">الأسئلة الشائعة</a>
-          </div>
-
-          <div class="footer-col">
-            <h4>الدعم والتواصل</h4>
-            <a href="tel:+966537720207">+966 53 772 0207</a>
-            <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer">واتساب الدعم</a>
-            {% if login_url %}
-              <a href="{{ login_url }}">تسجيل الدخول</a>
-            {% endif %}
-          </div>
-
-          <div class="footer-col">
-            <h4>الاشتراكات</h4>
-            <a href="{{ subs_url }}">خطط الاشتراك</a>
-            <a href="#pricing">الخطط والأسعار</a>
-          </div>
-        </div>
-
-        <div class="footer-copy">
-          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس. جميع الحقوق محفوظة.
-        </div>
+        <nav class="nav-links">
+          <a href="#features">المميزات</a>
+          <a href="#pricing">الأسعار</a>
+          <a href="#how">كيف يعمل</a>
+          <a href="#contact">تواصل معنا</a>
+        </nav>
+        {% if login_url %}
+          <a href="{{ login_url }}" class="btn btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">
+            دخول النظام
+          </a>
+        {% endif %}
       </div>
-    </footer>
+    </div>
+  </header>
 
-  {% else %}
-
-    <!-- FALLBACK -->
-    <header class="header" id="header" role="banner">
-      <div class="container">
-        <div class="nav-wrap">
-          <a href="#" class="logo">
-            <div class="logo-icon" aria-hidden="true">
-              <i class="fa-solid fa-display"></i>
-            </div>
-            <span>لوحة العرض الذكية</span>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="badge" style="margin-bottom: 20px;">
+          🚀 الإصدار الجديد 2.0 متاح الآن
+        </div>
+        <h1>مدرستك تستحق <span class="text-gradient">واجهة رقمية</span> تواكب المستقبل</h1>
+        <p>
+          نظام متكامل لإدارة شاشات المدرسة: عرض الجداول، حصص الانتظار، أخبار المدرسة، ولوحة الشرف..
+          كل هذا بتحديث لحظي وتصميم احترافي.
+        </p>
+        <div class="hero-buttons">
+          <a href="#pricing" class="btn btn-primary">
+            ابدأ الاشتراك الآن
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <a href="#demo" class="btn btn-white">
+            <i class="fa-solid fa-play"></i>
+            شاهد العرض
           </a>
         </div>
       </div>
-    </header>
 
-    <main id="main" class="hero" tabindex="-1">
-      <div class="container">
-        <div class="card" style="margin-top: 90px;">
-          <h1 style="font-size:1.5rem; font-weight:900; margin:0 0 10px;">تنبيه إعدادات</h1>
-          <p style="font-size:1rem; color:var(--text-muted); margin:0; font-weight:700;">
-            رابط صفحة "خطط الاشتراك" غير مهيأ حاليًا في إعدادات الروابط (URLs)، لذلك تم تعطيل الأزرار المتعلقة به
-            مؤقتًا لتفادي ظهور أخطاء في الصفحة.
+      <div class="hero-visual" id="demo">
+        <iframe src="https://www.youtube-nocookie.com/embed/yqa9aT460GM?rel=0&modestbranding=1" title="Demo Video" allowfullscreen></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats / Social Proof -->
+  <section class="proof-section">
+    <div class="container">
+      <div class="proof-grid">
+        <div class="stat-item">
+          <h3>100%</h3>
+          <p>توافق مع جميع الأجهزة</p>
+        </div>
+        <div class="stat-item">
+          <h3>0</h3>
+          <p>تعقيد في الإعداد</p>
+        </div>
+        <div class="stat-item">
+          <h3>24/7</h3>
+          <p>عمل مستمر دون انقطاع</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section-spacing features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>نظام واحد، حلول متعددة</h2>
+        <p>استغنِ عن اللوحات الورقية والملصقات، وانتقل لعصر الشاشات الديناميكية.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-regular fa-calendar-check"></i></div>
+          <h3>الجدول المدرسي الحي</h3>
+          <p>يظهر الجدول ويحدّث الحصة الحالية تلقائياً. لا حاجة لطباعة جداول جديدة عند كل تعديل.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-bullhorn"></i></div>
+          <h3>إعلانات وتنبيهات</h3>
+          <p>أعلن عن مواعيد الاختبارات، الفعاليات، أو التعليمات الإدارية بضغطة زر لتظهر على كل الشاشات.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-medal"></i></div>
+          <h3>لوحة الشرف الرقمية</h3>
+          <p>كرّم الطلاب والمعلمين المتميزين بعرض صورهم وأسمائهم في لوحة شرف أنيقة ومتحركة.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-paintbrush"></i></div>
+          <h3>هوية مدرستك</h3>
+          <p>نصمم الواجهة بألوان وشعار مدرستك لتكون جزءاً من البيئة التعليمية المتناسقة.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section 5 Tiers -->
+  <section class="section-spacing" id="pricing">
+    <div class="container pricing-container">
+      <div class="section-header">
+        <h2>اختر الباقة المناسبة لعدد شاشاتك</h2>
+        <p>أسعار مدروسة تناسب جميع المدارس، من شاشة واحدة وحتى المجمعات التعليمية.</p>
+      </div>
+
+      <!-- Toggle Switch -->
+      <div class="pricing-toggle">
+        <span class="toggle-label active" id="label6m">6 أشهر (فصلين)</span>
+        <label class="switch">
+          <input type="checkbox" id="billingToggle">
+          <span class="slider"></span>
+        </label>
+        <div style="display:flex; align-items:center;">
+          <span class="toggle-label" id="label12m">سنة كاملة (توفير عملاق)</span>
+          <span class="discount-badge">خصم يصل 20%</span>
+        </div>
+      </div>
+
+      <div class="pricing-grid">
+        
+        <!-- Tier 1 -->
+        <div class="price-card">
+          <div class="plan-screens">
+            <i class="fa-solid fa-desktop screen-icon"></i>
+            1 شاشة
+          </div>
+          <div class="price-wrap">
+            <span class="amount" data-price-6="460" data-price-12="750">460</span>
+            <span class="currency">ريال</span>
+          </div>
+          <span class="period" id="periodText1">لمدة 6 أشهر</span>
+          
+          <ul class="features-list">
+            <li><i class="fa-solid fa-check"></i> شاشة رئيسية</li>
+            <li><i class="fa-solid fa-check"></i> تحكم كامل</li>
+            <li><i class="fa-solid fa-check"></i> هوية المدرسة</li>
+            <li><i class="fa-solid fa-check"></i> دعم فني</li>
+          </ul>
+          <div class="card-footer">
+            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+          </div>
+        </div>
+
+        <!-- Tier 2 -->
+        <div class="price-card">
+          <div class="plan-screens">
+            <i class="fa-solid fa-desktop screen-icon"></i>
+            2 شاشة
+          </div>
+          <div class="price-wrap">
+            <span class="amount" data-price-6="720" data-price-12="1150">720</span>
+            <span class="currency">ريال</span>
+          </div>
+          <span class="period" id="periodText2">لمدة 6 أشهر</span>
+          
+          <ul class="features-list">
+            <li><i class="fa-solid fa-check"></i> للممرات والإدارة</li>
+            <li><i class="fa-solid fa-check"></i> نفس المميزات الكاملة</li>
+            <li><i class="fa-solid fa-check"></i> توفير في السعر</li>
+          </ul>
+          <div class="card-footer">
+            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+          </div>
+        </div>
+
+        <!-- Tier 3 (STAR) -->
+        <div class="price-card popular">
+          <div class="popular-tag"><i class="fa-solid fa-star"></i> الأكثر طلباً</div>
+          <div class="plan-screens">
+            <i class="fa-solid fa-desktop screen-icon"></i>
+            3 شاشات
+          </div>
+          <div class="price-wrap">
+            <span class="amount" data-price-6="960" data-price-12="1550">960</span>
+            <span class="currency">ريال</span>
+          </div>
+          <span class="period" id="periodText3">لمدة 6 أشهر</span>
+          
+          <ul class="features-list">
+            <li><i class="fa-solid fa-check"></i> تغطية مثالية</li>
+            <li><i class="fa-solid fa-check"></i> دعم فني مميز</li>
+            <li><i class="fa-solid fa-check"></i> أولوية في التجهيز</li>
+          </ul>
+          <div class="card-footer">
+            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+          </div>
+        </div>
+
+        <!-- Tier 4 -->
+        <div class="price-card">
+          <div class="plan-screens">
+            <i class="fa-solid fa-desktop screen-icon"></i>
+            4 شاشات
+          </div>
+          <div class="price-wrap">
+            <span class="amount" data-price-6="1180" data-price-12="1900">1180</span>
+            <span class="currency">ريال</span>
+          </div>
+          <span class="period" id="periodText4">لمدة 6 أشهر</span>
+          
+          <ul class="features-list">
+            <li><i class="fa-solid fa-check"></i> للمدارس الكبيرة</li>
+            <li><i class="fa-solid fa-check"></i> لوحة تحكم موحدة</li>
+            <li><i class="fa-solid fa-check"></i> سعر تنافسي للشاشة</li>
+          </ul>
+          <div class="card-footer">
+            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+          </div>
+        </div>
+
+        <!-- Tier 5 -->
+        <div class="price-card">
+          <div class="plan-screens">
+            <i class="fa-solid fa-desktop screen-icon"></i>
+            5 شاشات
+          </div>
+          <div class="price-wrap">
+            <span class="amount" data-price-6="1380" data-price-12="2200">1380</span>
+            <span class="currency">ريال</span>
+          </div>
+          <span class="period" id="periodText5">لمدة 6 أشهر</span>
+          
+          <ul class="features-list">
+            <li><i class="fa-solid fa-check"></i> باقة المجمعات</li>
+            <li><i class="fa-solid fa-check"></i> أقل تكلفة للشاشة</li>
+            <li><i class="fa-solid fa-check"></i> استشارات فنية</li>
+          </ul>
+          <div class="card-footer">
+            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Note -->
+      <div style="text-align:center; margin-top:30px; font-size:0.9rem; color:var(--text-light);">
+        <i class="fa-solid fa-circle-info"></i>
+        يمكنك إضافة شاشات إضافية في أي وقت بسعر 55 ريال/شهر للشاشة.
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA Contact -->
+  <section class="section-spacing" id="contact">
+    <div class="container">
+      <div class="contact-cta">
+        <h2>جاهز لتحويل مدرستك لمدرسة ذكية؟</h2>
+        <p>فريقنا جاهز للرد على استفساراتك وتجهيز النسخة الخاصة بمدرستك اليوم.</p>
+        <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
+          <a href="https://wa.me/966537720207" class="btn btn-white" style="color:#25d366;">
+            <i class="fa-brands fa-whatsapp" style="font-size:1.2rem;"></i>
+            تواصل واتساب
+          </a>
+          {% if subs_url %}
+          <a href="{{ subs_url }}" class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4);">
+             استعراض تفاصيل الاشتراك
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="nav-wrapper" style="align-items:flex-start;">
+        <div>
+          <a href="#" class="logo" style="margin-bottom:16px;">
+            <div class="logo-icon"><i class="fa-solid fa-display"></i></div>
+            <span>لوحة العرض الذكية</span>
+          </a>
+          <p style="max-width:300px; color:var(--text-light); font-size:0.9rem;">
+            الحل الأمثل للمدارس الحديثة لعرض المحتوى وإدارة التواصل الداخلي عبر الشاشات.
           </p>
         </div>
-      </div>
-    </main>
-
-    <footer class="footer" role="contentinfo">
-      <div class="container">
-        <div class="footer-copy">
-          © <span id="currentYear">2024</span> لوحة العرض الذكية للمدارس.
+        <div class="footer-links">
+          <h4>روابط هامة</h4>
+          <a href="#features">المميزات</a>
+          <a href="#pricing">الأسعار</a>
+          <a href="{{ login_url|default:'#' }}">دخول الموظفين</a>
+        </div>
+        <div class="footer-links">
+          <h4>اتصل بنا</h4>
+          <a href="tel:+966537720207">+966 53 772 0207</a>
+          <a href="mailto:support@school-display.com">support@school-display.com</a>
         </div>
       </div>
-    </footer>
+      <div style="text-align:center; margin-top:40px; padding-top:20px; border-top:1px solid #f1f5f9; color:var(--text-light); font-size:0.85rem;">
+        © <span id="year">2024</span> جميع الحقوق محفوظة.
+      </div>
+    </div>
+  </footer>
 
-  {% endif %}
   {% endwith %}
 
-  <!-- TOAST -->
-  <div id="toast" class="toast" aria-live="polite" aria-atomic="true">
-    <div class="toast-inner">
-      <div class="toast-icon" aria-hidden="true">✅</div>
-      <div class="toast-text">تم تجهيز رسالة واتساب، سيتم فتح التطبيق الآن لإرسال الطلب.</div>
-      <button id="toastClose" type="button" class="toast-close">إغلاق</button>
-    </div>
-  </div>
-
+  <!-- Scripts -->
   <script>
-    // سنة ديناميكية
-    (function() {
-      var yearEl = document.getElementById('currentYear');
-      if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-    })();
+    // Update Year
+    document.getElementById('year').textContent = new Date().getFullYear();
 
-    // Header scroll effect
-    (function() {
-      var header = document.getElementById('header');
-      if (!header) return;
-      function onScroll() {
-        if (window.scrollY > 40) header.classList.add('scrolled');
-        else header.classList.remove('scrolled');
-      }
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
-    })();
+    // Scroll Header
+    window.addEventListener('scroll', () => {
+      const header = document.getElementById('header');
+      if(window.scrollY > 20) header.classList.add('scrolled');
+      else header.classList.remove('scrolled');
+    });
 
-    // Smooth scroll
-    (function() {
-      document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-        a.addEventListener('click', function(e) {
-          var id = a.getAttribute('href');
-          if (!id || id === '#') return;
-          var el = document.querySelector(id);
-          if (!el) return;
-          e.preventDefault();
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      });
-    })();
+    // Pricing Logic
+    const toggle = document.getElementById('billingToggle');
+    const label6 = document.getElementById('label6m');
+    const label12 = document.getElementById('label12m');
+    const amounts = document.querySelectorAll(".amount");
+    const periods = document.querySelectorAll(".period");
 
-    // Mobile menu (accessible)
-    (function() {
-      var btn = document.getElementById('mobileMenuBtn');
-      var panel = document.getElementById('mobilePanel');
-      var backdrop = document.getElementById('backdrop');
-      if (!btn || !panel || !backdrop) return;
+    function updatePricing() {
+      // If checked => Annual (12m)
+      const isAnnual = toggle.checked;
 
-      function openMenu() {
-        panel.classList.add('active');
-        backdrop.classList.add('active');
-        btn.setAttribute('aria-expanded', 'true');
-        btn.setAttribute('aria-label', 'إغلاق القائمة');
-        document.body.style.overflow = 'hidden';
-      }
-      function closeMenu() {
-        panel.classList.remove('active');
-        backdrop.classList.remove('active');
-        btn.setAttribute('aria-expanded', 'false');
-        btn.setAttribute('aria-label', 'فتح القائمة');
-        document.body.style.overflow = '';
-      }
-      function toggleMenu() {
-        if (panel.classList.contains('active')) closeMenu();
-        else openMenu();
+      if(isAnnual) {
+        label12.classList.add("active");
+        label6.classList.remove("active");
+      } else {
+        label6.classList.add("active");
+        label12.classList.remove("active");
       }
 
-      btn.addEventListener('click', toggleMenu);
-      backdrop.addEventListener('click', closeMenu);
-
-      panel.querySelectorAll('a').forEach(function(link) {
-        link.addEventListener('click', closeMenu);
+      amounts.forEach(el => {
+        // Animate change
+        el.style.opacity = 0;
+        setTimeout(() => {
+          el.textContent = isAnnual ? el.dataset.price12 : el.dataset.price6;
+          el.style.opacity = 1;
+        }, 200);
       });
 
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeMenu();
+      periods.forEach(el => {
+        el.textContent = isAnnual ? "لمدة 12 شهر (سنة)" : "لمدة 6 أشهر";
       });
-    })();
-
-    // Reveal on scroll
-    (function() {
-      var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
-      if (!els.length) return;
-
-      if (!('IntersectionObserver' in window)) {
-        els.forEach(function(el) { el.classList.add('show'); });
-        return;
-      }
-
-      var io = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('show');
-            io.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.12 });
-
-      els.forEach(function(el) { io.observe(el); });
-    })();
-
-    // Features list (safe render)
-    (function() {
-      var features = [
-        { icon:'📅', title:'جدول حصص ذكي', description:'عرض ديناميكي للحصص مع تمييز الحصة الحالية والتالية بتحديث تلقائي من لوحة التحكم.' },
-        { icon:'📢', title:'مركز التنبيهات', description:'إظهار التنبيهات المهمة والفعاليات بشكل فوري على الشاشات في الممرات والفصول.' },
-        { icon:'🏆', title:'ركن التميز والتكريم', description:'إبراز الطلاب والمعلمين المتميزين بصورهم وأسمائهم لتحفيز بيئة إيجابية داخل المدرسة.' },
-        { icon:'🎨', title:'هوية بصرية مخصصة', description:'ألوان، خلفيات، وشعار يتوافق تماماً مع هوية مدرستك الرسمية.' },
-        { icon:'⚡', title:'تحديث لحظي وآمن', description:'أي تعديل من لوحة التحكم ينعكس مباشرة على الشاشات مع عزل تام لبيانات كل مدرسة.' },
-        { icon:'🖥️', title:'تعدد الشاشات والأجهزة', description:'ربط أكثر من شاشة في أرجاء المدرسة، مع عمل النظام على أي متصفح في الشاشات وTV/4K والجوال والكمبيوتر.' }
-      ];
-
-      var cont = document.getElementById('featuresContainer');
-      if (!cont) return;
-
-      function esc(s) {
-        return String(s || '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      cont.innerHTML = features.map(function(f) {
-        return (
-          '<div class="feature-card reveal">' +
-            '<div class="feature-icon" aria-hidden="true">' + esc(f.icon) + '</div>' +
-            '<h3>' + esc(f.title) + '</h3>' +
-            '<p>' + esc(f.description) + '</p>' +
-          '</div>'
-        );
-      }).join('');
-    })();
-
-    // YouTube helpers
-    function extractYouTubeId(url) {
-      try {
-        var u = new URL(url);
-        if (u.hostname.indexOf('youtu.be') !== -1) return u.pathname.replace('/', '');
-        if (u.searchParams.get('v')) return u.searchParams.get('v');
-        var parts = u.pathname.split('/').filter(Boolean);
-        var embedIndex = parts.indexOf('embed');
-        if (embedIndex >= 0 && parts[embedIndex + 1]) return parts[embedIndex + 1];
-      } catch (e) {}
-      return '';
     }
 
-    (function() {
-      var videoWrap = document.querySelector('.video-wrap');
-      var overlay = document.getElementById('videoOverlay');
-      var frame = document.getElementById('ytFrame');
-      if (!videoWrap || !overlay || !frame) return;
-
-      var youtubeUrl = videoWrap.getAttribute('data-youtube-url') || '';
-      var videoId = extractYouTubeId(youtubeUrl) || 'yqa9aT460GM';
-      var baseSrc = 'https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1&playsinline=1';
-      frame.src = baseSrc;
-
-      function playYouTube() {
-        frame.src = baseSrc + '&autoplay=1';
-        overlay.classList.add('hide');
-        setTimeout(function() { overlay.style.display = 'none'; }, 260);
-      }
-
-      overlay.addEventListener('click', playYouTube);
-      overlay.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          playYouTube();
-        }
-      });
-    })();
-
-    // Toast helpers
-    var toast = document.getElementById('toast');
-    var toastClose = document.getElementById('toastClose');
-
-    function showToast() {
-      if (!toast) return;
-      toast.classList.add('show');
-      var t = setTimeout(function() { toast.classList.remove('show'); }, 4500);
-      if (toastClose) {
-        toastClose.onclick = function() {
-          clearTimeout(t);
-          toast.classList.remove('show');
-        };
-      }
-    }
-
-    // Clean & validate
-    function cleanText(v) {
-      var s = String(v || '').trim();
-      s = s.replace(/[<>]/g, '');
-      s = s.replace(/\s+/g, ' ').trim();
-      return s;
-    }
-
-    function normalizeSaudiPhone(v) {
-      var s = cleanText(v).replace(/[^\d+]/g, '');
-      if (s.startsWith('00966')) s = '+966' + s.slice(5);
-      if (s.startsWith('966') && !s.startsWith('+966')) s = '+966' + s.slice(3);
-      if (s.startsWith('05') && s.length >= 10) s = '+966' + s.slice(1);
-      return s;
-    }
-
-    function isValidSaudiPhone(v) {
-      var s = normalizeSaudiPhone(v);
-      return /^\+9665\d{8}$/.test(s);
-    }
-
-    // Contact form -> WhatsApp
-    (function() {
-      var form = document.getElementById('contactForm');
-      var errBox = document.getElementById('formError');
-      if (!form) return;
-
-      function setError(msg) {
-        if (!errBox) return;
-        errBox.textContent = msg;
-        errBox.classList.add('show');
-      }
-
-      function clearError() {
-        if (!errBox) return;
-        errBox.textContent = '';
-        errBox.classList.remove('show');
-      }
-
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        clearError();
-
-        var fd = new FormData(form);
-        var data = Object.fromEntries(fd.entries());
-
-        // Honeypot
-        var hp = cleanText(data.website);
-        if (hp) return;
-
-        var name = cleanText(data.name);
-        var phoneRaw = cleanText(data.phone);
-        var phone = normalizeSaudiPhone(phoneRaw);
-        var school = cleanText(data.school);
-        var city = cleanText(data.city);
-        var requirements = cleanText(data.requirements);
-
-        if (!name || name.length < 2) { setError('فضلاً اكتب اسمًا صحيحًا.'); return; }
-        if (!isValidSaudiPhone(phone)) { setError('فضلاً اكتب رقم جوال سعودي صحيح (مثال: 05xxxxxxxx أو +9665xxxxxxxx).'); return; }
-        if (!school || school.length < 2) { setError('فضلاً اكتب اسم المدرسة.'); return; }
-        if (!requirements || requirements.length < 8) { setError('فضلاً اذكر احتياجاتك بشكل أوضح (عدد الشاشات والمراحل).'); return; }
-
-        var msg =
-          'السلام عليكم ورحمة الله وبركاته،\n\n' +
-          'أرغب في تجربة/الاشتراك في منصة لوحة العرض الذكية للمدارس.\n\n' +
-          '*البيانات:*\n' +
-          '- الاسم: ' + name + '\n' +
-          '- الجوال: ' + phone + '\n' +
-          '- المدرسة: ' + school + '\n' +
-          '- المدينة: ' + (city || '-') + '\n\n' +
-          '*المتطلبات:*\n' +
-          requirements + '\n\n' +
-          'شاكرين لكم.';
-
-        showToast();
-        var url = 'https://wa.me/966537720207?text=' + encodeURIComponent(msg);
-        window.open(url, '_blank', 'noopener,noreferrer');
-
-        form.reset();
-      });
-    })();
-
-    // Pricing tabs
-    (function() {
-      var tabButtons = document.querySelectorAll('.price-tab-btn');
-      var panels = document.querySelectorAll('[data-plan-panel]');
-      if (!tabButtons.length || !panels.length) return;
-
-      function activate(period) {
-        tabButtons.forEach(function(btn) {
-          var p = btn.getAttribute('data-plan-period');
-          if (p === period) btn.classList.add('active');
-          else btn.classList.remove('active');
-        });
-        panels.forEach(function(panel) {
-          var p = panel.getAttribute('data-plan-panel');
-          if (p === period) panel.style.display = '';
-          else panel.style.display = 'none';
-        });
-      }
-
-      tabButtons.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var period = btn.getAttribute('data-plan-period') || '6m';
-          activate(period);
-        });
-      });
-
-      activate('6m');
-    })();
+    toggle.addEventListener("change", updatePricing);
   </script>
 </body>
 </html>
