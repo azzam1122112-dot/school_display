@@ -1,29 +1,22 @@
+# config/settings.py
 from __future__ import annotations
 
 import os
-# Snapshot cache TTL (seconds)
-# Used by schedule.api_views.snapshot server-side caching.
-try:
-    DISPLAY_SNAPSHOT_CACHE_TTL = int(os.environ.get("DISPLAY_SNAPSHOT_CACHE_TTL", "15"))
-except Exception:
-    DISPLAY_SNAPSHOT_CACHE_TTL = 15
-DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
-
 from pathlib import Path
-from urllib.parse import urlparse
 
 import dj_database_url
 
-
+# تحميل .env لو موجود (محليًا)
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
 except Exception:
     pass
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+# =========================
+# Helpers
+# =========================
 def env_bool(key: str, default: str = "False") -> bool:
     return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -48,14 +41,39 @@ def exists_dir(p: Path) -> bool:
     except Exception:
         return False
 
-# مهم: خلي DEBUG True افتراضيًا لتفادي مشاكل SSL/Redirect محليًا إذا ما عندك .env
+
+# =========================
+# Base
+# =========================
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# مهم: خلي DEBUG True افتراضيًا محليًا لتفادي مشاكل SSL/Redirect إذا ما عندك .env
 DEBUG = env_bool("DEBUG", "True")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")
 if not DEBUG and (not SECRET_KEY or SECRET_KEY == "dev-insecure-key-change-me"):
     raise RuntimeError("SECRET_KEY must be set in production!")
 
-ALLOWED_HOSTS = [
+
+# =========================
+# Snapshot cache TTL (seconds)
+# Used by schedule.api_views.snapshot server-side caching.
+# =========================
+try:
+    DISPLAY_SNAPSHOT_CACHE_TTL = int(os.environ.get("DISPLAY_SNAPSHOT_CACHE_TTL", "15"))
+except Exception:
+    DISPLAY_SNAPSHOT_CACHE_TTL = 15
+
+# حدود آمنة حتى لا تكسر الأداء أو تزيد الـ staleness
+DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
+
+
+# =========================
+# Hosts / CSRF
+# =========================
+# يسمح بإضافة hosts من env (مفيد عند تغيير الدومين أو إضافة subdomains)
+_env_hosts = env_list("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = _env_hosts or [
     "school-display.com",
     "www.school-display.com",
     ".school-display.com",
@@ -63,12 +81,8 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
 ]
-# Django يتوقع list
-if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-
-# CSRF_TRUSTED_ORIGINS لازم تكون مع scheme (http/https)
+# CSRF_TRUSTED_ORIGINS يجب أن تحتوي scheme
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = _csrf_env
@@ -85,6 +99,9 @@ else:
         ]
 
 
+# =========================
+# Apps
+# =========================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -111,6 +128,9 @@ INSTALLED_APPS = [
 ]
 
 
+# =========================
+# Middleware
+# =========================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -121,14 +141,19 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
+    # Project middleware
     "core.middleware.ActiveSchoolMiddleware",
     "dashboard.middleware.SubscriptionRequiredMiddleware",
     "core.middleware.DisplayTokenMiddleware",
+
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
 ]
 
 
+# =========================
+# Templates
+# =========================
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -152,12 +177,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-
-# ✅ حل مشكلة: TypeError: 'sslmode' invalid keyword for sqlite
-# السبب: تمرير ssl_require مع sqlite يضيف sslmode داخل OPTIONS.
-# هنا نقرأ DATABASE_URL إن وجد، وإلا SQLite محليًا.
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-
+# =========================
+# Database
+# =========================
 DATABASES = {
     "default": dj_database_url.config(
         env="DATABASE_URL",
@@ -166,7 +188,7 @@ DATABASES = {
     )
 }
 
-# أمان SSL فقط لبوستجرس وفي الإنتاج
+# SSL فقط لبوستجرس وفي الإنتاج
 try:
     engine = DATABASES["default"].get("ENGINE", "")
     is_postgres = "postgres" in engine
@@ -175,20 +197,35 @@ except Exception:
 
 if is_postgres and not DEBUG:
     DATABASES["default"].setdefault("OPTIONS", {})
-    # لا نكسر إعدادات جاهزة إن كانت موجودة
     DATABASES["default"]["OPTIONS"].setdefault("sslmode", os.getenv("PGSSLMODE", "require"))
 
 
-
+# =========================
+# Cache (Redis if REDIS_URL exists)
+# =========================
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
 if REDIS_URL:
+    # ✅ تحسينات مهمة:
+    # - timeouts قصيرة لمنع التعليق
+    # - health_check
+    # - retry_on_timeout
+    # - KEY_PREFIX: لتفادي تعارض مفاتيح بين بيئات/خدمات
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "socket_connect_timeout": env_int("REDIS_CONNECT_TIMEOUT", "2"),
+                "socket_timeout": env_int("REDIS_SOCKET_TIMEOUT", "2"),
+                "retry_on_timeout": True,
+                "health_check_interval": env_int("REDIS_HEALTHCHECK_INTERVAL", "30"),
+            },
+            "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "school_display"),
         }
     }
 else:
+    # محليًا أو بدون Redis
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -197,7 +234,9 @@ else:
     }
 
 
-
+# =========================
+# Password validators
+# =========================
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -206,24 +245,29 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-
+# =========================
+# Locale
+# =========================
 LANGUAGE_CODE = "ar"
 TIME_ZONE = "Asia/Riyadh"
 USE_I18N = True
 USE_TZ = True
 
 
-# ===============================
-# Session: idle timeout (60 min)
-# ===============================
-# Logout/expire sessions after inactivity.
-# With SESSION_SAVE_EVERY_REQUEST=True, Django refreshes the session expiry on each request,
-# so if the user is idle for > SESSION_COOKIE_AGE seconds, the session becomes invalid.
+# =========================
+# Sessions (idle timeout)
+# =========================
 SESSION_COOKIE_AGE = env_int("SESSION_IDLE_TIMEOUT_SECONDS", "3600")
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
+
+# =========================
+# Static / Media
+# =========================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -232,7 +276,6 @@ STATICFILES_DIRS = [_static_dir] if exists_dir(_static_dir) else []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-
 
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
@@ -250,11 +293,8 @@ if USE_CLOUD_STORAGE:
         "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
         "API_KEY": CLOUDINARY_API_KEY,
         "API_SECRET": CLOUDINARY_API_SECRET,
-        # ضغط تلقائي للصور عند الرفع لتقليل الحجم والمساحة المستهلكة
-        "TRANSFORMATION": {
-            "quality": "auto:good",  # ضبط الجودة تلقائياً مع الحفاظ على جودة جيدة
-            "fetch_format": "auto",  # اختيار أفضل صيغة (مثل WebP/AVIF) تلقائياً
-        },
+        # ضغط/تحسين تلقائي
+        "TRANSFORMATION": {"quality": "auto:good", "fetch_format": "auto"},
     }
 
 STORAGES = {
@@ -273,9 +313,13 @@ STORAGES = {
 WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_MANIFEST_STRICT = env_bool("WHITENOISE_MANIFEST_STRICT", "True")
 
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# =========================
+# DRF
+# =========================
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -295,17 +339,16 @@ REST_FRAMEWORK = {
 }
 
 
-
+# =========================
+# Security / Proxy
+# =========================
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
-# ✅ لا تفعّل Redirect/كوكيز secure محليًا عشان ما يتحول HTTPS في runserver
+# لا تفعّل redirect محليًا
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "True") if not DEBUG else False
 SESSION_COOKIE_SECURE = (not DEBUG)
 CSRF_COOKIE_SECURE = (not DEBUG)
-
-SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
@@ -317,15 +360,14 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = (not DEBUG)
 SECURE_HSTS_PRELOAD = (not DEBUG)
 
 
-
+# =========================
+# Logging
+# =========================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
     },
     "formatters": {
         "simple": {"format": "[{levelname}] {message}", "style": "{"},
@@ -337,10 +379,12 @@ LOGGING = {
 }
 
 
-
+# =========================
+# Auth redirects
+# =========================
 LOGIN_URL = "dashboard:login"
 LOGIN_REDIRECT_URL = "dashboard:index"
 LOGOUT_REDIRECT_URL = "dashboard:login"
 
 
-SITE_BASE_URL = "https://school-display.com"
+SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://school-display.com")
