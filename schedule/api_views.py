@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 from datetime import time as dt_time
 from typing import Iterable, Optional
 
 from django.conf import settings as dj_settings
+from django.core.cache import cache
 from django.db import models
 from django.db.models import Q
 from django.http import JsonResponse
@@ -494,6 +496,121 @@ def _is_missing_index(d: dict) -> bool:
     v = d.get("index")
     return v is None or v == "" or v == 0
 
+def _snapshot_cache_key(settings_obj: SchoolSettings) -> str:
+    school_id = int(getattr(settings_obj, "school_id", None) or 0)
+    return f"snapshot:v1:school:{school_id}"
+
+
+def _snapshot_cache_ttl_seconds() -> int:
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_CACHE_TTL", 15) or 15)
+    except Exception:
+        v = 15
+    return max(5, min(30, v))
+
+
+def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
+    snap = _call_build_day_snapshot(settings_obj)
+    snap = _normalize_snapshot_keys(snap)
+
+    # مفاتيح أساسية
+    snap.setdefault("meta", {})
+    snap.setdefault("settings", {})
+    snap.setdefault("state", {})
+    snap.setdefault("day_path", [])
+    snap.setdefault("current_period", None)
+    snap.setdefault("next_period", None)
+    snap.setdefault("period_classes", [])
+    snap.setdefault("standby", [])
+    snap.setdefault("excellence", [])
+    snap.setdefault("announcements", [])
+
+    # settings unify + theme mapping
+    s = snap["settings"] or {}
+    school = getattr(settings_obj, "school", None)
+
+    school_name = ""
+    if school is not None:
+        school_name = getattr(school, "name", "") or ""
+    if not school_name:
+        school_name = getattr(settings_obj, "name", "") or ""
+
+    if school_name and not s.get("name"):
+        s["name"] = school_name
+
+    logo = s.get("logo_url") or getattr(settings_obj, "logo_url", None)
+    if not logo and school is not None:
+        for attr in ("logo_url", "logo", "logo_image", "logo_file"):
+            if hasattr(school, attr):
+                val = getattr(school, attr)
+                try:
+                    logo = val.url
+                except Exception:
+                    logo = val
+                if logo:
+                    break
+    s["logo_url"] = _abs_media_url(request, logo)
+
+    # ✅ الثيم: تحويل default/boys/girls -> indigo/emerald/rose
+    s["theme"] = _normalize_theme_value(getattr(settings_obj, "theme", None) or s.get("theme"))
+
+    s.setdefault("refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", 10) or 10)
+    s.setdefault("standby_scroll_speed", getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8)
+    s.setdefault("periods_scroll_speed", getattr(settings_obj, "periods_scroll_speed", 0.5) or 0.5)
+    snap["settings"] = s
+
+    # ✅ ROOT FIX: merge real data
+    _merge_real_data_into_snapshot(request, snap, settings_obj)
+
+    # ✅ لو period_classes فاضية — نعبيها من ClassLesson
+    try:
+        current = snap.get("current_period") or {}
+        kind = None
+        if isinstance(current, dict):
+            kind = current.get("kind") or current.get("type")
+        if not kind:
+            kind = (snap.get("state") or {}).get("type")
+
+        if kind == "period" and not snap.get("period_classes"):
+            meta = snap.get("meta") or {}
+            weekday_raw = meta.get("weekday")
+            try:
+                weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+            except Exception:
+                weekday = (timezone.localdate().weekday() + 1) % 7
+            period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
+            if period_index:
+                snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
+                if isinstance(snap.get("current_period"), dict) and _is_missing_index(snap["current_period"]):
+                    snap["current_period"]["index"] = period_index
+    except Exception:
+        logger.exception("snapshot: failed to fill period_classes")
+
+    # ✅ ضمان ظهور رقم الحصة للـ current و next
+    try:
+        meta = snap.get("meta") or {}
+        weekday_raw = meta.get("weekday")
+        try:
+            weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+        except Exception:
+            weekday = (timezone.localdate().weekday() + 1) % 7
+
+        curp = snap.get("current_period")
+        if isinstance(curp, dict) and _is_missing_index(curp):
+            idx = _infer_period_index(settings_obj, weekday, curp)
+            if idx:
+                curp["index"] = idx
+
+        nxtp = snap.get("next_period")
+        if isinstance(nxtp, dict) and _is_missing_index(nxtp):
+            idx2 = _infer_period_index(settings_obj, weekday, nxtp)
+            if idx2:
+                nxtp["index"] = idx2
+    except Exception:
+        logger.exception("snapshot: failed to ensure current/next period index")
+
+    return snap
+
 
 @require_GET
 def snapshot(request, token: str | None = None):
@@ -532,105 +649,45 @@ def snapshot(request, token: str | None = None):
                     )
                 return JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
 
-        # 5) base snapshot from engine
-        snap = _call_build_day_snapshot(settings_obj)
-        snap = _normalize_snapshot_keys(snap)
+        # 5) snapshot (with short-lived server-side cache + lock)
+        cache_key = _snapshot_cache_key(settings_obj)
+        lock_key = f"{cache_key}:lock"
+        ttl_s = _snapshot_cache_ttl_seconds()
 
-        # مفاتيح أساسية
-        snap.setdefault("meta", {})
-        snap.setdefault("settings", {})
-        snap.setdefault("state", {})
-        snap.setdefault("day_path", [])
-        snap.setdefault("current_period", None)
-        snap.setdefault("next_period", None)
-        snap.setdefault("period_classes", [])
-        snap.setdefault("standby", [])
-        snap.setdefault("excellence", [])
-        snap.setdefault("announcements", [])
-
-        # 6) settings unify + theme mapping
-        s = snap["settings"] or {}
-        school = getattr(settings_obj, "school", None)
-
-        school_name = ""
-        if school is not None:
-            school_name = getattr(school, "name", "") or ""
-        if not school_name:
-            school_name = getattr(settings_obj, "name", "") or ""
-
-        if school_name and not s.get("name"):
-            s["name"] = school_name
-
-        logo = s.get("logo_url") or getattr(settings_obj, "logo_url", None)
-        if not logo and school is not None:
-            for attr in ("logo_url", "logo", "logo_image", "logo_file"):
-                if hasattr(school, attr):
-                    val = getattr(school, attr)
-                    try:
-                        logo = val.url
-                    except Exception:
-                        logo = val
-                    if logo:
-                        break
-        s["logo_url"] = _abs_media_url(request, logo)
-
-        # ✅ الثيم: تحويل default/boys/girls -> indigo/emerald/rose
-        s["theme"] = _normalize_theme_value(getattr(settings_obj, "theme", None) or s.get("theme"))
-
-        s.setdefault("refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", 10) or 10)
-        s.setdefault("standby_scroll_speed", getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8)
-        s.setdefault("periods_scroll_speed", getattr(settings_obj, "periods_scroll_speed", 0.5) or 0.5)
-        snap["settings"] = s
-
-        # 7) ✅ ROOT FIX: merge real data
-        _merge_real_data_into_snapshot(request, snap, settings_obj)
-
-        # 8) ✅ لو period_classes فاضية — نعبيها من ClassLesson
-        try:
-            current = snap.get("current_period") or {}
-            kind = None
-            if isinstance(current, dict):
-                kind = current.get("kind") or current.get("type")
-            if not kind:
-                kind = (snap.get("state") or {}).get("type")
-
-            if kind == "period" and not snap.get("period_classes"):
-                meta = snap.get("meta") or {}
-                weekday_raw = meta.get("weekday")
-                try:
-                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
-                except Exception:
-                    weekday = (timezone.localdate().weekday() + 1) % 7
-                period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
-                if period_index:
-                    snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
-                    if isinstance(snap.get("current_period"), dict) and _is_missing_index(snap["current_period"]):
-                        snap["current_period"]["index"] = period_index
-        except Exception:
-            logger.exception("snapshot: failed to fill period_classes")
-
-        # ✅ ✅ التحديث الأخير: ضمان ظهور رقم الحصة للـ current و next
-        try:
-            meta = snap.get("meta") or {}
-            weekday_raw = meta.get("weekday")
+        cached = cache.get(cache_key)
+        if isinstance(cached, dict):
+            snap = dict(cached)
+        else:
+            have_lock = False
             try:
-                weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+                have_lock = bool(cache.add(lock_key, "1", timeout=5))
             except Exception:
-                weekday = (timezone.localdate().weekday() + 1) % 7
+                have_lock = False
 
-            curp = snap.get("current_period")
-            if isinstance(curp, dict) and _is_missing_index(curp):
-                idx = _infer_period_index(settings_obj, weekday, curp)
-                if idx:
-                    curp["index"] = idx
-
-            nxtp = snap.get("next_period")
-            if isinstance(nxtp, dict) and _is_missing_index(nxtp):
-                idx2 = _infer_period_index(settings_obj, weekday, nxtp)
-                if idx2:
-                    nxtp["index"] = idx2
-        except Exception:
-            logger.exception("snapshot: failed to ensure current/next period index")
+            if not have_lock:
+                # Another worker is building. Wait briefly and serve cache if it appears.
+                deadline = time.monotonic() + 0.5
+                while time.monotonic() < deadline:
+                    time.sleep(0.05)
+                    cached2 = cache.get(cache_key)
+                    if isinstance(cached2, dict):
+                        snap = dict(cached2)
+                        break
+                else:
+                    # Fallback: build without lock (do not fail).
+                    snap = _build_final_snapshot(request, settings_obj)
+            else:
+                try:
+                    snap = _build_final_snapshot(request, settings_obj)
+                    try:
+                        cache.set(cache_key, snap, timeout=ttl_s)
+                    except Exception:
+                        pass
+                finally:
+                    try:
+                        cache.delete(lock_key)
+                    except Exception:
+                        pass
 
         resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
         resp["Cache-Control"] = "no-store"
