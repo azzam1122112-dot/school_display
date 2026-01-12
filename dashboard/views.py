@@ -25,6 +25,7 @@ from django.core.exceptions import PermissionDenied, FieldError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Max, Q, Sum, Count
+from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, NoReverseMatch, get_resolver
@@ -2586,32 +2587,40 @@ def system_subscription_requests_list(request):
     status = (request.GET.get("status") or "").strip()
     req_type = (request.GET.get("type") or "").strip()
 
-    qs = Req.objects.all()
     try:
-        qs = qs.select_related("school", "plan", "created_by", "processed_by")
-    except Exception:
-        pass
+        qs = Req.objects.all()
+        try:
+            qs = qs.select_related("school", "plan", "created_by", "processed_by")
+        except Exception:
+            pass
 
-    if q:
-        qs = qs.filter(
-            Q(school__name__icontains=q)
-            | Q(school__slug__icontains=q)
-            | Q(plan__name__icontains=q)
-        )
+        if q:
+            qs = qs.filter(
+                Q(school__name__icontains=q)
+                | Q(school__slug__icontains=q)
+                | Q(plan__name__icontains=q)
+            )
 
-    if status:
-        qs = qs.filter(status=status)
-    if req_type:
-        qs = qs.filter(request_type=req_type)
+        if status:
+            qs = qs.filter(status=status)
+        if req_type:
+            qs = qs.filter(request_type=req_type)
 
-    qs = qs.order_by("-created_at", "-id")
+        qs = qs.order_by("-created_at", "-id")
 
-    open_count = qs.filter(status__in=["submitted", "under_review"]).count()
-    approved_count = qs.filter(status="approved").count()
-    rejected_count = qs.filter(status="rejected").count()
+        open_count = qs.filter(status__in=["submitted", "under_review"]).count()
+        approved_count = qs.filter(status="approved").count()
+        rejected_count = qs.filter(status="rejected").count()
 
-    paginator = Paginator(qs, 25)
-    page_obj = paginator.get_page(request.GET.get("page") or 1)
+        paginator = Paginator(qs, 25)
+        page_obj = paginator.get_page(request.GET.get("page") or 1)
+    except (ProgrammingError, OperationalError):
+        # غالباً: لم يتم تشغيل migrate في البيئة (Render) بعد نشر الكود.
+        messages.error(request, "قاعدة البيانات غير محدثة (جدول طلبات الاشتراك غير موجود). نفّذ migrate ثم أعد المحاولة.")
+        open_count = 0
+        approved_count = 0
+        rejected_count = 0
+        page_obj = Paginator([], 25).get_page(1)
 
     return render(
         request,
@@ -2635,7 +2644,11 @@ def system_subscription_request_detail(request, pk: int):
         messages.error(request, "نظام طلبات الاشتراك غير مثبت.")
         return redirect("dashboard:system_admin_dashboard")
 
-    obj = get_object_or_404(Req, pk=pk)
+    try:
+        obj = get_object_or_404(Req, pk=pk)
+    except (ProgrammingError, OperationalError):
+        messages.error(request, "قاعدة البيانات غير محدثة (جدول طلبات الاشتراك غير موجود). نفّذ migrate ثم أعد المحاولة.")
+        return redirect("dashboard:system_subscription_requests_list")
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
