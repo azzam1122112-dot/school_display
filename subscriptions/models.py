@@ -434,6 +434,7 @@ class SubscriptionRequest(models.Model):
     )
     receipt_image = models.ImageField(
         upload_to="receipts/subscription_requests/%Y/%m",
+        max_length=500,
         verbose_name="إيصال التحويل (صورة)",
     )
     transfer_note = models.CharField(
