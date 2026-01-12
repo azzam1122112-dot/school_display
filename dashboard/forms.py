@@ -705,7 +705,7 @@ class SubscriptionRenewalRequestForm(forms.Form, _ReceiptImageValidationMixin):
 
 class SubscriptionNewRequestForm(forms.Form, _ReceiptImageValidationMixin):
     plan = forms.ModelChoiceField(
-        queryset=SubscriptionPlan.objects.all().order_by("name"),
+        queryset=SubscriptionPlan.objects.filter(is_active=True).order_by("sort_order", "name"),
         label="اختر الخطة",
         widget=forms.Select(
             attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}

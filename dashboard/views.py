@@ -2892,8 +2892,59 @@ def my_subscription(request):
     renew_form = SubscriptionRenewalRequestForm(prefix="renew")
     new_form = SubscriptionNewRequestForm(prefix="new")
 
+    # خطط الاشتراك (لإظهار تفاصيل الخطة في الواجهة)
+    try:
+        available_plans = list(
+            SubscriptionPlan.objects.filter(is_active=True).order_by("sort_order", "name", "id")
+        )
+    except Exception:
+        available_plans = []
+
+    # تأكيد أن نموذج الاشتراك الجديد يستخدم نفس القائمة حتى عند POST
+    try:
+        new_form.fields["plan"].queryset = SubscriptionPlan.objects.filter(is_active=True).order_by(
+            "sort_order", "name", "id"
+        )
+    except Exception:
+        pass
+
+    def _plan_details(plan_obj):
+        if plan_obj is None:
+            return None
+        try:
+            price = getattr(plan_obj, "price", None)
+            duration_days = getattr(plan_obj, "duration_days", None)
+            max_screens = getattr(plan_obj, "max_screens", None)
+            return {
+                "id": getattr(plan_obj, "pk", None),
+                "name": getattr(plan_obj, "name", ""),
+                "price": str(price) if price is not None else "",
+                "duration_days": int(duration_days) if duration_days not in (None, "") else None,
+                "max_screens": int(max_screens) if max_screens not in (None, "") else None,
+            }
+        except Exception:
+            return None
+
+    plans_map = {}
+    for p in available_plans:
+        d = _plan_details(p)
+        if d and d.get("id") is not None:
+            plans_map[str(d["id"])] = d
+
+    renewal_plan_obj = None
+    if current_subscription is not None:
+        renewal_plan_obj = getattr(current_subscription, "plan", None)
+    elif upcoming_subscription is not None:
+        renewal_plan_obj = getattr(upcoming_subscription, "plan", None)
+    elif primary_subscription is not None:
+        renewal_plan_obj = getattr(primary_subscription, "plan", None)
+
+    active_request_tab = "renewal" if renewal_plan_obj is not None else "new"
+
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
+        if action in {"renewal", "new"}:
+            active_request_tab = action
 
         if RequestModel is None:
             messages.error(request, "ميزة طلبات الاشتراك غير متاحة حالياً.")
@@ -2943,6 +2994,12 @@ def my_subscription(request):
 
         if action == "new":
             new_form = SubscriptionNewRequestForm(request.POST, request.FILES, prefix="new")
+            try:
+                new_form.fields["plan"].queryset = SubscriptionPlan.objects.filter(is_active=True).order_by(
+                    "sort_order", "name", "id"
+                )
+            except Exception:
+                pass
             if new_form.is_valid():
                 plan_obj = new_form.cleaned_data["plan"]
                 RequestModel.objects.create(
@@ -2990,6 +3047,10 @@ def my_subscription(request):
             "renew_form": renew_form,
             "new_form": new_form,
             "subscription_requests": subscription_requests,
+
+            "active_request_tab": active_request_tab,
+            "renewal_plan_details": _plan_details(renewal_plan_obj),
+            "plans_map": plans_map,
         },
     )
 

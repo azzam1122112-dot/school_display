@@ -200,15 +200,36 @@
 
   <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
     <div class="px-5 md:px-8 py-5 border-b border-slate-100">
-      <h3 class="text-lg md:text-xl font-bold text-slate-900">طلبات التجديد والاشتراك</h3>
-      <p class="text-xs md:text-sm text-slate-500 mt-1">
-        ارفع إيصال التحويل، وسيتم مراجعة الطلب من الإدارة. يبدأ التفعيل من تاريخ رفع الطلب.
-      </p>
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h3 class="text-lg md:text-xl font-bold text-slate-900">طلبات التجديد والاشتراك</h3>
+          <p class="text-xs md:text-sm text-slate-500 mt-1">
+            ارفع إيصال التحويل، وسيتم مراجعة الطلب من الإدارة. يبدأ التفعيل من تاريخ رفع الطلب.
+          </p>
+        </div>
+
+        <div class="inline-flex items-center rounded-2xl bg-slate-100 p-1 w-full md:w-auto">
+          <button
+            type="button"
+            data-tab="renewal"
+            class="request-tab-btn flex-1 md:flex-none px-4 py-2 rounded-xl text-sm font-bold transition {% if active_request_tab == 'renewal' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-600 hover:text-slate-900{% endif %}"
+          >
+            تجديد
+          </button>
+          <button
+            type="button"
+            data-tab="new"
+            class="request-tab-btn flex-1 md:flex-none px-4 py-2 rounded-xl text-sm font-bold transition {% if active_request_tab == 'new' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-600 hover:text-slate-900{% endif %}"
+          >
+            اشتراك جديد
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="px-5 md:px-8 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- تجديد الاشتراك -->
-      <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+      <div id="tab-renewal" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 {% if active_request_tab != 'renewal' %}hidden{% endif %}">
         <div class="flex items-center justify-between gap-3">
           <div>
             <h4 class="font-bold text-slate-900">تجديد الاشتراك الحالي</h4>
@@ -223,6 +244,28 @@
               {% endif %}
             </p>
           </div>
+        </div>
+
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-bold text-slate-700 mb-3">تفاصيل الخطة</p>
+          {% if renewal_plan_details %}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[11px] text-slate-500">سعر الباقة (ر.س)</p>
+                <p class="font-bold text-slate-900">{{ renewal_plan_details.price|default:"—" }}</p>
+              </div>
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[11px] text-slate-500">مدة الاشتراك (بالأيام)</p>
+                <p class="font-bold text-slate-900">{% if renewal_plan_details.duration_days %}{{ renewal_plan_details.duration_days }}{% else %}—{% endif %}</p>
+              </div>
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[11px] text-slate-500">الحد الأقصى لشاشات العرض</p>
+                <p class="font-bold text-slate-900">{% if renewal_plan_details.max_screens %}{{ renewal_plan_details.max_screens }}{% else %}غير محدود{% endif %}</p>
+              </div>
+            </div>
+          {% else %}
+            <p class="text-sm text-slate-500">لا توجد خطة حالية للتجديد. استخدم تبويب "اشتراك جديد".</p>
+          {% endif %}
         </div>
 
         {% if subscription %}
@@ -262,9 +305,29 @@
       </div>
 
       <!-- اشتراك جديد -->
-      <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+      <div id="tab-new" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 {% if active_request_tab != 'new' %}hidden{% endif %}">
         <h4 class="font-bold text-slate-900">طلب اشتراك جديد</h4>
         <p class="text-xs text-slate-500 mt-1">اختر الخطة وارفق إيصال التحويل.</p>
+
+        {{ plans_map|json_script:"plans-map" }}
+
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-bold text-slate-700 mb-3">تفاصيل الخطة المختارة</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <p class="text-[11px] text-slate-500">سعر الباقة (ر.س)</p>
+              <p id="plan-price" class="font-bold text-slate-900">—</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <p class="text-[11px] text-slate-500">مدة الاشتراك (بالأيام)</p>
+              <p id="plan-duration" class="font-bold text-slate-900">—</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <p class="text-[11px] text-slate-500">الحد الأقصى لشاشات العرض</p>
+              <p id="plan-max-screens" class="font-bold text-slate-900">—</p>
+            </div>
+          </div>
+        </div>
 
         <form method="post" enctype="multipart/form-data" class="mt-4 space-y-3">
           {% csrf_token %}
@@ -362,4 +425,79 @@
   </div>
 
 </div>
+
+<script>
+  (function () {
+    function setActiveTab(tab) {
+      var renewal = document.getElementById('tab-renewal');
+      var fresh = document.getElementById('tab-new');
+      if (!renewal || !fresh) return;
+
+      if (tab === 'new') {
+        renewal.classList.add('hidden');
+        fresh.classList.remove('hidden');
+      } else {
+        fresh.classList.add('hidden');
+        renewal.classList.remove('hidden');
+      }
+
+      var btns = document.querySelectorAll('.request-tab-btn');
+      btns.forEach(function (b) {
+        var isActive = b.getAttribute('data-tab') === tab;
+        if (isActive) {
+          b.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+          b.classList.remove('text-slate-600');
+        } else {
+          b.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+          b.classList.add('text-slate-600');
+        }
+      });
+    }
+
+    // tab buttons
+    document.querySelectorAll('.request-tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setActiveTab(btn.getAttribute('data-tab') || 'renewal');
+      });
+    });
+
+    // plan details (new request)
+    function updatePlanDetails() {
+      var script = document.getElementById('plans-map');
+      if (!script) return;
+      var plans = {};
+      try { plans = JSON.parse(script.textContent || '{}'); } catch (e) { plans = {}; }
+
+      var select = document.querySelector('select[name="new-plan"]');
+      if (!select) return;
+      var planId = select.value;
+      var d = plans[String(planId)] || null;
+
+      var priceEl = document.getElementById('plan-price');
+      var durEl = document.getElementById('plan-duration');
+      var maxEl = document.getElementById('plan-max-screens');
+      if (!priceEl || !durEl || !maxEl) return;
+
+      if (!d) {
+        priceEl.textContent = '—';
+        durEl.textContent = '—';
+        maxEl.textContent = '—';
+        return;
+      }
+
+      priceEl.textContent = (d.price !== undefined && d.price !== null && d.price !== '') ? d.price : '—';
+      durEl.textContent = (d.duration_days !== undefined && d.duration_days !== null) ? String(d.duration_days) : '—';
+      maxEl.textContent = (d.max_screens !== undefined && d.max_screens !== null) ? String(d.max_screens) : 'غير محدود';
+    }
+
+    var planSelect = document.querySelector('select[name="new-plan"]');
+    if (planSelect) {
+      planSelect.addEventListener('change', updatePlanDetails);
+      updatePlanDetails();
+    }
+
+    // initial tab
+    setActiveTab('{% if active_request_tab == "new" %}new{% else %}renewal{% endif %}');
+  })();
+</script>
 {% endblock %}
