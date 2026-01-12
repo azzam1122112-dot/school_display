@@ -5,6 +5,7 @@ import csv
 import io
 import math
 import logging
+import os
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
@@ -2892,6 +2893,28 @@ def my_subscription(request):
     renew_form = SubscriptionRenewalRequestForm(prefix="renew")
     new_form = SubscriptionNewRequestForm(prefix="new")
 
+    def _shorten_receipt_filename(file_obj, *, prefix: str) -> Any:
+        """Keep the stored ImageField path short (DB safety).
+
+        Some production DBs may still have receipt_image as varchar(100) until migrations run.
+        By shortening the uploaded filename we avoid 500s even before the ALTER migration.
+        """
+        if not file_obj:
+            return file_obj
+        original_name = (getattr(file_obj, "name", "") or "").strip()
+        _base, ext = os.path.splitext(original_name)
+        ext = (ext or ".jpg").lower()
+        # keep extension sane
+        if len(ext) > 10:
+            ext = ext[:10]
+        stamp = timezone.now().strftime("%Y%m%d%H%M%S")
+        token = get_random_string(6)
+        try:
+            file_obj.name = f"{prefix}_{stamp}_{token}{ext}"
+        except Exception:
+            pass
+        return file_obj
+
     # خطط الاشتراك (لإظهار تفاصيل الخطة في الواجهة)
     try:
         available_plans = list(
@@ -2983,7 +3006,10 @@ def my_subscription(request):
                         plan=plan_obj,
                         requested_starts_at=timezone.localdate(),
                         amount=getattr(plan_obj, "price", 0) or 0,
-                        receipt_image=renew_form.cleaned_data["receipt_image"],
+                        receipt_image=_shorten_receipt_filename(
+                            renew_form.cleaned_data["receipt_image"],
+                            prefix="renewal_receipt",
+                        ),
                         transfer_note=renew_form.cleaned_data.get("transfer_note", "") or "",
                         status="submitted",
                     )
@@ -3009,7 +3035,10 @@ def my_subscription(request):
                     plan=plan_obj,
                     requested_starts_at=timezone.localdate(),
                     amount=getattr(plan_obj, "price", 0) or 0,
-                    receipt_image=new_form.cleaned_data["receipt_image"],
+                    receipt_image=_shorten_receipt_filename(
+                        new_form.cleaned_data["receipt_image"],
+                        prefix="new_receipt",
+                    ),
                     transfer_note=new_form.cleaned_data.get("transfer_note", "") or "",
                     status="submitted",
                 )
