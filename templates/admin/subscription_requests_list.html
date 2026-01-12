@@ -1,0 +1,130 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}طلبات التجديد والاشتراك{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <div class="bg-gradient-to-r from-white to-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div class="space-y-2">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 012-2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">طلبات التجديد والاشتراك</h1>
+            <p class="mt-1 text-sm text-slate-500">مراجعة إيصالات التحويل واعتماد/رفض الطلبات.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-4 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span class="text-slate-600">قيد المراجعة/مرسلة: {{ open_count }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-slate-600">معتمدة: {{ approved_count }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span class="text-slate-600">مرفوضة: {{ rejected_count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <form method="get" class="flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="text" name="q" value="{{ q }}" placeholder="بحث بالمدرسة أو الخطة..."
+                 class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50">
+          <select name="status" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50">
+            <option value="" {% if not status %}selected{% endif %}>كل الحالات</option>
+            <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>مرسلة</option>
+            <option value="under_review" {% if status == 'under_review' %}selected{% endif %}>قيد المراجعة</option>
+            <option value="approved" {% if status == 'approved' %}selected{% endif %}>معتمدة</option>
+            <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>مرفوضة</option>
+          </select>
+          <select name="type" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50">
+            <option value="" {% if not type %}selected{% endif %}>كل الأنواع</option>
+            <option value="renewal" {% if type == 'renewal' %}selected{% endif %}>تجديد</option>
+            <option value="new" {% if type == 'new' %}selected{% endif %}>اشتراك جديد</option>
+          </select>
+        </div>
+        <div class="mt-3">
+          <button class="px-5 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold">بحث</button>
+          <a href="?" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100">تصفير</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-100">
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">التاريخ</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">المدرسة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">النوع</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">الخطة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">المبلغ</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">الحالة</th>
+            <th class="px-6 py-4 text-right font-semibold text-slate-600">الإجراء</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for obj in page_obj.object_list %}
+            <tr class="hover:bg-slate-50/60">
+              <td class="px-6 py-4 text-slate-700 whitespace-nowrap">{{ obj.created_at|date:"Y-m-d" }}</td>
+              <td class="px-6 py-4 text-slate-800 font-semibold">{{ obj.school.name }}</td>
+              <td class="px-6 py-4 text-slate-700">{{ obj.get_request_type_display }}</td>
+              <td class="px-6 py-4 text-slate-700">{{ obj.plan.name }}</td>
+              <td class="px-6 py-4 text-slate-700">{{ obj.amount }} ر.س</td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                  {% if obj.status == 'approved' %}bg-emerald-100 text-emerald-700
+                  {% elif obj.status == 'rejected' %}bg-rose-100 text-rose-700
+                  {% elif obj.status == 'under_review' %}bg-amber-100 text-amber-700
+                  {% else %}bg-slate-100 text-slate-700{% endif %}">
+                  {{ obj.get_status_display }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <a href="{% url 'dashboard:system_subscription_request_detail' obj.pk %}" class="text-sky-700 hover:text-sky-900 font-semibold">عرض</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="px-6 py-8 text-center text-slate-400">لا توجد طلبات.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj %}
+      <div class="p-5 border-t border-slate-100 flex items-center justify-between text-sm">
+        <div class="text-slate-500">صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</div>
+        <div class="flex items-center gap-2">
+          {% if page_obj.has_previous %}
+            <a class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+               href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&type={{ type }}">السابق</a>
+          {% endif %}
+          {% if page_obj.has_next %}
+            <a class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+               href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&type={{ type }}">التالي</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}تفاصيل طلب الاشتراك{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">تفاصيل الطلب</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ obj.school.name }} — {{ obj.get_request_type_display }}</p>
+    </div>
+    <a href="{% url 'dashboard:system_subscription_requests_list' %}" class="text-sm font-semibold text-slate-700 hover:text-slate-900">رجوع للقائمة</a>
+  </div>
+
+  <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+      <div class="space-y-1">
+        <div class="text-xs text-slate-400">تم الإرسال: {{ obj.created_at|date:"Y-m-d H:i" }}</div>
+        <div class="text-lg font-bold text-slate-900">الخطة: {{ obj.plan.name }}</div>
+      </div>
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+        {% if obj.status == 'approved' %}bg-emerald-100 text-emerald-700
+        {% elif obj.status == 'rejected' %}bg-rose-100 text-rose-700
+        {% elif obj.status == 'under_review' %}bg-amber-100 text-amber-700
+        {% else %}bg-slate-100 text-slate-700{% endif %}">
+        {{ obj.get_status_display }}
+      </span>
+    </div>
+
+    <div class="px-6 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+          <div class="text-xs text-slate-500">المبلغ</div>
+          <div class="text-lg font-bold text-slate-900">{{ obj.amount }} ر.س</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+          <div class="text-xs text-slate-500">تاريخ بدء التفعيل المطلوب</div>
+          <div class="text-lg font-bold text-slate-900">{{ obj.requested_starts_at }}</div>
+        </div>
+
+        {% if obj.transfer_note %}
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <div class="text-xs text-slate-500">ملاحظة العميل</div>
+            <div class="text-sm text-slate-800 mt-1">{{ obj.transfer_note }}</div>
+          </div>
+        {% endif %}
+
+        {% if obj.admin_note %}
+          <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <div class="text-xs text-slate-500">ملاحظة الإدارة</div>
+            <div class="text-sm text-slate-800 mt-1 whitespace-pre-line">{{ obj.admin_note }}</div>
+          </div>
+        {% endif %}
+
+        {% if obj.approved_subscription %}
+          <div class="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <div class="text-xs text-emerald-700">الاشتراك المُنشأ</div>
+            <div class="text-sm text-emerald-900 mt-1">
+              #{{ obj.approved_subscription.id }} — يبدأ {{ obj.approved_subscription.starts_at }}
+              {% if obj.approved_subscription.ends_at %} وينتهي {{ obj.approved_subscription.ends_at }}{% endif %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="rounded-2xl border border-slate-100 bg-white p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-bold text-slate-900">إيصال التحويل</div>
+            {% if obj.receipt_image %}
+              <a href="{{ obj.receipt_image.url }}" target="_blank" class="text-xs font-semibold text-sky-700 hover:text-sky-900">فتح بحجم كامل</a>
+            {% endif %}
+          </div>
+
+          {% if obj.receipt_image %}
+            <img src="{{ obj.receipt_image.url }}" alt="receipt" class="w-full rounded-xl border border-slate-100">
+          {% else %}
+            <div class="text-sm text-slate-400">لا يوجد إيصال مرفق.</div>
+          {% endif %}
+        </div>
+
+        <div class="mt-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+          <div class="font-bold text-slate-900 mb-2">إجراءات</div>
+
+          <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <textarea name="admin_note" rows="3" placeholder="ملاحظة للإدارة/المدرسة (اختياري)" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+              <button name="action" value="under_review" class="flex-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2">قيد المراجعة</button>
+              <button name="action" value="approve" class="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2">اعتماد</button>
+              <button name="action" value="reject" class="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2">رفض</button>
+            </div>
+
+            <p class="text-xs text-slate-500">عند الاعتماد: يتم إنشاء اشتراك يبدأ من تاريخ رفع الطلب.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

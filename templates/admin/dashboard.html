@@ -9,7 +9,7 @@
 <div class="space-y-8">
 
   <!-- بطاقات الإحصائيات -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
     
     <!-- عدد المدارس -->
     <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -73,6 +73,29 @@
         <a href="{% url 'dashboard:system_subscriptions_list' %}" 
            class="inline-flex items-center text-sm text-emerald-100 hover:text-white font-medium">
           عرض الاشتراكات
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- طلبات التجديد/الاشتراك -->
+    <div class="bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-4xl font-bold">{{ open_subscription_requests|default:"0" }}</div>
+          <div class="text-rose-100 mt-2 text-lg font-medium">طلبات الاشتراك</div>
+          <div class="text-rose-200 text-sm mt-1">قيد المراجعة</div>
+        </div>
+        <div class="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <span class="text-3xl">🧾</span>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-rose-400/30">
+        <a href="{% url 'dashboard:system_subscription_requests_list' %}"
+           class="inline-flex items-center text-sm text-rose-100 hover:text-white font-medium">
+          مراجعة الطلبات
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
@@ -174,6 +197,26 @@
             </p>
             <div class="flex items-center text-emerald-600 font-medium text-sm">
               <span>الذهاب إلى الاشتراكات</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </a>
+
+      <!-- طلبات الاشتراك/التجديد -->
+      <a href="{% url 'dashboard:system_subscription_requests_list' %}"
+         class="group bg-gradient-to-br from-white to-rose-50 rounded-2xl border border-rose-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">🧾</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">طلبات التجديد/الاشتراك</h3>
+            <p class="text-slate-600 text-sm mb-4">استعراض الطلبات، مشاهدة الإيصالات، اعتماد/رفض.</p>
+            <div class="flex items-center text-rose-600 font-medium text-sm">
+              <span>الذهاب إلى الطلبات</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

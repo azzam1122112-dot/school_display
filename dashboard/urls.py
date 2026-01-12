@@ -120,6 +120,10 @@ urlpatterns = [
     path("admin-panel/subscriptions/<int:pk>/edit/", views.system_subscription_edit, name="system_subscription_edit"),
     path("admin-panel/subscriptions/<int:pk>/delete/", views.system_subscription_delete, name="system_subscription_delete"),
 
+    # Subscription Requests (Renewal / New)
+    path("admin-panel/subscription-requests/", views.system_subscription_requests_list, name="system_subscription_requests_list"),
+    path("admin-panel/subscription-requests/<int:pk>/", views.system_subscription_request_detail, name="system_subscription_request_detail"),
+
     # Screen Add-ons
     path("admin-panel/screen-addons/", views.system_screen_addons_list, name="system_screen_addons_list"),
     path("admin-panel/screen-addons/add/", views.system_screen_addon_create, name="system_screen_addon_create"),

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import os
 import logging
 
 from django import forms
@@ -26,7 +27,7 @@ from schedule.models import (
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
 from core.models import DisplayScreen, School, UserProfile, SubscriptionPlan
-from subscriptions.models import SchoolSubscription, SubscriptionScreenAddon
+from subscriptions.models import SchoolSubscription, SubscriptionScreenAddon, SubscriptionRequest
 logger = logging.getLogger(__name__)
 
 UserModel = get_user_model()
@@ -650,6 +651,83 @@ class SubscriptionScreenAddonForm(forms.ModelForm):
             SchoolSubscription.objects.select_related("school", "plan")
             .order_by("-starts_at", "-id")
         )
+
+
+# =========================
+# طلبات الاشتراك/التجديد (مستخدم المدرسة)
+# =========================
+
+class _ReceiptImageValidationMixin:
+    receipt_max_size_bytes = 5 * 1024 * 1024
+    receipt_allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
+
+    def _validate_receipt_image(self, file_obj):
+        if not file_obj:
+            raise ValidationError("الرجاء إرفاق صورة الإيصال.")
+
+        # content-type (best-effort)
+        content_type = getattr(file_obj, "content_type", "") or ""
+        if content_type and not content_type.lower().startswith("image/"):
+            raise ValidationError("الملف المرفوع يجب أن يكون صورة فقط.")
+
+        # extension
+        ext = os.path.splitext(getattr(file_obj, "name", "") or "")[1].lower()
+        if ext and ext not in self.receipt_allowed_exts:
+            raise ValidationError("صيغة الإيصال غير مدعومة. الصيغ المسموحة: JPG, PNG, WEBP")
+
+        # size
+        size = getattr(file_obj, "size", None)
+        if size is not None and int(size) > self.receipt_max_size_bytes:
+            raise ValidationError("حجم الصورة كبير جدًا. الحد الأقصى 5MB.")
+
+        return file_obj
+
+
+class SubscriptionRenewalRequestForm(forms.Form, _ReceiptImageValidationMixin):
+    receipt_image = forms.ImageField(
+        label="إيصال التحويل (صورة)",
+        widget=forms.ClearableFileInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+    transfer_note = forms.CharField(
+        label="ملاحظة (اختياري)",
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+
+    def clean_receipt_image(self):
+        return self._validate_receipt_image(self.cleaned_data.get("receipt_image"))
+
+
+class SubscriptionNewRequestForm(forms.Form, _ReceiptImageValidationMixin):
+    plan = forms.ModelChoiceField(
+        queryset=SubscriptionPlan.objects.all().order_by("name"),
+        label="اختر الخطة",
+        widget=forms.Select(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+    receipt_image = forms.ImageField(
+        label="إيصال التحويل (صورة)",
+        widget=forms.ClearableFileInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+    transfer_note = forms.CharField(
+        label="ملاحظة (اختياري)",
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+
+    def clean_receipt_image(self):
+        return self._validate_receipt_image(self.cleaned_data.get("receipt_image"))
 
 
 # =========================

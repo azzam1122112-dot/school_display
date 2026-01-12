@@ -171,6 +171,19 @@
           <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
           {% endif %}
         </a>
+
+        <a href="{% url 'dashboard:system_subscription_requests_list' %}"
+           class="sidebar-link {% if 'system_subscription_request' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
+          <i class="fas fa-receipt text-lg w-6 text-center"></i>
+          <span>طلبات التجديد/الاشتراك</span>
+          {% if admin_open_subscription_requests_count %}
+          <span class="mr-auto inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-600 text-white text-xs font-bold">
+            {{ admin_open_subscription_requests_count }}
+          </span>
+          {% elif 'system_subscription_request' in request.resolver_match.url_name %}
+          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
+          {% endif %}
+        </a>
         
         <!-- التقارير -->
         <div class="mt-6 mb-2 px-2">

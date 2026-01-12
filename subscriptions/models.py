@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -377,3 +378,112 @@ class SubscriptionScreenAddon(models.Model):
         self.total_price = self._calc_total_price()
 
         super().save(*args, **kwargs)
+
+
+class SubscriptionRequest(models.Model):
+    REQUEST_TYPE_CHOICES = [
+        ("renewal", "طلب تجديد"),
+        ("new", "طلب اشتراك جديد"),
+    ]
+
+    STATUS_CHOICES = [
+        ("submitted", "مرسلة"),
+        ("under_review", "قيد المراجعة"),
+        ("approved", "معتمدة"),
+        ("rejected", "مرفوضة"),
+    ]
+
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="subscription_requests",
+        verbose_name="المدرسة",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_subscription_requests",
+        verbose_name="أُنشئ بواسطة",
+    )
+
+    request_type = models.CharField(
+        max_length=20,
+        choices=REQUEST_TYPE_CHOICES,
+        verbose_name="نوع الطلب",
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="subscription_requests",
+        verbose_name="الخطة المطلوبة",
+    )
+
+    # حسب طلبك: يبدأ التجديد من تاريخ رفع الطلب (يُثبت عند الإرسال)
+    requested_starts_at = models.DateField(
+        default=timezone.localdate,
+        verbose_name="تاريخ بدء التفعيل المطلوب",
+    )
+
+    amount = models.DecimalField(
+        "مبلغ التحويل (ر.س)",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    receipt_image = models.ImageField(
+        upload_to="receipts/subscription_requests/%Y/%m",
+        verbose_name="إيصال التحويل (صورة)",
+    )
+    transfer_note = models.CharField(
+        "ملاحظة العميل",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="submitted",
+        verbose_name="الحالة",
+    )
+    admin_note = models.TextField(
+        "ملاحظة الإدارة",
+        blank=True,
+        default="",
+    )
+
+    processed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="processed_subscription_requests",
+        verbose_name="تمت المراجعة بواسطة",
+    )
+    processed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="تاريخ المراجعة",
+    )
+    approved_subscription = models.ForeignKey(
+        "subscriptions.SchoolSubscription",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_from_requests",
+        verbose_name="الاشتراك المُنشأ",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
+
+    class Meta:
+        verbose_name = "طلب اشتراك/تجديد"
+        verbose_name_plural = "طلبات الاشتراك/التجديد"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.school} - {self.get_request_type_display()} ({self.get_status_display()})"

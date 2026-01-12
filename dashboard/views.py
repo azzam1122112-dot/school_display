@@ -54,6 +54,8 @@ from .forms import (
     CustomerSupportTicketForm,
     TicketCommentForm,
     SubscriptionScreenAddonForm,
+    SubscriptionRenewalRequestForm,
+    SubscriptionNewRequestForm,
 )
 from core.models import SubscriptionPlan, SupportTicket, TicketComment
 
@@ -2062,6 +2064,14 @@ def system_admin_dashboard(request):
         active_subs = active_qs.count()
         revenue = active_qs.aggregate(total=Sum("plan__price"))["total"] or 0
 
+    Req = _get_subscription_request_model()
+    open_requests = 0
+    if Req is not None:
+        try:
+            open_requests = Req.objects.filter(status__in=["submitted", "under_review"]).count()
+        except Exception:
+            open_requests = 0
+
     return render(
         request,
         "admin/dashboard.html",
@@ -2072,6 +2082,7 @@ def system_admin_dashboard(request):
             "active_subs": active_subs,
             "subscriptions_count": active_subs,
             "revenue": revenue,
+            "open_subscription_requests": open_requests,
         },
     )
 
@@ -2559,6 +2570,161 @@ def system_subscription_delete(request, pk: int):
     return redirect("dashboard:system_subscriptions_list")
 
 
+# ===============================
+# 🧾 طلبات التجديد/الاشتراك (Admin)
+# ===============================
+
+
+@superuser_required
+def system_subscription_requests_list(request):
+    Req = _get_subscription_request_model()
+    if Req is None:
+        messages.error(request, "نظام طلبات الاشتراك غير مثبت.")
+        return redirect("dashboard:system_admin_dashboard")
+
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    req_type = (request.GET.get("type") or "").strip()
+
+    qs = Req.objects.all()
+    try:
+        qs = qs.select_related("school", "plan", "created_by", "processed_by")
+    except Exception:
+        pass
+
+    if q:
+        qs = qs.filter(
+            Q(school__name__icontains=q)
+            | Q(school__slug__icontains=q)
+            | Q(plan__name__icontains=q)
+        )
+
+    if status:
+        qs = qs.filter(status=status)
+    if req_type:
+        qs = qs.filter(request_type=req_type)
+
+    qs = qs.order_by("-created_at", "-id")
+
+    open_count = qs.filter(status__in=["submitted", "under_review"]).count()
+    approved_count = qs.filter(status="approved").count()
+    rejected_count = qs.filter(status="rejected").count()
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    return render(
+        request,
+        "admin/subscription_requests_list.html",
+        {
+            "page_obj": page_obj,
+            "q": q,
+            "status": status,
+            "type": req_type,
+            "open_count": open_count,
+            "approved_count": approved_count,
+            "rejected_count": rejected_count,
+        },
+    )
+
+
+@superuser_required
+def system_subscription_request_detail(request, pk: int):
+    Req = _get_subscription_request_model()
+    if Req is None:
+        messages.error(request, "نظام طلبات الاشتراك غير مثبت.")
+        return redirect("dashboard:system_admin_dashboard")
+
+    obj = get_object_or_404(Req, pk=pk)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        admin_note = (request.POST.get("admin_note") or "").strip()
+
+        if action not in {"approve", "reject", "under_review"}:
+            messages.error(request, "إجراء غير صالح.")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+        if obj.status == "approved" and action == "approve":
+            messages.info(request, "هذا الطلب معتمد بالفعل.")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+        if obj.status == "rejected" and action == "reject":
+            messages.info(request, "هذا الطلب مرفوض بالفعل.")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+        if action == "under_review":
+            if obj.status in {"approved", "rejected"}:
+                messages.warning(request, "لا يمكن تغيير حالة طلب مُعالج.")
+                return redirect("dashboard:system_subscription_request_detail", pk=pk)
+            obj.status = "under_review"
+            obj.admin_note = admin_note
+            obj.processed_by = request.user
+            obj.processed_at = timezone.now()
+            obj.save(update_fields=["status", "admin_note", "processed_by", "processed_at", "updated_at"])
+            messages.success(request, "تم تحويل الطلب إلى (قيد المراجعة).")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+        if action == "reject":
+            if obj.status == "approved":
+                messages.warning(request, "لا يمكن رفض طلب مُعتمد.")
+                return redirect("dashboard:system_subscription_request_detail", pk=pk)
+            obj.status = "rejected"
+            obj.admin_note = admin_note
+            obj.processed_by = request.user
+            obj.processed_at = timezone.now()
+            obj.save(update_fields=["status", "admin_note", "processed_by", "processed_at", "updated_at"])
+            messages.success(request, "تم رفض الطلب.")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+        if action == "approve":
+            if obj.status == "rejected":
+                messages.warning(request, "لا يمكن اعتماد طلب مرفوض.")
+                return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+            SubNew = None
+            try:
+                SubNew = apps.get_model("subscriptions", "SchoolSubscription")
+            except Exception:
+                SubNew = None
+            if SubNew is None:
+                messages.error(request, "موديل الاشتراكات غير متوفر لإنشاء الاشتراك.")
+                return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+            with transaction.atomic():
+                # منع التكرار وفق unique constraint
+                sub_obj, _ = SubNew.objects.get_or_create(
+                    school=obj.school,
+                    plan=obj.plan,
+                    starts_at=obj.requested_starts_at,
+                    defaults={
+                        "status": "active",
+                        "notes": f"Approved from request #{obj.pk}",
+                    },
+                )
+
+                obj.status = "approved"
+                obj.admin_note = admin_note
+                obj.processed_by = request.user
+                obj.processed_at = timezone.now()
+                obj.approved_subscription = sub_obj
+                obj.save(
+                    update_fields=[
+                        "status",
+                        "admin_note",
+                        "processed_by",
+                        "processed_at",
+                        "approved_subscription",
+                        "updated_at",
+                    ]
+                )
+
+            messages.success(request, "تم اعتماد الطلب وإنشاء/ربط الاشتراك.")
+            return redirect("dashboard:system_subscription_request_detail", pk=pk)
+
+    return render(request, "admin/subscription_request_detail.html", {"obj": obj})
+
+
 # ==========================
 # ✅ اشتراكي (مدرسة المستخدم)
 # ==========================
@@ -2706,6 +2872,92 @@ def my_subscription(request):
         primary_subscription = current_subscription or upcoming_subscription
         primary_label = "الاشتراك الحالي" if current_subscription else ("الاشتراك القادم" if upcoming_subscription else "")
 
+    # ==========================
+    # طلبات الاشتراك/التجديد
+    # ==========================
+    RequestModel = _get_subscription_request_model()
+    renew_form = SubscriptionRenewalRequestForm(prefix="renew")
+    new_form = SubscriptionNewRequestForm(prefix="new")
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+
+        if RequestModel is None:
+            messages.error(request, "ميزة طلبات الاشتراك غير متاحة حالياً.")
+            return redirect("dashboard:my_subscription")
+
+        if action not in {"renewal", "new"}:
+            messages.error(request, "طلب غير صالح.")
+            return redirect("dashboard:my_subscription")
+
+        has_open = RequestModel.objects.filter(
+            school=school,
+            status__in=["submitted", "under_review"],
+        ).exists()
+        if has_open:
+            messages.warning(request, "لديكم طلب قيد المراجعة بالفعل. الرجاء انتظار الرد قبل إرسال طلب جديد.")
+            return redirect("dashboard:my_subscription")
+
+        if action == "renewal":
+            renew_form = SubscriptionRenewalRequestForm(request.POST, request.FILES, prefix="renew")
+            if renew_form.is_valid():
+                plan_obj = None
+                if current_subscription is not None:
+                    plan_obj = getattr(current_subscription, "plan", None)
+                elif upcoming_subscription is not None:
+                    plan_obj = getattr(upcoming_subscription, "plan", None)
+                elif primary_subscription is not None:
+                    plan_obj = getattr(primary_subscription, "plan", None)
+
+                if plan_obj is None:
+                    messages.error(request, "لا توجد خطة حالية يمكن تجديدها. استخدم طلب اشتراك جديد.")
+                else:
+                    RequestModel.objects.create(
+                        school=school,
+                        created_by=request.user,
+                        request_type="renewal",
+                        plan=plan_obj,
+                        requested_starts_at=timezone.localdate(),
+                        amount=getattr(plan_obj, "price", 0) or 0,
+                        receipt_image=renew_form.cleaned_data["receipt_image"],
+                        transfer_note=renew_form.cleaned_data.get("transfer_note", "") or "",
+                        status="submitted",
+                    )
+                    messages.success(request, "تم إرسال طلب التجديد بنجاح. سيتم مراجعته من الإدارة.")
+                    return redirect("dashboard:my_subscription")
+            else:
+                messages.error(request, "الرجاء تصحيح الأخطاء في نموذج التجديد.")
+
+        if action == "new":
+            new_form = SubscriptionNewRequestForm(request.POST, request.FILES, prefix="new")
+            if new_form.is_valid():
+                plan_obj = new_form.cleaned_data["plan"]
+                RequestModel.objects.create(
+                    school=school,
+                    created_by=request.user,
+                    request_type="new",
+                    plan=plan_obj,
+                    requested_starts_at=timezone.localdate(),
+                    amount=getattr(plan_obj, "price", 0) or 0,
+                    receipt_image=new_form.cleaned_data["receipt_image"],
+                    transfer_note=new_form.cleaned_data.get("transfer_note", "") or "",
+                    status="submitted",
+                )
+                messages.success(request, "تم إرسال طلب الاشتراك الجديد بنجاح. سيتم مراجعته من الإدارة.")
+                return redirect("dashboard:my_subscription")
+            messages.error(request, "الرجاء تصحيح الأخطاء في نموذج الاشتراك الجديد.")
+
+    subscription_requests = []
+    if RequestModel is not None:
+        try:
+            subscription_requests = list(
+                RequestModel.objects.filter(school=school)
+                .select_related("plan", "processed_by", "approved_subscription")
+                .order_by("-created_at", "-id")[:10]
+            )
+        except Exception:
+            subscription_requests = []
+
     return render(
         request,
         "dashboard/my_subscription.html",
@@ -2721,6 +2973,10 @@ def my_subscription(request):
 
             "upcoming_subscription": upcoming_subscription,
             "today": today,
+
+            "renew_form": renew_form,
+            "new_form": new_form,
+            "subscription_requests": subscription_requests,
         },
     )
 
@@ -2946,6 +3202,13 @@ def request_screen_addon(request):
 def _get_screen_addon_model():
     try:
         return apps.get_model("subscriptions", "SubscriptionScreenAddon")
+    except Exception:
+        return None
+
+
+def _get_subscription_request_model():
+    try:
+        return apps.get_model("subscriptions", "SubscriptionRequest")
     except Exception:
         return None
 
