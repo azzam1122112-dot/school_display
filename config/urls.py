@@ -1,8 +1,9 @@
 from django.contrib import admin
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from django.views.generic.base import RedirectView
 
 
 urlpatterns = [
@@ -22,6 +23,9 @@ urlpatterns = [
 
     # favicon
     path("favicon.ico", RedirectView.as_view(url="/static/favicon.ico", permanent=True)),
+
+    # robots.txt
+    path("robots.txt", RedirectView.as_view(url=staticfiles_storage.url("robots.txt"), permanent=True)),
 ]
 
 
