@@ -29,6 +29,8 @@ def _abs_media_url(request, maybe_url: str | None) -> str | None:
     if not maybe_url:
         return None
     s = str(maybe_url).strip()
+    if s.lower() in {"none", "null", "-"}:
+        return None
     if not s:
         return None
     if s.startswith("http://") or s.startswith("https://"):

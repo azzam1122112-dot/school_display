@@ -93,6 +93,25 @@
     dom.blockerTitle = $("blockerTitle");
     dom.blockerDetails = $("blockerDetails");
     dom.blockerLink = $("blockerLink");
+
+    // Robust logo fallback (in case a provided logo URL 404s)
+    if (dom.schoolLogo && !dom.schoolLogo.dataset._fallbackBound) {
+      dom.schoolLogo.dataset._fallbackBound = "1";
+      dom.schoolLogo.addEventListener(
+        "error",
+        () => {
+          const fallback =
+            safeText(dom.schoolLogo.getAttribute("data-fallback-src")) ||
+            safeText(dom.schoolLogo.getAttribute("data-fallback")) ||
+            "";
+          if (!fallback) return;
+          // avoid infinite loop if fallback also fails
+          if (dom.schoolLogo.src && dom.schoolLogo.src.indexOf(fallback) >= 0) return;
+          dom.schoolLogo.src = fallback;
+        },
+        { passive: true }
+      );
+    }
   }
 
   // ===== Blocking overlay helpers =====
