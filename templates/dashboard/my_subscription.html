@@ -35,23 +35,39 @@
   {# شريط تنبيه أعلى الصفحة حسب حالة الاشتراك #}
   {% if current_subscription %}
     {% if current_status_code == "expired" %}
-      <div class="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 flex items-start gap-3">
-        <div class="mt-0.5 text-lg">⚠️</div>
-        <div class="space-y-1">
-          <p class="font-semibold text-sm">اشتراك مدرستكم منتهي.</p>
-          <p class="text-xs md:text-sm">
-            لن تعمل بعض الخصائص حتى يتم التجديد. يمكنكم التواصل معنا عبر الواتساب أو البريد لإكمال عملية التجديد.
-          </p>
+      <div class="rounded-2xl border-2 border-rose-300 bg-gradient-to-r from-rose-50 to-orange-50 text-rose-900 px-5 py-4 shadow-lg">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-xl">
+            ⚠️
+          </div>
+          <div class="flex-1 space-y-2">
+            <p class="font-bold text-base">انتهى اشتراك مدرستكم</p>
+            <p class="text-sm text-rose-800">
+              بعض الخصائص متوقفة حالياً. يمكنك تجديد اشتراكك بسهولة من خلال نموذج التجديد بالأسفل.
+            </p>
+            <div class="flex items-center gap-2 pt-1">
+              <span class="text-lg">👇</span>
+              <span class="text-xs font-semibold text-rose-700">انتقل للأسفل واختر "تجديد" لإعادة التفعيل</span>
+            </div>
+          </div>
         </div>
       </div>
     {% elif current_status_code == "cancelled" %}
-      <div class="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 flex items-start gap-3">
-        <div class="mt-0.5 text-lg">⚠️</div>
-        <div class="space-y-1">
-          <p class="font-semibold text-sm">اشتراك مدرستكم ملغي.</p>
-          <p class="text-xs md:text-sm">
-            تم إلغاء الاشتراك من قبل الإدارة، لن تعمل بعض الخصائص حتى يتم تفعيل اشتراك جديد.
-          </p>
+      <div class="rounded-2xl border-2 border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 text-rose-900 px-5 py-4 shadow-lg">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-xl">
+            🚫
+          </div>
+          <div class="flex-1 space-y-2">
+            <p class="font-bold text-base">اشتراك مدرستكم ملغي</p>
+            <p class="text-sm text-rose-800">
+              تم إلغاء الاشتراك من قبل الإدارة. للحصول على اشتراك جديد، اختر الباقة المناسبة من الأسفل.
+            </p>
+            <div class="flex items-center gap-2 pt-1">
+              <span class="text-lg">👇</span>
+              <span class="text-xs font-semibold text-rose-700">انتقل للأسفل واختر "اشتراك جديد"</span>
+            </div>
+          </div>
         </div>
       </div>
     {% elif current_status_code == "active" %}
@@ -175,23 +191,41 @@
 
   {% else %}
 
-    <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-8 text-center space-y-3">
-      <div class="text-4xl mb-2">📭</div>
-      <p class="text-lg font-semibold text-slate-800">
-        لا يوجد اشتراك مسجّل لهذه المدرسة حالياً.
-      </p>
-      <p class="text-sm text-slate-500">
-        للتفعيل الأول أو طلب تجربة، يمكنك التواصل مع الدعم الفني عبر الواتساب أو البريد الإلكتروني.
-      </p>
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
-        <a href="https://wa.me/966537720207"
-           class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">
-          واتساب: <span dir="ltr">+966537720207</span>
-        </a>
-        <a href="mailto:xmansx1122@gmail.com"
-           class="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs md:text-sm font-semibold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50">
-          xmansx1122@gmail.com
-        </a>
+    <div class="relative bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-3xl shadow-xl border-2 border-indigo-100 overflow-hidden">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
+      <div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-200/20 rounded-full blur-3xl -ml-32 -mb-32"></div>
+      
+      <div class="relative px-8 py-12 text-center space-y-5">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-4xl shadow-lg mb-2">
+          🎯
+        </div>
+        
+        <div class="space-y-2">
+          <h3 class="text-2xl md:text-3xl font-bold text-slate-900">
+            ابدأ رحلتك معنا!
+          </h3>
+          <p class="text-base md:text-lg text-slate-700 max-w-2xl mx-auto">
+            مدرستكم لا تمتلك اشتراكاً نشطاً حالياً
+          </p>
+        </div>
+
+        <div class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-indigo-200 shadow-sm">
+          <span class="text-2xl">👇</span>
+          <p class="text-sm md:text-base font-semibold text-slate-800">
+            اختر الباقة المناسبة من الأسفل وابدأ الآن
+          </p>
+        </div>
+
+        <div class="pt-4 flex items-center justify-center gap-4">
+          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm">
+            <span class="text-xl">✨</span>
+            <span class="text-xs md:text-sm font-medium text-slate-700">سهل وسريع</span>
+          </div>
+          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm">
+            <span class="text-xl">🚀</span>
+            <span class="text-xs md:text-sm font-medium text-slate-700">تفعيل فوري</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -223,6 +257,81 @@
           >
             اشتراك جديد
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- بطاقة الحساب البنكي -->
+    <div class="px-5 md:px-8 py-6 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-slate-100">
+      <div class="max-w-3xl mx-auto">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-2xl shadow-lg">
+            🏦
+          </div>
+          <div>
+            <h4 class="text-base md:text-lg font-bold text-slate-900">معلومات التحويل البنكي</h4>
+            <p class="text-xs text-slate-600">قم بتحويل المبلغ إلى الحساب التالي ثم ارفع الإيصال</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border-2 border-emerald-100 shadow-sm overflow-hidden">
+          <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3">
+            <p class="text-white font-bold text-sm">منصور محمد بن حامد الغامدي</p>
+            <p class="text-emerald-100 text-xs">برمجة و تطوير</p>
+          </div>
+
+          <div class="p-4 space-y-3">
+            <!-- رقم الحساب -->
+            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
+              <div class="flex-1">
+                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">رقم الحساب</p>
+                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all" dir="ltr">660000010006086220957</p>
+              </div>
+              <button 
+                onclick="copyToClipboard('660000010006086220957', this)"
+                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
+              >
+                <span class="copy-text">نسخ</span>
+              </button>
+            </div>
+
+            <!-- الآيبان -->
+            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
+              <div class="flex-1">
+                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">رقم الآيبان (IBAN)</p>
+                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all break-all" dir="ltr">SA8580000660608016220957</p>
+              </div>
+              <button 
+                onclick="copyToClipboard('SA8580000660608016220957', this)"
+                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
+              >
+                <span class="copy-text">نسخ</span>
+              </button>
+            </div>
+
+            <!-- كود سويفت -->
+            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
+              <div class="flex-1">
+                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">كود سويفت (SWIFT)</p>
+                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all" dir="ltr">RJHISARI</p>
+              </div>
+              <button 
+                onclick="copyToClipboard('RJHISARI', this)"
+                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
+              >
+                <span class="copy-text">نسخ</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="px-4 pb-4">
+            <div class="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+              <span class="text-base flex-shrink-0 mt-0.5">💡</span>
+              <p class="text-xs text-amber-900">
+                <strong>ملاحظة:</strong> بعد إتمام التحويل، قم برفع صورة واضحة للإيصال في النموذج أدناه لتسريع عملية المراجعة والتفعيل.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -499,5 +608,48 @@
     // initial tab
     setActiveTab('{% if active_request_tab == "new" %}new{% else %}renewal{% endif %}');
   })();
+
+  // Copy to clipboard function
+  function copyToClipboard(text, button) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showCopyFeedback(button, true);
+      }).catch(function() {
+        fallbackCopy(text, button);
+      });
+    } else {
+      fallbackCopy(text, button);
+    }
+  }
+
+  function fallbackCopy(text, button) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      var success = document.execCommand('copy');
+      showCopyFeedback(button, success);
+    } catch (e) {
+      showCopyFeedback(button, false);
+    }
+    document.body.removeChild(textarea);
+  }
+
+  function showCopyFeedback(button, success) {
+    var textSpan = button.querySelector('.copy-text');
+    if (!textSpan) return;
+    
+    var originalText = textSpan.textContent;
+    textSpan.textContent = success ? '✓ تم النسخ' : '✗ فشل';
+    button.classList.add('bg-emerald-700');
+    
+    setTimeout(function() {
+      textSpan.textContent = originalText;
+      button.classList.remove('bg-emerald-700');
+    }, 2000);
+  }
 </script>
 {% endblock %}
