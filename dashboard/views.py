@@ -2253,7 +2253,7 @@ def system_users_list(request):
 
 @system_staff_required
 def system_employees_list(request):
-    """قائمة موظفي النظام (Staff / Superuser / Support group)."""
+    """قائمة موظفي النظام (Superuser / Support group)."""
     q = (request.GET.get("q") or "").strip()
 
     qs = (
@@ -2294,12 +2294,10 @@ def system_employee_create(request):
         if not getattr(request.user, "is_superuser", False):
             form.fields["role"].choices = [
                 (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
-                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
             ]
         else:
             form.fields["role"].choices = [
                 (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
-                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
                 (SystemEmployeeCreateForm.ROLE_SUPERUSER, "مدير نظام (superuser)"),
             ]
 
@@ -2318,7 +2316,6 @@ def system_employee_create(request):
         if getattr(request.user, "is_superuser", False):
             form.fields["role"].choices = [
                 (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
-                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
                 (SystemEmployeeCreateForm.ROLE_SUPERUSER, "مدير نظام (superuser)"),
             ]
 

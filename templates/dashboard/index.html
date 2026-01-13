@@ -3,270 +3,251 @@
 
 {% block title %}اللوحة الرئيسية{% endblock %}
 
-{% block page_title %}اللوحة الرئيسية للمدرسة{% endblock %}
+{% block page_title %}اللوحة الرئيسية{% endblock %}
 {% block page_description %}
-نظرة سريعة على حالة اليوم، الحصص المجدولة، حصص الانتظار والتنبيهات المعروضة على شاشة المدرسة.
+مرحباً بك! هذه نظرة شاملة على حالة النظام اليوم، الحصص، والشاشات النشطة.
 {% endblock %}
 
 {% block content %}
+<div class="space-y-8 animate-fade-in">
 
-{% if subscription and subscription.days_left is not None and subscription.days_left < 7 %}
-  <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 flex items-center gap-2 animate-pulse">
-    <span class="text-lg">⚠️</span>
-    <span class="font-semibold">تنبيه:</span>
-    <span>متبقي {{ subscription.days_left }} يوم فقط على نهاية الاشتراك. يرجى التجديد لضمان استمرار الخدمة.</span>
-  </div>
-{% endif %}
-
-<div class="space-y-6">
-
-  <!-- هيرو رئيسي على نمط شاشة العرض -->
-  <section class="relative overflow-hidden rounded-3xl bg-slate-900 text-slate-100 border border-slate-800 shadow-2xl">
-    <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-slate-900 to-sky-500/30 opacity-80"></div>
-    <div class="relative p-5 md:p-7 lg:p-8">
-
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
-        <!-- الوقت / تعريف الشاشة -->
-        <div class="lg:col-span-1 flex flex-col justify-between gap-6">
-          <div>
-            <div class="text-xs text-slate-300 mb-1">الوقت الآن</div>
-            <div id="adminClock" class="font-mono text-4xl md:text-5xl font-bold tracking-tight drop-shadow-sm">
-              --:--
-            </div>
-            <div id="adminDate" class="mt-2 text-[11px] md:text-xs text-slate-400"></div>
-          </div>
-          <div class="text-[11px] text-slate-400">
-            هذه اللوحة لإدارة الجدول العام، التنبيهات، حصص الانتظار وبطاقات التميز المعروضة على شاشة المدرسة.
-          </div>
+    <!-- تنبيه انتهاء الاشتراك -->
+    {% if subscription and subscription.days_left is not None and subscription.days_left < 7 %}
+    <div class="rounded-2xl border border-amber-200 bg-amber-50/80 backdrop-blur-sm p-4 flex items-start gap-3 shadow-sm" role="alert">
+        <div class="p-2 bg-amber-100 rounded-lg text-amber-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
         </div>
-
-        <!-- وصف حالة اليوم / زر إدارة الجدول -->
-        <div class="lg:col-span-2 flex flex-col justify-center gap-5">
-          <div class="flex flex-wrap items-center gap-3">
-            <span class="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/40 px-3 py-1 text-xs md:text-sm">
-              <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>حالة اليوم الدراسي</span>
-            </span>
-
-            {% if settings %}
-              <span class="px-3 py-1 rounded-full bg-slate-900/70 border border-slate-700 text-[11px] md:text-xs text-slate-200">
-                {{ settings.name }}
-              </span>
-            {% else %}
-              <span class="px-3 py-1 rounded-full bg-slate-900/70 border border-slate-700 text-[11px] md:text-xs text-slate-200">
-                {{ school_name|default:"مدرستنا" }}
-              </span>
-            {% endif %}
-          </div>
-
-          <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight text-white drop-shadow">
-            لوحة إدارة الجدول العام للمدرسة
-          </h2>
-
-          <p class="text-sm md:text-base text-slate-200 max-w-2xl">
-            يمكنك من هنا ضبط جداول الأيام، توزيع الحصص على الفصول لجميع المراحل، متابعة حصص الانتظار،
-            وإدارة التنبيهات وبطاقات التميز حتى تظهر بشكل منظم على شاشة العرض الرئيسية للمدرسة.
-          </p>
-
-          <div class="flex flex-wrap gap-3 mt-1">
-            <a href="{% url 'dashboard:days_list' %}"
-               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-sm font-semibold shadow-lg shadow-indigo-500/40 transition">
-              <span>📅 إدارة توقيت الحصص</span>
+        <div>
+            <h3 class="text-sm font-bold text-amber-800">تنبيه انتهاء الاشتراك</h3>
+            <p class="text-xs text-amber-700 mt-1">
+                متبقي <span class="font-bold">{{ subscription.days_left }}</span> يوم فقط على نهاية الاشتراك. يرجى التجديد لضمان استمرار عمل الشاشات.
+            </p>
+            <a href="{% url 'dashboard:my_subscription' %}" class="mt-2 inline-flex items-center text-xs font-semibold text-amber-800 hover:text-amber-900 hover:underline">
+                تجديد الاشتراك الآن &larr;
             </a>
-
-            <a href="{% url 'dashboard:timetable_day' %}"
-               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/70 border border-slate-700 text-sm font-semibold text-slate-100 hover:bg-slate-800 transition">
-              <span>📊 إدارة الحصص المجدولة</span>
-            </a>
-
-            <a href="{% url 'dashboard:screen_list' %}"
-               class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-700 text-xs md:text-sm text-slate-100 hover:bg-slate-800 transition">
-              <span>🖥️ شاشات العرض</span>
-            </a>
-          </div>
         </div>
-
-        <!-- إحصاءات سريعة على نمط الكروت الجانبية -->
-        <div class="lg:col-span-1 grid grid-cols-1 gap-3">
-          <div class="rounded-2xl bg-slate-900/70 border border-slate-700 px-4 py-3 flex flex-col gap-1">
-            <div class="text-[11px] text-slate-400 flex items-center gap-1">
-              <span class="text-xs">🔔</span>
-              <span>تنبيهات مفعّلة</span>
-            </div>
-            <div class="text-2xl font-bold">
-              {{ stats.ann_count|default:"0" }}
-            </div>
-            <div class="text-[11px] text-slate-500">
-              تُعرض على شاشة المدرسة.
-            </div>
-          </div>
-
-          <div class="rounded-2xl bg-slate-900/70 border border-slate-700 px-4 py-3 flex flex-col gap-1">
-            <div class="text-[11px] text-slate-400 flex items-center gap-1">
-              <span class="text-xs">⭐</span>
-              <span>بطاقات التميز النشطة</span>
-            </div>
-            <div class="text-2xl font-bold">
-              {{ stats.exc_count|default:"0" }}
-            </div>
-            <div class="text-[11px] text-slate-500">
-              تظهر في بطاقة نجم الأسبوع.
-            </div>
-          </div>
-
-          <div class="rounded-2xl bg-slate-900/70 border border-slate-700 px-4 py-3 flex flex-col gap-1">
-            <div class="text-[11px] text-slate-400 flex items-center gap-1">
-              <span class="text-xs">⏳</span>
-              <span>حصص الانتظار لليوم</span>
-            </div>
-            <div class="text-2xl font-bold">
-              {{ stats.standby_today|default:"0" }}
-            </div>
-            <div class="text-[11px] text-slate-500">
-                موزّعة على
-                {% if settings and settings.school and settings.school.school_type == "boys" %}
-                  المعلمين
-                {% elif settings and settings.school and settings.school.school_type == "girls" %}
-                  المعلمات
-                {% else %}
-                  المعلم/ـةين
-                {% endif %}
-                والفصول.
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-  </section>
+    {% endif %}
 
-  <!-- إجراءات سريعة / أقسام الإدارة -->
-  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <a href="{% url 'dashboard:timetable_day' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">📚</span>
-          <span class="font-semibold text-sm md:text-base">  إدارة الجدول اليومي للفصل</span>
-        </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        استعراض جميع الحصص المسجَّلة لكل فصل ويوم، وإضافة/تعديل الحصص بسهولة.
-      </p>
-    </a>
+    <!-- الهيرو سكشن بتصميم عصري -->
+    <div class="relative overflow-hidden rounded-[2rem] bg-slate-900 border border-slate-800 shadow-2xl">
+        <!-- طبقات الخلفية الجمالية -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-slate-900 to-slate-900"></div>
+        <div class="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
+        
+        <!-- المحتوى -->
+        <div class="relative z-10 p-6 md:p-10">
+            <div class="grid lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- القسم الأيمن: الترحيب والوقت -->
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-white/5 text-white/70 border border-white/10 backdrop-blur-md">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            نظام العرض المدرسي
+                        </span>
+                        {% if settings %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold bg-white/5 text-white/50 border border-white/10 backdrop-blur-md">
+                            {{ settings.name }}
+                        </span>
+                        {% endif %}
+                    </div>
 
-    <a href="{% url 'dashboard:school_data' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">🏫</span>
-          <span class="font-semibold text-sm md:text-base">
-            الفصول والمواد
-            {% if settings and settings.school and settings.school.school_type == "boys" %}
-              والمعلمين
-            {% elif settings and settings.school and settings.school.school_type == "girls" %}
-              والمعلمات
-            {% else %}
-              والمعلم/ـةون
-            {% endif %}
-          </span>
-        </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        إدارة بيانات الفصول، إضافة المواد الدراسية، وتعريف
-        {% if settings and settings.school and settings.school.school_type == "boys" %}
-          المعلمين
-        {% elif settings and settings.school and settings.school.school_type == "girls" %}
-          المعلمات
-        {% else %}
-          المعلم/ـةين
-        {% endif %}
-        المرتبطين بالمدرسة.
-      </p>
-    </a>
+                    <div>
+                        <h2 class="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
+                            <span class="block text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-white to-blue-200">
+                                لوحة التحكم
+                            </span>
+                        </h2>
+                        <p class="mt-4 text-slate-300 text-sm md:text-base leading-relaxed max-w-2xl text-justify">
+                            منصة متكاملة لإدارة بيئة العرض المدرسية. اضبط الجداول، وزّع حصص الانتظار، وانشر التنبيهات وإنجازات التميز لتظهر فوراً على شاشات المدرسة.
+                        </p>
+                    </div>
 
-    <a href="{% url 'dashboard:standby_list' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">⏳</span>
-          <span class="font-semibold text-sm md:text-base">حصص الانتظار</span>
-        </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        متابعة تكليفات الانتظار لليوم والأيام القادمة واستيرادها من ملف CSV عند الحاجة.
-      </p>
-    </a>
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <a href="{% url 'dashboard:timetable_day' %}" class="group relative px-6 py-3 rounded-2xl bg-white text-slate-900 text-sm font-bold shadow-xl shadow-white/10 hover:shadow-white/20 hover:scale-[1.02] transition-all duration-300 overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <span class="relative flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                إدارة الجدول اليومي
+                            </span>
+                        </a>
+                        <a href="{% url 'dashboard:screen_list' %}" class="group px-6 py-3 rounded-2xl bg-slate-800/50 border border-slate-700 text-white text-sm font-bold hover:bg-slate-800 hover:border-slate-600 transition-all duration-300 backdrop-blur-sm">
+                            <span class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                شاشات العرض
+                            </span>
+                        </a>
+                    </div>
+                </div>
 
-    <a href="{% url 'dashboard:ann_list' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">🔔</span>
-          <span class="font-semibold text-sm md:text-base">التنبيهات</span>
-        </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        إنشاء وتنظيم التنبيهات التي تظهر في شريط التنبيه في شاشة العرض الرئيسية.
-      </p>
-    </a>
+                <!-- القسم الأيسر: الساعة واليوم -->
+                <div class="lg:col-span-4 flex flex-col justify-center items-center lg:items-end">
+                    <div class="p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md w-full max-w-xs text-center">
+                        <div class="text-[10px] text-indigo-200 uppercase tracking-widest font-bold mb-2">التوقيت المحلي</div>
+                        <div id="adminClock" class="text-6xl md:text-7xl font-mono font-bold text-white tracking-tight drop-shadow-2xl">--:--</div>
+                        <div id="adminDate" class="mt-2 text-sm text-slate-300 font-medium border-t border-white/10 pt-2 inline-block px-4">...</div>
+                    </div>
+                </div>
 
-    <a href="{% url 'dashboard:exc_list' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">⭐</span>
-          <span class="font-semibold text-sm md:text-base">بطاقات التميز</span>
+            </div>
         </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        إضافة وتحديث بطاقة نجم الأسبوع/الشهر التي تظهر في واجهة العرض.
-      </p>
-    </a>
+    </div>
 
-    <a href="{% url 'dashboard:screen_list' %}"
-       class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-slate-800">
-          <span class="text-lg">🖥️</span>
-          <span class="font-semibold text-sm md:text-base">شاشات العرض</span>
-        </div>
-        <span class="text-[11px] text-slate-400 group-hover:text-indigo-500">فتح</span>
-      </div>
-      <p class="text-xs md:text-sm text-slate-600">
-        إدارة روابط شاشات العرض ومفاتيح الوصول لكل شاشة في المدرسة.
-      </p>
-    </a>
-  </section>
+
+    <!-- شبكة الوصول السريع (Bento Grid Style) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        
+        <!-- بطاقة: التنبيهات -->
+        <a href="{% url 'dashboard:ann_list' %}" class="group relative overflow-hidden rounded-3xl bg-white border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-rose-100 to-transparent opacity-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-rose-50 rounded-2xl text-rose-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </div>
+                    <span class="text-3xl font-black text-slate-800">{{ stats.ann_count|default:"0" }}</span>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-bold text-slate-800 group-hover:text-rose-600 transition-colors">التنبيهات</h3>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">رسائل هامة تظهر في الشريط المتحرك.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- بطاقة: حصص الانتظار -->
+        <a href="{% url 'dashboard:standby_list' %}" class="group relative overflow-hidden rounded-3xl bg-white border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-100 to-transparent opacity-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-amber-50 rounded-2xl text-amber-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>
+                    </div>
+                    <span class="text-3xl font-black text-slate-800">{{ stats.standby_today|default:"0" }}</span>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-bold text-slate-800 group-hover:text-amber-600 transition-colors">حصص الانتظار</h3>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">توزيع وتغطية غياب المعلمين اليوم.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- بطاقة: التميز -->
+        <a href="{% url 'dashboard:exc_list' %}" class="group relative overflow-hidden rounded-3xl bg-white border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-100 to-transparent opacity-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-purple-50 rounded-2xl text-purple-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <span class="text-3xl font-black text-slate-800">{{ stats.exc_count|default:"0" }}</span>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-bold text-slate-800 group-hover:text-purple-600 transition-colors">بطاقات التميز</h3>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">تكريم الطلاب والمعلمين في لوحة الشرف.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- بطاقة: إعدادات الفصل -->
+        <a href="{% url 'dashboard:school_data' %}" class="group relative overflow-hidden rounded-3xl bg-white border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-100 to-transparent opacity-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+                    </div>
+                   <!-- أيقونة سهم صغيرة دالة على الانتقال -->
+                   <div class="text-emerald-300 group-hover:text-emerald-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                   </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">بيانات المدرسة</h3>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">إدارة الفصول، المواد،
+                        {% if settings and settings.school and settings.school.school_type == "boys" %}
+                        والمعلمين
+                        {% elif settings and settings.school and settings.school.school_type == "girls" %}
+                        والمعلمات
+                        {% else %}
+                        والموظفين
+                        {% endif %}
+                        .</p>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- قسم ثانوي: أدوات التوقيت -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <a href="{% url 'dashboard:days_list' %}" class="group flex items-center p-5 rounded-3xl bg-gradient-to-l from-white to-slate-50 border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300">
+            <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                📅
+            </div>
+            <div class="mr-5 flex-1">
+                <h3 class="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">توقيت الحصص والأيام</h3>
+                <p class="text-xs text-slate-500 mt-1">اضبط بداية ونهاية كل حصة، وحدد أيام الدراسة.</p>
+            </div>
+            <div class="mr-auto w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-500 group-hover:border-blue-200 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </a>
+
+        <a href="{% url 'dashboard:screen_list' %}" class="group flex items-center p-5 rounded-3xl bg-gradient-to-l from-white to-slate-50 border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300">
+            <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                🖥️
+            </div>
+            <div class="mr-5 flex-1">
+                <h3 class="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">إدارة الشاشات</h3>
+                <p class="text-xs text-slate-500 mt-1">أضف شاشات جديدة، اربط الأجهزة، وتحكم بالعرض عن بعد.</p>
+            </div>
+            <div class="mr-auto w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:border-indigo-200 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </a>
+    </div>
 
 </div>
 
-<!-- ساعة بسيطة للوحة الإدارة -->
+<!-- Clock Script -->
 <script>
   (function () {
-    function updateClock() {
-      var now = new Date();
-      var h = now.getHours().toString().padStart(2, "0");
-      var m = now.getMinutes().toString().padStart(2, "0");
+    const clockEl = document.getElementById("adminClock");
+    const dateEl = document.getElementById("adminDate");
 
-      var clockEl = document.getElementById("adminClock");
+    function updateClock() {
+      const now = new Date();
+      const h = now.getHours().toString().padStart(2, "0");
+      const m = now.getMinutes().toString().padStart(2, "0");
+
       if (clockEl) {
-        clockEl.textContent = h + ":" + m;
+          // Add a subtle blink effect to the colon separator
+          const separator = now.getSeconds() % 2 === 0 ? ':' : '<span class="opacity-50">:</span>'; 
+          clockEl.innerHTML = `${h}${separator}${m}`;
       }
 
-      var dateEl = document.getElementById("adminDate");
       if (dateEl) {
-        var options = { weekday: "long", year: "numeric", month: "short", day: "numeric" };
+        const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
         dateEl.textContent = now.toLocaleDateString("ar-SA", options);
       }
     }
 
     updateClock();
-    setInterval(updateClock, 30000);
+    setInterval(updateClock, 1000); // 1-second interval for blinking
   })();
 </script>
 {% endblock %}

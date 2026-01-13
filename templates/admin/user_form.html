@@ -90,7 +90,15 @@
           <span class="mt-0.5">
             {% if user_obj.is_active %}حساب نشط{% else %}حساب معطّل{% endif %}
             ·
-            {% if user_obj.is_superuser %}مدير نظام{% elif user_obj.is_staff %}موظف إداري{% else %}مستخدم عادي{% endif %}
+            {% if user_obj.is_superuser %}
+              مدير نظام
+            {% elif is_support_staff %}
+              موظف دعم
+            {% elif user_obj.is_staff %}
+              موظف نظام
+            {% else %}
+              مستخدم عادي
+            {% endif %}
           </span>
         </div>
       {% endif %}

@@ -947,14 +947,12 @@ class SystemEmployeeCreateForm(UserCreationForm):
     """إنشاء موظف نظام (بدون ربط بمدارس)."""
 
     ROLE_SUPPORT = "support"
-    ROLE_STAFF = "staff"
     ROLE_SUPERUSER = "superuser"
 
     role = forms.ChoiceField(
         label="نوع الموظف",
         choices=[
             (ROLE_SUPPORT, "موظف دعم"),
-            (ROLE_STAFF, "موظف إداري"),
         ],
         widget=forms.Select(
             attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
