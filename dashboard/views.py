@@ -1319,7 +1319,13 @@ def screen_create(request):
             screen = form.save(commit=False)
             screen.school = school
             screen.save()
-            messages.success(request, "تم إضافة شاشة جديدة.")
+            messages.success(
+                request,
+                "تم إضافة شاشة جديدة.\n\n"
+                "تنبيه مهم:\n"
+                "- سيتم حفظ الشاشة على أول تلفاز/متصفح يتم فتح الرابط عليه، ولا يمكن فتحها على جهاز آخر إلا بعد فصل الجهاز من لوحة التحكم.\n"
+                "- المحتوى موحّد وثابت في جميع الشاشات.",
+            )
             return redirect("dashboard:screen_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
