@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from core.models import SubscriptionPlan
-from .models import SchoolSubscription, SubscriptionScreenAddon
+from .models import SchoolSubscription, SubscriptionScreenAddon, SubscriptionRequest
 
 
 # إدارة خطط الاشتراك
@@ -44,3 +44,36 @@ class SubscriptionScreenAddonAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("subscription__school__name", "subscription__school__slug")
     autocomplete_fields = ("subscription",)
+
+
+@admin.register(SubscriptionRequest)
+class SubscriptionRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "school",
+        "request_type",
+        "plan",
+        "amount",
+        "requested_starts_at",
+        "status",
+        "created_at",
+        "processed_by",
+    )
+    list_filter = ("status", "request_type", "plan")
+    search_fields = ("school__name", "school__slug", "transfer_note")
+    autocomplete_fields = ("school", "plan", "created_by", "processed_by", "approved_subscription")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("معلومات الطلب", {
+            "fields": ("school", "created_by", "request_type", "plan", "requested_starts_at")
+        }),
+        ("الدفع", {
+            "fields": ("amount", "receipt_image", "transfer_note")
+        }),
+        ("الحالة", {
+            "fields": ("status", "admin_note", "processed_by", "processed_at", "approved_subscription")
+        }),
+        ("التواريخ", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
