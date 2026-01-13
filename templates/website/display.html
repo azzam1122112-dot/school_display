@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="h-full">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,163 +10,93 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20251215-display">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2026-modern-ui">
 
   <style>
-    html,body{height:100%} body{margin:0}
-    .display-board{font-family:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
-    .hidden{display:none !important}
-
-    /* ===== TV Layout (احترافي + بدون ضغط الهيرو) ===== */
-    .display-board{
-      min-height: 100svh;
-      min-height: calc(var(--vh, 1vh) * 100);
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
+    /* 2026 Base Styles */
+    :root {
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-surface: rgba(15, 23, 42, 0.6);
+      --glass-highlight: rgba(255, 255, 255, 0.03);
     }
-    .header-card{flex:0 0 auto}
-
-    .main-grid{
-      flex:1 1 auto;
-      min-height:0;
-      display:grid;
-      gap:16px;
-      padding:16px;
-      grid-template-columns: minmax(0, 1fr) minmax(340px, 36%);
-      align-items:stretch;
+    
+    body {
+      font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+      background-color: #020617; /* Slate 950 */
+      overflow: hidden; /* Prevent full page scroll */
     }
 
-    /* العمود الرئيسي: تنبيه صغير + هيرو يتمدد + شرف يأخذ المتبقي */
-    .col-main{
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-      gap:16px;
-    }
-
-    /* ✅ التنبيه: سطرين فقط + تكبير خط فقط بدون تكبير القسم */
-    .alert-card{
-      flex:0 0 auto;
-    }
-    .alert-inner{
-      padding:14px 16px; /* ثابت وصغير */
-    }
-    .alert-divider{
-      margin:8px 0;
-      opacity:.7;
-    }
-    .alert-title{
-      font-size: 26px;            /* تكبير الخط */
-      line-height: 1.2;
-      font-weight: 900;
-      white-space: nowrap;        /* سطر واحد */
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .alert-details{
-      font-size: 20px;            /* تكبير الخط */
-      line-height: 1.45;
-      opacity:.95;
-      white-space: nowrap;        /* سطر واحد */
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* الهيرو يتمدد طبيعي */
-    .hero-card{
-      flex: 1 1 auto;
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-    }
-    .hero-top{flex:1 1 auto; min-height:0}
-    .hero-bottom{flex:0 0 auto}
-
-    /* لوحة الشرف: تأخذ الفراغ المتبقي لكن بدون تضخيم مبالغ */
-    .honor-card{
-      flex: 0 0 28%;
-      min-height: 220px;
-      max-height: 360px;
-      display:flex;
-      align-items:stretch;
-      gap:14px;
-      min-height:0;
-    }
-    .honor-left{
-      flex:0 0 auto;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      min-width: 210px;
-    }
-    .honor-slot{
-      flex:1 1 auto;
-      min-height:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    /* العمود الجانبي (اليسار): كرتين ثابتين بدون تداخل */
-    .col-side{
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-      gap:16px;
-    }
-    .col-side .list-card{
-      flex:1 1 0;
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-    }
-    .list-viewport,
-    .standby-viewport{
-      flex:1 1 0;
-      min-height:0;
-      overflow:hidden;
-    }
-    .track{will-change:transform}
-
-    /* تحسين بسيط للشاشات الأقصر */
-    @media (max-height: 820px){
-      .alert-title{font-size:24px}
-      .alert-details{font-size:18px}
-      .honor-card{min-height:200px; max-height:320px}
-    }
-
-    /* ===== Blocking overlay (device bound) ===== */
-    .blocker{
+    /* Mesh Gradient Background */
+    .bg-mesh {
       position: fixed;
       inset: 0;
-      z-index: 99999;
+      z-index: -1;
+      background: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+      filter: blur(40px);
+      opacity: 0.6;
+    }
+
+    /* Custom Scrollbar Hide */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Glass Effect Utility */
+    .glass-panel {
+      background: var(--glass-surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Progress Circle */
+    .progress-track { stroke: rgba(255, 255, 255, 0.1); stroke-width: 8; fill: none; }
+    .progress-bar { stroke: #60a5fa; stroke-width: 8; stroke-linecap: round; fill: none; transition: stroke-dashoffset 1s linear; transform: rotate(-90deg); transform-origin: 50% 50%; }
+
+    /* Animations */
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .animate-pulse-slow { animation: pulse-slow 3s infinite; }
+
+    /* Track/Marquee Structure for JS */
+    .track { will-change: transform; }
+
+    /* Fullscreen Button */
+    .fs-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 50;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 18px;
-      background: rgba(2, 6, 23, 0.78);
-      backdrop-filter: blur(10px);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
-    .blocker-card{
-      width: min(920px, 100%);
-      text-align: center;
-      padding: 22px 22px;
-    }
-    .blocker-title{font-size: 34px; font-weight: 900; line-height: 1.2; margin: 0;}
-    .blocker-details{font-size: 20px; line-height: 1.6; opacity: .92; margin: 10px 0 0;}
-    .blocker-code{margin-top: 12px; font-size: 18px; opacity: .9;}
-    .blocker-code span{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;}
-    .blocker-hint{margin-top: 14px; font-size: 16px; opacity: .82;}
-    .blocker-steps{margin: 14px auto 0; max-width: 720px; text-align: right; direction: rtl;}
-    .blocker-steps .chip{display:inline-flex; margin-inline:4px;}
+    body:hover .fs-btn { opacity: 1; }
+    
+    .hidden { display: none !important; }
   </style>
 </head>
 
 <body
-  class="display-board"
+  class="h-screen w-screen flex flex-col text-white"
   data-theme="{% if theme %}{{ theme }}{% else %}indigo{% endif %}"
   data-token="{% if api_token %}{{ api_token }}{% endif %}"
   data-api-token="{% if api_token %}{{ api_token }}{% endif %}"
@@ -178,173 +108,233 @@
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
 >
-  <div class="mesh-bg" aria-hidden="true"></div>
+  <div class="bg-mesh"></div>
 
-  <!-- Blocking overlay (hidden by default) -->
-  <div id="blocker" class="blocker hidden" role="alert" aria-live="assertive">
-    <div class="card blocker-card">
-      <h2 id="blockerTitle" class="blocker-title">هذه الشاشة مرتبطة بجهاز آخر</h2>
-      <p id="blockerDetails" class="blocker-details">
-        لا يمكن استخدام نفس الرابط على أكثر من تلفاز.
-      </p>
-      <div class="blocker-code">الرابط الحالي: <span id="blockerLink">—</span></div>
-      <div class="blocker-hint">للنقل إلى تلفاز جديد: افصل الجهاز من لوحة التحكم.</div>
-      <div class="blocker-steps">
-        <div class="chip chip-muted">لوحة التحكم</div>
-        <span class="chip chip-muted">→</span>
-        <div class="chip chip-muted">شاشات العرض</div>
-        <span class="chip chip-muted">→</span>
-        <div class="chip chip-muted">فصل الجهاز</div>
-      </div>
+  <!-- Blocking overlay -->
+  <div id="blocker" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6" role="alert" aria-live="assertive">
+    <div class="glass-panel w-full max-w-2xl rounded-3xl p-10 text-center border-red-500/30">
+        <div class="mx-auto w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+        <h2 id="blockerTitle" class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-rose-400 mb-4">هذه الشاشة مرتبطة بجهاز آخر</h2>
+        <p id="blockerDetails" class="text-xl text-slate-300 mb-6">لا يمكن استخدام نفس الرابط على أكثر من تلفاز في وقت واحد.</p>
+        
+        <div class="bg-slate-900/50 rounded-xl p-4 border border-white/5 inline-block w-full max-w-lg mb-6">
+            <div class="text-sm text-slate-500 mb-1">الرابط الحالي</div>
+            <div class="font-mono text-lg text-red-300 dir-ltr truncate px-2" id="blockerLink">—</div>
+        </div>
+
+        <div class="text-slate-400 text-base">
+            للنقل إلى تلفاز جديد: <span class="text-white font-medium">افصل الجهاز من لوحة التحكم</span> &larr; شاشات العرض.
+        </div>
     </div>
   </div>
 
-  <header class="card header-card">
-    <div class="header-left">
-      <div class="logo-box" aria-label="شعار المدرسة">
-        <img
-          id="schoolLogo"
-          src="{% if logo_url %}{{ logo_url }}{% endif %}"
-          class="{% if logo_url %}logo-img{% else %}hidden{% endif %}"
-          alt="Logo"
-          loading="eager"
-          decoding="async"
-        >
-        <div
-          id="schoolLogoFallback"
-          class="{% if logo_url %}hidden{% endif %}logo-fallback"
-          aria-hidden="true"
-        >🏫</div>
-      </div>
+  <!-- Header -->
+  <header class="flex-none p-5 pb-0">
+    <div class="glass-panel rounded-2xl p-4 flex justify-between items-center relative overflow-hidden">
+        <!-- Glow effect -->
+        <div class="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-white/5 to-transparent pointer-events-none"></div>
 
-      <div class="header-text">
-        <h1 id="schoolName" class="header-title">
-          {% if school_name %}{{ school_name }}{% else %}لوحة العرض الذكية{% endif %}
-        </h1>
+        <div class="flex items-center gap-6 relative z-10">
+            <!-- Logo -->
+            <div class="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/10 shadow-lg">
+                <img id="schoolLogo" src="{% if logo_url %}{{ logo_url }}{% endif %}" class="{% if not logo_url %}hidden{% endif %} w-full h-full object-contain p-1" alt="Logo">
+                <div id="schoolLogoFallback" class="{% if logo_url %}hidden{% endif %} text-3xl">🏫</div>
+            </div>
 
-        <div class="header-meta">
-          <span id="dateGregorian" class="truncate"></span>
-          <span class="dot" aria-hidden="true"></span>
-          <span id="dateHijri" class="truncate hijri"></span>
+            <div class="flex flex-col">
+                <h1 id="schoolName" class="text-2xl md:text-3xl font-black tracking-tight text-white mb-1 drop-shadow-sm">
+                    {% if school_name %}{{ school_name }}{% else %}لوحة العرض الذكية{% endif %}
+                </h1>
+                <div class="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                    <span id="dateGregorian" class="opacity-90"></span>
+                    <span class="w-1 h-1 rounded-full bg-slate-500"></span>
+                    <span id="dateHijri" class="opacity-90"></span>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <div class="header-right">
-      <div id="clock" class="clock num-font">--:--</div>
+        <div class="text-right pl-4">
+            <div class="text-[10px] text-blue-300 font-bold uppercase tracking-widest mb-0.5">التوقيت المحلي</div>
+            <div id="clock" class="text-5xl font-mono font-bold text-white tracking-widest leading-none drop-shadow-lg" style="font-variant-numeric: tabular-nums;">--:--</div>
+        </div>
     </div>
   </header>
 
-  <main class="main-grid">
-    <section class="col-main">
-      <div class="card alert-card">
-        <div id="alertContainer" class="alert-inner">
-          <div id="alertTitle" class="alert-title">جاري تحميل التنبيه…</div>
-          <div class="alert-divider" aria-hidden="true"></div>
-          <div id="alertDetails" class="alert-details">...</div>
+  <!-- Main Content Grid -->
+  <main class="flex-1 min-h-0 p-5 grid grid-cols-12 gap-5">
+    
+    <!-- Main Column (Right) -->
+    <section class="col-span-12 lg:col-span-8 flex flex-col gap-5 min-h-0">
+        
+        <!-- Alert Card -->
+        <div class="glass-panel rounded-2xl p-0 flex flex-col overflow-hidden hidden" id="alertContainer" style="display: none;"> <!-- JS toggles hidden class, but keeping ID container structure -->
+             <!-- Recreating structure for JS targetting: alertTitle, alertDetails -->
+             <div class="border-b border-white/5 bg-red-500/10 p-3 px-5 flex items-center gap-3">
+                <span class="animate-pulse w-2 h-2 rounded-full bg-red-500"></span>
+                <div id="alertTitle" class="font-bold text-red-200 text-lg">جاري التحميل...</div>
+             </div>
+             <div class="p-4 px-6">
+                <div id="alertDetails" class="text-xl leading-relaxed text-white">...</div>
+             </div>
         </div>
-      </div>
+        <!-- Alert Container Placeholder (The JS expects specific structure, I will keep the ids but styling is handled by JS inserting text usually) 
+             Wait, existing HTML had alertTitle inside alertContainer. 
+             If JS toggles #alertContainer visibility, I should make sure it starts visible if needed or respects 'hidden' class. 
+             The JS code: toggleHidden($('alertContainer'), false/true);
+             So I should put the ID on the wrapper div.
+        -->
+        
+        <!-- Hero Card -->
+        <div class="glass-panel rounded-3xl flex-1 flex flex-col relative overflow-hidden group">
+            <!-- Background Image/Gradient specific for Hero -->
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-50"></div>
+            
+            <div class="relative z-10 flex-1 p-8 flex flex-col gap-6">
+                <!-- Top Row: Badge & Progress -->
+                <div class="flex justify-between items-start">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span id="badgeKind" class="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold text-indigo-300 uppercase tracking-wider backdrop-blur-md">--</span>
+                            <span id="heroRange" class="text-slate-400 font-mono text-sm tracking-wide">--:--</span>
+                        </div>
+                        
+                        <h2 id="heroTitle" class="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-indigo-200 leading-tight py-1">
+                            جاري التحميل...
+                        </h2>
+                    </div>
 
-      <div class="card hero-card">
-        <div class="hero-top">
-          <div class="hero-left">
-            <div class="hero-row">
-              <span id="badgeKind" class="chip">--</span>
-              <span id="heroRange" class="hero-range num-font">--:--</span>
+                    <!-- Progress Circle -->
+                    <div class="relative w-32 h-32 flex-none">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                            <!-- Background Track -->
+                            <circle cx="60" cy="60" r="54" class="stroke-slate-800" stroke-width="8" fill="none"></circle>
+                            <!-- Active Progress -->
+                            <circle id="circleProgress" cx="60" cy="60" r="54" class="stroke-blue-500 transition-all duration-1000 ease-linear" stroke-width="8" stroke-linecap="round" fill="none" stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="countdown" class="text-2xl font-mono font-bold text-white tabular-nums">--:--</span>
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider">المتبقي</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Activity List -->
+                <div class="mt-auto">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <div class="w-1 h-w-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                        النشاط الحالي
+                    </div>
+                    <div id="currentScheduleList" class="flex flex-wrap gap-2 text-xl text-slate-200">
+                        <span class="opacity-50">...</span>
+                    </div>
+                </div>
             </div>
 
-            <h2 id="heroTitle" class="hero-title">جاري التحميل...</h2>
+            <!-- Bottom: Timeline / Mini Schedule -->
+            <div class="border-t border-white/5 bg-black/20 p-5 backdrop-blur-md">
+                 <div class="flex items-center justify-between mb-4">
+                     <span class="text-sm font-bold text-slate-400">مسار اليوم</span>
+                     <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5">
+                        <span class="text-[10px] text-slate-500 uppercase">التالي</span>
+                        <span id="nextLabel" class="text-xs font-bold text-white truncate max-w-[150px]">--</span>
+                     </div>
+                 </div>
 
-            <div class="hero-schedule">
-              <div class="hero-schedule-label">النشاط الحالي:</div>
-              <div id="currentScheduleList" class="hero-schedule-list">
-                <span class="chip chip-muted">...</span>
-              </div>
+                 <!-- Horizontal Scroll/List Container -->
+                 <div id="miniSchedule" class="flex gap-4 overflow-x-auto no-scrollbar mask-gradient-x py-2">
+                     <span class="text-sm text-slate-500 italic px-4">جاري جلب الجدول...</span>
+                 </div>
             </div>
-          </div>
 
-          <div class="hero-progress" aria-label="المتبقي">
-            <svg class="progress-svg" viewBox="0 0 120 120" aria-hidden="true">
-              <circle cx="60" cy="60" r="54" class="progress-track" />
-              <circle
-                id="circleProgress"
-                cx="60" cy="60" r="54"
-                class="progress-bar"
-                style="stroke-dasharray:339.292; stroke-dashoffset:339.292;"
-              />
-            </svg>
-
-            <div class="progress-center">
-              <span id="countdown" class="countdown num-font">--:--</span>
-              <span class="countdown-label">المتبقي</span>
+            <!-- Infinite Progress Line at very bottom -->
+            <div class="h-1 bg-slate-800 w-full absolute bottom-0 left-0">
+                <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 w-0 transition-all duration-1000"></div>
             </div>
-          </div>
         </div>
 
-        <div class="hero-bottom">
-          <div class="hero-bottom-title">مسار اليوم</div>
+        <!-- Excellence Board (Honor) -->
+        <div class="glass-panel rounded-2xl p-1 flex overflow-hidden min-h-[220px] max-h-[300px]">
+             <!-- Side Info -->
+             <div class="w-64 bg-gradient-to-b from-slate-900/50 to-slate-900/80 p-6 flex flex-col justify-center border-l border-white/5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-900/20 mb-4">
+                    🏆
+                </div>
+                <div class="text-2xl font-bold text-white mb-1">لوحة الشرف</div>
+                <div class="text-sm text-slate-400">نحتفي بالمتميزين</div>
+                
+                <div class="mt-auto flex items-center gap-2 bg-black/20 rounded-lg p-2 w-fit">
+                    <span id="exIndex" class="font-mono text-amber-400 font-bold">0</span>
+                    <span class="text-slate-600">/</span>
+                    <span id="exTotal" class="font-mono text-slate-400">0</span>
+                </div>
+             </div>
 
-          <div id="miniSchedule" class="mini-schedule no-scrollbar mask-gradient-x" aria-label="مسار اليوم">
-            <span class="mini-loading">جاري جلب الجدول...</span>
-          </div>
-
-          <div class="next-box">
-            <div class="next-hint">التالي مباشرة</div>
-            <div id="nextLabel" class="next-label truncate">--</div>
-          </div>
+             <!-- Main Content Slot -->
+             <div id="exSlot" class="flex-1 flex items-center justify-center p-6 relative">
+                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent"></div>
+                 <div class="text-slate-500 animate-pulse font-medium">جاري التحميل...</div>
+             </div>
         </div>
 
-        <div class="hero-progressline" aria-hidden="true">
-          <div id="progressBar" class="hero-progressfill"></div>
-        </div>
-      </div>
-
-      <div class="card honor-card">
-        <div class="honor-left">
-          <div class="honor-title">لوحة الشرف</div>
-          <div class="honor-count">
-            <span><span id="exIndex">0</span> / <span id="exTotal">0</span></span>
-          </div>
-        </div>
-
-        <div id="exSlot" class="honor-slot">
-          <div class="honor-loading">جاري التحميل...</div>
-        </div>
-      </div>
     </section>
 
-    <aside class="col-side">
-      <div class="card list-card">
-        <div class="list-head">
-          <div class="list-title ok">حصص جارية</div>
-          <span id="pcCount" class="chip chip-ok num-font">0</span>
+    <!-- Side Column (Left) -->
+    <aside class="col-span-12 lg:col-span-4 flex flex-col gap-5 min-h-0">
+        
+        <!-- Period Classes Card -->
+        <div class="glass-panel rounded-2xl flex-1 flex flex-col min-h-0 relative overflow-hidden">
+            <div class="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                    <h3 class="font-bold text-white">حصص جارية</h3>
+                </div>
+                <span id="pcCount" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-sm font-mono font-bold">0</span>
+            </div>
+            
+            <div class="flex-1 relative overflow-hidden min-h-0">
+                <!-- Viewport for scroller. JS appends items to #periodClassesTrack -->
+                <div class="absolute inset-0 overflow-hidden list-viewport"> 
+                    <div id="periodClassesTrack" class="track flex flex-col gap-2 p-3"></div>
+                </div>
+            </div>
         </div>
-        <div class="list-viewport standby-viewport">
-          <div id="periodClassesTrack" class="track"></div>
-        </div>
-      </div>
 
-      <div class="card list-card">
-        <div class="list-head">
-          <div class="list-title warn">حصص الانتظار</div>
-          <span id="sbCount" class="chip chip-warn num-font">0</span>
+        <!-- Standby Classes Card -->
+        <div class="glass-panel rounded-2xl flex-1 flex flex-col min-h-0 relative overflow-hidden border-orange-500/20">
+            <div class="p-4 border-b border-white/5 bg-orange-500/5 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]"></span>
+                    <h3 class="font-bold text-orange-200">حصص الانتظار</h3>
+                </div>
+                <span id="sbCount" class="bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded text-sm font-mono font-bold">0</span>
+            </div>
+            
+            <div class="flex-1 relative overflow-hidden min-h-0">
+                <div class="absolute inset-0 overflow-hidden standby-viewport">
+                    <div id="standbyTrack" class="track flex flex-col gap-2 p-3"></div>
+                </div>
+            </div>
         </div>
-        <div class="list-viewport standby-viewport">
-          <div id="standbyTrack" class="track"></div>
-        </div>
-      </div>
+
     </aside>
   </main>
 
-  <button id="fsBtn" class="fs-btn" type="button" aria-label="Fullscreen" title="ملء الشاشة">⛶</button>
+  <button id="fsBtn" class="fs-btn opacity-50 hover:opacity-100 transition-opacity" type="button" aria-label="Fullscreen" title="ملء الشاشة">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+    </svg>
+  </button>
 
   <noscript>
-    <div class="no-js">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black text-white p-10 text-center text-xl">
       هذه الصفحة تحتاج JavaScript للعمل على شاشة العرض.
     </div>
   </noscript>
 
-  <script src="{% static 'js/display.js' %}?v=20251215-final-3files-2"></script>
+  <script src="{% static 'js/display.js' %}?v=2026-final-v1"></script>
 </body>
 </html>
-  
