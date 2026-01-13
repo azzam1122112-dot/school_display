@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -396,7 +396,7 @@
         <div class="links">
             <a href="#features">المميزات</a>
             <a href="#pricing">الأسعار</a>
-            <a href="#demo">جرب النظام</a>
+            <a href="#" onclick="openModal(event)">جرب النظام</a>
         </div>
         {% if login_url %}
             <a href="{{ login_url }}" class="nav-cta">دخول النظام</a>
@@ -481,7 +481,6 @@
         <div class="container">
             <div class="section-title">
                 <h2>استثمار ذكي لمدرسة أذكى</h2>
-                <p>تسعير مرن يناسب الجميع. كلما زاد عدد الشاشات، انخفضت التكلفة.</p>
             </div>
 
             <div class="flex-center">
@@ -613,7 +612,7 @@
                 <div class="footer-col">
                     <h4>تواصل معنا</h4>
                     <a href="https://wa.me/966537720207" target="_blank"><i class="fa-brands fa-whatsapp"></i> واتساب الدعم الفني</a>
-                    <a href="mailto:support@school-display.com"><i class="fa-regular fa-envelope"></i> support@school-display.com</a>
+                    <a href="mailto:xmansx1122@gmail.com"><i class="fa-regular fa-envelope"></i> xmansx1122@gmail.com</a>
                     <a href="tel:+966537720207"><i class="fa-solid fa-phone"></i> +966 53 772 0207</a>
                 </div>
             </div>
@@ -703,5 +702,191 @@
             }
         });
     </script>
+
+    <!-- Try System Modal -->
+    <div id="try-modal" class="modal-overlay">
+        <div class="modal-glass">
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            
+            <div class="modal-header">
+                <h3>تجربة النظام مجاناً</h3>
+                <p>ابدأ رحلة التحول الرقمي في مدرستكم الآن</p>
+            </div>
+
+            <div class="alert-box">
+                <i class="fa-solid fa-bell"></i>
+                <div>
+                    <strong>تنبيه هام</strong>
+                    <span>التجربة مجانية لمدة 14 يوم (شاشة واحدة فقط). سيتم التواصل معكم لتفعيلها.</span>
+                </div>
+            </div>
+
+            <form id="try-form" onsubmit="sendToWhatsApp(event)">
+                <div class="form-group">
+                    <label>اسم المدرسة</label>
+                    <input type="text" id="schoolName" required placeholder="مثال: مدارس المستقبل الأهلية">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>المدينة</label>
+                        <input type="text" id="city" required placeholder="الرياض">
+                    </div>
+                    <div class="form-group">
+                        <label>نوع المدرسة</label>
+                        <select id="schoolType" required>
+                            <option value="بنين">بنين</option>
+                            <option value="بنات">بنات</option>
+                            <option value="مشترك">مشترك</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>اسم المسؤول</label>
+                        <input type="text" id="adminName" required placeholder="الاسم الكريم">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الجوال</label>
+                        <input type="tel" id="mobile" required placeholder="05xxxxxxxx">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fa-brands fa-whatsapp"></i>
+                    إرسال الطلب عبر واتساب
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 2000;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+            padding: 20px;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        
+        .modal-glass {
+            background: rgba(255, 255, 255, 0.95);
+            width: 100%; max-width: 500px;
+            border-radius: 24px;
+            padding: 30px;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(20px) scale(0.95);
+            transition: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .modal-overlay.active .modal-glass { transform: translateY(0) scale(1); }
+
+        .modal-close {
+            position: absolute; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            border-radius: 50%; border: none;
+            background: #f1f5f9; color: #64748b;
+            cursor: pointer; font-size: 1.1rem;
+            display: grid; place-items: center;
+            transition: 0.2s;
+        }
+        .modal-close:hover { background: #e2e8f0; color: #ef4444; transform: rotate(90deg); }
+
+        .modal-header { text-align: center; margin-bottom: 24px; }
+        .modal-header h3 { font-size: 1.6rem; font-weight: 900; color: var(--dark); margin: 0 0 8px; }
+        .modal-header p { color: #64748b; font-size: 0.95rem; margin: 0; }
+
+        .alert-box {
+            background: #fffbeb; border: 1px solid #fcd34d;
+            border-radius: 12px; padding: 12px 16px;
+            display: flex; gap: 12px; align-items: flex-start;
+            margin-bottom: 24px; color: #92400e; font-size: 0.9rem;
+        }
+        .alert-box i { color: #d97706; margin-top: 4px; }
+        .alert-box strong { display: block; margin-bottom: 2px; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        
+        label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; color: #334155; }
+        input, select {
+            width: 100%; padding: 12px 16px;
+            border-radius: 12px; border: 1px solid #cbd5e1;
+            background: #f8fafc; font-family: inherit; font-weight: 600;
+            font-size: 0.95rem; transition: 0.2s;
+        }
+        input:focus, select:focus {
+            background: white; border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .btn-submit {
+            width: 100%; padding: 14px; margin-top: 8px;
+            border: none; border-radius: 14px;
+            background: #25d366; color: white;
+            font-weight: 800; font-size: 1.05rem;
+            cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-submit:hover { background: #1ebd56; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(37, 211, 102, 0.2); }
+    </style>
+
+    <script>
+        // Modal Logic
+        const modal = document.getElementById('try-modal');
+        function openModal(e) {
+            if(e) e.preventDefault();
+            modal.classList.add('active');
+        }
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+        
+        // Close on clicking overlay
+        modal.addEventListener('click', (e) => {
+            if(e.target === modal) closeModal();
+        });
+
+        // WhatsApp Logic
+        function sendToWhatsApp(e) {
+            e.preventDefault();
+            
+            const school = document.getElementById('schoolName').value;
+            const city = document.getElementById('city').value;
+            const type = document.getElementById('schoolType').value;
+            const admin = document.getElementById('adminName').value;
+            const mobile = document.getElementById('mobile').value;
+            
+            const text = `*طلب تجربة مجانية للنظام*%0a` +
+                         `---------------------------%0a` +
+                         `🏫 *اسم المدرسة:* ${school}%0a` +
+                         `📍 *المدينة:* ${city}%0a` +
+                         `🚻 *النوع:* ${type}%0a` +
+                         `👤 *المسؤول:* ${admin}%0a` +
+                         `📱 *الجوال:* ${mobile}%0a` +
+                         `---------------------------%0a` +
+                         `✅ *أوافق على الشروط:* تجربة 14 يوم لشاشة واحدة فقط.`;
+            
+            const url = `https://wa.me/966537720207?text=${text}`;
+            window.open(url, '_blank');
+            closeModal();
+        }
+
+        // Attach to buttons
+        document.querySelectorAll('a[href="#demo"]').forEach(btn => {
+            // Check if it's the "Try System" button specifically or all demo buttons?
+            // User: "When clicking Try System... show modal"
+            // Let's attach to links containing 'جرب النظام' or classnav-cta or specific href logic.
+            // Actually, I'll update the specific links in the HTML below this script.
+        });
+    </script>
+
 </body>
 </html>
