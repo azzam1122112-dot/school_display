@@ -48,6 +48,7 @@ from .forms import (
     DisplayScreenForm,
     SchoolSubscriptionForm,
     SystemUserCreateForm,
+    SystemEmployeeCreateForm,
     SystemUserUpdateForm,
     PeriodFormSet,
     BreakFormSet,
@@ -373,7 +374,13 @@ def get_active_school_or_redirect(request):
             messages.info(request, f"تم تعيين المدرسة النشطة تلقائيًا: {first_school.name}")
             return first_school, None
 
-    if getattr(request.user, "is_superuser", False):
+    # System staff (SaaS): superuser أو موظف دعم
+    try:
+        is_support = request.user.groups.filter(name="Support").exists()
+    except Exception:
+        is_support = False
+
+    if getattr(request.user, "is_superuser", False) or is_support:
         messages.info(request, "لا توجد مدرسة مرتبطة بحسابك — تم تحويلك للوحة إدارة النظام.")
         return None, redirect("dashboard:system_admin_dashboard")
 
@@ -387,7 +394,12 @@ def get_active_school_or_redirect(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        if getattr(request.user, "is_superuser", False):
+        try:
+            is_support = request.user.groups.filter(name="Support").exists()
+        except Exception:
+            is_support = False
+
+        if getattr(request.user, "is_superuser", False) or is_support:
             return redirect("dashboard:system_admin_dashboard")
         _school, resp = get_active_school_or_redirect(request)
         return resp or redirect("dashboard:index")
@@ -398,7 +410,12 @@ def login_view(request):
         user = authenticate(request, username=u, password=p)
         if user:
             login(request, user)
-            if getattr(user, "is_superuser", False):
+            try:
+                is_support = user.groups.filter(name="Support").exists()
+            except Exception:
+                is_support = False
+
+            if getattr(user, "is_superuser", False) or is_support:
                 return redirect(_safe_next_url(request, default_name="dashboard:system_admin_dashboard"))
             _school, resp = get_active_school_or_redirect(request)
             return resp or redirect(_safe_next_url(request, default_name="dashboard:index"))
@@ -2006,6 +2023,19 @@ def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser, login_url="dashboard:login")(view_func)
 
 
+def system_staff_required(view_func):
+    """سماح لمدير النظام أو موظف الدعم (Group: Support)."""
+    def _ok(u):
+        if getattr(u, "is_superuser", False):
+            return True
+        try:
+            return u.is_authenticated and u.groups.filter(name="Support").exists()
+        except Exception:
+            return False
+
+    return user_passes_test(_ok, login_url="dashboard:login")(view_func)
+
+
 def _admin_school_form_class():
     School = SchoolModel()
 
@@ -2045,7 +2075,7 @@ def switch_school(request, school_id):
     return redirect(_safe_next_url(request, default_name="dashboard:index"))
 
 
-@superuser_required
+@system_staff_required
 def system_admin_dashboard(request):
     School = SchoolModel()
 
@@ -2089,7 +2119,7 @@ def system_admin_dashboard(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_schools_list(request):
     School = SchoolModel()
     DisplayScreen = DisplayScreenModel()
@@ -2138,7 +2168,7 @@ def system_schools_list(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_school_create(request):
     FormCls = _admin_school_form_class()
 
@@ -2155,7 +2185,7 @@ def system_school_create(request):
     return render(request, "admin/school_form.html", {"form": form, "title": "إضافة مدرسة"})
 
 
-@superuser_required
+@system_staff_required
 def system_school_edit(request, pk: int):
     School = SchoolModel()
     FormCls = _admin_school_form_class()
@@ -2185,7 +2215,7 @@ def system_school_delete(request, pk: int):
     return render(request, "admin/school_confirm_delete.html", {"school": school})
 
 
-@superuser_required
+@system_staff_required
 def system_users_list(request):
     q = (request.GET.get("q") or "").strip()
 
@@ -2221,7 +2251,81 @@ def system_users_list(request):
     return render(request, "admin/users_list.html", {"page_obj": page_obj, "q": q})
 
 
-@superuser_required
+@system_staff_required
+def system_employees_list(request):
+    """قائمة موظفي النظام (Staff / Superuser / Support group)."""
+    q = (request.GET.get("q") or "").strip()
+
+    qs = (
+        UserModel.objects.filter(
+            Q(is_staff=True) | Q(is_superuser=True) | Q(groups__name="Support")
+        )
+        .distinct()
+        .order_by("-id")
+    )
+
+    try:
+        qs = qs.prefetch_related("groups")
+    except Exception:
+        pass
+
+    if q:
+        filters = Q()
+        for key in ("username", "email", "first_name", "last_name"):
+            try:
+                UserModel._meta.get_field(key)
+                filters |= Q(**{f"{key}__icontains": q})
+            except Exception:
+                continue
+        filters |= Q(groups__name__icontains=q)
+        qs = qs.filter(filters).distinct()
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    return render(request, "admin/employees_list.html", {"page_obj": page_obj, "q": q})
+
+
+@system_staff_required
+def system_employee_create(request):
+    if request.method == "POST":
+        form = SystemEmployeeCreateForm(request.POST)
+        # منع غير السوبر من إنشاء superuser
+        if not getattr(request.user, "is_superuser", False):
+            form.fields["role"].choices = [
+                (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
+                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
+            ]
+        else:
+            form.fields["role"].choices = [
+                (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
+                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
+                (SystemEmployeeCreateForm.ROLE_SUPERUSER, "مدير نظام (superuser)"),
+            ]
+
+        if form.is_valid():
+            role = form.cleaned_data.get("role")
+            if role == SystemEmployeeCreateForm.ROLE_SUPERUSER and not getattr(request.user, "is_superuser", False):
+                raise PermissionDenied("لا تملك صلاحية إنشاء مدير نظام.")
+
+            form.save()
+            messages.success(request, "تم إنشاء الموظف بنجاح.")
+            return redirect("dashboard:system_employees_list")
+
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = SystemEmployeeCreateForm()
+        if getattr(request.user, "is_superuser", False):
+            form.fields["role"].choices = [
+                (SystemEmployeeCreateForm.ROLE_SUPPORT, "موظف دعم"),
+                (SystemEmployeeCreateForm.ROLE_STAFF, "موظف إداري"),
+                (SystemEmployeeCreateForm.ROLE_SUPERUSER, "مدير نظام (superuser)"),
+            ]
+
+    return render(request, "admin/employee_form.html", {"form": form})
+
+
+@system_staff_required
 def system_user_create(request):
     if request.method == "POST":
         form = SystemUserCreateForm(request.POST)
@@ -2233,12 +2337,22 @@ def system_user_create(request):
     else:
         form = SystemUserCreateForm()
 
+    # موظف الدعم لا يُسمح له بترقية المستخدمين إلى staff/superuser
+    if not getattr(request.user, "is_superuser", False):
+        for f in ("is_staff", "is_superuser"):
+            if f in form.fields:
+                del form.fields[f]
+
     return render(request, "admin/user_edit.html", {"form": form, "is_create": True})
 
 
-@superuser_required
+@system_staff_required
 def system_user_edit(request, pk: int):
     user = get_object_or_404(UserModel, pk=pk)
+
+    # موظف الدعم لا يعدّل حسابات السوبر
+    if not getattr(request.user, "is_superuser", False) and getattr(user, "is_superuser", False):
+        raise PermissionDenied("لا تملك صلاحية تعديل هذا المستخدم.")
 
     if request.method == "POST":
         form = SystemUserUpdateForm(request.POST, instance=user)
@@ -2249,6 +2363,12 @@ def system_user_edit(request, pk: int):
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
         form = SystemUserUpdateForm(instance=user)
+
+    # موظف الدعم لا يُسمح له بتعديل staff/superuser
+    if not getattr(request.user, "is_superuser", False):
+        for f in ("is_staff", "is_superuser"):
+            if f in form.fields:
+                del form.fields[f]
 
     return render(request, "admin/user_edit.html", {"form": form, "is_create": False, "user_obj": user})
 
@@ -2286,7 +2406,7 @@ def _get_subscription_model_robust():
 def _get_subscription_model():
     return _get_subscription_model_robust()
 
-@superuser_required
+@system_staff_required
 def system_subscriptions_list(request):
     SubModel = _get_subscription_model_robust()
 
@@ -2482,7 +2602,7 @@ def system_subscriptions_list(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_subscription_create(request):
     SubModel = _get_subscription_model()
     if SubModel is None:
@@ -2519,7 +2639,7 @@ def system_subscription_create(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_subscription_edit(request, pk: int):
     SubModel = _get_subscription_model()
     if SubModel is None:
@@ -2577,7 +2697,7 @@ def system_subscription_delete(request, pk: int):
 # ===============================
 
 
-@superuser_required
+@system_staff_required
 def system_subscription_requests_list(request):
     Req = _get_subscription_request_model()
     if Req is None:
@@ -2638,7 +2758,7 @@ def system_subscription_requests_list(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_subscription_request_detail(request, pk: int):
     Req = _get_subscription_request_model()
     if Req is None:
@@ -3166,13 +3286,13 @@ def system_reports(request):
 # ==================
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@system_staff_required
 def system_support_tickets(request):
     tickets = SupportTicket.objects.all().order_by("-created_at")
     return render(request, "admin/support_tickets.html", {"tickets": tickets})
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@system_staff_required
 def system_support_ticket_detail(request, pk):
     ticket = get_object_or_404(SupportTicket, pk=pk)
     
@@ -3202,6 +3322,7 @@ def system_support_ticket_detail(request, pk):
     })
 
 @login_required
+@system_staff_required
 def system_support_ticket_create(request):
     if request.method == "POST":
         form = SupportTicketForm(request.POST)
@@ -3316,7 +3437,7 @@ def _get_subscription_request_model():
         return None
 
 
-@superuser_required
+@system_staff_required
 def system_screen_addons_list(request):
     Addon = _get_screen_addon_model()
     if Addon is None:
@@ -3379,7 +3500,7 @@ def system_screen_addons_list(request):
     )
 
 
-@superuser_required
+@system_staff_required
 def system_screen_addon_create(request):
     Addon = _get_screen_addon_model()
     if Addon is None:
@@ -3399,7 +3520,7 @@ def system_screen_addon_create(request):
     return render(request, "admin/screen_addon_form.html", {"form": form, "title": "إضافة زيادة شاشات"})
 
 
-@superuser_required
+@system_staff_required
 def system_screen_addon_edit(request, pk: int):
     Addon = _get_screen_addon_model()
     if Addon is None:

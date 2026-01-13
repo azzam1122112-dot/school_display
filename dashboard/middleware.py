@@ -53,6 +53,13 @@ class SubscriptionRequiredMiddleware:
         if getattr(request.user, "is_superuser", False):
             return None
 
+        # موظف الدعم (Support group) لا يخضع لشرط اشتراك مدرسة
+        try:
+            if request.user.groups.filter(name="Support").exists():
+                return None
+        except Exception:
+            pass
+
         try:
             match = resolve(request.path_info)
             view_name = match.view_name or ""

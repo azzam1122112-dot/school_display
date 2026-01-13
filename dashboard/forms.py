@@ -943,6 +943,87 @@ class SystemUserUpdateForm(forms.ModelForm):
         return user
 
 
+class SystemEmployeeCreateForm(UserCreationForm):
+    """إنشاء موظف نظام (بدون ربط بمدارس)."""
+
+    ROLE_SUPPORT = "support"
+    ROLE_STAFF = "staff"
+    ROLE_SUPERUSER = "superuser"
+
+    role = forms.ChoiceField(
+        label="نوع الموظف",
+        choices=[
+            (ROLE_SUPPORT, "موظف دعم"),
+            (ROLE_STAFF, "موظف إداري"),
+        ],
+        widget=forms.Select(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+
+    mobile = forms.CharField(
+        label="رقم الجوال",
+        required=False,
+        max_length=20,
+        widget=forms.TextInput(
+            attrs={"class": "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"}
+        ),
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = UserModel
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "mobile",
+            "is_active",
+            "role",
+        ]
+        labels = {
+            "username": "اسم المستخدم",
+            "email": "البريد الإلكتروني",
+            "first_name": "الاسم الأول",
+            "last_name": "اسم العائلة",
+            "is_active": "حساب نشط",
+        }
+
+    @transaction.atomic
+    def save(self, commit=True):
+        user = super().save(commit=False)
+
+        # الموظف يجب أن يكون staff دائمًا
+        user.is_staff = True
+
+        role = self.cleaned_data.get("role")
+        user.is_superuser = bool(role == self.ROLE_SUPERUSER)
+
+        if commit:
+            user.save()
+
+        # ربط/إنشاء بروفايل بدون مدارس
+        profile = _get_profile(user)
+        profile.schools.clear()
+        profile.active_school = None
+        profile.mobile = self.cleaned_data.get("mobile")
+        profile.save()
+
+        # ربط مجموعة Support حسب الدور
+        try:
+            from django.contrib.auth.models import Group
+
+            support_group, _ = Group.objects.get_or_create(name="Support")
+            if role == self.ROLE_SUPPORT:
+                user.groups.add(support_group)
+            else:
+                user.groups.remove(support_group)
+        except Exception:
+            pass
+
+        return user
+
+
 from core.models import SupportTicket
 
 class SubscriptionPlanForm(forms.ModelForm):

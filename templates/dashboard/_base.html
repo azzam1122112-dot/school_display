@@ -323,8 +323,8 @@
         </div>
       </a>
 
-      <!-- SaaS Super Admin -->
-      {% if request.user.is_superuser %}
+      <!-- SaaS System Staff (Superuser / Support) -->
+      {% if is_system_staff %}
         <div class="border-t border-slate-200 my-3"></div>
         <div class="px-2 pb-1 text-[11px] font-semibold text-slate-500">
           إدارة النظام (SaaS)
@@ -354,6 +354,15 @@
           <div class="flex items-center">
             <span class="ml-2 text-lg">👤</span>
             <span class="font-medium">مستخدمو النظام</span>
+          </div>
+        </a>
+
+        <a href="{% url 'dashboard:system_employees_list' %}"
+           class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'system_employees_list' %}active-nav{% else %}bg-white/80{% endif %}">
+          <div class="flex items-center">
+            <span class="ml-2 text-lg">🧑‍💼</span>
+            <span class="font-medium">الموظفون</span>
           </div>
         </a>
 

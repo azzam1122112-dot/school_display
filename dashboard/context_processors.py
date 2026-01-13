@@ -12,10 +12,20 @@ def admin_support_ticket_badges(request):
     """
 
     user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_superuser", False):
+    if not user or not getattr(user, "is_authenticated", False):
+        return {}
+
+    try:
+        is_support = user.groups.filter(name="Support").exists()
+    except Exception:
+        is_support = False
+
+    is_system_staff = bool(getattr(user, "is_superuser", False) or is_support)
+    if not is_system_staff:
         return {}
 
     counts = {
+        "is_system_staff": True,
         "admin_new_support_tickets_count": SupportTicket.objects.filter(status="open").count(),
     }
 

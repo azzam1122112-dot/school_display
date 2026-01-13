@@ -154,6 +154,15 @@
           <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
           {% endif %}
         </a>
+
+        <a href="{% url 'dashboard:system_employees_list' %}"
+           class="sidebar-link {% if request.resolver_match.url_name == 'system_employees_list' %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
+          <i class="fas fa-user-tie text-lg w-6 text-center"></i>
+          <span>إدارة الموظفين</span>
+          {% if request.resolver_match.url_name == 'system_employees_list' %}
+          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
+          {% endif %}
+        </a>
         
         <!-- الاشتراكات -->
         <div class="mt-6 mb-2 px-2">

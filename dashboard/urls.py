@@ -110,6 +110,8 @@ urlpatterns = [
 
     # Users
     path("admin-panel/users/", views.system_users_list, name="system_users_list"),
+    path("admin-panel/employees/", views.system_employees_list, name="system_employees_list"),
+    path("admin-panel/employees/add/", views.system_employee_create, name="system_employee_create"),
     path("admin-panel/users/add/", views.system_user_create, name="system_user_create"),
     path("admin-panel/users/<int:pk>/edit/", views.system_user_edit, name="system_user_edit"),
     path("admin-panel/users/<int:pk>/delete/", views.system_user_delete, name="system_user_delete"),

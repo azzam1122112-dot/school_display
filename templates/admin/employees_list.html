@@ -1,0 +1,161 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}إدارة الموظفين{% endblock %}
+{% block page_title %}إدارة الموظفين{% endblock %}
+{% block page_description %}
+عرض حسابات موظفي النظام (Staff / Support) وإدارة صلاحياتهم.
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">إدارة الموظفين</h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        تشمل الموظفين: (Staff) و(موظف دعم) والسوبر.
+      </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <form method="get" class="flex items-center gap-2">
+        <input
+          type="text"
+          name="q"
+          value="{{ q }}"
+          placeholder="بحث باسم المستخدم أو البريد أو المجموعة..."
+          class="w-full sm:w-72 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+        {% if q %}
+        <a href="{% url 'dashboard:system_employees_list' %}"
+           class="text-xs text-slate-500 hover:text-slate-700">
+          مسح البحث
+        </a>
+        {% endif %}
+      </form>
+
+      <a href="{% url 'dashboard:system_employee_create' %}"
+         class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 shadow-md hover:shadow-lg hover:from-indigo-600 hover:to-indigo-700 transition">
+        <span class="ml-2">➕</span>
+        <span>إضافة موظف</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">المستخدم</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">البريد</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">المجموعات</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">الصلاحيات</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">آخر تسجيل دخول</th>
+            <th class="p-3 text-right font-semibold border-b border-slate-200">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for u in page_obj.object_list %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3">
+              <div class="font-semibold text-slate-900">{{ u.username }}</div>
+              <div class="text-[11px] text-slate-500">{% if u.get_full_name %}{{ u.get_full_name }}{% endif %}</div>
+            </td>
+            <td class="p-3 text-slate-600 text-xs">
+              {% if u.email %}
+              {{ u.email }}
+              {% else %}
+              <span class="text-slate-400">لا يوجد</span>
+              {% endif %}
+            </td>
+            <td class="p-3 text-xs">
+              <div class="flex flex-wrap gap-1">
+                {% for g in u.groups.all %}
+                  <span class="px-2 py-1 rounded-full bg-slate-50 text-slate-700 font-semibold">{{ g.name }}</span>
+                {% empty %}
+                  <span class="px-2 py-1 rounded-full bg-slate-50 text-slate-500 font-medium">بدون مجموعات</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="p-3 text-xs">
+              <div class="flex flex-wrap gap-1">
+                {% if u.is_active %}
+                <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">نشط</span>
+                {% else %}
+                <span class="px-2 py-1 rounded-full bg-rose-50 text-rose-700 font-semibold">موقوف</span>
+                {% endif %}
+
+                {% if u.is_staff %}
+                <span class="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">Staff</span>
+                {% endif %}
+
+                {% for g in u.groups.all %}
+                  {% if g.name == 'Support' %}
+                  <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 font-semibold">موظف دعم</span>
+                  {% endif %}
+                {% endfor %}
+
+                {% if u.is_superuser %}
+                <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">Superuser</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="p-3 text-xs text-slate-500">
+              {% if u.last_login %}
+              {{ u.last_login|date:"Y-m-d H:i" }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td class="p-3">
+              <div class="flex items-center gap-2">
+                <a href="{% url 'dashboard:system_user_edit' u.pk %}"
+                   class="text-xs px-2.5 py-1.5 rounded-lg bg-sky-50 text-sky-700 font-medium hover:bg-sky-100">
+                  تعديل
+                </a>
+                {% if request.user.is_superuser %}
+                <a href="{% url 'dashboard:system_user_delete' u.pk %}"
+                   class="text-xs px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 font-medium hover:bg-rose-100">
+                  حذف
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="p-6 text-center text-slate-400 text-sm">
+              لا يوجد موظفون حالياً.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="px-4 py-3 flex items-center justify-between border-t border-slate-100 bg-slate-50/60">
+      <div class="text-xs text-slate-500">
+        صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+      </div>
+      <div class="flex items-center gap-1">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-2 py-1 text-xs rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100">
+          السابقة
+        </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-2 py-1 text-xs rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100">
+          التالية
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
