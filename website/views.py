@@ -106,11 +106,13 @@ def _build_display_context(request, key: str | None) -> dict | None:
     theme = THEME_MAP.get(raw_theme, "indigo")
 
     school_name = getattr(settings_obj, "name", None) or getattr(settings_obj.school, "name", "مدرستنا")
+    school_type = getattr(settings_obj.school, "school_type", "") if getattr(settings_obj, "school", None) else ""
 
     ctx = {
         "screen": screen,
         "settings": settings_obj,
         "school_name": school_name,
+        "school_type": school_type,
         "logo_url": logo_url,
         "refresh_interval_sec": getattr(settings_obj, "refresh_interval_sec", 30),
         "standby_scroll_speed": getattr(settings_obj, "standby_scroll_speed", 0.8),

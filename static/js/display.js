@@ -1104,6 +1104,10 @@
 
     const settings = payload.settings || {};
 
+    if (settings.school_type) {
+      cfg.SCHOOL_TYPE = settings.school_type;
+    }
+
     if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
       const nInt = clamp(settings.refresh_interval_sec, 5, 120);
       if (Math.abs(nInt - cfg.REFRESH_EVERY) > 0.001) cfg.REFRESH_EVERY = nInt;

@@ -287,13 +287,21 @@ def _build_snapshot_payload(school: Any) -> Dict[str, Any]:
     # تلميح لمعدل التحديث الذكي
     refresh_hint_seconds = _compute_refresh_hint(today_state)
 
+    # إعدادات العرض (الاسم، الشعار، نوع المدرسة...)
+    settings_dict = {
+        "name": getattr(school, "name", ""),
+        "school_type": getattr(school, "school_type", ""),
+    }
+    if hasattr(school, "logo") and school.logo:
+        settings_dict["logo_url"] = getattr(school.logo, "url", "")
+
     payload: Dict[str, Any] = {
         "today": today_state,
         "period_classes": period_classes,
         "ann": ann_items,
         "standby": {"items": standby_items},
         "exc": {"items": exc_items},
-        "settings": None,  # حجز لمستقبلًا إن أضفنا إعدادات عرض إضافية
+        "settings": settings_dict,
         "server_time": timezone.now().isoformat(),
         "refresh_hint_seconds": refresh_hint_seconds,
     }
