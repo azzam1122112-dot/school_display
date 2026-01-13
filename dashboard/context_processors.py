@@ -26,6 +26,8 @@ def admin_support_ticket_badges(request):
 
     counts = {
         "is_system_staff": True,
+        "is_support_staff": bool(is_support),
+        "is_superuser": bool(getattr(user, "is_superuser", False)),
         "admin_new_support_tickets_count": SupportTicket.objects.filter(status="open").count(),
     }
 

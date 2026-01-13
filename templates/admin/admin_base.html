@@ -120,6 +120,8 @@
           <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
           {% endif %}
         </a>
+
+        {% if not is_support_staff %}
         
         <!-- المدارس -->
         <div class="mt-6 mb-2 px-2">
@@ -231,17 +233,21 @@
           <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
           {% endif %}
         </a>
+
+        {% endif %}
         
       </nav>
     </div>
     
     <!-- تذييل الشريط الجانبي -->
     <div class="p-5 border-t border-slate-200 space-y-3">
-      <a href="{% url 'dashboard:index' %}"
-         class="sidebar-link text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-sm">
-        <i class="fas fa-arrow-left text-lg w-6 text-center"></i>
-        <span>الرجوع للوحة المدرسة</span>
-      </a>
+      {% if not is_support_staff %}
+        <a href="{% url 'dashboard:index' %}"
+           class="sidebar-link text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-sm">
+          <i class="fas fa-arrow-left text-lg w-6 text-center"></i>
+          <span>الرجوع للوحة المدرسة</span>
+        </a>
+      {% endif %}
       
       <a href="{% url 'dashboard:logout' %}"
          class="sidebar-link text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm">

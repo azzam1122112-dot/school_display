@@ -24,13 +24,15 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-blue-400/30">
-        <a href="{% url 'dashboard:system_schools_list' %}" 
-           class="inline-flex items-center text-sm text-blue-100 hover:text-white font-medium">
-          عرض المدارس
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_schools_list' %}" 
+             class="inline-flex items-center text-sm text-blue-100 hover:text-white font-medium">
+            عرض المدارس
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        {% endif %}
       </div>
     </div>
 
@@ -47,13 +49,15 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-purple-400/30">
-        <a href="{% url 'dashboard:system_users_list' %}" 
-           class="inline-flex items-center text-sm text-purple-100 hover:text-white font-medium">
-          عرض المستخدمين
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_users_list' %}" 
+             class="inline-flex items-center text-sm text-purple-100 hover:text-white font-medium">
+            عرض المستخدمين
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        {% endif %}
       </div>
     </div>
 
@@ -70,13 +74,15 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-emerald-400/30">
-        <a href="{% url 'dashboard:system_subscriptions_list' %}" 
-           class="inline-flex items-center text-sm text-emerald-100 hover:text-white font-medium">
-          عرض الاشتراكات
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_subscriptions_list' %}" 
+             class="inline-flex items-center text-sm text-emerald-100 hover:text-white font-medium">
+            عرض الاشتراكات
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        {% endif %}
       </div>
     </div>
 
@@ -93,13 +99,15 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-rose-400/30">
-        <a href="{% url 'dashboard:system_subscription_requests_list' %}"
-           class="inline-flex items-center text-sm text-rose-100 hover:text-white font-medium">
-          مراجعة الطلبات
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_subscription_requests_list' %}"
+             class="inline-flex items-center text-sm text-rose-100 hover:text-white font-medium">
+            مراجعة الطلبات
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        {% endif %}
       </div>
     </div>
 
@@ -116,18 +124,21 @@
         </div>
       </div>
       <div class="mt-6 pt-4 border-t border-amber-400/30">
-        <a href="{% url 'dashboard:system_reports' %}" 
-           class="inline-flex items-center text-sm text-amber-100 hover:text-white font-medium">
-          تقرير الإيرادات
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_reports' %}" 
+             class="inline-flex items-center text-sm text-amber-100 hover:text-white font-medium">
+            تقرير الإيرادات
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        {% endif %}
       </div>
     </div>
 
   </div>
 
+  {% if not is_support_staff %}
   <!-- الإجراءات السريعة -->
   <div class="mt-8">
     <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
@@ -315,6 +326,7 @@
 
     </div>
   </div>
+  {% endif %}
 
   <!-- قسم آخر (يمكنك إضافته لاحقاً) -->
   <div class="mt-12 p-6 bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl border border-slate-200">

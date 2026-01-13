@@ -149,6 +149,7 @@ MIDDLEWARE = [
     # Project middleware
     "core.middleware.ActiveSchoolMiddleware",
     "dashboard.middleware.SubscriptionRequiredMiddleware",
+    "dashboard.middleware.SupportDashboardOnlyMiddleware",
     "core.middleware.DisplayTokenMiddleware",
 
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

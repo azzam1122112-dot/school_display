@@ -87,3 +87,64 @@ class SubscriptionRequiredMiddleware:
             request.session["sub_blocked_once"] = True
 
         return redirect("dashboard:my_subscription")
+
+
+class SupportDashboardOnlyMiddleware:
+    """Restrict Support employees to dashboard only.
+
+    Requirement:
+    - Support group users should only see the system admin dashboard.
+    - If they try to access any other URL, redirect them back.
+
+    Notes:
+    - Superusers are NOT restricted.
+    - Static/media and display API endpoints are excluded.
+    """
+
+    ALLOWED_VIEW_NAMES = {
+        "dashboard:system_admin_dashboard",
+        "dashboard:login",
+        "dashboard:logout",
+        "dashboard:change_password",
+    }
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = (getattr(request, "path", "") or "").strip()
+
+        if not path:
+            return self.get_response(request)
+
+        # Always allow static/media and display API
+        if path.startswith("/static/") or path.startswith("/media/") or path.startswith("/api/display/"):
+            return self.get_response(request)
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return self.get_response(request)
+
+        if getattr(user, "is_superuser", False):
+            return self.get_response(request)
+
+        try:
+            is_support = user.groups.filter(name="Support").exists()
+        except Exception:
+            is_support = False
+
+        if not is_support:
+            return self.get_response(request)
+
+        # Allow the dashboard home only.
+        try:
+            match = resolve(request.path_info)
+            view_name = match.view_name or ""
+        except Resolver404:
+            view_name = ""
+
+        if view_name in self.ALLOWED_VIEW_NAMES:
+            return self.get_response(request)
+
+        # For anything else, force back to the system dashboard.
+        return redirect("dashboard:system_admin_dashboard")

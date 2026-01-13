@@ -339,14 +339,16 @@
           </div>
         </a>
 
-        <a href="{% url 'dashboard:system_schools_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'system_schools_list' %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🏫</span>
-            <span class="font-medium">المدارس</span>
-          </div>
-        </a>
+        {% if not is_support_staff %}
+          <a href="{% url 'dashboard:system_schools_list' %}"
+             class="nav-item block px-4 py-3 rounded-xl border transition-all
+                 {% if request.resolver_match.url_name == 'system_schools_list' %}active-nav{% else %}bg-white/80{% endif %}">
+            <div class="flex items-center">
+              <span class="ml-2 text-lg">🏫</span>
+              <span class="font-medium">المدارس</span>
+            </div>
+          </a>
+        {% endif %}
 
         <a href="{% url 'dashboard:system_users_list' %}"
            class="nav-item block px-4 py-3 rounded-xl border transition-all
