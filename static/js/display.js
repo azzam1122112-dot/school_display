@@ -365,8 +365,9 @@
     const name = safeText(settings.name || payload.school_name || "");
     const logo = resolveImageURL(settings.logo_url || payload.logo_url || "");
     const theme = safeText(settings.theme || "");
+    const schoolType = safeText(settings.school_type || "");
 
-    const sig = name + "||" + logo + "||" + theme;
+    const sig = name + "||" + logo + "||" + theme + "||" + schoolType;
     if (sig === last.brandSig) return;
     last.brandSig = sig;
 
@@ -378,15 +379,18 @@
     }
 
     if (dom.schoolLogo) {
-      if (logo) {
-        if (dom.schoolLogo.src !== logo) dom.schoolLogo.src = logo;
-        toggleHidden(dom.schoolLogo, false);
-        toggleHidden(dom.schoolLogoFallback, true);
-      } else {
-        toggleHidden(dom.schoolLogo, true);
-        toggleHidden(dom.schoolLogoFallback, false);
-      }
+      const fallback =
+        safeText(dom.schoolLogo.getAttribute("data-fallback-src")) ||
+        safeText(dom.schoolLogo.getAttribute("data-fallback")) ||
+        "";
+
+      const nextSrc = logo || fallback || dom.schoolLogo.src;
+      if (nextSrc && dom.schoolLogo.src !== nextSrc) dom.schoolLogo.src = nextSrc;
+      toggleHidden(dom.schoolLogo, false);
+      if (dom.schoolLogoFallback) toggleHidden(dom.schoolLogoFallback, true);
     }
+
+    if (schoolType) cfg.SCHOOL_TYPE = schoolType;
   }
 
   // ===== Clock / Date =====
@@ -633,7 +637,7 @@
       lastTs: 0,
       contentH: 0,
       viewH: 0,
-      hasClone: false,
+      cloneCount: 0,
       lastSig: "",
       running: false,
     };
@@ -645,22 +649,19 @@
       st.lastTs = 0;
     }
 
-    function ensureSingleContentNode() {
-      while (trackEl.children.length > 2) trackEl.removeChild(trackEl.lastElementChild);
-      if (trackEl.children.length === 2 && !st.hasClone) {
-        trackEl.removeChild(trackEl.lastElementChild);
-      }
+    function trimClones(maxClones) {
+      const maxChildren = 1 + Math.max(0, maxClones | 0);
+      while (trackEl.children.length > maxChildren) trackEl.removeChild(trackEl.lastElementChild);
     }
 
-    function removeClone() {
-      if (trackEl.children.length > 1) {
-        trackEl.removeChild(trackEl.lastElementChild);
-      }
-      st.hasClone = false;
+    function removeClones() {
+      while (trackEl.children.length > 1) trackEl.removeChild(trackEl.lastElementChild);
+      st.cloneCount = 0;
     }
 
-    function needScroll() {
-      // ✅ التمرير فقط إذا امتلأ الكرت فعلاً
+    function needScroll(forceScroll) {
+      // ✅ افتراضيًا: التمرير فقط إذا امتلأ الكرت فعلاً
+      if (forceScroll) return st.contentH > 0 && st.viewH > 0;
       return st.contentH > st.viewH + 4;
     }
 
@@ -672,20 +673,38 @@
       st.viewH = vp.offsetHeight || 0;
       st.contentH = content.offsetHeight || 0;
 
-      if (!needScroll()) {
+      const forceScroll =
+        !!(content && content.dataset && content.dataset.forceScroll === "1");
+
+      // لو ما عندنا قياسات صحيحة
+      if (!st.viewH || !st.contentH) {
         stop();
-        removeClone();
+        removeClones();
         st.y = 0;
         trackEl.style.transform = "translateY(0)";
         return;
       }
 
-      if (!st.hasClone) {
+      if (!needScroll(forceScroll)) {
+        stop();
+        removeClones();
+        st.y = 0;
+        trackEl.style.transform = "translateY(0)";
+        return;
+      }
+
+      // ✅ نضيف نسخ كافية حتى لا يظهر فراغ أثناء التمرير (خصوصًا عند forceScroll)
+      // نحتاج إجمالي ارتفاع >= viewH + contentH لكي يظل هناك محتوى يغطي الشاشة أثناء الحركة
+      const needTotal = st.viewH + st.contentH + 8;
+      let guard = 0;
+      while ((trackEl.offsetHeight || 0) < needTotal && guard < 8) {
         const clone = content.cloneNode(true);
         clone.setAttribute("aria-hidden", "true");
         trackEl.appendChild(clone);
-        st.hasClone = true;
+        st.cloneCount += 1;
+        guard += 1;
       }
+      trimClones(Math.max(1, st.cloneCount));
 
       if (st.contentH > 0) st.y = st.y % st.contentH;
       if (!st.running) start();
@@ -730,7 +749,7 @@
 
       // لا نصفر y — نحافظ على موضع التمرير قدر الإمكان
       stop();
-      st.hasClone = false;
+      st.cloneCount = 0;
       trackEl.style.transform = "translateY(-" + st.y.toFixed(2) + "px)";
 
       while (trackEl.firstChild) trackEl.removeChild(trackEl.firstChild);
@@ -738,7 +757,6 @@
       trackEl.appendChild(content);
 
       requestAnimationFrame(() => {
-        ensureSingleContentNode();
         recalc();
       });
     }
@@ -857,6 +875,7 @@
       list.style.flexDirection = "column";
       list.style.gap = "10px";
       list.style.paddingBottom = "10px";
+      list.dataset.forceScroll = arr.length >= 4 ? "1" : "0";
 
       arr.forEach((x) => {
         x = x || {};
@@ -908,6 +927,7 @@
       list.style.flexDirection = "column";
       list.style.gap = "10px";
       list.style.paddingBottom = "10px";
+      list.dataset.forceScroll = arr.length >= 4 ? "1" : "0";
 
       arr.forEach((x) => {
         x = x || {};
