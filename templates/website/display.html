@@ -93,6 +93,7 @@
 <body
   class="display-board h-screen w-screen flex flex-col"
   data-theme="{% if theme %}{{ theme }}{% else %}indigo{% endif %}"
+    data-accent-color="{% if display_accent_color %}{{ display_accent_color }}{% endif %}"
   data-token="{% if api_token %}{{ api_token }}{% endif %}"
   data-api-token="{% if api_token %}{{ api_token }}{% endif %}"
   data-snapshot-url="{% if snapshot_url %}{{ snapshot_url }}{% endif %}"
@@ -102,6 +103,7 @@
   data-refresh="{% if refresh_interval_sec %}{{ refresh_interval_sec }}{% else %}10{% endif %}"
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
+    style="{% if display_accent_color %}--accent-main: {{ display_accent_color }};{% endif %}"
 >
   <div class="bg-mesh"></div>
 

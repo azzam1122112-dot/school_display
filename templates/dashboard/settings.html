@@ -196,6 +196,44 @@
                         {% endif %}
                     </div>
 
+                    <!-- لون شاشة العرض (اختياري) -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-slate-700">لون شاشة العرض</label>
+
+                        <div class="flex flex-wrap gap-2" id="accentPalette">
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#6366F1" data-color="#6366F1" title="#6366F1"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#22C55E" data-color="#22C55E" title="#22C55E"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#F97316" data-color="#F97316" title="#F97316"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#EC4899" data-color="#EC4899" title="#EC4899"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#06B6D4" data-color="#06B6D4" title="#06B6D4"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#EAB308" data-color="#EAB308" title="#EAB308"></button>
+                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#A855F7" data-color="#A855F7" title="#A855F7"></button>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                                {{ form.display_accent_color }}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-500">معاينة</span>
+                                    <span id="accentPreview" class="inline-block w-10 h-6 rounded-full border border-slate-200" style="background: transparent;"></span>
+                                    <button type="button" id="accentClear" class="text-xs px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700">افتراضي</button>
+                                </div>
+                                {% if form.display_accent_color.help_text %}
+                                    <p class="text-xs text-slate-500 mt-1">{{ form.display_accent_color.help_text }}</p>
+                                {% endif %}
+                                {% if form.display_accent_color.errors %}
+                                    <div class="mt-1 text-red-600 text-sm">
+                                        {% for error in form.display_accent_color.errors %}
+                                            <p>{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- فاصل تحديث الشاشة -->
                     <div class="space-y-2">
                         <label class="block text-sm font-medium text-slate-700">
@@ -235,13 +273,14 @@
                         <div class="relative">
                             {{ form.standby_scroll_speed }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">px/frame</span>
+                                <span class="text-slate-500 text-sm">×</span>
                             </div>
                         </div>
 
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
                             قيم مقترحة: <span class="font-bold">0.5 – 1.2</span>.
+                            <span class="font-bold">كلما زادت القيمة زادت السرعة</span>.
                         </div>
 
                         <div id="standbyWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -270,13 +309,14 @@
                         <div class="relative max-w-xs">
                             {{ form.periods_scroll_speed }}
                             <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">px/frame</span>
+                                <span class="text-slate-500 text-sm">×</span>
                             </div>
                         </div>
 
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 max-w-xl">
                             الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
                             قيم مقترحة: <span class="font-bold">0.5 – 1.0</span>.
+                            <span class="font-bold">كلما زادت القيمة زادت السرعة</span>.
                         </div>
 
                         <div id="periodsWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 max-w-xl">
@@ -344,9 +384,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // ستايل عام للحقول (مع استثناء الراديو)
     const inputs = document.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
-        if (input.type !== 'radio' && input.type !== 'checkbox' && !input.classList.contains('sr-only')) {
-            input.className = 'w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white text-slate-700 placeholder-slate-400';
+        if (input.classList.contains('sr-only')) return;
+        if (input.type === 'radio' || input.type === 'checkbox') return;
+
+        if (input.type === 'color') {
+            input.className = 'w-10 h-10 p-0 border border-slate-200 rounded-xl cursor-pointer bg-transparent';
+            return;
         }
+
+        input.className = 'w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white text-slate-700 placeholder-slate-400';
     });
 
     const form = document.getElementById('settingsForm');
@@ -358,6 +404,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshWarn = document.getElementById('refreshWarn');
     const standbyWarn = document.getElementById('standbyWarn');
     const periodsWarn = document.getElementById('periodsWarn');
+
+    const accentInput = document.getElementById('id_display_accent_color');
+    const accentPreview = document.getElementById('accentPreview');
+    const accentClear = document.getElementById('accentClear');
+    const palette = document.getElementById('accentPalette');
 
     function $(id){ return document.getElementById(id); }
 
@@ -404,6 +455,36 @@ document.addEventListener('DOMContentLoaded', function() {
         el.setAttribute('inputmode', 'decimal');
     }
 
+    function normHex(v) {
+        if (!v) return '';
+        const s = String(v).trim();
+        if (!s) return '';
+        const m = s.match(/^#([0-9a-fA-F]{6})$/);
+        return m ? ('#' + m[1].toUpperCase()) : '';
+    }
+
+    function setAccent(v) {
+        if (!accentInput) return;
+        const hex = normHex(v);
+        accentInput.value = hex || '#000000';
+        // إذا كان “افتراضي”، نخليها فارغة عند الإرسال
+        accentInput.dataset.userCleared = hex ? '0' : '1';
+        if (accentPreview) accentPreview.style.background = hex || 'transparent';
+    }
+
+    // قبل الإرسال: لو المستخدم ضغط افتراضي نخلي القيمة فارغة
+    function normalizeAccentForSubmit() {
+        if (!accentInput) return;
+        const cleared = accentInput.dataset.userCleared === '1';
+        if (cleared) {
+            accentInput.value = '';
+            return;
+        }
+        const hex = normHex(accentInput.value);
+        accentInput.value = hex;
+        if (accentPreview) accentPreview.style.background = hex || 'transparent';
+    }
+
     function markInvalid(el, warnEl) {
         if (warnEl) warnEl.classList.remove('hidden');
         if (!el) return;
@@ -439,6 +520,35 @@ document.addEventListener('DOMContentLoaded', function() {
     applyConstraints(standbyEl, 0.5, 0.1);
     applyConstraints(periodsEl, 0.5, 0.1);
 
+    // تهيئة اللون + الربط مع الباليت
+    if (accentInput) {
+        const init = normHex(accentInput.value);
+        accentInput.value = init || '#000000';
+        accentInput.dataset.userCleared = init ? '0' : '1';
+        if (accentPreview) accentPreview.style.background = init || 'transparent';
+        accentInput.addEventListener('input', function(){
+            accentInput.dataset.userCleared = '0';
+            const hex = normHex(accentInput.value);
+            if (accentPreview) accentPreview.style.background = hex || 'transparent';
+        });
+    }
+
+    if (palette) {
+        palette.addEventListener('click', function(e){
+            const btn = e.target && e.target.closest ? e.target.closest('button[data-color]') : null;
+            if (!btn) return;
+            setAccent(btn.getAttribute('data-color'));
+        });
+    }
+
+    if (accentClear) {
+        accentClear.addEventListener('click', function(){
+            if (!accentInput) return;
+            accentInput.dataset.userCleared = '1';
+            if (accentPreview) accentPreview.style.background = 'transparent';
+        });
+    }
+
     // تحقق لحظي
     if (refreshEl) refreshEl.addEventListener('input', function(){ validateMin(refreshEl, 15, refreshWarn); });
     if (standbyEl) standbyEl.addEventListener('input', function(){ validateMin(standbyEl, 0.5, standbyWarn); });
@@ -447,6 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // منع الحفظ إذا كانت القيم أقل من الحد
     if (form) {
         form.addEventListener('submit', function(e){
+            normalizeAccentForSubmit();
             const ok1 = validateMin(refreshEl, 15, refreshWarn);
             const ok2 = validateMin(standbyEl, 0.5, standbyWarn);
             const ok3 = validateMin(periodsEl, 0.5, periodsWarn);

@@ -109,12 +109,14 @@ def _build_display_context(request, key: str | None) -> dict | None:
 
     school_name = getattr(settings_obj, "name", None) or getattr(settings_obj.school, "name", "مدرستنا")
     school_type = getattr(settings_obj.school, "school_type", "") if getattr(settings_obj, "school", None) else ""
+    display_accent_color = getattr(settings_obj, "display_accent_color", None)
 
     ctx = {
         "screen": screen,
         "settings": settings_obj,
         "school_name": school_name,
         "school_type": school_type,
+        "display_accent_color": display_accent_color,
         "logo_url": logo_url,
         "refresh_interval_sec": getattr(settings_obj, "refresh_interval_sec", 30),
         "standby_scroll_speed": getattr(settings_obj, "standby_scroll_speed", 0.8),

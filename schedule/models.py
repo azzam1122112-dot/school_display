@@ -6,7 +6,7 @@ from typing import Optional
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 
 from core.models import School
@@ -102,6 +102,20 @@ class SchoolSettings(models.Model):
         "سرعة تمرير جدول الحصص",
         default=0.5,
         validators=[MinValueValidator(0.05), MaxValueValidator(5.0)],
+    )
+
+    display_accent_color = models.CharField(
+        "لون شاشة العرض (اختياري)",
+        max_length=7,
+        blank=True,
+        null=True,
+        validators=[
+            RegexValidator(
+                regex=r"^#[0-9A-Fa-f]{6}$",
+                message="أدخل لونًا بصيغة HEX مثل: #22C55E",
+            )
+        ],
+        help_text="اختياري: اختر لوناً رئيسياً لشاشة العرض. اتركه فارغاً لاستخدام ألوان الثيم.",
     )
 
     class Meta:

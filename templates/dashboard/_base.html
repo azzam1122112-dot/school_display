@@ -19,6 +19,17 @@
       font-family: 'Cairo', sans-serif;
     }
 
+    @keyframes toast-in {
+      from { transform: translateY(-10px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @keyframes toast-out {
+      from { transform: translateY(0) scale(1); opacity: 1; }
+      to { transform: translateY(-10px) scale(0.98); opacity: 0; }
+    }
+    .toast-in { animation: toast-in 220ms ease-out both; }
+    .toast-out { animation: toast-out 180ms ease-in both; }
+
     .nav-item {
       transition: all .3s ease;
       position: relative;
@@ -114,8 +125,6 @@
         {% endif %}
       {% endwith %}
 
-
-              <span class="font-medium whitespace-pre-line leading-relaxed">{{ m }}</span>
         <div class="bg-slate-100 px-3 py-1.5 rounded-full text-sm">
           <span class="hidden sm:inline">مرحبًا،</span>
           <span class="font-semibold">
@@ -197,6 +206,89 @@
       </div>
     {% endif %}
   {% endwith %}
+{% endif %}
+
+{# ░░ Toast Messages (احترافي/تبويب عائم) ░░ #}
+{% if messages %}
+  <div id="toastStack"
+       class="fixed top-20 right-4 z-50 space-y-3 w-[min(420px,calc(100vw-2rem))] pointer-events-none">
+    {% for m in messages %}
+      <div class="toast-in pointer-events-auto rounded-2xl border shadow-lg backdrop-blur-md bg-white/80 overflow-hidden"
+           data-toast
+           data-tags="{{ m.tags }}">
+        <div class="flex items-start gap-3 p-4 border-r-4
+          {% if m.tags == 'success' %} border-emerald-500
+          {% elif m.tags == 'error' %} border-rose-500
+          {% elif m.tags == 'warning' %} border-amber-500
+          {% else %} border-sky-500
+          {% endif %}">
+
+          <div class="mt-0.5">
+            {% if m.tags == 'success' %}
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">✅</span>
+            {% elif m.tags == 'error' %}
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700">❌</span>
+            {% elif m.tags == 'warning' %}
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700">⚠️</span>
+            {% else %}
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-700">ℹ️</span>
+            {% endif %}
+          </div>
+
+          <div class="flex-1">
+            <div class="text-[13px] font-semibold text-slate-900">
+              {% if m.tags == 'success' %}تم بنجاح
+              {% elif m.tags == 'error' %}حدث خطأ
+              {% elif m.tags == 'warning' %}تنبيه
+              {% else %}معلومة
+              {% endif %}
+            </div>
+            <div class="mt-1 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+              {{ m }}
+            </div>
+          </div>
+
+          <button type="button"
+                  class="ml-1 -mt-1 p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+                  aria-label="إغلاق"
+                  data-toast-close>
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const stack = document.getElementById('toastStack');
+      if (!stack) return;
+
+      function dismissToast(el) {
+        if (!el || el.__dismissing) return;
+        el.__dismissing = true;
+        el.classList.remove('toast-in');
+        el.classList.add('toast-out');
+        window.setTimeout(() => el.remove(), 220);
+      }
+
+      stack.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-toast-close]');
+        if (!btn) return;
+        const toast = btn.closest('[data-toast]');
+        dismissToast(toast);
+      });
+
+      stack.querySelectorAll('[data-toast]').forEach((toast) => {
+        const tags = (toast.getAttribute('data-tags') || '').toLowerCase();
+        // النجاح/المعلومة تتلاشى تلقائياً؛ الخطأ يبقى حتى يُغلق.
+        const shouldAutoDismiss = !(tags.includes('error') || tags.includes('danger'));
+        if (shouldAutoDismiss) {
+          window.setTimeout(() => dismissToast(toast), 6500);
+        }
+      });
+    });
+  </script>
 {% endif %}
 
 <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
@@ -415,30 +507,6 @@
 
   <!-- ░░ Main Content ░░ -->
   <main class="col-span-12 md:col-span-9">
-
-    {% if messages %}
-      <div class="space-y-3 mb-6">
-        {% for m in messages %}
-          <div class="px-5 py-3 rounded-xl backdrop-blur-sm border-l-4 shadow-sm
-              {% if m.tags == 'success' %} bg-emerald-50/80 border-emerald-500 text-emerald-700
-              {% elif m.tags == 'error' %} bg-red-50/80 border-red-500 text-red-700
-              {% else %} bg-sky-50/80 border-sky-500 text-sky-700
-              {% endif %}">
-            <div class="flex items-center">
-              {% if m.tags == 'success' %}
-                <span class="ml-2 text-lg">✅</span>
-              {% elif m.tags == 'error' %}
-                <span class="ml-2 text-lg">❌</span>
-              {% else %}
-                <span class="ml-2 text-lg">ℹ️</span>
-              {% endif %}
-              <span class="font-medium">{{ m }}</span>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
 
     <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border overflow-hidden">
 

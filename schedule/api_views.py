@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import time
 from datetime import time as dt_time
 from typing import Iterable, Optional
@@ -559,6 +560,16 @@ def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
     s.setdefault("refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", 10) or 10)
     s.setdefault("standby_scroll_speed", getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8)
     s.setdefault("periods_scroll_speed", getattr(settings_obj, "periods_scroll_speed", 0.5) or 0.5)
+
+    # ✅ لون شاشة العرض (اختياري)
+    accent = getattr(settings_obj, "display_accent_color", None) or s.get("display_accent_color")
+    if isinstance(accent, str):
+        accent = accent.strip()
+    else:
+        accent = None
+    if accent and not re.match(r"^#[0-9A-Fa-f]{6}$", accent):
+        accent = None
+    s["display_accent_color"] = accent
     snap["settings"] = s
 
     # ✅ ROOT FIX: merge real data

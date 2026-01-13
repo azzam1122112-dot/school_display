@@ -367,6 +367,65 @@
     document.body.setAttribute("data-theme", n);
   }
 
+  // ===== Custom colors (optional) =====
+  function hexToRgb(hex) {
+    const s = (hex || "").toString().trim();
+    const m = s.match(/^#([0-9a-fA-F]{6})$/);
+    if (!m) return null;
+    const v = m[1];
+    return {
+      r: parseInt(v.slice(0, 2), 16),
+      g: parseInt(v.slice(2, 4), 16),
+      b: parseInt(v.slice(4, 6), 16),
+    };
+  }
+
+  function clamp01(x) {
+    const n = Number(x);
+    if (!isFinite(n)) return 0;
+    return Math.max(0, Math.min(1, n));
+  }
+
+  function mixRgb(a, b, t) {
+    const k = clamp01(t);
+    return {
+      r: Math.round(a.r + (b.r - a.r) * k),
+      g: Math.round(a.g + (b.g - a.g) * k),
+      b: Math.round(a.b + (b.b - a.b) * k),
+    };
+  }
+
+  function rgbToHex(rgb) {
+    const to2 = (n) => {
+      const x = Math.max(0, Math.min(255, Number(n) || 0));
+      return x.toString(16).padStart(2, "0").toUpperCase();
+    };
+    return "#" + to2(rgb.r) + to2(rgb.g) + to2(rgb.b);
+  }
+
+  function rgba(rgb, a) {
+    return "rgba(" + [rgb.r, rgb.g, rgb.b, clamp01(a)].join(",") + ")";
+  }
+
+  function applyAccentColor(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) {
+      // رجوع للألوان الافتراضية من app.css
+      root.style.removeProperty("--accent-main");
+      root.style.removeProperty("--accent-sub");
+      root.style.removeProperty("--mesh1");
+      root.style.removeProperty("--mesh2");
+      return;
+    }
+
+    const sub = rgbToHex(mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.30));
+    root.style.setProperty("--accent-main", rgbToHex(rgb));
+    root.style.setProperty("--accent-sub", sub);
+    // Mesh: لمسة خفيفة من نفس اللون
+    root.style.setProperty("--mesh1", rgba(rgb, 0.18));
+    root.style.setProperty("--mesh2", rgba(rgb, 0.12));
+  }
+
   const last = {
     brandSig: "",
     stateSig: "",
@@ -385,12 +444,14 @@
     const logo = resolveImageURL(settings.logo_url || payload.logo_url || "");
     const theme = safeText(settings.theme || "");
     const schoolType = safeText(settings.school_type || "");
+    const accent = safeText(settings.display_accent_color || "");
 
     const sig = name + "||" + logo + "||" + theme + "||" + schoolType;
     if (sig === last.brandSig) return;
     last.brandSig = sig;
 
     if (theme) applyTheme(theme);
+    applyAccentColor(accent);
 
     if (name) {
       document.title = name + " — لوحة العرض الذكية";
@@ -1601,6 +1662,11 @@
     try {
       const initTheme = (body.dataset.theme || "").trim();
       if (initTheme) applyTheme(initTheme);
+    } catch (e) {}
+
+    try {
+      const initAccent = (body.dataset.accentColor || "").trim();
+      if (initAccent) applyAccentColor(initAccent);
     } catch (e) {}
 
     ensureDebugOverlay();

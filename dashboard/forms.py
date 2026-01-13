@@ -80,6 +80,7 @@ class SchoolSettingsForm(forms.ModelForm):
             "refresh_interval_sec",
             "standby_scroll_speed",
             "periods_scroll_speed",
+            "display_accent_color",
         ]
         widgets = {
             "theme": forms.Select(),
@@ -90,6 +91,14 @@ class SchoolSettingsForm(forms.ModelForm):
             # ✅ حد أدنى 0.5 + خطوة 0.1 (قيم عملية للعرض)
             "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
             "periods_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
+
+            # اختيار لون HEX (يفضل عبر color picker)
+            "display_accent_color": forms.TextInput(
+                attrs={
+                    "type": "color",
+                    "title": "اختر لون شاشة العرض",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -107,9 +116,14 @@ class SchoolSettingsForm(forms.ModelForm):
                 self.fields[fname].widget.attrs.update({"min": "0.5", "max": "5.0", "step": "0.1"})
                 # تنبيه قيم مفيدة للمستخدم
                 if fname == "standby_scroll_speed":
-                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.2"
+                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.2. كلما زادت القيمة زادت السرعة."
                 else:
-                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.0"
+                    self.fields[fname].help_text = "الحد الأدنى 0.5. قيم مقترحة: 0.5 – 1.0. كلما زادت القيمة زادت السرعة."
+
+        if "display_accent_color" in self.fields:
+            self.fields["display_accent_color"].help_text = (
+                "اختياري: اختر لونًا رئيسياً لشاشة العرض. اتركه فارغًا لاستخدام ألوان الثيم."
+            )
 
     # =========================
     # ✅ Server-side validation
