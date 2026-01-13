@@ -1,5 +1,4 @@
 ﻿{% load static %}
-{% get_static_prefix as STATIC_PREFIX %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -10,1163 +9,940 @@
 
   <title>لوحة العرض الذكية — شاشات مدرسية تفاعلية</title>
   <meta name="description" content="النظام الأول لإدارة شاشات المدارس: جداول، حصص انتظار، تكريم، وفعاليات.. بتحديث لحظي وتصميم يليق بمدرستك.">
-  
+
   <!-- Open Graph -->
   <meta property="og:title" content="لوحة العرض الذكية">
   <meta property="og:description" content="حوّل شاشات المدرسة الجامدة إلى منصة تفاعلية حية.">
   <meta property="og:type" content="website">
 
-  <!-- Favicons -->
   <link rel="icon" href="{% static 'favicon.ico' %}">
 
-  <!-- Font & Icons -->
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
-    :root {
-      --primary: #2563eb;
-      --primary-dark: #1e40af;
-      --primary-light: #eff6ff;
+    :root{
+      --primary:#2563eb;
+      --primary-dark:#1e40af;
+      --indigo:#6366f1;
 
-      --accent: #10b981;
-      --accent-glow: rgba(16, 185, 129, 0.4);
+      --accent:#10b981;
+      --accent-2:#22c55e;
 
-      --dark: #0f172a;
-      --text: #334155;
-      --text-light: #64748b;
+      --dark:#0b1220;
+      --text:#334155;
+      --text-2:#64748b;
 
-      --bg-page: #ffffff;
-      --bg-surface: #f8fafc;
-      --border: #e2e8f0;
+      --bg:#ffffff;
+      --surface:#f8fafc;
+      --border:#e2e8f0;
 
-      --radius-sm: 8px;
-      --radius-md: 16px;
-      --radius-lg: 24px;
-      --radius-xl: 32px;
+      --r-sm:12px;
+      --r-md:18px;
+      --r-lg:26px;
+      --r-xl:34px;
 
-      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-      --shadow-brand: 0 20px 25px -5px rgba(37, 99, 235, 0.15), 0 8px 10px -6px rgba(37, 99, 235, 0.1);
+      --sh-sm:0 1px 2px rgba(0,0,0,.05);
+      --sh-md:0 10px 20px rgba(2,6,23,.08);
+      --sh-lg:0 25px 60px rgba(2,6,23,.14);
 
-      /* Launch promo */
-      --launch-bg: rgba(37, 99, 235, 0.08);
-      --launch-border: rgba(37, 99, 235, 0.18);
-      --warn: #f59e0b;
-      --danger: #ef4444;
+      --ring:0 0 0 6px rgba(37,99,235,.10);
+      --glass:rgba(255,255,255,.75);
+
+      /* Promo */
+      --promo-bg:linear-gradient(135deg, rgba(37,99,235,.12), rgba(16,185,129,.10));
+      --promo-bd:rgba(37,99,235,.20);
+      --good:#16a34a;
+      --warn:#f59e0b;
     }
 
-    * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-    html { scroll-behavior: smooth; font-size: 16px; }
-    body {
-      font-family: 'Tajawal', sans-serif;
-      background: var(--bg-page);
-      color: var(--text);
-      line-height: 1.6;
-      margin: 0;
-      overflow-x: hidden;
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:'Tajawal',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.65;
+      overflow-x:hidden;
     }
-    h1, h2, h3, h4 { margin: 0; font-weight: 800; color: var(--dark); line-height: 1.25; }
-    p { margin: 0; }
-    a { text-decoration: none; color: inherit; transition: 0.2s; }
-    ul { list-style: none; padding: 0; margin: 0; }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      width: 100%;
-    }
-
-    .text-gradient {
-      background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+    h1,h2,h3,h4{margin:0;color:var(--dark);line-height:1.2;font-weight:900}
+    p{margin:0}
+    a{text-decoration:none;color:inherit}
+    .container{max-width:1200px;margin:0 auto;padding:0 22px}
+    .section{padding:100px 0}
+    .muted{color:var(--text-2)}
+    .text-gradient{
+      background:linear-gradient(135deg,var(--primary),var(--indigo));
+      -webkit-background-clip:text;background-clip:text;color:transparent;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: var(--primary-light);
-      color: var(--primary);
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 700;
+    /* Decorative animated background */
+    .bg-orbs{
+      position:fixed;inset:0;pointer-events:none;z-index:-1;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(37,99,235,.10), transparent 45%),
+        radial-gradient(circle at 90% 75%, rgba(16,185,129,.10), transparent 45%),
+        radial-gradient(circle at 40% 90%, rgba(99,102,241,.08), transparent 50%);
     }
-
-    .section-spacing { padding: 100px 0; }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 12px 28px;
-      border-radius: 999px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      font-size: 1rem;
-      border: 0;
+    .orb{
+      position:absolute;border-radius:999px;filter:blur(12px);opacity:.55;
+      animation:float 12s ease-in-out infinite;
+      transform:translateZ(0);
     }
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    .orb.one{width:280px;height:280px;right:-120px;top:140px;background:rgba(37,99,235,.18)}
+    .orb.two{width:320px;height:320px;left:-140px;top:520px;background:rgba(16,185,129,.16);animation-duration:14s}
+    .orb.three{width:240px;height:240px;right:20%;top:70%;background:rgba(99,102,241,.14);animation-duration:16s}
+    @keyframes float{
+      0%,100%{transform:translateY(0) translateX(0) scale(1)}
+      50%{transform:translateY(-18px) translateX(10px) scale(1.03)}
     }
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-    }
-    .btn-white {
-      background: white;
-      color: var(--primary);
-      box-shadow: var(--shadow-md);
-      border: 1px solid var(--border);
-    }
-    .btn-white:hover { background: #f8fafc; transform: translateY(-2px); }
 
     /* Header */
-    header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      padding: 20px 0;
-      transition: 0.3s;
+    header{
+      position:fixed;top:0;left:0;right:0;z-index:1000;
+      padding:18px 0;transition:.25s ease;
     }
-    header.scrolled {
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(12px);
-      box-shadow: var(--shadow-sm);
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
+    header.scrolled{
+      background:rgba(255,255,255,.86);
+      backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);
+      box-shadow:var(--sh-sm);
+      padding:12px 0;
     }
-
-    .nav-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.25rem; color: var(--dark); }
-    .logo-icon {
-      width: 40px; height: 40px;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
-      color: white;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      font-size: 1.2rem;
+    .nav{
+      display:flex;align-items:center;justify-content:space-between;gap:14px
     }
-    .nav-links { display: flex; gap: 32px; }
-    .nav-links a { font-weight: 600; color: var(--text); font-size: 0.95rem; }
-    .nav-links a:hover { color: var(--primary); }
+    .brand{
+      display:flex;align-items:center;gap:10px;font-weight:950;color:var(--dark)
+    }
+    .brand .icon{
+      width:42px;height:42px;border-radius:14px;color:#fff;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--primary),#a855f7);
+      box-shadow:0 14px 30px rgba(37,99,235,.18);
+    }
+    .links{display:flex;gap:28px;align-items:center}
+    .links a{font-weight:800;color:rgba(15,23,42,.78);font-size:.95rem}
+    .links a:hover{color:var(--primary)}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      padding:12px 18px;border-radius:999px;border:0;cursor:pointer;
+      font-weight:900;transition:.2s ease;white-space:nowrap
+    }
+    .btn-primary{
+      background:var(--primary);color:#fff;box-shadow:0 16px 30px rgba(37,99,235,.22);
+    }
+    .btn-primary:hover{background:var(--primary-dark);transform:translateY(-2px)}
+    .btn-ghost{
+      background:rgba(255,255,255,.75);border:1px solid var(--border);
+      box-shadow:var(--sh-sm);color:var(--primary);
+    }
+    .btn-ghost:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+    .btn-green{
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      color:#fff;box-shadow:0 18px 34px rgba(16,185,129,.22);
+    }
+    .btn-green:hover{transform:translateY(-2px);opacity:.97}
 
     /* Hero */
-    .hero {
-      padding-top: 160px;
-      padding-bottom: 100px;
+    .hero{
+      padding:160px 0 90px;
       background:
-        radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+        radial-gradient(circle at 15% 25%, rgba(37,99,235,.08), transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(16,185,129,.08), transparent 45%);
     }
-    .hero-content { text-align: center; max-width: 900px; margin: 0 auto; }
-    .hero h1 { font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 18px; letter-spacing: -1px; }
-    .hero p {
-      font-size: 1.25rem;
-      color: var(--text-light);
-      margin-bottom: 26px;
-      max-width: 680px;
-      margin-left: auto;
-      margin-right: auto;
+    .hero-grid{
+      display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:center
     }
-    .hero-buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .badge{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 12px;border-radius:999px;font-weight:900;
+      background:rgba(37,99,235,.10);border:1px solid rgba(37,99,235,.18);
+      color:var(--primary);
+    }
+    .hero h1{font-size:clamp(2.2rem,4.4vw,3.6rem);letter-spacing:-.6px;margin-top:14px}
+    .hero p{margin-top:14px;font-size:1.15rem;color:var(--text-2);max-width:560px}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+    .hero-card{
+      background:rgba(255,255,255,.75);
+      border:1px solid rgba(226,232,240,.9);
+      border-radius:var(--r-xl);
+      box-shadow:var(--sh-lg);
+      overflow:hidden;
+    }
+    .hero-visual{
+      aspect-ratio:16/9;background:#000;
+      border-radius:var(--r-xl);
+      overflow:hidden;border:8px solid rgba(255,255,255,.9);
+      box-shadow:0 30px 70px rgba(2,6,23,.18);
+    }
+    .hero-visual iframe{width:100%;height:100%;border:0}
+    .hero-mini{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+      padding:14px;border-top:1px solid rgba(226,232,240,.9);
+      background:rgba(255,255,255,.90);
+    }
+    .mini{
+      border:1px solid rgba(226,232,240,.9);
+      border-radius:18px;padding:12px;
+      background:linear-gradient(135deg, rgba(37,99,235,.06), rgba(16,185,129,.05));
+    }
+    .mini strong{display:flex;gap:8px;align-items:center;font-weight:1000;color:var(--dark)}
+    .mini span{display:block;margin-top:6px;color:var(--text-2);font-weight:800;font-size:.92rem}
 
-    .hero-visual {
-      margin-top: 60px;
-      position: relative;
-      border-radius: var(--radius-lg);
-      border: 8px solid rgba(255,255,255,0.8);
-      box-shadow: var(--shadow-brand);
-      overflow: hidden;
-      background: #000;
-      aspect-ratio: 16/9;
-      max-width: 1000px;
-      margin-left: auto;
-      margin-right: auto;
+    /* Promo strip */
+    .promo{
+      margin-top:20px;
+      border:1px solid var(--promo-bd);
+      background:var(--promo-bg);
+      border-radius:22px;
+      padding:14px 14px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      box-shadow:0 18px 40px rgba(37,99,235,.10);
     }
-    .hero-visual iframe { width: 100%; height: 100%; border: 0; }
+    .promo .left{
+      display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap
+    }
+    .promo .title{
+      display:flex;gap:10px;align-items:center;font-weight:1000;color:var(--dark)
+    }
+    .promo .sub{color:rgba(15,23,42,.75);font-weight:800}
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 10px;border-radius:999px;
+      background:rgba(255,255,255,.80);
+      border:1px solid rgba(226,232,240,.9);
+      box-shadow:var(--sh-sm);
+      font-weight:950;color:var(--dark);font-size:.86rem
+    }
+    .pill i{color:var(--accent)}
+    .pill.warn i{color:var(--warn)}
+    .pill.good i{color:var(--good)}
 
-    /* Launch Banner (NEW) */
-    .launch-banner {
-      margin: 22px auto 0;
-      max-width: 920px;
-      border: 1px solid var(--launch-border);
-      background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(16,185,129,0.08));
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
-      overflow: hidden;
-      position: relative;
-    }
-    .launch-banner::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 20% 10%, rgba(99,102,241,0.18) 0%, transparent 50%),
-                  radial-gradient(circle at 90% 60%, rgba(16,185,129,0.14) 0%, transparent 55%);
-      pointer-events: none;
-    }
-    .launch-inner {
-      position: relative;
-      padding: 18px 18px 16px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      align-items: center;
-    }
-    .launch-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--dark);
-      font-weight: 900;
-      font-size: 1.05rem;
-    }
-    .launch-title i { color: var(--primary); }
-    .launch-sub {
-      margin-top: 6px;
-      color: var(--text-light);
-      font-weight: 600;
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-    .launch-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.75);
-      border: 1px solid rgba(226,232,240,0.9);
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 800;
-      color: var(--dark);
-      box-shadow: var(--shadow-sm);
-      white-space: nowrap;
-    }
-    .pill i { color: var(--accent); }
-    .pill.warn i { color: var(--warn); }
-    .pill.danger i { color: var(--danger); }
-
-    .launch-cta {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: flex-start;
-      justify-content: center;
-      min-width: 240px;
-    }
-    .mini-note {
-      font-size: 0.85rem;
-      color: rgba(15, 23, 42, 0.75);
-      font-weight: 700;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .mini-note i { color: var(--primary); }
-    .countdown {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 8px 10px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.7);
-      border: 1px solid rgba(226,232,240,0.9);
-      box-shadow: var(--shadow-sm);
-      width: 100%;
-      justify-content: space-between;
-      font-weight: 900;
-      color: var(--dark);
-    }
-    .countdown small { font-weight: 800; color: var(--text-light); }
-    .countdown span { font-variant-numeric: tabular-nums; }
-
-    .launch-btn {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--accent), #22c55e);
-      color: white;
-      font-weight: 900;
-      box-shadow: 0 10px 20px rgba(16,185,129,0.25);
-      border: 0;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: transform .2s ease, opacity .2s ease;
-    }
-    .launch-btn:hover { transform: translateY(-2px); opacity: .96; }
-    .launch-fineprint {
-      margin-top: 10px;
-      font-size: 0.82rem;
-      color: rgba(51, 65, 85, 0.9);
-      font-weight: 700;
-    }
-
-    /* Proof */
-    .proof-section {
-      background: var(--dark);
-      color: white;
-      padding: 60px 0;
-      text-align: center;
-    }
-    .proof-grid { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
-    .stat-item h3 { color: white; font-size: 2.5rem; margin-bottom: 5px; }
-    .stat-item p { color: #94a3b8; font-size: 1rem; }
+    /* Section header */
+    .section-head{text-align:center;max-width:760px;margin:0 auto 54px}
+    .section-head h2{font-size:2.45rem}
+    .section-head p{margin-top:12px;color:var(--text-2);font-size:1.08rem;font-weight:700}
 
     /* Features */
-    .features { background: var(--bg-surface); position: relative; overflow: hidden; }
-    .section-header { text-align: center; max-width: 700px; margin: 0 auto 60px; }
-    .section-header h2 { font-size: 2.5rem; margin-bottom: 16px; }
-    .section-header p { font-size: 1.1rem; color: var(--text-light); }
-    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; }
-    .feature-card {
-      background: white;
-      padding: 32px;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      transition: 0.3s;
+    .features{background:var(--surface);border-top:1px solid rgba(226,232,240,.6);border-bottom:1px solid rgba(226,232,240,.6)}
+    .grid{display:grid;gap:18px}
+    .grid.features-grid{grid-template-columns:repeat(4,1fr)}
+    .card{
+      background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);
+      padding:22px;box-shadow:var(--sh-sm);transition:.22s ease;
     }
-    .feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
-    .feature-icon {
-      width: 54px; height: 54px;
-      background: var(--primary-light);
-      color: var(--primary);
-      border-radius: 16px;
-      display: grid;
-      place-items: center;
-      font-size: 1.5rem;
-      margin-bottom: 24px;
+    .card:hover{transform:translateY(-6px);box-shadow:var(--sh-md);border-color:rgba(37,99,235,.25)}
+    .ic{
+      width:54px;height:54px;border-radius:18px;display:grid;place-items:center;
+      background:rgba(37,99,235,.10);color:var(--primary);font-size:1.4rem;
+      box-shadow:var(--ring);
     }
-    .feature-card h3 { font-size: 1.25rem; margin-bottom: 12px; }
-    .feature-card p { color: var(--text-light); font-size: 0.95rem; }
+    .card h3{margin-top:14px;font-size:1.15rem}
+    .card p{margin-top:10px;color:var(--text-2);font-weight:700;font-size:.96rem;line-height:1.8}
 
     /* Pricing */
-    .pricing-container { position: relative; z-index: 2; }
-
-    .pricing-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin-bottom: 26px;
-      flex-wrap: wrap;
+    .pricing-top{
+      max-width:980px;margin:0 auto 22px;
+      display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center
     }
-    .toggle-label { font-weight: 700; color: var(--text-light); font-size: 1rem; cursor: pointer; }
-    .toggle-label.active { color: var(--dark); }
-
-    .switch { position: relative; display: inline-block; width: 56px; height: 30px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #cbd5e1;
-      transition: .4s;
-      border-radius: 34px;
+    .trust{
+      display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;
+      padding:10px 12px;border-radius:18px;background:rgba(16,185,129,.08);
+      border:1px solid rgba(16,185,129,.16);
     }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 22px; width: 22px;
-      left: 4px; bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
+    .trust .pill i{color:var(--accent)}
+    .toggle{
+      display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:18px 0 26px
     }
-    input:checked + .slider { background-color: var(--primary); }
-    input:checked + .slider:before { transform: translateX(26px); }
-
-    .discount-badge {
-      background: #dcfce7;
-      color: #15803d;
-      font-size: 0.75rem;
-      font-weight: 800;
-      padding: 4px 8px;
-      border-radius: 6px;
-      margin-right: 8px;
-      animation: pulse 2s infinite;
+    .toggle .lbl{font-weight:950;color:rgba(15,23,42,.55);cursor:pointer}
+    .toggle .lbl.active{color:var(--dark)}
+    .switch{position:relative;width:58px;height:32px;display:inline-block}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{
+      position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:.25s;
     }
-    @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100%{transform: scale(1);} }
-
-    /* Launch mini-bar above pricing cards (NEW) */
-    .launch-mini {
-      max-width: 1000px;
-      margin: 0 auto 26px;
-      border: 1px dashed rgba(37, 99, 235, 0.35);
-      background: rgba(37, 99, 235, 0.05);
-      border-radius: 18px;
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+    .slider:before{
+      content:"";position:absolute;right:4px;top:4px;width:24px;height:24px;border-radius:999px;background:#fff;
+      transition:.25s;box-shadow:var(--sh-sm);
     }
-    .launch-mini strong { color: var(--dark); font-weight: 900; }
-    .launch-mini span { color: var(--text-light); font-weight: 700; }
-    .launch-mini .mini-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .mini-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: white;
-      border: 1px solid rgba(226,232,240,0.95);
-      box-shadow: var(--shadow-sm);
-      font-weight: 900;
-      color: var(--dark);
-      font-size: 0.85rem;
-    }
-    .mini-chip i { color: var(--primary); }
-
-    /* Trust / decision incentives (NEW) */
-    .trust-mini {
-      max-width: 1000px;
-      margin: 0 auto 18px;
-      border: 1px solid rgba(16,185,129,0.18);
-      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(37,99,235,0.06));
-      border-radius: 18px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      text-align: center;
-    }
-    .trust-mini .mini-chip { background: rgba(255,255,255,0.9); }
-    .trust-mini .mini-chip i { color: var(--accent); }
-    .trust-fineprint {
-      text-align: center;
-      margin-top: -6px;
-      margin-bottom: 18px;
-      font-size: 0.85rem;
-      color: rgba(51,65,85,0.85);
-      font-weight: 800;
-      line-height: 1.8;
+    input:checked + .slider{background:var(--primary)}
+    input:checked + .slider:before{transform:translateX(-26px)}
+    .sale{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:6px 10px;border-radius:999px;font-weight:1000;
+      background:rgba(22,163,74,.10);border:1px solid rgba(22,163,74,.18);color:var(--good);
     }
 
-    .pricing-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 20px;
-      align-items: stretch;
+    .pricing-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:stretch}
+    .plan{
+      position:relative;display:flex;flex-direction:column;
+      background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:22px;
+      box-shadow:var(--sh-sm);transition:.22s ease;
+      overflow:hidden;
     }
-    .price-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: 24px;
-      position: relative;
-      transition: 0.3s;
-      display: flex;
-      flex-direction: column;
+    .plan:hover{transform:translateY(-8px);box-shadow:var(--sh-md);border-color:rgba(37,99,235,.28)}
+    .plan.popular{
+      border:2px solid rgba(16,185,129,.55);
+      background:linear-gradient(180deg, rgba(240,253,244,.95), #fff 55%);
+      box-shadow:0 18px 50px rgba(16,185,129,.16);
     }
-    .price-card:hover { border-color: var(--primary); transform: translateY(-8px); box-shadow: var(--shadow-lg); z-index: 10; }
+    .tag{
+      position:absolute;top:14px;left:14px;
+      display:inline-flex;gap:8px;align-items:center;
+      padding:7px 12px;border-radius:999px;font-weight:1000;font-size:.82rem;
+      background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:rgba(15,23,42,.86)
+    }
+    .tag i{color:var(--accent)}
+    .plan-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .screens{
+      display:flex;gap:10px;align-items:center;font-weight:1000;color:var(--dark);font-size:1.05rem
+    }
+    .screens i{color:var(--primary)}
+    .price{
+      margin-top:14px;display:flex;align-items:flex-end;gap:8px
+    }
+    .amount{
+      font-size:2.15rem;font-weight:1100;line-height:1;color:var(--dark);
+      font-variant-numeric:tabular-nums;
+    }
+    .cur{font-weight:900;color:rgba(100,116,139,.95)}
+    .period{margin-top:6px;color:var(--text-2);font-weight:850;font-size:.92rem}
+    .meta{
+      margin-top:10px;
+      display:grid;gap:8px;
+      padding:12px;border-radius:18px;
+      background:linear-gradient(135deg, rgba(37,99,235,.06), rgba(16,185,129,.05));
+      border:1px solid rgba(226,232,240,.9);
+    }
+    .meta .row{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      font-weight:950;color:rgba(15,23,42,.85);font-size:.88rem
+    }
+    .meta .row small{color:rgba(100,116,139,.95);font-weight:900}
+    .meta .row b{font-variant-numeric:tabular-nums}
+    .meta .save{
+      display:inline-flex;gap:8px;align-items:center;
+      color:var(--good);font-weight:1000
+    }
+    .meta .save i{color:var(--good)}
 
-    .price-card.popular {
-      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
-      border: 2px solid var(--accent);
-      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
-      z-index: 5;
+    .list{margin:16px 0 auto;padding:0;list-style:none;display:grid;gap:10px}
+    .list li{
+      display:flex;gap:10px;align-items:flex-start;
+      color:rgba(15,23,42,.85);font-weight:800;font-size:.92rem
     }
-    .popular-tag {
-      position: absolute;
-      top: -14px; left: 50%;
-      transform: translateX(-50%);
-      background: var(--accent);
-      color: white;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 800;
-      white-space: nowrap;
+    .list i{color:var(--accent);margin-top:3px;font-size:.9rem}
+    .plan .cta{margin-top:16px}
+    .plan .cta a{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      padding:12px 12px;border-radius:14px;font-weight:1000;
+      background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.15);
+      color:var(--primary);
+      transition:.2s ease;
     }
+    .plan.popular .cta a{
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      border-color:transparent;color:#fff;
+      box-shadow:0 14px 28px rgba(16,185,129,.18);
+    }
+    .plan .cta a:hover{transform:translateY(-2px);opacity:.97}
 
-    .plan-screens {
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: var(--dark);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .screen-icon { color: var(--primary); }
-
-    .price-wrap { margin: 16px 0; display: flex; align-items: baseline; gap: 4px; }
-    .currency { font-size: 0.9rem; font-weight: 700; color: var(--text-light); }
-    .amount { font-size: 2rem; font-weight: 900; color: var(--dark); line-height: 1; }
-    .period { font-size: 0.85rem; color: var(--text-light); }
-
-    /* Launch price meta (shown in 6-month mode only) */
-    .price-meta {
-      margin-top: -6px;
-      margin-bottom: 6px;
-      font-size: 0.85rem;
-      color: var(--text-light);
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .price-meta .strike {
-      text-decoration: line-through;
-      color: rgba(100, 116, 139, 0.95);
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-    }
-    .price-meta .launch-tag {
-      background: rgba(245, 158, 11, 0.14);
-      border: 1px solid rgba(245, 158, 11, 0.26);
-      color: #92400e;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 1000;
-      white-space: nowrap;
+    .pricing-note{
+      margin-top:26px;text-align:center;color:rgba(100,116,139,.95);font-weight:850;font-size:.92rem;line-height:1.9
     }
 
-    .features-list { margin: 20px 0 auto 0; font-size: 0.9rem; }
-    .features-list li {
-      margin-bottom: 10px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      color: var(--text);
+    /* How it works */
+    .how{background:var(--surface);border-top:1px solid rgba(226,232,240,.6)}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .step{
+      background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--sh-sm);
     }
-    .features-list i { color: var(--accent); margin-top: 4px; font-size: 0.8rem; }
+    .step .n{
+      width:44px;height:44px;border-radius:16px;display:grid;place-items:center;
+      background:rgba(37,99,235,.10);color:var(--primary);font-weight:1100;
+      box-shadow:var(--ring);
+    }
+    .step h3{margin-top:12px;font-size:1.1rem}
+    .step p{margin-top:10px;color:var(--text-2);font-weight:750;line-height:1.9}
 
-    .card-footer { margin-top: 24px; }
-    .btn-plan {
-      width: 100%;
-      padding: 10px;
-      border-radius: 12px;
-      background: var(--primary-light);
-      color: var(--primary);
-      font-weight: 800;
-      font-size: 0.9rem;
-      border: 1px solid transparent;
-      display: block;
-      text-align: center;
+    /* FAQ */
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    details{
+      background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px 16px;box-shadow:var(--sh-sm);
     }
-    .price-card.popular .btn-plan {
-      background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    summary{
+      cursor:pointer;font-weight:1000;color:var(--dark);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      list-style:none;
     }
-    .btn-plan:hover { opacity: 0.9; }
-
-    /* Launch modal (NEW) */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(8px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 2000;
-    }
-    .modal-overlay.open { display: flex; }
-
-    .modal {
-      width: min(920px, 100%);
-      background: white;
-      border-radius: 22px;
-      border: 1px solid rgba(226,232,240,0.95);
-      box-shadow: 0 30px 80px rgba(2,6,23,0.25);
-      overflow: hidden;
-      transform: translateY(8px);
-      opacity: 0;
-      transition: .18s ease;
-    }
-    .modal-overlay.open .modal {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    .modal-head {
-      padding: 16px 18px;
-      background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.10));
-      border-bottom: 1px solid rgba(226,232,240,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .modal-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 1000;
-      color: var(--dark);
-    }
-    .modal-title i { color: var(--primary); }
-    .modal-close {
-      border: 0;
-      background: white;
-      border-radius: 12px;
-      padding: 8px 10px;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid rgba(226,232,240,0.95);
-      font-weight: 900;
-      color: var(--dark);
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .modal-body { padding: 18px; }
-    .launch-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 14px;
-      align-items: start;
-    }
-    .launch-card {
-      border: 1px solid rgba(226,232,240,0.95);
-      border-radius: 18px;
-      padding: 14px;
-      background: #fff;
-      box-shadow: var(--shadow-sm);
-    }
-    .launch-card h3 {
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .launch-card h3 i { color: var(--accent); }
-    .launch-card p { color: var(--text-light); font-weight: 700; margin-bottom: 10px; line-height: 1.8; }
-    .steps {
-      display: grid;
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .step {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      padding: 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(226,232,240,0.95);
-      background: #fff;
-    }
-    .step .num {
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      background: rgba(37,99,235,0.10);
-      color: var(--primary);
-      display: grid;
-      place-items: center;
-      font-weight: 1000;
-      flex: 0 0 auto;
-    }
-    .step strong { color: var(--dark); font-weight: 1000; }
-    .step span { display: block; color: var(--text-light); font-weight: 700; margin-top: 3px; }
-
-    .launch-offer {
-      background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(37,99,235,0.10));
-      border: 1px solid rgba(16,185,129,0.20);
-    }
-    .offer-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.75);
-      border: 1px solid rgba(226,232,240,0.95);
-      margin-top: 8px;
-      font-weight: 900;
-      color: var(--dark);
-    }
-    .offer-row small { color: var(--text-light); font-weight: 800; }
-    .offer-row b { font-variant-numeric: tabular-nums; }
-    .offer-actions {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .offer-actions a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-weight: 1000;
-      border: 1px solid rgba(226,232,240,0.95);
-    }
-    .offer-actions .wa {
-      background: #25d366;
-      color: white;
-      border-color: rgba(0,0,0,0.0);
-      box-shadow: 0 12px 20px rgba(37, 211, 102, 0.18);
-    }
-    .offer-actions .wa:hover { opacity: .95; transform: translateY(-1px); }
-    .offer-actions .ghost {
-      background: white;
-      color: var(--primary);
-    }
-    .tiny {
-      margin-top: 10px;
-      font-size: 0.82rem;
-      color: rgba(51,65,85,0.85);
-      font-weight: 800;
-      line-height: 1.8;
-    }
+    summary::-webkit-details-marker{display:none}
+    summary .q{display:flex;gap:10px;align-items:center}
+    summary .q i{color:var(--primary)}
+    details p{margin-top:12px;color:var(--text-2);font-weight:750;line-height:1.9}
 
     /* Contact */
-    .contact-cta {
-      background: linear-gradient(120deg, var(--primary) 0%, #4338ca 100%);
-      border-radius: var(--radius-xl);
-      padding: 60px 20px;
-      text-align: center;
-      color: white;
-      box-shadow: var(--shadow-brand);
+    .contact-card{
+      border-radius:var(--r-xl);
+      padding:56px 18px;
+      background:linear-gradient(120deg,var(--primary),#4338ca);
+      box-shadow:0 30px 70px rgba(37,99,235,.22);
+      text-align:center;color:#fff;
+      border:1px solid rgba(255,255,255,.18);
     }
-    .contact-cta h2 { color: white; margin-bottom: 16px; }
-    .contact-cta p { color: #e0e7ff; margin-bottom: 32px; font-size: 1.1rem; }
+    .contact-card h2{color:#fff}
+    .contact-card p{margin-top:12px;color:rgba(224,231,255,.96);font-weight:750;font-size:1.06rem}
+    .contact-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+    .contact-actions a{
+      padding:12px 16px;border-radius:999px;font-weight:1000;display:inline-flex;gap:10px;align-items:center;justify-content:center
+    }
+    .wa{background:#25d366;color:#fff;box-shadow:0 18px 34px rgba(37,211,102,.18)}
+    .wa:hover{transform:translateY(-2px);opacity:.97}
+    .more{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);color:#fff}
+    .more:hover{transform:translateY(-2px);background:rgba(255,255,255,.20)}
 
     /* Footer */
-    footer {
-      background: #fff;
-      padding: 60px 0 30px;
-      border-top: 1px solid var(--border);
-      margin-top: 60px;
+    footer{padding:56px 0 30px;border-top:1px solid var(--border);background:#fff}
+    .foot{
+      display:grid;grid-template-columns:1.2fr .9fr .9fr;gap:18px;align-items:start
     }
-    .footer-links a { color: var(--text-light); display: block; margin-bottom: 10px; }
-    .footer-links a:hover { color: var(--primary); }
+    .foot h4{font-size:1.05rem}
+    .foot a{display:block;margin-top:10px;color:rgba(100,116,139,.98);font-weight:800}
+    .foot a:hover{color:var(--primary)}
+    .copy{margin-top:26px;padding-top:18px;border-top:1px solid #f1f5f9;text-align:center;color:rgba(100,116,139,.98);font-weight:800;font-size:.9rem}
+
+    /* Sticky CTA (mobile) */
+    .sticky-cta{
+      position:fixed;left:12px;right:12px;bottom:12px;z-index:1100;
+      display:none;
+      background:rgba(255,255,255,.88);
+      border:1px solid rgba(226,232,240,.9);
+      border-radius:18px;
+      box-shadow:0 18px 50px rgba(2,6,23,.16);
+      padding:10px;
+      backdrop-filter:blur(12px);
+    }
+    .sticky-cta .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .sticky-cta .row .txt{display:flex;flex-direction:column;gap:2px}
+    .sticky-cta .row .txt b{font-weight:1100;color:var(--dark)}
+    .sticky-cta .row .txt span{font-weight:850;color:rgba(100,116,139,.98);font-size:.88rem}
+    .sticky-cta .row a{flex:0 0 auto;padding:10px 14px;border-radius:14px}
 
     /* Responsive */
-    @media (max-width: 1024px) {
-      .pricing-grid { grid-template-columns: repeat(2, 1fr); }
-      .price-card.popular { grid-column: span 2; }
-      .launch-inner { grid-template-columns: 1fr; }
-      .launch-cta { min-width: auto; align-items: stretch; }
-      .launch-grid { grid-template-columns: 1fr; }
+    @media (max-width:1100px){
+      .grid.features-grid{grid-template-columns:repeat(2,1fr)}
+      .pricing-grid{grid-template-columns:repeat(2,1fr)}
+      .plan.popular{grid-column:span 2}
+      .hero-grid{grid-template-columns:1fr;gap:18px}
+      .hero p{max-width:unset}
+      .foot{grid-template-columns:1fr;gap:14px}
     }
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 2.2rem; }
-      .nav-links { display: none; }
-      .pricing-grid { grid-template-columns: 1fr; }
-      .price-card.popular { grid-column: span 1; }
-      .launch-mini { justify-content: center; text-align: center; }
-      .launch-mini .mini-actions { justify-content: center; }
+    @media (max-width:768px){
+      .links{display:none}
+      .hero-mini{grid-template-columns:1fr}
+      .pricing-grid{grid-template-columns:1fr}
+      .plan.popular{grid-column:span 1}
+      .steps{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .section{padding:80px 0}
+      .sticky-cta{display:block}
     }
   </style>
 </head>
+
 <body>
+  <div class="bg-orbs">
+    <div class="orb one"></div>
+    <div class="orb two"></div>
+    <div class="orb three"></div>
+  </div>
+
+  {% url 'dashboard:login' as login_url %}
   {% url 'subscriptions' as subscriptions_url %}
   {% url 'website:subscriptions' as website_subscriptions_url %}
-  {% url 'dashboard:login' as login_url %}
   {% with subs_url=subscriptions_url|default:website_subscriptions_url %}
 
   <!-- Header -->
   <header id="header">
     <div class="container">
-      <div class="nav-wrapper">
-        <a href="#" class="logo">
-          <div class="logo-icon"><i class="fa-solid fa-display"></i></div>
+      <div class="nav">
+        <a href="#" class="brand" aria-label="لوحة العرض الذكية">
+          <div class="icon"><i class="fa-solid fa-display"></i></div>
           <span>لوحة العرض الذكية</span>
         </a>
-        <nav class="nav-links">
+
+        <nav class="links" aria-label="التنقل">
           <a href="#features">المميزات</a>
           <a href="#pricing">الأسعار</a>
           <a href="#how">كيف يعمل</a>
-          <a href="#contact">تواصل معنا</a>
+          <a href="#faq">الأسئلة</a>
+          <a href="#contact">تواصل</a>
         </nav>
-        {% if login_url %}
-          <a href="{{ login_url }}" class="btn btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">
-            دخول النظام
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <a href="#pricing" class="btn btn-ghost">
+            <i class="fa-solid fa-tags"></i>
+            الأسعار
           </a>
-        {% endif %}
+          {% if login_url %}
+            <a href="{{ login_url }}" class="btn btn-primary" style="padding:10px 16px;font-size:.95rem">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              دخول النظام
+            </a>
+          {% endif %}
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="hero">
+  <!-- Hero -->
+  <section class="hero" id="top">
     <div class="container">
-      <div class="hero-content">
-        <div class="badge" style="margin-bottom: 12px;">
-          🚀 الإصدار الجديد 2.0 متاح الآن
-        </div>
+      <div class="hero-grid">
+        <div>
+          <span class="badge">
+            <i class="fa-solid fa-sparkles"></i>
+            خصم 15% على جميع الباقات (6 أشهر + سنة)
+          </span>
 
-        <h1>مدرستك تستحق <span class="text-gradient">واجهة رقمية</span> تواكب المستقبل</h1>
+          <h1 style="margin-top:14px">
+            مدرستك تستحق <span class="text-gradient">واجهة رقمية</span> ترفع الانضباط وتزيد الحماس
+          </h1>
 
-        <p>
-          نظام متكامل لإدارة شاشات المدرسة: عرض الجداول، حصص الانتظار، أخبار المدرسة، ولوحة الشرف..
-          كل هذا بتحديث لحظي وتصميم احترافي.
-        </p>
+          <p>
+            نظام متكامل لإدارة شاشات المدرسة: الجدول الحي، حصص الانتظار، الإعلانات، لوحة الشرف، والهوية…
+            كل شيء يحدث خلال ثوانٍ من لوحة تحكم واحدة.
+          </p>
 
-        <div class="hero-buttons">
-          <a href="#pricing" class="btn btn-primary">
-            ابدأ الاشتراك الآن
-            <i class="fa-solid fa-arrow-left"></i>
-          </a>
-          <a href="#demo" class="btn btn-white">
-            <i class="fa-solid fa-play"></i>
-            شاهد العرض
-          </a>
-        </div>
+          <div class="hero-actions">
+            <a href="#pricing" class="btn btn-green">
+              <i class="fa-solid fa-bolt"></i>
+              ابدأ الاشتراك الآن
+            </a>
+            <a href="#demo" class="btn btn-ghost">
+              <i class="fa-solid fa-play"></i>
+              شاهد العرض
+            </a>
+          </div>
 
-        <!-- LAUNCH BANNER (NEW) -->
-        <div class="launch-banner" id="launch">
-          <div class="launch-inner">
-            <div>
-              <div class="launch-title">
-                <i class="fa-solid fa-rocket"></i>
-                <span>عرض الإطلاق للعام الدراسي 1447–1448</span>
+          <div class="promo" role="note" aria-label="عوامل قرار سريع">
+            <div class="left">
+              <div>
+                <div class="title">
+                  <i class="fa-solid fa-shield-heart" style="color:var(--primary)"></i>
+                  قرار اشتراك بدون قلق
+                </div>
+                <div class="sub">باقة واضحة — سعر الشاشة ينخفض كلما زاد العدد — بدون قفزات أو أرباك.</div>
               </div>
-
-              <div class="launch-sub">
-                <strong>خصم 20%</strong> على باقة <strong>6 أشهر فقط</strong> — مخصص <strong>لأول 15 مدرسة</strong> ضمن الفصل الدراسي الحالي.
-              </div>
-
-              <div class="launch-pills">
-                <span class="pill danger"><i class="fa-solid fa-users"></i> المتاح: <span id="slotsLeft">15</span> مدرسة</span>
-                <span class="pill warn"><i class="fa-solid fa-clock"></i> ينتهي تلقائيًا بعد اكتمال المقاعد</span>
-                <span class="pill"><i class="fa-solid fa-headset"></i> أولوية دعم وتجهيز</span>
-                <span class="pill"><i class="fa-solid fa-shield"></i> حماية وتحديثات مستمرة</span>
-                <span class="pill"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
-                <span class="pill"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
-              </div>
-
-              <div class="launch-fineprint">
-                * العرض مخصص للمدارس المسجلة ضمن العرض فقط، ولا يمكن التجديد بنفس سعر العرض بعد انتهاء المدة.
-              </div>
+              <span class="pill good"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
+              <span class="pill warn"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
+              <span class="pill"><i class="fa-solid fa-headset"></i> دعم وتجهيز</span>
             </div>
+            <a href="https://wa.me/966537720207" class="btn btn-primary" style="padding:10px 14px">
+              <i class="fa-brands fa-whatsapp"></i>
+              واتساب سريع
+            </a>
+          </div>
+        </div>
 
-            <div class="launch-cta">
-              <div class="mini-note">
-                <i class="fa-solid fa-bolt"></i>
-                أسرع طريقة للحجز: واتساب خلال دقيقة
-              </div>
+        <div class="hero-card">
+          <div class="hero-visual" id="demo">
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/yqa9aT460GM?rel=0&modestbranding=1"
+              title="Demo Video"
+              allowfullscreen
+            ></iframe>
+          </div>
 
-              <div class="countdown" aria-label="مدة العرض">
-                <small>المدة</small>
-                <span>حتى اكتمال 15 مدرسة</span>
-              </div>
-
-              <button class="launch-btn" type="button" id="openLaunchModal">
-                <i class="fa-solid fa-sparkles"></i>
-                شاهد تفاصيل عرض الإطلاق
-              </button>
-
-              <a class="btn btn-primary" href="#pricing" style="width:100%; justify-content:center; padding: 12px 14px; border-radius: 14px;">
-                احجز الآن من قسم الأسعار
-                <i class="fa-solid fa-arrow-left"></i>
-              </a>
+          <div class="hero-mini" aria-label="أرقام سريعة">
+            <div class="mini">
+              <strong><i class="fa-solid fa-wifi"></i> يعمل دائمًا</strong>
+              <span>تشغيل مستمر 24/7 على الشاشات</span>
+            </div>
+            <div class="mini">
+              <strong><i class="fa-solid fa-sliders"></i> تحكم سهل</strong>
+              <span>تحديثات لحظية من لوحة واحدة</span>
+            </div>
+            <div class="mini">
+              <strong><i class="fa-solid fa-school-flag"></i> هوية المدرسة</strong>
+              <span>ألوان وشعار المدرسة داخل الواجهة</span>
             </div>
           </div>
         </div>
-        <!-- END LAUNCH BANNER -->
-
       </div>
 
-      <div class="hero-visual" id="demo">
-        <iframe src="https://www.youtube-nocookie.com/embed/yqa9aT460GM?rel=0&modestbranding=1" title="Demo Video" allowfullscreen></iframe>
-      </div>
-    </div>
-  </section>
-
-  <!-- Stats / Social Proof -->
-  <section class="proof-section">
-    <div class="container">
-      <div class="proof-grid">
-        <div class="stat-item">
-          <h3>100%</h3>
-          <p>توافق مع جميع الأجهزة</p>
-        </div>
-        <div class="stat-item">
-          <h3>0</h3>
-          <p>تعقيد في الإعداد</p>
-        </div>
-        <div class="stat-item">
-          <h3>24/7</h3>
-          <p>عمل مستمر دون انقطاع</p>
-        </div>
-      </div>
     </div>
   </section>
 
   <!-- Features -->
-  <section class="section-spacing features" id="features">
+  <section class="section features" id="features">
     <div class="container">
-      <div class="section-header">
-        <h2>نظام واحد، حلول متعددة</h2>
-        <p>استغنِ عن اللوحات الورقية والملصقات، وانتقل لعصر الشاشات الديناميكية.</p>
+      <div class="section-head">
+        <h2>نظام واحد… يغيّر شكل المدرسة بالكامل</h2>
+        <p>استبدل اللوحات الورقية بتجربة عرض احترافية تُدار بسهولة وتُبهر الطلاب والمعلمين والزوار.</p>
       </div>
 
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon"><i class="fa-regular fa-calendar-check"></i></div>
+      <div class="grid features-grid">
+        <div class="card">
+          <div class="ic"><i class="fa-regular fa-calendar-check"></i></div>
           <h3>الجدول المدرسي الحي</h3>
-          <p>يظهر الجدول ويحدّث الحصة الحالية تلقائياً. لا حاجة لطباعة جداول جديدة عند كل تعديل.</p>
+          <p>يعرض الحصة الحالية تلقائيًا، مع تحديثات لحظية دون طباعة أو إعادة لصق.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="fa-solid fa-bullhorn"></i></div>
+
+        <div class="card">
+          <div class="ic"><i class="fa-solid fa-clock"></i></div>
+          <h3>حصص الانتظار</h3>
+          <p>تنظيم ذكي لحصص الانتظار وتوجيه سريع للطلاب، بدون فوضى أو أوراق.</p>
+        </div>
+
+        <div class="card">
+          <div class="ic"><i class="fa-solid fa-bullhorn"></i></div>
           <h3>إعلانات وتنبيهات</h3>
-          <p>أعلن عن مواعيد الاختبارات، الفعاليات، أو التعليمات الإدارية بضغطة زر لتظهر على كل الشاشات.</p>
+          <p>أعلن عن الاختبارات والفعاليات والتعليمات بضغطة زر لتظهر على الشاشات فورًا.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="fa-solid fa-medal"></i></div>
+
+        <div class="card">
+          <div class="ic"><i class="fa-solid fa-medal"></i></div>
           <h3>لوحة الشرف الرقمية</h3>
-          <p>كرّم الطلاب والمعلمين المتميزين بعرض صورهم وأسمائهم في لوحة شرف أنيقة ومتحركة.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="fa-solid fa-paintbrush"></i></div>
-          <h3>هوية مدرستك</h3>
-          <p>نصمم الواجهة بألوان وشعار مدرستك لتكون جزءاً من البيئة التعليمية المتناسقة.</p>
+          <p>تكريم أنيق ومتحرك للطلاب والمعلمين المتميزين يعزز التحفيز والانتماء.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Pricing Section -->
-  <section class="section-spacing" id="pricing">
-    <div class="container pricing-container">
-      <div class="section-header">
+  <!-- Pricing -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="section-head">
         <h2>اختر الباقة المناسبة لعدد شاشاتك</h2>
-        <p>أسعار مدروسة تناسب جميع المدارس، من شاشة واحدة وحتى المجمعات التعليمية.</p>
+        <p>تسعير متدرّج ومنطقي — كلما زادت الشاشات انخفض سعر الشاشة — مع خصم 15% مطبق على الجميع.</p>
       </div>
 
-      <!-- NEW: Launch mini bar -->
-      <div class="launch-mini">
-        <div>
-          <strong><i class="fa-solid fa-rocket" style="color:var(--primary);"></i> عرض الإطلاق</strong>
-          <span>— خصم 20% على 6 أشهر فقط، متاح لأول 15 مدرسة ضمن الفصل الدراسي الحالي 1447–1448.</span>
-        </div>
-        <div class="mini-actions">
-          <span class="mini-chip"><i class="fa-solid fa-users"></i> المتبقي: <span id="slotsLeft2">15</span></span>
-          <button type="button" class="mini-chip" id="openLaunchModal2" style="cursor:pointer;">
-            <i class="fa-solid fa-circle-info"></i> التفاصيل
-          </button>
+      <div class="pricing-top">
+        <div class="trust" aria-label="مزايا تطمئن القرار">
+          <span class="pill good"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
+          <span class="pill warn"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
+          <span class="pill"><i class="fa-solid fa-lock"></i> تحديثات وأمان</span>
         </div>
       </div>
 
-      <!-- Toggle Switch -->
-      <div class="pricing-toggle">
-        <span class="toggle-label active" id="label6m">6 أشهر (عرض الإطلاق)</span>
-        <label class="switch">
-          <input type="checkbox" id="billingToggle">
+      <div class="toggle" aria-label="تبديل مدة الاشتراك">
+        <span class="lbl active" id="lbl6">6 أشهر</span>
+        <label class="switch" aria-label="تبديل">
+          <input type="checkbox" id="billToggle">
           <span class="slider"></span>
         </label>
-        <div style="display:flex; align-items:center;">
-          <span class="toggle-label" id="label12m">سنة كاملة (توفير عملاق)</span>
-          <span class="discount-badge">خصم يصل 20%</span>
-        </div>
+        <span class="lbl" id="lbl12">سنة كاملة</span>
+        <span class="sale"><i class="fa-solid fa-percent"></i> خصم 15%</span>
       </div>
 
-      <!-- NEW: Fast decision incentives -->
-      <div class="trust-mini" aria-label="محفزات قرار سريعة">
-        <span class="mini-chip"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
-        <span class="mini-chip"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
-      </div>
-      <div class="trust-fineprint">* الهدف: تقليل المخاطرة عليك وتسريع قرارك.</div>
+      <div class="pricing-grid" aria-label="باقات الأسعار">
+        <!-- 1 -->
+        <div class="plan" data-screens="1">
+          <div class="plan-head">
+            <div class="screens"><i class="fa-solid fa-desktop"></i> 1 شاشة</div>
+          </div>
 
-      <div class="pricing-grid">
-        <!-- Tier 1 -->
-        <div class="price-card">
-          <div class="plan-screens">
-            <i class="fa-solid fa-desktop screen-icon"></i>
-            1 شاشة
+          <div class="price">
+            <span class="amount js-amount" data-price-6="410" data-price-12="660">410</span>
+            <span class="cur">ر.س</span>
           </div>
-          <div class="price-wrap">
-            <span class="amount" data-price-6="460" data-price-12="750" data-launch-6="369">369</span>
-            <span class="currency">ريال</span>
-          </div>
-          <div class="price-meta">
-            <span class="launch-tag">إطلاق -20%</span>
-            <span>بدلاً من</span>
-            <span class="strike">460</span>
-            <span>ريال</span>
-          </div>
-          <span class="period">لمدة 6 أشهر</span>
+          <div class="period js-period">لمدة 6 أشهر</div>
 
-          <ul class="features-list">
+          <div class="meta">
+            <div class="row">
+              <small>سعر الشاشة</small>
+              <b class="js-per-screen">—</b>
+            </div>
+            <div class="row">
+              <small>تقريبًا / شهريًا</small>
+              <b class="js-monthly">—</b>
+            </div>
+            <div class="row">
+              <span class="save"><i class="fa-solid fa-circle-check"></i> تسعير واضح بدون قفزات</span>
+            </div>
+          </div>
+
+          <ul class="list">
             <li><i class="fa-solid fa-check"></i> شاشة رئيسية</li>
             <li><i class="fa-solid fa-check"></i> تحكم كامل</li>
             <li><i class="fa-solid fa-check"></i> هوية المدرسة</li>
             <li><i class="fa-solid fa-check"></i> دعم فني</li>
           </ul>
-          <div class="card-footer">
-            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+
+          <div class="cta">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp"></i>
+              طلب الاشتراك
+            </a>
           </div>
         </div>
 
-        <!-- Tier 2 -->
-        <div class="price-card">
-          <div class="plan-screens">
-            <i class="fa-solid fa-desktop screen-icon"></i>
-            2 شاشة
+        <!-- 2 -->
+        <div class="plan" data-screens="2">
+          <div class="plan-head">
+            <div class="screens"><i class="fa-solid fa-desktop"></i> 2 شاشة</div>
           </div>
-          <div class="price-wrap">
-            <span class="amount" data-price-6="720" data-price-12="1150" data-launch-6="579">579</span>
-            <span class="currency">ريال</span>
-          </div>
-          <div class="price-meta">
-            <span class="launch-tag">إطلاق -20%</span>
-            <span>بدلاً من</span>
-            <span class="strike">720</span>
-            <span>ريال</span>
-          </div>
-          <span class="period">لمدة 6 أشهر</span>
 
-          <ul class="features-list">
-            <li><i class="fa-solid fa-check"></i> للممرات والإدارة</li>
+          <div class="price">
+            <span class="amount js-amount" data-price-6="700" data-price-12="1170">700</span>
+            <span class="cur">ر.س</span>
+          </div>
+          <div class="period js-period">لمدة 6 أشهر</div>
+
+          <div class="meta">
+            <div class="row">
+              <small>سعر الشاشة</small>
+              <b class="js-per-screen">—</b>
+            </div>
+            <div class="row">
+              <small>تقريبًا / شهريًا</small>
+              <b class="js-monthly">—</b>
+            </div>
+            <div class="row">
+              <span class="save"><i class="fa-solid fa-circle-check"></i> مثالية للممرات والإدارة</span>
+            </div>
+          </div>
+
+          <ul class="list">
             <li><i class="fa-solid fa-check"></i> نفس المميزات الكاملة</li>
-            <li><i class="fa-solid fa-check"></i> توفير في السعر</li>
+            <li><i class="fa-solid fa-check"></i> تغطية أفضل</li>
+            <li><i class="fa-solid fa-check"></i> توفير في سعر الشاشة</li>
           </ul>
-          <div class="card-footer">
-            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+
+          <div class="cta">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp"></i>
+              طلب الاشتراك
+            </a>
           </div>
         </div>
 
-        <!-- Tier 3 -->
-        <div class="price-card popular">
-          <div class="popular-tag"><i class="fa-solid fa-star"></i> الأكثر طلباً</div>
-          <div class="plan-screens">
-            <i class="fa-solid fa-desktop screen-icon"></i>
-            3 شاشات
+        <!-- 3 -->
+        <div class="plan popular" data-screens="3">
+          <div class="tag"><i class="fa-solid fa-star"></i> الأكثر طلبًا</div>
+          <div class="plan-head">
+            <div class="screens"><i class="fa-solid fa-desktop"></i> 3 شاشات</div>
           </div>
-          <div class="price-wrap">
-            <span class="amount" data-price-6="960" data-price-12="1550" data-launch-6="769">769</span>
-            <span class="currency">ريال</span>
-          </div>
-          <div class="price-meta">
-            <span class="launch-tag">إطلاق -20%</span>
-            <span>بدلاً من</span>
-            <span class="strike">960</span>
-            <span>ريال</span>
-          </div>
-          <span class="period">لمدة 6 أشهر</span>
 
-          <ul class="features-list">
+          <div class="price">
+            <span class="amount js-amount" data-price-6="920" data-price-12="1530">920</span>
+            <span class="cur">ر.س</span>
+          </div>
+          <div class="period js-period">لمدة 6 أشهر</div>
+
+          <div class="meta">
+            <div class="row">
+              <small>سعر الشاشة</small>
+              <b class="js-per-screen">—</b>
+            </div>
+            <div class="row">
+              <small>تقريبًا / شهريًا</small>
+              <b class="js-monthly">—</b>
+            </div>
+            <div class="row">
+              <span class="save"><i class="fa-solid fa-circle-check"></i> تغطية مثالية للمدرسة</span>
+            </div>
+          </div>
+
+          <ul class="list">
             <li><i class="fa-solid fa-check"></i> تغطية مثالية</li>
-            <li><i class="fa-solid fa-check"></i> دعم فني مميز</li>
             <li><i class="fa-solid fa-check"></i> أولوية في التجهيز</li>
+            <li><i class="fa-solid fa-check"></i> دعم مميز</li>
           </ul>
-          <div class="card-footer">
-            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+
+          <div class="cta">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp"></i>
+              طلب الاشتراك
+            </a>
           </div>
         </div>
 
-        <!-- Tier 4 -->
-        <div class="price-card">
-          <div class="plan-screens">
-            <i class="fa-solid fa-desktop screen-icon"></i>
-            4 شاشات
+        <!-- 4 -->
+        <div class="plan" data-screens="4">
+          <div class="plan-head">
+            <div class="screens"><i class="fa-solid fa-desktop"></i> 4 شاشات</div>
           </div>
-          <div class="price-wrap">
-            <span class="amount" data-price-6="1180" data-price-12="1900" data-launch-6="949">949</span>
-            <span class="currency">ريال</span>
-          </div>
-          <div class="price-meta">
-            <span class="launch-tag">إطلاق -20%</span>
-            <span>بدلاً من</span>
-            <span class="strike">1180</span>
-            <span>ريال</span>
-          </div>
-          <span class="period">لمدة 6 أشهر</span>
 
-          <ul class="features-list">
-            <li><i class="fa-solid fa-check"></i> للمدارس الكبيرة</li>
+          <div class="price">
+            <span class="amount js-amount" data-price-6="1120" data-price-12="1840">1120</span>
+            <span class="cur">ر.س</span>
+          </div>
+          <div class="period js-period">لمدة 6 أشهر</div>
+
+          <div class="meta">
+            <div class="row">
+              <small>سعر الشاشة</small>
+              <b class="js-per-screen">—</b>
+            </div>
+            <div class="row">
+              <small>تقريبًا / شهريًا</small>
+              <b class="js-monthly">—</b>
+            </div>
+            <div class="row">
+              <span class="save"><i class="fa-solid fa-circle-check"></i> للمدارس الكبيرة</span>
+            </div>
+          </div>
+
+          <ul class="list">
             <li><i class="fa-solid fa-check"></i> لوحة تحكم موحدة</li>
             <li><i class="fa-solid fa-check"></i> سعر تنافسي للشاشة</li>
+            <li><i class="fa-solid fa-check"></i> تغطية واسعة</li>
           </ul>
-          <div class="card-footer">
-            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+
+          <div class="cta">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp"></i>
+              طلب الاشتراك
+            </a>
           </div>
         </div>
 
-        <!-- Tier 5 -->
-        <div class="price-card">
-          <div class="plan-screens">
-            <i class="fa-solid fa-desktop screen-icon"></i>
-            5 شاشات
+        <!-- 5 -->
+        <div class="plan" data-screens="5">
+          <div class="plan-head">
+            <div class="screens"><i class="fa-solid fa-desktop"></i> 5 شاشات</div>
           </div>
-          <div class="price-wrap">
-            <span class="amount" data-price-6="1380" data-price-12="2200" data-launch-6="1099">1099</span>
-            <span class="currency">ريال</span>
-          </div>
-          <div class="price-meta">
-            <span class="launch-tag">إطلاق -20%</span>
-            <span>بدلاً من</span>
-            <span class="strike">1380</span>
-            <span>ريال</span>
-          </div>
-          <span class="period">لمدة 6 أشهر</span>
 
-          <ul class="features-list">
+          <div class="price">
+            <span class="amount js-amount" data-price-6="1320" data-price-12="2080">1320</span>
+            <span class="cur">ر.س</span>
+          </div>
+          <div class="period js-period">لمدة 6 أشهر</div>
+
+          <div class="meta">
+            <div class="row">
+              <small>سعر الشاشة</small>
+              <b class="js-per-screen">—</b>
+            </div>
+            <div class="row">
+              <small>تقريبًا / شهريًا</small>
+              <b class="js-monthly">—</b>
+            </div>
+            <div class="row">
+              <span class="save"><i class="fa-solid fa-circle-check"></i> أقل تكلفة للشاشة</span>
+            </div>
+          </div>
+
+          <ul class="list">
             <li><i class="fa-solid fa-check"></i> باقة المجمعات</li>
             <li><i class="fa-solid fa-check"></i> أقل تكلفة للشاشة</li>
             <li><i class="fa-solid fa-check"></i> استشارات فنية</li>
           </ul>
-          <div class="card-footer">
-            <a href="https://wa.me/966537720207" class="btn-plan">طلب الاشتراك</a>
+
+          <div class="cta">
+            <a href="https://wa.me/966537720207" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp"></i>
+              طلب الاشتراك
+            </a>
           </div>
         </div>
       </div>
 
-      <!-- Note -->
-      <div style="text-align:center; margin-top:30px; font-size:0.9rem; color:var(--text-light);">
-        <i class="fa-solid fa-circle-info"></i>
-        يمكنك إضافة شاشات إضافية في أي وقت بسعر 55 ريال/شهر للشاشة.
-      </div>
-
-      <div style="text-align:center; margin-top:14px; font-size:0.85rem; color:rgba(51,65,85,0.85); font-weight:800; line-height:1.8;">
-        <i class="fa-solid fa-shield" style="color:var(--primary);"></i>
-        ملاحظة: <strong>عرض الإطلاق</strong> (خصم 20% على <strong>6 أشهر فقط</strong>) متاح لأول <strong>15 مدرسة</strong> ضمن الفصل الدراسي الحالي 1447–1448، وبعدها يكون التجديد حسب <strong>الأسعار الرسمية</strong> أعلاه.
+      <div class="pricing-note">
+        <i class="fa-solid fa-circle-info" style="color:var(--primary)"></i>
+        يمكنك إضافة شاشات إضافية في أي وقت بسعر <b>55 ر.س / شهر</b> للشاشة (حسب التوفر).
+        <br>
+        <span style="color:rgba(100,116,139,.95)">* الأسعار أعلاه بعد تطبيق خصم 15%.</span>
       </div>
     </div>
   </section>
 
-  <!-- CTA Contact -->
-  <section class="section-spacing" id="contact">
+  <!-- How it works -->
+  <section class="section how" id="how">
     <div class="container">
-      <div class="contact-cta">
-        <h2>جاهز لتحويل مدرستك لمدرسة ذكية؟</h2>
-        <p>فريقنا جاهز للرد على استفساراتك وتجهيز النسخة الخاصة بمدرستك اليوم.</p>
-        <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-          <a href="https://wa.me/966537720207" class="btn btn-white" style="color:#25d366;">
-            <i class="fa-brands fa-whatsapp" style="font-size:1.2rem;"></i>
+      <div class="section-head">
+        <h2>كيف يعمل خلال دقائق؟</h2>
+        <p>من أول تواصل حتى تشغيل الشاشات داخل المدرسة… خطوات بسيطة وواضحة.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <h3>تواصل سريع</h3>
+          <p>تواصل معنا عبر واتساب وحدد عدد الشاشات واسم المدرسة وشعارها.</p>
+        </div>
+
+        <div class="step">
+          <div class="n">2</div>
+          <h3>تجهيز الهوية</h3>
+          <p>نضبط الواجهة بألوان وشعار المدرسة مع أقسام العرض المطلوبة.</p>
+        </div>
+
+        <div class="step">
+          <div class="n">3</div>
+          <h3>تشغيل فوري</h3>
+          <p>تشغيل على الشاشات داخل المدرسة، وتحديثات لحظية من لوحة التحكم.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-head">
+        <h2>أسئلة شائعة (تختصر قرار الاشتراك)</h2>
+        <p>إجابات واضحة ومباشرة… بدون تعقيدات.</p>
+      </div>
+
+      <div class="faq-grid">
+        <details>
+          <summary>
+            <span class="q"><i class="fa-solid fa-circle-question"></i> هل تعمل على جميع الشاشات؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </summary>
+          <p>نعم، تعمل على أغلب الشاشات المتصلة بالإنترنت عبر المتصفح أو جهاز Android Box/TV حسب تجهيز المدرسة.</p>
+        </details>
+
+        <details>
+          <summary>
+            <span class="q"><i class="fa-solid fa-circle-question"></i> هل أحتاج فني برمجة؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </summary>
+          <p>لا. التجهيز بسيط جدًا، ونقدّم دعمًا للتشغيل خطوة بخطوة.</p>
+        </details>
+
+        <details>
+          <summary>
+            <span class="q"><i class="fa-solid fa-circle-question"></i> هل يمكن إضافة شاشات لاحقًا؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </summary>
+          <p>نعم، ويمكنك الترقية في أي وقت أو إضافة شاشة بسعر شهري للشاشة.</p>
+        </details>
+
+        <details>
+          <summary>
+            <span class="q"><i class="fa-solid fa-circle-question"></i> ماذا عن الأمان والخصوصية؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </summary>
+          <p>نلتزم بتشغيل آمن وتحديثات مستمرة مع إعدادات تمنع العبث وتضمن استقرار العرض.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="section" id="contact">
+    <div class="container">
+      <div class="contact-card">
+        <h2>جاهز لتحويل مدرستك إلى مدرسة ذكية؟</h2>
+        <p>فريقنا جاهز للرد فورًا وتجهيز نسخة مدرستك اليوم.</p>
+
+        <div class="contact-actions">
+          <a href="https://wa.me/966537720207" class="wa" target="_blank" rel="noopener">
+            <i class="fa-brands fa-whatsapp"></i>
             تواصل واتساب
           </a>
           {% if subs_url %}
-          <a href="{{ subs_url }}" class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4);">
-            استعراض تفاصيل الاشتراك
-          </a>
+            <a href="{{ subs_url }}" class="more">
+              <i class="fa-solid fa-file-invoice"></i>
+              استعراض تفاصيل الاشتراك
+            </a>
           {% endif %}
         </div>
       </div>
@@ -1176,269 +952,119 @@
   <!-- Footer -->
   <footer>
     <div class="container">
-      <div class="nav-wrapper" style="align-items:flex-start;">
+      <div class="foot">
         <div>
-          <a href="#" class="logo" style="margin-bottom:16px;">
-            <div class="logo-icon"><i class="fa-solid fa-display"></i></div>
+          <a href="#top" class="brand" style="margin-bottom:12px">
+            <div class="icon"><i class="fa-solid fa-display"></i></div>
             <span>لوحة العرض الذكية</span>
           </a>
-          <p style="max-width:300px; color:var(--text-light); font-size:0.9rem;">
-            الحل الأمثل للمدارس الحديثة لعرض المحتوى وإدارة التواصل الداخلي عبر الشاشات.
+          <p class="muted" style="max-width:360px;font-weight:800">
+            الحل الأمثل للمدارس الحديثة لعرض المحتوى وإدارة التواصل الداخلي عبر الشاشات بطريقة احترافية وديناميكية.
           </p>
         </div>
-        <div class="footer-links">
+
+        <div>
           <h4>روابط هامة</h4>
           <a href="#features">المميزات</a>
           <a href="#pricing">الأسعار</a>
+          <a href="#faq">الأسئلة الشائعة</a>
           <a href="{{ login_url|default:'#' }}">دخول الموظفين</a>
         </div>
-        <div class="footer-links">
+
+        <div>
           <h4>اتصل بنا</h4>
-          <a href="tel:+966537720207">+966 53 772 0207</a>
-          <a href="mailto:support@school-display.com">support@school-display.com</a>
+          <a href="tel:+966537720207"><i class="fa-solid fa-phone" style="color:var(--primary)"></i> ‎+966 53 772 0207</a>
+          <a href="mailto:support@school-display.com"><i class="fa-solid fa-envelope" style="color:var(--primary)"></i> support@school-display.com</a>
         </div>
       </div>
-      <div style="text-align:center; margin-top:40px; padding-top:20px; border-top:1px solid #f1f5f9; color:var(--text-light); font-size:0.85rem;">
-        © <span id="year">2024</span> جميع الحقوق محفوظة.
-      </div>
+
+      <div class="copy">© <span id="year">2024</span> جميع الحقوق محفوظة.</div>
     </div>
   </footer>
 
-  {% endwith %}
-
-  <!-- Launch Modal (NEW) -->
-  <div class="modal-overlay" id="launchModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="launchModalTitle">
-      <div class="modal-head">
-        <div class="modal-title" id="launchModalTitle">
-          <i class="fa-solid fa-rocket"></i>
-          <span>تفاصيل عرض الإطلاق (1447–1448)</span>
-        </div>
-        <button type="button" class="modal-close" id="closeLaunchModal">
-          <i class="fa-solid fa-xmark"></i>
-          إغلاق
-        </button>
+  <!-- Sticky CTA (Mobile) -->
+  <div class="sticky-cta" aria-label="دعوة إجراء سريعة">
+    <div class="row">
+      <div class="txt">
+        <b>ابدأ خلال دقيقة</b>
+        <span>واتساب سريع + تجهيز الهوية</span>
       </div>
-
-      <div class="modal-body">
-        <div class="launch-grid">
-          <div class="launch-card">
-            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> لماذا عرض الإطلاق؟</h3>
-            <p>
-              لأننا نختار معكم أول تجربة تشغيل حقيقية داخل المدارس — ونمنح المدارس الأولى
-              <strong>سعرًا مميزًا</strong> مقابل مشاركة الملاحظات لتحسين التجربة بأسرع وقت.
-            </p>
-
-            <div class="steps">
-              <div class="step">
-                <div class="num">1</div>
-                <div>
-                  <strong>تفعيل سريع</strong>
-                  <span>نجهز لكم الشاشة والهوية خلال وقت قصير ونضمن جاهزية العرض.</span>
-                </div>
-              </div>
-              <div class="step">
-                <div class="num">2</div>
-                <div>
-                  <strong>تشغيل عملي داخل المدرسة</strong>
-                  <span>جداول + حصص انتظار + إعلانات + لوحة شرف.. بتحديث لحظي.</span>
-                </div>
-              </div>
-              <div class="step">
-                <div class="num">3</div>
-                <div>
-                  <strong>دعم وأولوية</strong>
-                  <span>أولوية في الدعم والتجهيز أثناء فترة الإطلاق.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="launch-card launch-offer">
-            <h3><i class="fa-solid fa-gift"></i> شروط العرض بشكل واضح</h3>
-
-            <div class="offer-row">
-              <small>الخصم</small>
-              <b>20% على سعر 6 أشهر فقط</b>
-            </div>
-
-            <div class="offer-row">
-              <small>المدة</small>
-              <b>6 أشهر (الفصل الدراسي الحالي)</b>
-            </div>
-            <div class="offer-row">
-              <small>المستهدف</small>
-              <b>أول 15 مدرسة فقط</b>
-            </div>
-            <div class="offer-row">
-              <small>التجديد</small>
-              <b>لا يمكن التجديد بنفس سعر العرض</b>
-            </div>
-            <div class="offer-row">
-              <small>المتبقي الآن</small>
-              <b><span id="slotsLeft3">15</span> مدرسة</b>
-            </div>
-
-            <div class="offer-actions">
-              <a class="wa" href="https://wa.me/966537720207" target="_blank" rel="noopener">
-                <i class="fa-brands fa-whatsapp"></i>
-                احجز مقعد الإطلاق عبر واتساب
-              </a>
-              <a class="ghost" href="#pricing">
-                <i class="fa-solid fa-tags"></i>
-                الرجوع إلى الأسعار الرسمية
-              </a>
-            </div>
-
-            <div class="tiny">
-              * الهدف من “عرض الإطلاق” هو منح المدارس الأولى أفضل سعر وتجربة دعم أعلى، وبعدها يتم اعتماد الأسعار الرسمية للجميع بشكل عادل وواضح.
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <a href="https://wa.me/966537720207" class="btn btn-green" target="_blank" rel="noopener">
+        <i class="fa-brands fa-whatsapp"></i> واتساب
+      </a>
     </div>
   </div>
 
-  <!-- Scripts -->
+  {% endwith %}
+
   <script>
     (function () {
-      // Update Year
-      var yearEl = document.getElementById('year');
-      if (yearEl) yearEl.textContent = new Date().getFullYear();
+      // Year
+      var y = document.getElementById('year');
+      if (y) y.textContent = String(new Date().getFullYear());
 
-      // Scroll Header
-      window.addEventListener('scroll', function () {
-        var header = document.getElementById('header');
+      // Header scroll
+      var header = document.getElementById('header');
+      function onScroll() {
         if (!header) return;
-        if (window.scrollY > 20) header.classList.add('scrolled');
+        if (window.scrollY > 18) header.classList.add('scrolled');
         else header.classList.remove('scrolled');
-      });
-
-      // Pricing Logic
-      var toggle = document.getElementById('billingToggle');
-      var label6 = document.getElementById('label6m');
-      var label12 = document.getElementById('label12m');
-      var amounts = document.querySelectorAll('.amount');
-      var periods = document.querySelectorAll('.period');
-
-      function readAttr(el, attr) {
-        var v = el.getAttribute(attr);
-        return (v === null || typeof v === 'undefined') ? '' : v;
       }
-      function getPrice(el, isAnnual) {
-        var v = readAttr(el, isAnnual ? 'data-price-12' : 'data-price-6');
-        if (!v && el.dataset) v = isAnnual ? el.dataset.price12 : el.dataset.price6;
-        return v;
-      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
 
-      function getLaunchPrice6(el) {
-        var v = readAttr(el, 'data-launch-6');
-        if (!v && el.dataset) v = el.dataset.launch6;
-        return v;
+      // Pricing toggle + derived metrics (monthly + per-screen)
+      var toggle = document.getElementById('billToggle');
+      var lbl6 = document.getElementById('lbl6');
+      var lbl12 = document.getElementById('lbl12');
+      var amounts = document.querySelectorAll('.js-amount');
+      var periods = document.querySelectorAll('.js-period');
+
+      function money(v) {
+        // return as "1,234 ر.س" style? keep clean: "1234 ر.س"
+        var n = Number(v || 0);
+        if (!isFinite(n)) n = 0;
+        return Math.round(n);
       }
 
-      function findPriceCard(el) {
-        var cur = el;
-        while (cur && cur !== document.body) {
-          if (cur.classList && cur.classList.contains('price-card')) return cur;
-          cur = cur.parentNode;
-        }
-        return null;
-      }
-      function updatePricing() {
-        if (!toggle) return;
-        var isAnnual = !!toggle.checked;
-
-        if (label6 && label12) {
-          if (isAnnual) { label12.classList.add('active'); label6.classList.remove('active'); }
-          else { label6.classList.add('active'); label12.classList.remove('active'); }
+      function updateCards() {
+        var isAnnual = toggle && toggle.checked;
+        if (lbl6 && lbl12) {
+          if (isAnnual) { lbl12.classList.add('active'); lbl6.classList.remove('active'); }
+          else { lbl6.classList.add('active'); lbl12.classList.remove('active'); }
         }
 
         for (var i = 0; i < amounts.length; i++) {
-          var el = amounts[i];
-          var v;
-          if (isAnnual) {
-            v = getPrice(el, true);
-          } else {
-            v = getLaunchPrice6(el) || getPrice(el, false);
-          }
-          if (!v) v = el.textContent;
-          el.textContent = v;
-          el.style.opacity = '1';
+          var a = amounts[i];
+          var plan = a.closest('.plan');
+          var screens = plan ? Number(plan.getAttribute('data-screens') || 1) : 1;
 
-          var card = findPriceCard(el);
-          if (card) {
-            var meta = card.querySelector('.price-meta');
-            if (meta) meta.style.display = isAnnual ? 'none' : 'flex';
-          }
-        }
+          var price = isAnnual ? a.getAttribute('data-price-12') : a.getAttribute('data-price-6');
+          var priceNum = money(price);
 
-        for (var j = 0; j < periods.length; j++) {
-          periods[j].textContent = isAnnual ? 'لمدة 12 شهر (سنة)' : 'لمدة 6 أشهر';
+          a.textContent = String(priceNum);
+
+          // Period text
+          var periodEl = plan ? plan.querySelector('.js-period') : null;
+          if (periodEl) periodEl.textContent = isAnnual ? 'لمدة 12 شهر (سنة)' : 'لمدة 6 أشهر';
+
+          // Derived metrics
+          var months = isAnnual ? 12 : 6;
+          var perScreen = screens > 0 ? (priceNum / screens) : priceNum;
+          var monthly = priceNum / months;
+
+          var psEl = plan ? plan.querySelector('.js-per-screen') : null;
+          var mEl = plan ? plan.querySelector('.js-monthly') : null;
+
+          if (psEl) psEl.textContent = String(Math.round(perScreen)) + ' ر.س';
+          if (mEl) mEl.textContent = String(Math.round(monthly)) + ' ر.س';
         }
       }
+
       if (toggle) {
-        toggle.addEventListener('change', updatePricing);
-        updatePricing();
+        toggle.addEventListener('change', updateCards);
       }
-
-      // ---------------------------
-      // Launch Promo (NEW)
-      // ---------------------------
-
-      // (1) Slots left: you can later wire it to backend; for now it's a single number.
-      var LAUNCH_SLOTS_TOTAL = 15;
-      var LAUNCH_SLOTS_TAKEN = 0; // change this manually or bind from backend later
-      function slotsLeft() {
-        var left = LAUNCH_SLOTS_TOTAL - LAUNCH_SLOTS_TAKEN;
-        return left < 0 ? 0 : left;
-      }
-      function updateSlotsUI() {
-        var left = slotsLeft();
-        var ids = ['slotsLeft', 'slotsLeft2', 'slotsLeft3'];
-        for (var i = 0; i < ids.length; i++) {
-          var el = document.getElementById(ids[i]);
-          if (el) el.textContent = String(left);
-        }
-      }
-      updateSlotsUI();
-
-      // (2) No time-based countdown: promo ends when slots fill.
-
-      // (3) Modal open/close
-      var modalOverlay = document.getElementById('launchModal');
-      var openBtn1 = document.getElementById('openLaunchModal');
-      var openBtn2 = document.getElementById('openLaunchModal2');
-      var closeBtn = document.getElementById('closeLaunchModal');
-
-      function openModal() {
-        if (!modalOverlay) return;
-        modalOverlay.classList.add('open');
-        modalOverlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-      }
-      function closeModal() {
-        if (!modalOverlay) return;
-        modalOverlay.classList.remove('open');
-        modalOverlay.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-      }
-
-      if (openBtn1) openBtn1.addEventListener('click', openModal);
-      if (openBtn2) openBtn2.addEventListener('click', openModal);
-      if (closeBtn) closeBtn.addEventListener('click', closeModal);
-
-      if (modalOverlay) {
-        modalOverlay.addEventListener('click', function (e) {
-          if (e.target === modalOverlay) closeModal();
-        });
-      }
-
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeModal();
-      });
-
+      updateCards();
     })();
   </script>
 </body>
