@@ -1360,6 +1360,19 @@ def screen_unbind_device(request, pk: int):
         return redirect("dashboard:screen_list")
 
     DisplayScreen.objects.filter(pk=obj.pk).update(bound_device_id=None, bound_at=None)
+
+    # ✅ مهم: امسح كاش الربط حتى لا يبقى bound_device_id القديم (24h) ويمنع الربط بجهاز جديد
+    try:
+        from django.core.cache import cache
+        import hashlib
+
+        token_value = (getattr(obj, "token", None) or getattr(obj, "api_token", None) or "").strip()
+        if token_value:
+            token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
+            cache.delete(f"display:token_map:{token_hash}")
+    except Exception:
+        pass
+
     messages.success(request, "تم فصل الجهاز. افتح الرابط على التلفاز الجديد ليتم ربطه تلقائياً.")
     return redirect("dashboard:screen_list")
 
