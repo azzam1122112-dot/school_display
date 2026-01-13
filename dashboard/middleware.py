@@ -90,22 +90,31 @@ class SubscriptionRequiredMiddleware:
 
 
 class SupportDashboardOnlyMiddleware:
-    """Restrict Support employees to dashboard only.
+    """Restrict Support employees to the SaaS admin panel, excluding Schools.
 
-    Requirement:
-    - Support group users should only see the system admin dashboard.
-    - If they try to access any other URL, redirect them back.
+    Goal (per product requirement):
+    - Support users can use the system admin panel features.
+    - Schools management must be hidden/blocked for them.
+    - If they navigate outside the admin panel, redirect them back to the system dashboard.
 
     Notes:
     - Superusers are NOT restricted.
     - Static/media and display API endpoints are excluded.
     """
 
-    ALLOWED_VIEW_NAMES = {
-        "dashboard:system_admin_dashboard",
+    ADMIN_PANEL_PREFIX = "/dashboard/admin-panel/"
+
+    EXEMPT_VIEW_NAMES = {
         "dashboard:login",
         "dashboard:logout",
         "dashboard:change_password",
+    }
+
+    FORBIDDEN_VIEW_NAMES = {
+        "dashboard:system_schools_list",
+        "dashboard:system_school_create",
+        "dashboard:system_school_edit",
+        "dashboard:system_school_delete",
     }
 
     def __init__(self, get_response):
@@ -136,15 +145,24 @@ class SupportDashboardOnlyMiddleware:
         if not is_support:
             return self.get_response(request)
 
-        # Allow the dashboard home only.
+        # Resolve view name once.
         try:
             match = resolve(request.path_info)
             view_name = match.view_name or ""
         except Resolver404:
             view_name = ""
 
-        if view_name in self.ALLOWED_VIEW_NAMES:
+        # Always allow auth-related pages.
+        if view_name in self.EXEMPT_VIEW_NAMES:
             return self.get_response(request)
 
-        # For anything else, force back to the system dashboard.
+        # Explicitly block schools pages for Support.
+        if view_name in self.FORBIDDEN_VIEW_NAMES:
+            return redirect("dashboard:system_admin_dashboard")
+
+        # Allow anything within the admin panel.
+        if path.startswith(self.ADMIN_PANEL_PREFIX) or view_name == "dashboard:system_admin_dashboard":
+            return self.get_response(request)
+
+        # Anything else: force back to the system admin dashboard.
         return redirect("dashboard:system_admin_dashboard")
