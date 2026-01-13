@@ -60,6 +60,7 @@
     dom.dateH = $("dateHijri");
     dom.clock = $("clock");
 
+    dom.alertContainer = $("alertContainer");
     dom.alertTitle = $("alertTitle");
     dom.alertDetails = $("alertDetails");
 
@@ -335,6 +336,7 @@
 
   // ===== Render: Alert =====
   function renderAlert(title, details) {
+    toggleHidden(dom.alertContainer, false);
     setTextIfChanged(dom.alertTitle, title || "تنبيه");
     setTextIfChanged(dom.alertDetails, details || "—");
   }

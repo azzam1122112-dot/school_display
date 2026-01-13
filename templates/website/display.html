@@ -75,20 +75,18 @@
     .track { will-change: transform; }
     .hidden { display: none !important; }
 
-    /* Custom List Item Styling for Zebra Striping & Spacing */
-    .track > * {
-      margin-bottom: 0.75rem; /* Gap between items */
-      padding: 0.75rem 1rem;
-      background: rgba(255, 255, 255, 0.03); /* Default background */
-      border-radius: 0.75rem;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(5px);
-    }
-    .track > *:nth-child(even) {
-      background: rgba(255, 255, 255, 0.06); 
-      border-color: rgba(255, 255, 255, 0.08);
-    }
-    .track > *:last-child { margin-bottom: 0; }
+        /* Slot item styling (applies to actual items created by display.js) */
+        .slot-item {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+        }
+        .slot-item:nth-child(even) {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
   </style>
 </head>
 
