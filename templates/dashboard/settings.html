@@ -88,7 +88,7 @@
             <!-- مجموعة الإعدادات الأساسية -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {% for field in form %}
-                    {% if field.name != 'theme' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' %}
+                    {% if field.name != 'theme' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
                         <div class="space-y-2">
                             <label class="block text-sm font-medium text-slate-700">
                                 {{ field.label }}
@@ -145,6 +145,7 @@
                     <!-- الثيم (3 خيارات فقط) -->
                     <div class="space-y-3">
                         <label class="block text-sm font-medium text-slate-700">الثيم اللوني</label>
+                        <p class="text-xs text-slate-500">اختيار الثيم يؤثر على ألوان الشاشة بشكل عام.</p>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {% with value=form.theme.value|default:"default" %}
 
@@ -199,6 +200,7 @@
                     <!-- لون شاشة العرض (اختياري) -->
                     <div class="space-y-3">
                         <label class="block text-sm font-medium text-slate-700">لون شاشة العرض</label>
+                        <p class="text-xs text-slate-500">اختياري: هذا اللون يخص شاشة العرض فقط (ولا يغيّر اختيار الثيم).</p>
 
                         <div class="flex flex-wrap gap-2" id="accentPalette">
                             <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#6366F1" data-color="#6366F1" title="#6366F1"></button>
@@ -543,9 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (accentClear) {
         accentClear.addEventListener('click', function(){
-            if (!accentInput) return;
-            accentInput.dataset.userCleared = '1';
-            if (accentPreview) accentPreview.style.background = 'transparent';
+            setAccent('');
         });
     }
 
