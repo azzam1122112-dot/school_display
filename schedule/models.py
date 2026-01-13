@@ -43,14 +43,34 @@ def _to_dt(t: time) -> datetime:
 # ============================================================
 
 class SchoolSettings(models.Model):
+    # Legacy stored values (kept for backward compatibility)
     THEME_DEFAULT = "default"
     THEME_BOYS = "boys"
     THEME_GIRLS = "girls"
 
+    # New display theme keys (match CSS: body.display-board[data-theme="..."])
+    THEME_INDIGO = "indigo"
+    THEME_EMERALD = "emerald"
+    THEME_ROSE = "rose"
+    THEME_CYAN = "cyan"
+    THEME_AMBER = "amber"
+    THEME_ORANGE = "orange"
+    THEME_VIOLET = "violet"
+
     THEME_CHOICES = [
-        (THEME_DEFAULT, "افتراضي"),
-        (THEME_BOYS, "مدارس البنين"),
-        (THEME_GIRLS, "مدارس البنات"),
+        # Recommended themes
+        (THEME_INDIGO, "أزرق/نيلي"),
+        (THEME_EMERALD, "أخضر"),
+        (THEME_ROSE, "وردي"),
+        (THEME_CYAN, "سماوي"),
+        (THEME_AMBER, "أصفر"),
+        (THEME_ORANGE, "برتقالي"),
+        (THEME_VIOLET, "بنفسجي"),
+
+        # Legacy values (older dashboards stored these)
+        (THEME_DEFAULT, "افتراضي (قديم)"),
+        (THEME_BOYS, "مدارس البنين (قديم)"),
+        (THEME_GIRLS, "مدارس البنات (قديم)"),
     ]
 
     show_home = models.BooleanField("إظهار الصفحة الرئيسية", default=True)

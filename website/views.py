@@ -12,12 +12,19 @@ from schedule.models import SchoolSettings
 
 
 THEME_MAP = {
+    # legacy
     "default": "indigo",
     "boys": "emerald",
     "girls": "rose",
+
+    # current
     "indigo": "indigo",
     "emerald": "emerald",
     "rose": "rose",
+    "cyan": "cyan",
+    "amber": "amber",
+    "orange": "orange",
+    "violet": "violet",
 }
 
 

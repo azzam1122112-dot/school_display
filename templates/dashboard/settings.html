@@ -140,101 +140,125 @@
                     إعدادات العرض
                 </h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    <!-- الثيم (3 خيارات فقط) -->
-                    <div class="space-y-3">
-                        <label class="block text-sm font-medium text-slate-700">الثيم اللوني</label>
-                        <p class="text-xs text-slate-500">اختيار الثيم يؤثر على ألوان الشاشة بشكل عام.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {% with value=form.theme.value|default:"default" %}
+                                        <!-- لون ثيم شاشة العرض (مُدمج: ثيم + لون) -->
+                                        <div class="lg:col-span-2 space-y-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-slate-700">لون ثيم شاشة العرض</label>
+                                                    <p class="text-xs text-slate-500">اختيار واحد يحدد ثيم شاشة العرض ولونها الرئيسي معًا.</p>
+                                                </div>
 
-                            <label class="relative cursor-pointer">
-                                <input type="radio" name="theme" value="default" class="sr-only peer"
-                                       {% if value == "default" %}checked{% endif %}>
-                                <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all duration-200">
-                                    <div class="flex items-center space-x-2 space-x-reverse">
-                                        <div class="w-4 h-4 rounded-full bg-indigo-500"></div>
-                                        <span class="text-sm font-medium text-slate-700">افتراضي</span>
-                                    </div>
-                                    <p class="mt-1 text-[11px] text-slate-500">لوحة داكنة بألوان أزرق/بنفسجي.</p>
-                                </div>
-                            </label>
+                                                {# نخزّن اللون فعليًا في display_accent_color لكن نخفي الحقل لتجنب التكرار #}
+                                                <div class="hidden">
+                                                    {{ form.display_accent_color }}
+                                                </div>
 
-                            <label class="relative cursor-pointer">
-                                <input type="radio" name="theme" value="boys" class="sr-only peer"
-                                       {% if value == "boys" %}checked{% endif %}>
-                                <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all duration-200">
-                                    <div class="flex items-center space-x-2 space-x-reverse">
-                                        <div class="w-4 h-4 rounded-full bg-emerald-500"></div>
-                                        <span class="text-sm font-medium text-slate-700">أخضر</span>
-                                    </div>
-                                    <p class="mt-1 text-[11px] text-slate-500">ثيم أخضر.</p>
-                                </div>
-                            </label>
+                                                {% with value=form.theme.value|default:"indigo" %}
+                                                    <div id="displayThemePalette" class="flex flex-wrap gap-2">
 
-                            <label class="relative cursor-pointer">
-                                <input type="radio" name="theme" value="girls" class="sr-only peer"
-                                       {% if value == "girls" %}checked{% endif %}>
-                                <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all duration-200">
-                                    <div class="flex items-center space-x-2 space-x-reverse">
-                                        <div class="w-4 h-4 rounded-full bg-rose-500"></div>
-                                        <span class="text-sm font-medium text-slate-700">وردي</span>
-                                    </div>
-                                    <p class="mt-1 text-[11px] text-slate-500">ثيم وردي.</p>
-                                </div>
-                            </label>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="indigo" data-hex="#6366F1" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#6366F1"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">نيلي</span>
+                                                        </button>
 
-                            {% endwith %}
-                        </div>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="emerald" data-hex="#22C55E" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#22C55E"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">أخضر</span>
+                                                        </button>
 
-                        {% if form.theme.errors %}
-                            <div class="mt-1 text-red-600 text-sm">
-                                {% for error in form.theme.errors %}
-                                    <p>{{ error }}</p>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="rose" data-hex="#EC4899" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#EC4899"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">وردي</span>
+                                                        </button>
 
-                    <!-- لون شاشة العرض (اختياري) -->
-                    <div class="space-y-3">
-                        <label class="block text-sm font-medium text-slate-700">لون شاشة العرض</label>
-                        <p class="text-xs text-slate-500">اختياري: هذا اللون يخص شاشة العرض فقط (ولا يغيّر اختيار الثيم).</p>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="cyan" data-hex="#06B6D4" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#06B6D4"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">سماوي</span>
+                                                        </button>
 
-                        <div class="flex flex-wrap gap-2" id="accentPalette">
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#6366F1" data-color="#6366F1" title="#6366F1"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#22C55E" data-color="#22C55E" title="#22C55E"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#F97316" data-color="#F97316" title="#F97316"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#EC4899" data-color="#EC4899" title="#EC4899"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#06B6D4" data-color="#06B6D4" title="#06B6D4"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#EAB308" data-color="#EAB308" title="#EAB308"></button>
-                            <button type="button" class="w-9 h-9 rounded-full ring-1 ring-slate-200" style="background:#A855F7" data-color="#A855F7" title="#A855F7"></button>
-                        </div>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="amber" data-hex="#EAB308" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#EAB308"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">أصفر</span>
+                                                        </button>
 
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                                {{ form.display_accent_color }}
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xs text-slate-500">معاينة</span>
-                                    <span id="accentPreview" class="inline-block w-10 h-6 rounded-full border border-slate-200" style="background: transparent;"></span>
-                                    <button type="button" id="accentClear" class="text-xs px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700">افتراضي</button>
-                                </div>
-                                {% if form.display_accent_color.help_text %}
-                                    <p class="text-xs text-slate-500 mt-1">{{ form.display_accent_color.help_text }}</p>
-                                {% endif %}
-                                {% if form.display_accent_color.errors %}
-                                    <div class="mt-1 text-red-600 text-sm">
-                                        {% for error in form.display_accent_color.errors %}
-                                            <p>{{ error }}</p>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="orange" data-hex="#F97316" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#F97316"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">برتقالي</span>
+                                                        </button>
+
+                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                                                                        data-theme="violet" data-hex="#A855F7" aria-pressed="false">
+                                                            <span class="w-4 h-4 rounded-full" style="background:#A855F7"></span>
+                                                            <span class="text-sm font-semibold text-slate-800">بنفسجي</span>
+                                                        </button>
+
+                                                    </div>
+
+                                                    {# نحتفظ بحقل theme كـ radio مخفي (نفس name) #}
+                                                    <div class="hidden">
+                                                        <input type="radio" name="theme" value="indigo" {% if value == "indigo" or value == "default" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="emerald" {% if value == "emerald" or value == "boys" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="rose" {% if value == "rose" or value == "girls" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="cyan" {% if value == "cyan" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="amber" {% if value == "amber" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="orange" {% if value == "orange" %}checked{% endif %}>
+                                                        <input type="radio" name="theme" value="violet" {% if value == "violet" %}checked{% endif %}>
+                                                    </div>
+                                                {% endwith %}
+
+                                                {% if form.theme.errors %}
+                                                    <div class="mt-1 text-red-600 text-sm">
+                                                        {% for error in form.theme.errors %}
+                                                            <p>{{ error }}</p>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                                {% if form.display_accent_color.errors %}
+                                                    <div class="mt-1 text-red-600 text-sm">
+                                                        {% for error in form.display_accent_color.errors %}
+                                                            <p>{{ error }}</p>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                        </div>
+
+                                        <!-- معاينة صغيرة لثيم شاشة العرض -->
+                                        <div class="space-y-3">
+                                            <div>
+                                                <div class="text-sm font-medium text-slate-700">معاينة</div>
+                                                <div class="text-xs text-slate-500">عرض مبسط لأسلوب الألوان.</div>
+                                            </div>
+
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-900 p-4 text-white overflow-hidden">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex items-center gap-3 min-w-0">
+                                                        <div class="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-lg">🏫</div>
+                                                        <div class="min-w-0">
+                                                            <div class="font-extrabold truncate">شاشة العرض</div>
+                                                            <div class="text-xs text-white/70 truncate">معاينة سريعة للثيم</div>
+                                                        </div>
+                                                    </div>
+                                                    <div id="themePreviewChip" class="text-xs font-bold px-3 py-1.5 rounded-full" style="background:linear-gradient(135deg,#6366F1,#0EA5E9)">12:30</div>
+                                                </div>
+                                                <div class="mt-4 grid grid-cols-2 gap-2">
+                                                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                                                        <div class="text-xs text-white/70">عنصر</div>
+                                                        <div class="mt-1 font-bold" id="themePreviewTitle">عنوان</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                                                        <div class="text-xs text-white/70">إشارة</div>
+                                                        <div class="mt-1 font-bold" id="themePreviewSub" style="color:#0EA5E9">تفاصيل</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
 
                     <!-- فاصل تحديث الشاشة -->
                     <div class="space-y-2">
@@ -408,9 +432,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const periodsWarn = document.getElementById('periodsWarn');
 
     const accentInput = document.getElementById('id_display_accent_color');
-    const accentPreview = document.getElementById('accentPreview');
-    const accentClear = document.getElementById('accentClear');
-    const palette = document.getElementById('accentPalette');
+    const themePalette = document.getElementById('displayThemePalette');
+    const themePreviewChip = document.getElementById('themePreviewChip');
+    const themePreviewSub = document.getElementById('themePreviewSub');
 
     function $(id){ return document.getElementById(id); }
 
@@ -465,13 +489,53 @@ document.addEventListener('DOMContentLoaded', function() {
         return m ? ('#' + m[1].toUpperCase()) : '';
     }
 
-    function setAccent(v) {
+    const THEME_PRESETS = {
+        indigo: { main: '#6366F1', sub: '#0EA5E9' },
+        emerald: { main: '#22C55E', sub: '#10B981' },
+        rose: { main: '#EC4899', sub: '#F97316' },
+        cyan: { main: '#06B6D4', sub: '#22D3EE' },
+        amber: { main: '#EAB308', sub: '#FBBF24' },
+        orange: { main: '#F97316', sub: '#FB923C' },
+        violet: { main: '#A855F7', sub: '#C084FC' },
+    };
+
+    function setThemeValue(themeKey) {
+        const key = String(themeKey || '').trim().toLowerCase();
+        const radios = document.querySelectorAll('input[type="radio"][name="theme"]');
+        radios.forEach(r => { r.checked = (r.value === key); });
+    }
+
+    function setAccentHidden(hex) {
         if (!accentInput) return;
-        const hex = normHex(v);
-        accentInput.value = hex || '#000000';
-        // إذا كان “افتراضي”، نخليها فارغة عند الإرسال
-        accentInput.dataset.userCleared = hex ? '0' : '1';
-        if (accentPreview) accentPreview.style.background = hex || 'transparent';
+        const v = normHex(hex);
+        accentInput.value = v || '';
+        accentInput.dataset.userCleared = v ? '0' : '1';
+    }
+
+    function paintThemePreview(themeKey) {
+        const key = String(themeKey || '').trim().toLowerCase();
+        const preset = THEME_PRESETS[key] || THEME_PRESETS.indigo;
+        if (themePreviewChip) themePreviewChip.style.background = `linear-gradient(135deg,${preset.main},${preset.sub})`;
+        if (themePreviewSub) themePreviewSub.style.color = preset.sub;
+    }
+
+    function syncPaletteSelection(themeKey) {
+        if (!themePalette) return;
+        const key = String(themeKey || '').trim().toLowerCase();
+        themePalette.querySelectorAll('button[data-theme]').forEach(btn => {
+            const isActive = (btn.getAttribute('data-theme') === key);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            btn.classList.toggle('ring-2', isActive);
+            btn.classList.toggle('ring-emerald-300', isActive);
+            btn.classList.toggle('border-emerald-300', isActive);
+        });
+    }
+
+    function setDisplayTheme(themeKey, hex) {
+        setThemeValue(themeKey);
+        setAccentHidden(hex);
+        syncPaletteSelection(themeKey);
+        paintThemePreview(themeKey);
     }
 
     // قبل الإرسال: لو المستخدم ضغط افتراضي نخلي القيمة فارغة
@@ -484,7 +548,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const hex = normHex(accentInput.value);
         accentInput.value = hex;
-        if (accentPreview) accentPreview.style.background = hex || 'transparent';
     }
 
     function markInvalid(el, warnEl) {
@@ -522,30 +585,27 @@ document.addEventListener('DOMContentLoaded', function() {
     applyConstraints(standbyEl, 0.5, 0.1);
     applyConstraints(periodsEl, 0.5, 0.1);
 
-    // تهيئة اللون + الربط مع الباليت
-    if (accentInput) {
-        const init = normHex(accentInput.value);
-        accentInput.value = init || '#000000';
-        accentInput.dataset.userCleared = init ? '0' : '1';
-        if (accentPreview) accentPreview.style.background = init || 'transparent';
-        accentInput.addEventListener('input', function(){
-            accentInput.dataset.userCleared = '0';
-            const hex = normHex(accentInput.value);
-            if (accentPreview) accentPreview.style.background = hex || 'transparent';
-        });
-    }
+    // تهيئة الثيم/اللون (مُدمج)
+    (function initDisplayTheme(){
+        // اقرأ الثيم المحدد (قد يكون legacy)
+        let current = 'indigo';
+        const checked = document.querySelector('input[type="radio"][name="theme"]:checked');
+        if (checked && checked.value) current = String(checked.value);
+        if (current === 'default') current = 'indigo';
+        if (current === 'boys') current = 'emerald';
+        if (current === 'girls') current = 'rose';
 
-    if (palette) {
-        palette.addEventListener('click', function(e){
-            const btn = e.target && e.target.closest ? e.target.closest('button[data-color]') : null;
+        const preset = THEME_PRESETS[current] || THEME_PRESETS.indigo;
+        setDisplayTheme(current, preset.main);
+    })();
+
+    if (themePalette) {
+        themePalette.addEventListener('click', function(e){
+            const btn = e.target && e.target.closest ? e.target.closest('button[data-theme][data-hex]') : null;
             if (!btn) return;
-            setAccent(btn.getAttribute('data-color'));
-        });
-    }
-
-    if (accentClear) {
-        accentClear.addEventListener('click', function(){
-            setAccent('');
+            const t = btn.getAttribute('data-theme');
+            const h = btn.getAttribute('data-hex');
+            setDisplayTheme(t, h);
         });
     }
 

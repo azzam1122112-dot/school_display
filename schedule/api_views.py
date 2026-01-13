@@ -363,7 +363,7 @@ def _normalize_theme_value(raw: str | None) -> str:
     if not v:
         return "indigo"
 
-    if v in ("indigo", "emerald", "rose"):
+    if v in ("indigo", "emerald", "rose", "cyan", "amber", "orange", "violet"):
         return v
 
     if v in ("default", "theme_default"):

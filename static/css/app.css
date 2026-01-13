@@ -157,6 +157,82 @@ body.display-board[data-theme="rose"]{
   --mesh2:rgba(249,115,22,.26);
 }
 
+body.display-board[data-theme="cyan"]{
+  --bg-deep:#001b24;
+  --glass-surface:rgba(3,24,34,.96);
+  --glass-border:rgba(34,211,238,.35);
+  --hero-from:#083344;
+  --hero-to:#155e75;
+  --hero-border:rgba(34,211,238,.55);
+  --honor-from:rgba(2,44,51,.96);
+  --honor-to:rgba(8,145,178,.55);
+  --honor-border:rgba(34,211,238,.45);
+  --accent-main:#06b6d4;
+  --accent-sub:#22d3ee;
+  --accent-honor:#fbbf24;
+  --accent-ok:#22c55e;
+  --accent-warn:#fb7185;
+  --mesh1:rgba(34,211,238,.26);
+  --mesh2:rgba(6,182,212,.20);
+}
+
+body.display-board[data-theme="amber"]{
+  --bg-deep:#1a1200;
+  --glass-surface:rgba(27,18,2,.96);
+  --glass-border:rgba(251,191,36,.40);
+  --hero-from:#451a03;
+  --hero-to:#92400e;
+  --hero-border:rgba(251,191,36,.55);
+  --honor-from:rgba(24,15,3,.96);
+  --honor-to:rgba(120,53,15,.80);
+  --honor-border:rgba(251,191,36,.55);
+  --accent-main:#f59e0b;
+  --accent-sub:#fbbf24;
+  --accent-honor:#fde047;
+  --accent-ok:#22c55e;
+  --accent-warn:#fb7185;
+  --mesh1:rgba(245,158,11,.22);
+  --mesh2:rgba(251,191,36,.20);
+}
+
+body.display-board[data-theme="orange"]{
+  --bg-deep:#1a0700;
+  --glass-surface:rgba(26,9,2,.96);
+  --glass-border:rgba(249,115,22,.42);
+  --hero-from:#7c2d12;
+  --hero-to:#c2410c;
+  --hero-border:rgba(249,115,22,.60);
+  --honor-from:rgba(24,11,4,.96);
+  --honor-to:rgba(180,83,9,.75);
+  --honor-border:rgba(251,191,36,.55);
+  --accent-main:#f97316;
+  --accent-sub:#fb923c;
+  --accent-honor:#fbbf24;
+  --accent-ok:#22c55e;
+  --accent-warn:#fb7185;
+  --mesh1:rgba(249,115,22,.22);
+  --mesh2:rgba(251,146,60,.20);
+}
+
+body.display-board[data-theme="violet"]{
+  --bg-deep:#12021f;
+  --glass-surface:rgba(20,5,32,.96);
+  --glass-border:rgba(192,132,252,.40);
+  --hero-from:#4c1d95;
+  --hero-to:#7c3aed;
+  --hero-border:rgba(216,180,254,.55);
+  --honor-from:rgba(35,10,52,.96);
+  --honor-to:rgba(124,58,237,.55);
+  --honor-border:rgba(251,191,36,.45);
+  --accent-main:#a855f7;
+  --accent-sub:#c084fc;
+  --accent-honor:#fbbf24;
+  --accent-ok:#22c55e;
+  --accent-warn:#fb7185;
+  --mesh1:rgba(168,85,247,.22);
+  --mesh2:rgba(192,132,252,.20);
+}
+
 /* Background mesh */
 body.display-board .mesh-bg{
   position:fixed;
