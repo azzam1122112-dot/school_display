@@ -442,6 +442,33 @@
     }
     .mini-chip i { color: var(--primary); }
 
+    /* Trust / decision incentives (NEW) */
+    .trust-mini {
+      max-width: 1000px;
+      margin: 0 auto 18px;
+      border: 1px solid rgba(16,185,129,0.18);
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(37,99,235,0.06));
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      text-align: center;
+    }
+    .trust-mini .mini-chip { background: rgba(255,255,255,0.9); }
+    .trust-mini .mini-chip i { color: var(--accent); }
+    .trust-fineprint {
+      text-align: center;
+      margin-top: -6px;
+      margin-bottom: 18px;
+      font-size: 0.85rem;
+      color: rgba(51,65,85,0.85);
+      font-weight: 800;
+      line-height: 1.8;
+    }
+
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -831,6 +858,8 @@
                 <span class="pill warn"><i class="fa-solid fa-clock"></i> ينتهي تلقائيًا بعد اكتمال المقاعد</span>
                 <span class="pill"><i class="fa-solid fa-headset"></i> أولوية دعم وتجهيز</span>
                 <span class="pill"><i class="fa-solid fa-shield"></i> حماية وتحديثات مستمرة</span>
+                <span class="pill"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
+                <span class="pill"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
               </div>
 
               <div class="launch-fineprint">
@@ -958,6 +987,13 @@
           <span class="discount-badge">خصم يصل 20%</span>
         </div>
       </div>
+
+      <!-- NEW: Fast decision incentives -->
+      <div class="trust-mini" aria-label="محفزات قرار سريعة">
+        <span class="mini-chip"><i class="fa-regular fa-calendar-check"></i> تجربة 14 يوم</span>
+        <span class="mini-chip"><i class="fa-solid fa-rotate-left"></i> ضمان استرجاع 14 يوم</span>
+      </div>
+      <div class="trust-fineprint">* الهدف: تقليل المخاطرة عليك وتسريع قرارك.</div>
 
       <div class="pricing-grid">
         <!-- Tier 1 -->
