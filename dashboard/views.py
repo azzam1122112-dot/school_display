@@ -751,6 +751,12 @@ def day_autofill(request, weekday: int):
     day = get_object_or_404(DaySchedule, settings=settings_obj, weekday=weekday)
 
     try:
+        # Check if user wants to update period count along with autofill
+        new_count = _to_int(request.POST.get("target_periods_count"), 0)
+        if new_count > 0:
+            day.periods_count = new_count
+            day.save()
+
         start_time_str = request.POST.get("start_time", "07:00:00")
         period_minutes = _to_int(request.POST.get("period_minutes"), 45)
         period_seconds = _to_int(request.POST.get("period_seconds"), 0)
