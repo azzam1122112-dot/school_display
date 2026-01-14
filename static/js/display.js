@@ -490,7 +490,7 @@
 
     const previewLock = (document.body && document.body.dataset && document.body.dataset.previewLock === '1');
 
-    const sig = name + "||" + logo + "||" + theme + "||" + schoolType;
+    const sig = name + "||" + logo + "||" + theme + "||" + schoolType + "||" + accent;
     if (sig === last.brandSig) return;
     last.brandSig = sig;
 
@@ -576,6 +576,38 @@
   let countdownSeconds = null;
   let progressRange = { start: null, end: null };
   let hasActiveCountdown = false;
+  let lastStateCoreSig = "";
+
+  let lastCountdownZeroAt = 0;
+  function onCountdownZero() {
+    if (isBlocked) return;
+    const now = Date.now();
+    if (now - lastCountdownZeroAt < 2000) return;
+    lastCountdownZeroAt = now;
+
+    // Optional (heavier) behavior: full page reload if explicitly requested.
+    // Example: /display/<token>/?reload_on_zero=1
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      if ((qs.get("reload_on_zero") || "").trim() === "1") {
+        try {
+          const k = "display_reload_on_zero_ts";
+          const prev = Number(sessionStorage.getItem(k) || 0);
+          if (prev && now - prev < 3000) return;
+          sessionStorage.setItem(k, String(now));
+        } catch (e) {}
+        try {
+          window.location.reload();
+        } catch (e) {}
+        return;
+      }
+    } catch (e) {}
+
+    // Default: refresh data ASAP (lighter than reload).
+    try {
+      scheduleNext(0.2);
+    } catch (e) {}
+  }
 
   function setRing(pct) {
     if (!dom.circleProgress) return;
@@ -1286,6 +1318,13 @@
     const current = payload.current_period || null;
     const nextP = payload.next_period || null;
 
+    // Snapshot responses are server-cached for a few seconds; keep countdown monotonic for the same state.
+    const prevCountdown = hasActiveCountdown && typeof countdownSeconds === "number" ? countdownSeconds : null;
+    const prevCoreSig = lastStateCoreSig;
+    const nextCoreSig =
+      stType + "||" + safeText(s.label || "") + "||" + safeText(s.from || "") + "||" + safeText(s.to || "");
+    lastStateCoreSig = nextCoreSig;
+
     // ===== تحديث runtime =====
     rt.activePeriodIndex = getPeriodIndex(current) || getPeriodIndex(nextP) || getCurrentPeriodIdxFromPayload(payload) || null;
     rt.activeFromHM =
@@ -1302,7 +1341,20 @@
       typeof s.remaining_seconds === "number" &&
       (stType === "period" || stType === "break" || stType === "before")
     ) {
-      countdownSeconds = Math.max(0, Math.floor(s.remaining_seconds));
+      const serverRem = Math.max(0, Math.floor(s.remaining_seconds));
+      // If we just reached 0 locally, and the server returns an older cached snapshot for the same state,
+      // don't jump the countdown backwards (e.g., 00:00 -> 05:12). Wait until the state changes.
+      if (
+        prevCountdown !== null &&
+        prevCountdown <= 1 &&
+        nextCoreSig &&
+        nextCoreSig === prevCoreSig &&
+        serverRem > prevCountdown + 10
+      ) {
+        countdownSeconds = prevCountdown;
+      } else {
+        countdownSeconds = serverRem;
+      }
       hasActiveCountdown = true;
     }
 
@@ -1387,7 +1439,9 @@
       tickClock();
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
+        const prev = countdownSeconds;
         if (countdownSeconds > 0) countdownSeconds -= 1;
+        if (prev > 0 && countdownSeconds === 0) onCountdownZero();
       }
 
       if (dom.countdown) {
