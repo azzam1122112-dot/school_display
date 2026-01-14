@@ -1,4 +1,5 @@
-﻿{% load static %}
+
+html_code = """{% load static %}
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -85,7 +86,7 @@
             transition: all 0.3s ease;
         }
         header.scrolled {
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.95);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(0,0,0,0.05);
             padding: 12px 0;
@@ -134,6 +135,8 @@
             text-decoration: none; font-weight: 800; font-size: 0.95rem;
             transition: 0.2s; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
             display: inline-flex; align-items: center; gap: 8px;
+            cursor: pointer;
+            border: none;
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2); }
 
@@ -236,9 +239,59 @@
         .btn-full {
             display: block; width: 100%; padding: 14px;
             background: var(--text-main); color: white; text-decoration: none;
-            border-radius: 14px; font-weight: 800;
+            border-radius: 14px; font-weight: 800; cursor: pointer; border: none; font-size: 1rem;
         }
         .price-card.popular .btn-full { background: var(--primary); }
+
+        /* ========= Request Modal ========= */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 2000; opacity: 0; pointer-events: none;
+            transition: 0.3s;
+            display: grid; place-items: center; padding: 20px;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        
+        .modal-card {
+            background: white; width: 100%; max-width: 500px;
+            padding: 32px; border-radius: 32px;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(20px); transition: 0.3s;
+            position: relative;
+        }
+        .modal-overlay.active .modal-card { transform: translateY(0); }
+
+        .modal-header { margin-bottom: 24px; text-align: right; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; }
+        .modal-close { position: absolute; top: 24px; left: 24px; background: #f1f5f9; width: 36px; height: 36px; border-radius: 10px; border:none; color: var(--text-sec); cursor: pointer; font-size: 1.1rem; }
+        .modal-close:hover { background: #e2e8f0; color: var(--text-main); }
+
+        .form-group { margin-bottom: 16px; text-align: right; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-sec); font-size: 0.9rem; }
+        
+        .form-input, .form-select {
+            width: 100%; padding: 12px 16px;
+            border: 2px solid #e2e8f0; border-radius: 12px;
+            font-family: inherit; font-size: 1rem;
+            transition: 0.2s; background: #f8fafc;
+        }
+        .form-input:focus, .form-select:focus {
+            border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .radio-group { display: flex; gap: 16px; }
+        .radio-label {
+            flex: 1; position: relative; cursor: pointer;
+        }
+        .radio-label input { position: absolute; opacity: 0; }
+        .radio-tile {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;
+            font-weight: 700; color: var(--text-sec); transition: 0.2s;
+        }
+        .radio-label input:checked + .radio-tile {
+            border-color: var(--primary); color: var(--primary); background: #eff6ff;
+        }
 
         /* ========= Footer ========= */
         footer { background: white; border-top: 1px solid #e2e8f0; padding: 60px 0 20px; margin-top: 80px; }
@@ -262,20 +315,13 @@
             /* Center Logo on mobile */
             .logo { position: absolute; left: 50%; transform: translateX(-50%); }
             .logo-icon { width: 36px; height: 36px; font-size: 1rem; }
-            .logo span { font-size: 1rem; display: none; } /* Hide text to save space if needed, or keep */
+            .logo span { font-size: 1rem; display: none; } 
 
-            /* Login Button (Left side) */
-            .nav-actions { margin-right: auto; } /* Push to left in RTL */
-            .btn-primary { display: none; } /* Hide Subscribe */
+            .nav-actions { margin-right: auto; }
+            .btn-primary { display: none; }
             .btn-login span { display: none; }
             .btn-login { padding: 0; width: 38px; height: 38px; justify-content: center; border-radius: 12px; background:white; }
 
-            /* Ghost button on right to balance layout if needed, or just standard flex */
-            /* We want Logo Center, Login Left, Menu Right (if menu exists). Since no menu, maybe Login Right? */
-            /* Let's do: Login on the Left (Left is 'end' in RTL? No, Left is Left). */
-            /* In RTL: Start is Right. End is Left. */
-            /* So Logo Center. Login (Action) at End (Left). */
-            
             .nav-content { justify-content: center; }
             .nav-actions { position: absolute; left: 0; margin: 0; }
             
@@ -290,6 +336,10 @@
             .bento-card { padding: 24px; }
 
             .price-card.popular { transform: none; border-width: 1px; }
+
+            .modal-card { padding: 24px; border-radius: 24px; max-width: 100%; top: auto; bottom: 0; margin: 0; transform: translateY(100%); border-radius: 24px 24px 0 0; }
+            .modal-overlay.active .modal-card { transform: translateY(0); }
+            .modal-overlay { align-items: flex-end; padding: 0; }
         }
     </style>
 </head>
@@ -322,7 +372,7 @@
                     <span>دخول النظام</span>
                 </a>
                 {% endif %}
-                <a href="#pricing" class="btn-primary">اشترك الآن <i class="fa-solid fa-arrow-left"></i></a>
+                <button onclick="document.getElementById('pricing').scrollIntoView()" class="btn-primary">اشترك الآن <i class="fa-solid fa-arrow-left"></i></button>
             </div>
         </div>
     </header>
@@ -345,12 +395,12 @@
             </p>
 
             <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <a href="#pricing" class="btn-primary" style="padding: 14px 32px; font-size: 1.1rem; border-radius: 99px;">
+                <button onclick="document.getElementById('pricing').scrollIntoView()" class="btn-primary" style="padding: 14px 32px; font-size: 1.1rem; border-radius: 99px;">
                     ابدأ تجربتك الآن
-                </a>
-                <a href="#demo" class="btn-login" style="padding: 14px 32px; font-size: 1.1rem; background: white;">
+                </button>
+                <div onclick="document.getElementById('demo').scrollIntoView()" class="btn-login" style="padding: 14px 32px; font-size: 1.1rem; background: white; cursor: pointer;">
                     <i class="fa-solid fa-play"></i> عرض توضيحي
-                </a>
+                </div>
             </div>
 
             <!-- 3D Mockup Container -->
@@ -436,7 +486,7 @@
                         <li><i class="fa-solid fa-check"></i> لا تتطلب دفع مسبق</li>
                         <li><i class="fa-solid fa-check"></i> تفعيل فوري</li>
                     </ul>
-                    <a href="https://wa.me/966537720207?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D8%A8%D8%AA%D8%AC%D8%B1%D8%A8%D8%A9%20%D8%A7%D9%84%D9%86%D8%B8%D8%A7%D9%85%20%D9%85%D8%AC%D8%A7%D9%86%D8%A7%D9%8B%20%D9%84%D9%85%D8%AF%D8%A9%2014%20%D9%8A%D9%88%D9%85" class="btn-full" style="background:var(--accent); color:white;">طلب تجربة</a>
+                    <button onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')" class="btn-full" style="background:var(--accent); color:white; border:none; cursor:pointer;">طلب تجربة</button>
                 </div>
 
                 <!-- Card 1 -->
@@ -449,7 +499,7 @@
                         <li><i class="fa-solid fa-check"></i> دعم فني متميز</li>
                         <li><i class="fa-solid fa-check"></i> تفعيل فوري</li>
                     </ul>
-                    <a href="https://wa.me/966537720207" class="btn-full" style="background:#f1f5f9; color:var(--text-main)">طلب الاشتراك</a>
+                    <button onclick="openOrderModal('شاشة واحدة', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">طلب الاشتراك</button>
                 </div>
 
                 <!-- Card 2 -->
@@ -462,7 +512,7 @@
                         <li><i class="fa-solid fa-check"></i> دعم فني متميز</li>
                         <li><i class="fa-solid fa-check"></i> تغطية لمدخلين</li>
                     </ul>
-                    <a href="https://wa.me/966537720207" class="btn-full" style="background:#f1f5f9; color:var(--text-main)">طلب الاشتراك</a>
+                    <button onclick="openOrderModal('شاشتان', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">طلب الاشتراك</button>
                 </div>
 
                 <!-- Card 3 (Popular) -->
@@ -476,7 +526,7 @@
                         <li><i class="fa-solid fa-check"></i> خصم خاص للمجموعة</li>
                         <li><i class="fa-solid fa-check"></i> أولوية في التصميم</li>
                     </ul>
-                    <a href="https://wa.me/966537720207" class="btn-full">طلب الاشتراك</a>
+                    <button onclick="openOrderModal('3 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:var(--primary); color:white; border:none; cursor:pointer;">طلب الاشتراك</button>
                 </div>
 
                 <!-- Card 4 -->
@@ -489,7 +539,7 @@
                         <li><i class="fa-solid fa-check"></i> خصم إضافي</li>
                         <li><i class="fa-solid fa-check"></i> دعم فني VIP</li>
                     </ul>
-                    <a href="https://wa.me/966537720207" class="btn-full" style="background:#f1f5f9; color:var(--text-main)">طلب الاشتراك</a>
+                    <button onclick="openOrderModal('4 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">طلب الاشتراك</button>
                 </div>
 
                 <!-- Card 5 -->
@@ -502,7 +552,7 @@
                         <li><i class="fa-solid fa-check"></i> أفضل قيمة للشاشة</li>
                         <li><i class="fa-solid fa-check"></i> مدير حساب خاص</li>
                     </ul>
-                    <a href="https://wa.me/966537720207" class="btn-full" style="background:#f1f5f9; color:var(--text-main)">طلب الاشتراك</a>
+                    <button onclick="openOrderModal('5 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">طلب الاشتراك</button>
                 </div>
             </div>
             
@@ -511,6 +561,62 @@
             </p>
         </div>
     </section>
+
+    <!-- Modal Form -->
+    <div class="modal-overlay" id="orderModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeOrderModal()"><i class="fa-solid fa-times"></i></button>
+            
+            <div class="modal-header">
+                <h2 id="modalTitle">طلب اشتراك جديد</h2>
+                <p style="color:var(--text-sec); font-size:0.9rem; margin-top:4px;" id="modalSubtitle">يرجى تعبئة البيانات وسيتم توجيهك للمحادثة المباشرة</p>
+            </div>
+
+            <form onsubmit="submitToWhatsapp(event)">
+                <input type="hidden" id="p_plan">
+                <input type="hidden" id="p_period">
+                <input type="hidden" id="p_price">
+
+                <div class="form-group">
+                    <label class="form-label">اسم المدرسة</label>
+                    <input type="text" id="schoolName" class="form-input" placeholder="مثال: ثانوية الملك عبدالله" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">نوع المدرسة</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="schoolType" value="بنين" checked>
+                            <div class="radio-tile"><i class="fa-solid fa-user-graduate"></i> بنين</div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="schoolType" value="بنات">
+                            <div class="radio-tile"><i class="fa-solid fa-user-graduate" style="color:#ec4899"></i> بنات</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">المدينة</label>
+                    <input type="text" id="city" class="form-input" placeholder="الرياض، جدة..." required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">اسم المسؤول</label>
+                    <input type="text" id="contactName" class="form-input" placeholder="الاسم الثلاثي" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">الجوال / واتس اب</label>
+                    <input type="tel" id="mobile" class="form-input" placeholder="05XXXXXXXXX" required pattern="[0-9]*">
+                </div>
+
+                <button type="submit" class="btn-full" style="background:var(--primary); color:white; margin-top:24px; border:none; cursor:pointer;">
+                    <i class="fa-brands fa-whatsapp"></i> إرسال الطلب
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer>
@@ -534,7 +640,7 @@
                 <div>
                     <h4>اتصل بنا</h4>
                     <a href="https://wa.me/966537720207" class="footer-link" style="direction: ltr; text-align: right;"><i class="fa-brands fa-whatsapp"></i> +966 53 772 0207</a>
-                    <a href="mailto:mansour9999@hotmail.com" class="footer-link"><i class="fa-regular fa-envelope"></i> تواصل عبر البريد</a>
+                    <a href="mailto:info@schooldisplay.com" class="footer-link"><i class="fa-regular fa-envelope"></i> تواصل عبر البريد</a>
                 </div>
             </div>
             <div class="copyright">
@@ -544,6 +650,8 @@
     </footer>
 
     <script>
+        let currentPeriod = '12'; // Default is year
+
         // Header Scroll Effect
         window.addEventListener('scroll', () => {
             const header = document.getElementById('header');
@@ -553,6 +661,7 @@
 
         // Pricing Switcher
         function switchPlan(period) {
+            currentPeriod = period;
             const btn6 = document.getElementById('btn6');
             const btn12 = document.getElementById('btn12');
             const vals = document.querySelectorAll('.price-val');
@@ -573,6 +682,89 @@
                 });
             }
         }
+
+        // Helper to get current displayed price from button's container
+        function getCurrentPrice(btnElement) {
+            // Traverse up to .price-card then find .price-val
+            const card = btnElement.closest('.price-card');
+            const valEl = card.querySelector('.price-val');
+            return valEl ? valEl.innerText : '0';
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('orderModal');
+
+        function openOrderModal(plan, period, price) {
+            // Set hidden values
+            document.getElementById('p_plan').value = plan;
+            
+            // Period Text Formatting
+            let periodText = period;
+            if (period === '12') periodText = 'سنة كاملة';
+            if (period === '6') periodText = '6 أشهر';
+            document.getElementById('p_period').value = periodText;
+            document.getElementById('p_price').value = price;
+
+            // UI Updates
+            if (plan.includes('تجربة')) {
+                document.getElementById('modalTitle').innerText = 'طلب تجربة مجانية';
+                document.getElementById('modalSubtitle').innerText = 'استمتع بكافة المميزات مجاناً لمدة 14 يوم';
+            } else {
+                document.getElementById('modalTitle').innerText = 'طلب اشتراك جديد';
+                document.getElementById('modalSubtitle').innerText = `باقة ${plan} - ${periodText} بسعر ${price} ريال`;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeOrderModal() {
+            modal.classList.remove('active');
+        }
+
+        // Close on click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeOrderModal();
+        });
+
+        function submitToWhatsapp(e) {
+            e.preventDefault();
+            
+            const school = document.getElementById('schoolName').value;
+            const type = document.querySelector('input[name="schoolType"]:checked').value;
+            const city = document.getElementById('city').value;
+            const name = document.getElementById('contactName').value;
+            const mobile = document.getElementById('mobile').value;
+            
+            const plan = document.getElementById('p_plan').value;
+            const period = document.getElementById('p_period').value;
+            const price = document.getElementById('p_price').value;
+
+            let msg = `السلام عليكم، أرغب ب${plan.includes('تجربة') ? 'تجربة النظام' : 'الاشتراك في النظام'}.\n\n`;
+            msg += `📄 *بيانات الطلب:*\n`;
+            msg += `- المدرسة: ${school} (${type})\n`;
+            msg += `- المدينة: ${city}\n`;
+            msg += `- المسؤول: ${name}\n`;
+            msg += `- الجوال: ${mobile}\n\n`;
+            
+            if (!plan.includes('تجربة')) {
+                msg += `📊 *تفاصيل الباقة:*\n`;
+                msg += `- الباقة: ${plan}\n`;
+                msg += `- المدة: ${period}\n`;
+                msg += `- السعر: ${price} ريال\n`;
+            } else {
+                msg += `🎁 *نوع الطلب:* تجربة مجانية (14 يوم)`;
+            }
+
+            const url = `https://wa.me/966537720207?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+            closeOrderModal();
+        }
     </script>
 </body>
 </html>
+"""
+import os
+
+file_path = r"c:\\Users\\manso\\school_display\\templates\\website\\unconfigured_display.html"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(html_code)
