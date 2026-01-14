@@ -66,11 +66,11 @@ img,svg,video,canvas{max-width:100%;height:auto;display:block;}
    ========================= */
 body.display-board{
   --bg-deep:#020617;
-  --glass-surface:rgba(15,23,42,.9);
+  --glass-surface:rgba(15,23,42,.6);
   --glass-border:rgba(148,163,184,.3);
 
-  --hero-from:#1e1b4b;
-  --hero-to:#312e81;
+  --hero-from:rgba(30,27,75,0.5);
+  --hero-to:rgba(49,46,129,0.5);
   --hero-border:rgba(129,140,248,.5);
 
   --honor-from:rgba(15,15,20,.96);
@@ -122,10 +122,10 @@ body.display-board{
 
 body.display-board[data-theme="emerald"]{
   --bg-deep:#021a13;
-  --glass-surface:rgba(4,34,25,.96);
+  --glass-surface:rgba(4,34,25,.6);
   --glass-border:rgba(16,185,129,.35);
-  --hero-from:#064e3b;
-  --hero-to:#047857;
+  --hero-from:rgba(6,78,59,0.5);
+  --hero-to:rgba(4,120,87,0.5);
   --hero-border:rgba(52,211,153,.6);
   --honor-from:rgba(4,47,46,.96);
   --honor-to:rgba(6,95,70,.9);
@@ -141,10 +141,10 @@ body.display-board[data-theme="emerald"]{
 
 body.display-board[data-theme="rose"]{
   --bg-deep:#200112;
-  --glass-surface:rgba(31,5,23,.96);
+  --glass-surface:rgba(31,5,23,.6);
   --glass-border:rgba(244,114,182,.55);
-  --hero-from:#831843;
-  --hero-to:#be185d;
+  --hero-from:rgba(131,24,67,0.5);
+  --hero-to:rgba(190,24,93,0.5);
   --hero-border:rgba(244,114,182,.85);
   --honor-from:rgba(76,5,25,.96);
   --honor-to:rgba(159,18,57,.9);
@@ -160,10 +160,10 @@ body.display-board[data-theme="rose"]{
 
 body.display-board[data-theme="cyan"]{
   --bg-deep:#001b24;
-  --glass-surface:rgba(3,24,34,.96);
+  --glass-surface:rgba(3,24,34,.6);
   --glass-border:rgba(34,211,238,.35);
-  --hero-from:#083344;
-  --hero-to:#155e75;
+  --hero-from:rgba(8,51,68,0.5);
+  --hero-to:rgba(21,94,117,0.5);
   --hero-border:rgba(34,211,238,.55);
   --honor-from:rgba(2,44,51,.96);
   --honor-to:rgba(8,145,178,.55);
@@ -179,10 +179,10 @@ body.display-board[data-theme="cyan"]{
 
 body.display-board[data-theme="amber"]{
   --bg-deep:#1a1200;
-  --glass-surface:rgba(27,18,2,.96);
+  --glass-surface:rgba(27,18,2,.6);
   --glass-border:rgba(251,191,36,.40);
-  --hero-from:#451a03;
-  --hero-to:#92400e;
+  --hero-from:rgba(69,26,3,0.5);
+  --hero-to:rgba(146,64,14,0.5);
   --hero-border:rgba(251,191,36,.55);
   --honor-from:rgba(24,15,3,.96);
   --honor-to:rgba(120,53,15,.80);
@@ -198,10 +198,10 @@ body.display-board[data-theme="amber"]{
 
 body.display-board[data-theme="orange"]{
   --bg-deep:#1a0700;
-  --glass-surface:rgba(26,9,2,.96);
+  --glass-surface:rgba(26,9,2,.6);
   --glass-border:rgba(249,115,22,.42);
-  --hero-from:#7c2d12;
-  --hero-to:#c2410c;
+  --hero-from:rgba(124,45,18,0.5);
+  --hero-to:rgba(194,65,12,0.5);
   --hero-border:rgba(249,115,22,.60);
   --honor-from:rgba(24,11,4,.96);
   --honor-to:rgba(180,83,9,.75);
@@ -217,10 +217,10 @@ body.display-board[data-theme="orange"]{
 
 body.display-board[data-theme="violet"]{
   --bg-deep:#12021f;
-  --glass-surface:rgba(20,5,32,.96);
+  --glass-surface:rgba(20,5,32,.6);
   --glass-border:rgba(192,132,252,.40);
-  --hero-from:#4c1d95;
-  --hero-to:#7c3aed;
+  --hero-from:rgba(76,29,149,0.5);
+  --hero-to:rgba(124,58,237,0.5);
   --hero-border:rgba(216,180,254,.55);
   --honor-from:rgba(35,10,52,.96);
   --honor-to:rgba(124,58,237,.55);

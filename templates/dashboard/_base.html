@@ -59,29 +59,29 @@
 <body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900" x-data="{ mobileMenuOpen: false }">
 
 <!-- ░░ Header ░░ -->
-<header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+<header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60 transition-all duration-200">
+  <div class="max-w-7xl mx-auto px-3 py-2 md:px-4 md:py-3 flex items-center justify-between">
 
-    <div class="flex items-center space-x-reverse space-x-3">
+    <div class="flex items-center space-x-reverse space-x-2 md:space-x-3">
       <!-- Mobile Menu Toggle -->
-      <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-lg bg-slate-100 text-slate-600">
+      <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-1.5 rounded-lg bg-slate-100 text-slate-600">
         <i class="fas fa-bars" x-show="!mobileMenuOpen"></i>
         <i class="fas fa-times" x-show="mobileMenuOpen" x-cloak></i>
       </button>
 
       {% if request.user.is_authenticated and request.user.profile.school and request.user.profile.school.logo %}
         <img src="{{ request.user.profile.school.logo.url }}"
-             class="h-10 w-10 rounded-xl border bg-white object-contain">
+             class="h-8 w-8 md:h-10 md:w-10 rounded-xl border bg-white object-contain">
       {% else %}
-        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600
-                    flex justify-center items-center text-white font-bold text-lg">🏫</div>
+        <div class="h-8 w-8 md:h-10 md:w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600
+                    flex justify-center items-center text-white font-bold text-sm md:text-lg">🏫</div>
       {% endif %}
 
       <div>
-        <h1 class="text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+        <h1 class="text-lg md:text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
           لوحة الإدارة
         </h1>
-        <p class="text-xs text-slate-500 mt-1">
+        <p class="text-[10px] md:text-xs text-slate-500 mt-0.5 md:mt-1">
           {{ school_name|default:"مدرستنا" }}
         </p>
       </div>
