@@ -4,429 +4,272 @@
 {% block title %}شاشات العرض{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <!-- رأس الصفحة -->
-  <div class="mb-8">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-800 mb-2">شاشات العرض</h1>
-        <p class="text-slate-600">
-          أنشئ شاشة، انسخ الرابط  وافتحه على التلفاز بسهولة.
-        </p>
-
-        {% if auto_disabled_count and auto_disabled_count|add:0 > 0 %}
-          <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div class="text-rose-900 font-semibold">
-                تم إيقاف {{ auto_disabled_count }} شاشة تلقائيًا لأن الإضافة انتهت أو تم تجاوز حد الباقة.
-              </div>
-              <a href="{% url 'dashboard:request_screen_addon' %}"
-                 class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-rose-200 text-rose-900 hover:bg-rose-100 transition inline-flex items-center justify-center gap-2">
-                <span>طلب زيادة شاشات</span>
-                <span class="text-base">↗</span>
-              </a>
-            </div>
-            <div class="mt-2 text-sm text-rose-800">
-              سيتم إعادة تشغيلها تلقائيًا عند تجديد الزيادة أو رفع الحد.
-            </div>
-          </div>
-        {% endif %}
-
-        <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl">
-          {% if plan_name %}
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div class="text-xs font-semibold text-slate-500 mb-1">الباقة</div>
-              <div class="text-sm sm:text-base font-bold text-slate-900 truncate">{{ plan_name }}</div>
-            </div>
-          {% endif %}
-
-          {% if screen_limit is None %}
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div class="text-xs font-semibold text-emerald-700 mb-1">الشاشات</div>
-              <div class="text-sm sm:text-base font-bold text-emerald-900">غير محدود</div>
-            </div>
-          {% else %}
-            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <div class="text-xs font-semibold text-slate-500 mb-1">المستخدم</div>
-              <div class="text-sm sm:text-base font-bold text-slate-900">
-                {{ screens_count|default:"0" }} / {{ screen_limit|default:"0" }}
-              </div>
-            </div>
-
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div class="text-xs font-semibold text-emerald-700 mb-1">المتبقي</div>
-              <div class="text-sm sm:text-base font-bold text-emerald-900">
-                {{ screens_remaining|default:"0" }}
-              </div>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
+<div class="max-w-7xl mx-auto pb-12 animate-fade-in-up">
+  
+  <!-- Header Section -->
+  <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div>
+      <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 mb-2">
+        شاشات العرض
+      </h1>
+      <p class="text-slate-500 font-medium text-lg">
+        اربط شاشات التلفاز بنظام المدرسة بكل سهولة وتحكم في المحتوى عن بعد.
+      </p>
+    </div>
+    
+    <div class="flex items-center gap-3">
         {% if can_create_screen %}
         <a href="{% url 'dashboard:screen_create' %}"
-           class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 inline-flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 6v6m0 0v6m-6-6h6m0 0h6"></path>
-          </svg>
-          <span>شاشة جديدة</span>
+           class="group relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-blue-600 rounded-2xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5">
+            <span class="absolute inset-x-0 bottom-0 h-[2px] bg-white/20"></span>
+            <span class="relative flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m-6-6h6m0 0h6"></path></svg>
+                <span>شاشة جديدة</span>
+            </span>
         </a>
         {% endif %}
-
+        
         {% if show_screen_limit_message %}
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div class="px-4 py-2 bg-yellow-50 text-yellow-800 rounded-xl font-semibold text-sm border border-yellow-200">
-            {{ screen_limit_message|default:"لا يمكن إضافة المزيد من الشاشات" }}
-            {% if plan_name %}
-              <span class="font-bold">— الباقة:</span> {{ plan_name }}
-            {% endif %}
-          </div>
-
-          <a href="{% url 'dashboard:request_screen_addon' %}"
-             class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 transition inline-flex items-center justify-center gap-2">
-            <span>طلب زيادة شاشات</span>
-            <span class="text-base">↗</span>
+          <a href="{% url 'dashboard:request_screen_addon' %}" class="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm hover:shadow-md flex items-center gap-2">
+             <span>زيادة الباقة</span>
+             <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </a>
-        </div>
         {% endif %}
-      </div>
-    </div>
-
-    <!-- بطاقة توجيه سريعة -->
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="rounded-2xl border border-slate-200 bg-white p-4">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-            <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-slate-800">الرابط علـى للتلفاز</div>
-            <div class="text-sm text-slate-600 mt-1">
-              افتح على التلفاز: <span class="font-mono">/s/ABC123</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-4">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-slate-800">نسخ سريع</div>
-            <div class="text-sm text-slate-600 mt-1">
-              زر “نسخ” ينسخ الرابط بالكامل مباشرة بدون نوافذ مزعجة.
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 
-  <!-- قائمة الشاشات -->
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+  <!-- Stats & Info Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      
+      <!-- Usage Card -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden group hover:shadow-md transition-all">
+          <div class="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-blue-500 to-cyan-400"></div>
+          <div class="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          </div>
+          <div>
+              <p class="text-sm font-semibold text-slate-400 mb-1">استهلاك الشاشات</p>
+              <div class="text-2xl font-bold text-slate-800">
+                  <span class="text-blue-600">{{ screens_count|default:"0" }}</span>
+                  <span class="text-slate-300 mx-1">/</span>
+                  <span class="text-slate-500">{% if screen_limit is None %}∞{% else %}{{ screen_limit }}{% endif %}</span>
+              </div>
+          </div>
+      </div>
+
+      <!-- Quick Guide Card 1 -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+             <span class="text-xl font-bold">1</span>
+          </div>
+          <div>
+              <p class="font-bold text-slate-800">أنشئ شاشة جديدة</p>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">اضغط "شاشة جديدة" واحفظها لتحصل على رابط خاص.</p>
+          </div>
+      </div>
+
+      <!-- Quick Guide Card 2 -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+             <span class="text-xl font-bold">2</span>
+          </div>
+          <div>
+              <p class="font-bold text-slate-800">شغلها على التلفاز</p>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">افتـح المتصفح في التلفـاز وادخل الرابط المختصر (مثلاً /s/A123).</p>
+          </div>
+      </div>
+  </div>
+
+  {% if show_screen_limit_message %}
+    <div class="mb-8 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 flex items-start gap-3">
+        <svg class="w-6 h-6 text-rose-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+            <h4 class="font-bold text-rose-800 text-sm">تنبيه الحد الأقصى</h4>
+            <p class="text-rose-600 text-sm mt-1">{{ screen_limit_message }}</p>
+        </div>
+    </div>
+  {% endif %}
+
+  <!-- Screen Cards Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
     {% if screens %}
-
-      <!-- Mobile cards -->
-      <div class="p-4 grid grid-cols-1 gap-4 md:hidden">
-        {% for screen in screens %}
-          {% if screen.short_code %}
-            {% with sc=screen.short_code %}
-              {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
-                <div class="rounded-2xl border border-slate-200 p-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <div class="font-bold text-slate-800">{{ screen.name }}</div>
-                      <div class="mt-2 flex items-center gap-2">
-                        {% if screen.is_active %}
-                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                            نشط
-                          </span>
-                        {% else %}
-                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
-                            غير نشط
-                          </span>
-                          {% if screen.auto_disabled_by_limit %}
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
-                              موقوف بسبب الحد
-                            </span>
-                          {% endif %}
-                        {% endif %}
-                        {# حُذف عرض آخر ظهور مؤقتًا لعدم توفر بيانات موثوقة #}
-                      </div>
+       {% for screen in screens %}
+        
+        <div class="group relative bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden flex flex-col">
+            <!-- Active Indicator Strip -->
+            <div class="absolute top-0 inset-x-0 h-1.5 {% if screen.is_active %}bg-gradient-to-r from-emerald-400 to-teal-500{% else %}bg-slate-200{% endif %}"></div>
+            
+            <div class="p-6 flex-1 flex flex-col">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center {% if screen.is_active %}bg-emerald-50 text-emerald-600{% else %}bg-slate-100 text-slate-400{% endif %}">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">{{ screen.name }}</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="relative flex h-2.5 w-2.5">
+                                  {% if screen.is_active %}
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                  {% else %}
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-300"></span>
+                                  {% endif %}
+                                </span>
+                                <span class="text-xs font-semibold {% if screen.is_active %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                                    {% if screen.is_active %}نشط وتعمل{% else %}متوقفة{% endif %}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-xs text-slate-500 font-mono bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
-                      CODE: {{ sc|upper }}
-                    </div>
-                  </div>
+                </div>
 
-                  <div class="mt-4">
-                    <label class="block text-xs font-semibold text-slate-600 mb-2">الرابط </label>
-                    <div class="flex items-center gap-2">
-                      <input id="link-{{ screen.id }}"
-                             type="text"
-                             readonly
-                             value="{{ short_url }}"
-                             data-full-link="{{ short_url }}"
-                             class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 select-all focus:outline-none focus:ring-2 focus:ring-blue-200">
-                      <button type="button"
-                              data-copy-target="link-{{ screen.id }}"
-                              class="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-semibold text-xs hover:bg-blue-100 transition">
-                        نسخ
-                      </button>
-                      <a href="/s/{{ sc|upper }}" target="_blank"
-                         class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-xs hover:bg-emerald-100 transition">
-                        فتح
-                      </a>
+                {% if screen.short_code %}
+                 {% with sc=screen.short_code %}
+                 {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
+                    <div class="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 mb-6 group-hover:bg-blue-50/30 group-hover:border-blue-100 transition-colors">
+                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">رابط التلفاز (Short Link)</label>
+                        <div class="flex items-center gap-2">
+                             <div class="flex-1 relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">/s/</span>
+                                <input type="text" readonly value="{{ sc|upper }}" class="w-full bg-white border border-slate-200 rounded-xl py-2 pl-8 pr-3 font-mono text-center font-bold text-slate-800 tracking-widest focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
+                             </div>
+                             <button type="button" data-copy-target="link-{{ screen.id }}" class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm" title="نسخ الرابط الكامل">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                             </button>
+                             <input type="hidden" id="link-{{ screen.id }}" value="{{ short_url }}">
+                        </div>
+                        <div class="mt-2 text-center">
+                            <a href="{{ short_url }}" target="_blank" class="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">تجربة الرابط في المتصفح &rarr;</a>
+                        </div>
                     </div>
-
-                    <div class="mt-2 text-xs text-slate-500">
-                      على التلفاز اكتب: <span class="font-mono">/s/{{ sc|upper }}</span>
+                 {% endwith %}
+                 {% endwith %}
+                {% else %}
+                    <div class="bg-amber-50 rounded-2xl p-4 border border-amber-100 mb-6">
+                        <div class="flex items-center gap-2 text-amber-700">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                             <span class="text-sm font-bold">بانتظار التفعيل</span>
+                        </div>
+                        <p class="text-xs text-amber-600/80 mt-1">سيتم توليد الرابط تلقائياً قريباً.</p>
                     </div>
-                  </div>
-
-                  <div class="mt-4 flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      {% if screen.bound_device_id %}
-                        <form method="post" action="{% url 'dashboard:screen_unbind_device' screen.pk %}"
-                              onsubmit="return confirm('سيتم فصل الشاشة من الجهاز الحالي. هل أنت متأكد؟');" class="inline">
+                {% endif %}
+                
+                <div class="mt-auto border-t border-slate-50 pt-4 flex items-center justify-between">
+                     {% if screen.bound_device_id %}
+                         <form method="post" action="{% url 'dashboard:screen_unbind_device' screen.pk %}"
+                              onsubmit="return confirm('سيتم فصل الشاشة من الجهاز الحالي. هل أنت متأكد؟');">
                           {% csrf_token %}
-                          <button type="submit" class="text-slate-700 hover:text-slate-900 text-sm font-semibold">
-                            فصل الجهاز
+                          <button type="submit" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors">
+                            فك ارتباط الجهاز
                           </button>
                         </form>
-                      {% endif %}
-                      <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}"
-                            onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
+                     {% else %}
+                        <span class="text-xs text-slate-400 font-medium px-2">غير مقترن بجهاز</span>
+                     {% endif %}
+
+                     <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}" onsubmit="return confirm('هل أنت متأكد من حذف الشاشة؟ سيتوقف الرابط عن العمل.');">
                         {% csrf_token %}
-                        <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-semibold">
-                          حذف
+                        <button type="submit" class="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-3 py-2 rounded-lg transition-colors flex items-center gap-1">
+                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                             حذف
                         </button>
                       </form>
-                    </div>
-                    <div class="text-xs text-slate-400">
-                      رمز الوصول مخفي عن المستخدمين لسهولة الاستخدام
-                    </div>
-                  </div>
                 </div>
-              {% endwith %}
-            {% endwith %}
-          {% else %}
-            <div class="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
-              <div class="font-semibold text-yellow-900">تنبيه</div>
-              <div class="text-sm text-yellow-800 mt-1">
-                هذه الشاشة لا تحتوي على رابط مختصر بعد. احفظ الشاشة أو أنشئ شاشة جديدة لإنتاج الكود تلقائيًا.
-              </div>
             </div>
-          {% endif %}
-        {% endfor %}
-      </div>
-
-      <!-- Desktop table -->
-      <div class="hidden md:block overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">اسم الشاشة</th>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الكود</th>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الحالة</th>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">الرابط </th>
-              <th class="px-6 py-4 text-right text-sm font-semibold text-slate-600">إجراءات</th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-slate-200">
-            {% for screen in screens %}
-              {% if screen.short_code %}
-                {% with sc=screen.short_code %}
-                  {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                      <td class="px-6 py-4">
-                        <div class="font-semibold text-slate-800">{{ screen.name }}</div>
-                        <div class="text-xs text-slate-500 mt-1">افتح على TV: <span class="font-mono">/s/{{ sc|upper }}</span></div>
-                      </td>
-
-                      <td class="px-6 py-4">
-                        <span class="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-sm font-mono text-slate-700">
-                          {{ sc|upper }}
-                        </span>
-                      </td>
-
-                      <td class="px-6 py-4">
-                        {% if screen.is_active %}
-                          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                            نشط
-                          </span>
-                        {% else %}
-                          <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
-                              غير نشط
-                            </span>
-                            {% if screen.auto_disabled_by_limit %}
-                              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
-                                موقوف بسبب الحد
-                              </span>
-                            {% endif %}
-                          </div>
-                        {% endif %}
-                      </td>
-
-                      <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                          <input id="link-{{ screen.id }}"
-                                 type="text"
-                                 readonly
-                                 value="{{ short_url }}"
-                                 data-full-link="{{ short_url }}"
-                                 class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-72 text-slate-700 select-all focus:outline-none focus:ring-2 focus:ring-blue-200">
-                          <button type="button"
-                                  data-copy-target="link-{{ screen.id }}"
-                                  class="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-semibold text-xs hover:bg-blue-100 transition">
-                            نسخ
-                          </button>
-                          <a href="/s/{{ sc|upper }}" target="_blank"
-                             class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-xs hover:bg-emerald-100 transition">
-                            فتح
-                          </a>
-                        </div>
-                      </td>
-
-                      <td class="px-6 py-4">
-                        <div class="flex items-center gap-4">
-                          {% if screen.bound_device_id %}
-                            <form method="post" action="{% url 'dashboard:screen_unbind_device' screen.pk %}"
-                                  onsubmit="return confirm('سيتم فصل الشاشة من الجهاز الحالي. هل أنت متأكد؟');" class="inline">
-                              {% csrf_token %}
-                              <button type="submit" class="text-slate-700 hover:text-slate-900 text-sm font-semibold">
-                                فصل الجهاز
-                              </button>
-                            </form>
-                          {% endif %}
-                          <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}"
-                                onsubmit="return confirm('هل أنت متأكد؟');" class="inline">
-                            {% csrf_token %}
-                            <button type="submit" class="text-rose-600 hover:text-rose-800 text-sm font-semibold">
-                              حذف
-                            </button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  {% endwith %}
-                {% endwith %}
-              {% else %}
-                <tr class="bg-yellow-50">
-                  <td class="px-6 py-4" colspan="6">
-                    <div class="text-sm text-yellow-900 font-semibold">تنبيه:</div>
-                    <div class="text-sm text-yellow-800 mt-1">
-                      توجد شاشة بدون رابط مختصر. احفظ الشاشة أو أنشئ شاشة جديدة ليتم توليد الكود تلقائيًا.
-                    </div>
-                  </td>
-                </tr>
-              {% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+        </div>
+       {% endfor %}
+    
+    <!-- Empty State / Add New Card -->
+    {% if can_create_screen %}
+        <a href="{% url 'dashboard:screen_create' %}" class="group relative bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-300 flex flex-col items-center justify-center min-h-[300px] cursor-pointer">
+            <div class="w-20 h-20 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <h3 class="mt-4 text-xl font-bold text-slate-400 group-hover:text-blue-600 transition-colors">إضافة شاشة جديدة</h3>
+            <p class="mt-2 text-sm text-slate-400 max-w-xs text-center">أضف شاشة جديدة للحصول على رابط ربط فريد.</p>
+        </a>
+    {% endif %}
 
     {% else %}
-      <div class="p-12 text-center">
-        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-          </svg>
+        <!-- Empty State Full Width -->
+        <div class="col-span-1 lg:col-span-3 py-10 flex flex-col items-center justify-center text-center">
+             <div class="w-64 h-64 bg-slate-50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                  <svg class="w-32 h-32 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+             </div>
+             <h2 class="text-2xl font-bold text-slate-800 mb-2">لا توجد شاشات مضافة</h2>
+             <p class="text-slate-500 max-w-md mx-auto mb-8">ابدأ بإضافة شاشتك الأولى لربط نظام المدرسة بالتلفاز وعرض الجداول والإعلانات.</p>
+             {% if can_create_screen %}
+                <a href="{% url 'dashboard:screen_create' %}" class="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-xl shadow-blue-500/30 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+                    إضافة شاشة الآن
+                </a>
+             {% endif %}
         </div>
-        <h3 class="text-lg font-bold text-slate-900 mb-1">لا توجد شاشات</h3>
-        <p class="text-slate-500 mb-6">أضف شاشة للحصول على رابط مختصر مناسب للتلفاز</p>
-        {% if can_create_screen %}
-        <a href="{% url 'dashboard:screen_create' %}"
-           class="inline-flex items-center px-5 py-3 rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 font-semibold">
-          إضافة شاشة
-        </a>
-        {% endif %}
-      </div>
     {% endif %}
   </div>
 
-  <!-- Toast -->
-  <div id="toast"
-       class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg px-4 py-3">
-    <div class="flex items-start gap-3">
-      <div class="mt-0.5 w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-        <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-      </div>
-      <div class="flex-1">
-        <div class="font-bold text-slate-800 text-sm" id="toastTitle">تم</div>
-        <div class="text-slate-600 text-sm mt-0.5" id="toastMsg">تم نسخ الرابط.</div>
-      </div>
-      <button type="button" class="text-slate-500 hover:text-slate-700" onclick="hideToast()">
-        ✕
-      </button>
+  <!-- Toast Wrapper -->
+  <div id="toast" class="fixed bottom-6 left-6 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
+    <div class="bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-2xl p-4 flex items-center gap-4 min-w-[300px]">
+        <div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        </div>
+        <div class="flex-1">
+            <h5 class="font-bold text-white text-sm">تم النسخ</h5>
+            <p class="text-slate-300 text-xs mt-0.5">تم نسخ الرابط للحافظة بنجاح</p>
+        </div>
     </div>
   </div>
+
 </div>
 
 <script>
-(function () {
-  "use strict";
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Toast Logic
+    window.showToast = function() {
+        const toast = document.getElementById('toast');
+        if(!toast) return;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+        
+        if(window.toastTimer) clearTimeout(window.toastTimer);
+        window.toastTimer = setTimeout(() => {
+            toast.classList.add('translate-y-2', 'opacity-0');
+            setTimeout(() => toast.classList.add('hidden'), 300);
+        }, 2000);
+    };
 
-  function $(id) { return document.getElementById(id); }
-
-  function showToast(msg, title) {
-    var box = $("toast");
-    if (!box) return;
-    $("toastMsg").textContent = msg || "تم نسخ الرابط.";
-    $("toastTitle").textContent = title || "تم";
-    box.classList.remove("hidden");
-    clearTimeout(window.__toastTimer);
-    window.__toastTimer = setTimeout(hideToast, 2500);
-  }
-
-  window.hideToast = function () {
-    var box = $("toast");
-    if (!box) return;
-    box.classList.add("hidden");
-  };
-
-  async function copyFromInput(inputId) {
-    var el = $(inputId);
-    if (!el) return;
-    var fullLink = el.getAttribute("data-full-link") || el.value || "";
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(fullLink);
-      } else {
-        el.focus();
-        el.select();
-        document.execCommand("copy");
-      }
-      showToast("تم نسخ الرابط بنجاح.", "نسخ");
-    } catch (e) {
-      showToast("تعذر النسخ. انسخ يدويًا من الحقل.", "تنبيه");
-    }
-  }
-
-  // Bind buttons
-  var buttons = document.querySelectorAll("[data-copy-target]");
-  for (var i = 0; i < buttons.length; i++) {
-    buttons[i].addEventListener("click", function (ev) {
-      var target = ev.currentTarget.getAttribute("data-copy-target");
-      if (target) copyFromInput(target);
+    // Copy Logic
+    const copyBtns = document.querySelectorAll('[data-copy-target]');
+    copyBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.dataset.copyTarget;
+            const input = document.getElementById(targetId);
+            if(input && input.value) {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    showToast();
+                }).catch(err => {
+                    // Fallback
+                    input.select();
+                    document.execCommand('copy');
+                    showToast();
+                });
+            }
+        });
     });
-  }
-})();
+
+});
 </script>
+
+<style>
+/* Custom animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+</style>
 {% endblock %}

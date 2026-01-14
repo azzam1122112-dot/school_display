@@ -1,91 +1,102 @@
 {% extends "dashboard/_base.html" %}
+{% load static %}
 
 {% block title %}اشتراكي{% endblock %}
 {% block page_title %}تفاصيل اشتراك المدرسة{% endblock %}
 {% block page_description %}
-هنا يمكنك متابعة خطة الاشتراك الحالية وتواريخ البداية والنهاية وحالة الاشتراك الفعلية.
+لوحة التحكم الخاصة باشتراكاتك، تابع الحالة الحالية، وتاريخ التجديد، وقم بإدارة المدفوعات بسهولة.
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<div class="max-w-6xl mx-auto space-y-8 animate-fade-in-up">
 
-  {# تنبيه الاشتراك القادم (يظهر دائمًا أعلى الصفحة) #}
+  {# --- تنبيهات هامة (Alerts Section) --- #}
+  
+  {# 1. تنبيه اشتراك قادم #}
   {% if upcoming_subscription %}
-    <div class="rounded-2xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 flex items-start gap-3">
-      <div class="mt-0.5 text-lg">⏳</div>
-      <div class="space-y-1">
-        <p class="font-semibold text-sm">اشتراك قادم.</p>
-        <p class="text-xs md:text-sm">
-          سيبدأ اشتراك مدرستكم في {{ upcoming_subscription.display_starts_at|default:upcoming_subscription.starts_at }}
-          {% if current_subscription %}
-            بعد نهاية الاشتراك الحالي
-            {% if current_subscription.display_ends_at %}
-              في {{ current_subscription.display_ends_at }}.
-            {% else %}
-              (الاشتراك الحالي مفتوح المدة).
+    <div class="group relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-1 shadow-sm hover:shadow-md transition-all duration-300">
+      <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-amber-200/40 rounded-full blur-3xl group-hover:bg-amber-300/40 transition-colors"></div>
+      <div class="relative flex flex-col sm:flex-row items-center sm:items-start gap-4 p-5 md:p-6">
+        <div class="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white text-amber-500 shadow-sm flex items-center justify-center text-2xl md:text-3xl ring-4 ring-amber-100">
+          ⏳
+        </div>
+        <div class="flex-1 text-center sm:text-right space-y-1">
+          <h4 class="font-bold text-amber-900 text-lg">اشتراك قادم في الانتظار</h4>
+          <p class="text-amber-800 text-sm md:text-base leading-relaxed">
+            سيبدأ تفعيل اشتراك <span class="font-bold border-b border-amber-400/50">{{ upcoming_subscription.plan.name }}</span>
+            بتاريخ <span dir="ltr" class="font-mono font-bold bg-amber-100/50 px-1 rounded">{{ upcoming_subscription.display_starts_at|default:upcoming_subscription.starts_at }}</span>.
+            {% if current_subscription %}
+              سيبدأ تلقائياً فور انتهاء الباقة الحالية.
             {% endif %}
-          {% else %}
-            .
-          {% endif %}
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   {% endif %}
 
-  {# شريط تنبيه أعلى الصفحة حسب حالة الاشتراك #}
+  {# 2. حالة الاشتراك الحالي #}
   {% if current_subscription %}
     {% if current_status_code == "expired" %}
-      <div class="rounded-2xl border-2 border-rose-300 bg-gradient-to-r from-rose-50 to-orange-50 text-rose-900 px-5 py-4 shadow-lg">
-        <div class="flex items-start gap-3">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-xl">
+      <!-- Expired Alert -->
+      <div class="rounded-3xl bg-gradient-to-br from-rose-600 to-red-600 text-white shadow-xl shadow-rose-200 overflow-hidden relative">
+        <div class="absolute opacity-10 top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')]"></div>
+        <div class="relative p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
+          <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-4xl shadow-inner backdrop-blur-sm animate-pulse">
             ⚠️
           </div>
           <div class="flex-1 space-y-2">
-            <p class="font-bold text-base">انتهى اشتراك مدرستكم</p>
-            <p class="text-sm text-rose-800">
-              بعض الخصائص متوقفة حالياً. يمكنك تجديد اشتراكك بسهولة من خلال نموذج التجديد بالأسفل.
+            <h3 class="text-2xl font-black tracking-tight">انتهت صلاحية الاشتراك!</h3>
+            <p class="text-rose-100 text-sm md:text-lg font-medium opacity-90">
+              توقفت بعض المميزات عن العمل. لضمان استمرار ظهور شاشة مدرستك، يرجى تجديد الاشتراك الآن.
             </p>
-            <div class="flex items-center gap-2 pt-1">
-              <span class="text-lg">👇</span>
-              <span class="text-xs font-semibold text-rose-700">انتقل للأسفل واختر "تجديد" لإعادة التفعيل</span>
-            </div>
           </div>
+          <button onclick="document.getElementById('renewal-section').scrollIntoView({behavior: 'smooth'})" class="flex-shrink-0 bg-white text-rose-600 hover:bg-rose-50 px-6 py-3 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-1 active:scale-95">
+            تجديد الاشتراك الآن ⚡
+          </button>
         </div>
       </div>
+
     {% elif current_status_code == "cancelled" %}
-      <div class="rounded-2xl border-2 border-rose-300 bg-gradient-to-r from-rose-50 to-red-50 text-rose-900 px-5 py-4 shadow-lg">
-        <div class="flex items-start gap-3">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-xl">
+      <!-- Cancelled Alert -->
+      <div class="rounded-3xl bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-xl overflow-hidden relative border border-slate-600">
+        <div class="relative p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
+          <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-4xl shadow-inner backdrop-blur-sm">
             🚫
           </div>
           <div class="flex-1 space-y-2">
-            <p class="font-bold text-base">اشتراك مدرستكم ملغي</p>
-            <p class="text-sm text-rose-800">
-              تم إلغاء الاشتراك من قبل الإدارة. للحصول على اشتراك جديد، اختر الباقة المناسبة من الأسفل.
+            <h3 class="text-xl md:text-2xl font-black">الاشتراك ملغي</h3>
+            <p class="text-slate-300 text-sm md:text-base">
+              تم إيقاف الاشتراك من قبل الإدارة. يرجى التواصل معنا أو تقديم طلب اشتراك جديد لإعادة التفعيل.
             </p>
-            <div class="flex items-center gap-2 pt-1">
-              <span class="text-lg">👇</span>
-              <span class="text-xs font-semibold text-rose-700">انتقل للأسفل واختر "اشتراك جديد"</span>
-            </div>
           </div>
+          <button onclick="document.getElementById('renewal-section').scrollIntoView({behavior: 'smooth'})" class="flex-shrink-0 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-6 py-3 rounded-xl font-bold transition">
+            طلب اشتراك جديد
+          </button>
         </div>
       </div>
+
     {% elif current_status_code == "active" %}
-      <div class="rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900 px-4 py-3 flex items-start gap-3">
-        <div class="mt-0.5 text-lg">✅</div>
-        <div class="space-y-1">
-          <p class="font-semibold text-sm">اشتراككم ساري.</p>
-          <p class="text-xs md:text-sm">
-            جميع خصائص النظام مفعّلة حالياً.
-            {% if current_subscription.display_ends_at %}
-              ينتهي الاشتراك في {{ current_subscription.display_ends_at }}.
-            {% endif %}
-          </p>
-          {% if current_subscription.display_days_left is not None and current_subscription.display_days_left <= 3 %}
-            <div class="mt-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 flex items-center gap-2 animate-pulse">
-              <span class="text-lg">⚠️</span>
-              <span class="font-semibold">تنبيه:</span>
-              <span>متبقي {{ current_subscription.display_days_left }} يوم فقط على نهاية الاشتراك. يرجى التجديد لضمان استمرار الخدمة.</span>
+      <!-- Active Alert -->
+      <div class="rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-100 relative overflow-hidden">
+        <!-- Decoration -->
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-teal-900/10 rounded-full blur-3xl"></div>
+        
+        <div class="relative px-6 py-5 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl backdrop-blur-md">
+              ✓
+            </div>
+            <div>
+              <p class="font-bold text-lg">اشتراكك فعّال</p>
+              <p class="text-emerald-50 text-xs md:text-sm opacity-90">جميع الخدمات تعمل بكفاءة.</p>
+            </div>
+          </div>
+          
+          {% if current_subscription.display_days_left is not None and current_subscription.display_days_left <= 7 %}
+            <div class="bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg border border-white/30 flex items-center gap-2 animate-bounce-slow">
+              <span class="text-lg">⏳</span>
+              <span class="font-bold text-sm">متبقي {{ current_subscription.display_days_left }} يوم</span>
             </div>
           {% endif %}
         </div>
@@ -93,458 +104,380 @@
     {% endif %}
   {% endif %}
 
+
+  {# --- بطاقة تفاصيل الاشتراك (Main Subscription Card) --- #}
   {% if subscription %}
-    <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-      <div class="px-5 md:px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-4">
-        <div class="space-y-1">
-          <p class="text-xs text-slate-400">{{ primary_label|default:"الاشتراك" }}</p>
-          <h3 class="text-lg md:text-2xl font-bold text-slate-900">
-            اشتراك مدرسة {{ school.name }}
-          </h3>
-        </div>
-        <div class="flex flex-col items-end gap-2">
-          <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs md:text-sm font-semibold {% if current_subscription %}{{ current_status_badge_class }}{% else %}bg-amber-50 text-amber-700{% endif %}">
-            <span class="w-2 h-2 rounded-full bg-current/60 border border-white/60"></span>
-            <span>الحالة: {% if current_subscription %}{{ current_status_label }}{% else %}قادم{% endif %}</span>
-          </div>
-          <p class="text-[11px] text-slate-400">
-            اليوم: {{ today }}
-          </p>
-        </div>
-      </div>
-
-      <div class="px-5 md:px-8 py-6 space-y-6">
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60">
-            <p class="text-xs text-slate-500 mb-1">الخطة</p>
-            <p class="text-base md:text-lg font-bold text-indigo-700">
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden relative">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+      
+      <div class="px-6 md:px-10 py-8">
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 border-b border-slate-100 pb-6">
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold tracking-wide uppercase">
+              الباقة الحالية
+            </div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900">
               {{ subscription.plan.name }}
-            </p>
+            </h2>
+            <p class="text-slate-500 text-sm">مدرسة {{ school.name }}</p>
           </div>
+          
+          <div class="flex flex-col items-center md:items-end gap-2 text-center md:text-left">
+            <div class="px-4 py-1.5 rounded-full text-sm font-bold shadow-sm border 
+              {% if current_status_code == 'active' %} bg-emerald-100 text-emerald-700 border-emerald-200
+              {% elif current_status_code == 'expired' %} bg-rose-100 text-rose-700 border-rose-200
+              {% else %} bg-slate-100 text-slate-700 border-slate-200 {% endif %}">
+              <span class="w-2 h-2 rounded-full bg-current inline-block ml-1"></span>
+              {{ current_status_label }}
+            </div>
+            <p class="text-xs text-slate-400 font-mono" dir="ltr">{{ today }}</p>
+          </div>
+        </div>
 
-          <div class="p-4 rounded-2xl border border-emerald-100 bg-emerald-50/70">
-            <p class="text-xs text-slate-500 mb-1">بداية الاشتراك</p>
-            <p class="text-base md:text-lg font-semibold text-emerald-700">
+        <!-- Grid Info -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Start Date -->
+          <div class="group p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">📅</div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">تاريخ البدء</p>
+            </div>
+            <p class="text-lg font-bold text-slate-800 font-mono">
               {{ subscription.display_starts_at|default:subscription.starts_at }}
             </p>
           </div>
 
-          <div class="p-4 rounded-2xl border border-amber-100 bg-amber-50/70">
-            <p class="text-xs text-slate-500 mb-1">نهاية الاشتراك</p>
-            <p class="text-base md:text-lg font-semibold text-amber-700">
+          <!-- End Date -->
+          <div class="group p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">🏁</div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">تاريخ الانتهاء</p>
+            </div>
+            <p class="text-lg font-bold text-slate-800 font-mono">
               {% if subscription.display_ends_at %}
                 {{ subscription.display_ends_at }}
               {% else %}
-                مفتوح المدة
+                <span class="text-emerald-600">♾️ مفتوح المدة</span>
               {% endif %}
             </p>
           </div>
 
-          <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50/70">
-            <p class="text-xs text-slate-500 mb-1">حالة النظام</p>
-            <p class="text-sm md:text-base text-slate-800">
-              {% if current_subscription and current_status_code == "active" %}
-                الاشتراك ساري، وجميع خصائص النظام متاحة للمدرسة.
+          <!-- System Status -->
+          <div class="group p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">🖥️</div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">حالة النظام</p>
+            </div>
+            <p class="text-sm font-semibold text-slate-700 leading-snug">
+               {% if current_subscription and current_status_code == "active" %}
+                جميع الشاشات تعمل
               {% elif current_subscription and current_status_code == "expired" %}
-                الاشتراك منتهي، وسيتم إيقاف بعض الخصائص حتى يتم التجديد.
-              {% elif current_subscription and current_status_code == "cancelled" %}
-                الاشتراك ملغي من قبل الإدارة، يلزم إصدار اشتراك جديد لإعادة التفعيل.
-              {% elif upcoming_subscription and not current_subscription %}
-                الاشتراك لم يبدأ بعد، يمكنكم تجهيز البيانات قبل بدء التفعيل.
+                <span class="text-rose-600">الشاشات متوقفة</span>
               {% else %}
-                حالة الاشتراك غير معروفة، الرجاء التواصل مع الدعم الفني.
+                يرجى المراجعة
               {% endif %}
             </p>
           </div>
         </div>
-
-        {% if upcoming_subscription and current_subscription %}
-          <div class="p-4 rounded-2xl border border-amber-100 bg-amber-50/60">
-            <p class="text-xs text-slate-500 mb-2">الاشتراك القادم</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <p class="text-xs text-slate-500">الخطة</p>
-                <p class="text-sm md:text-base font-semibold text-slate-900">{{ upcoming_subscription.plan.name }}</p>
-              </div>
-              <div>
-                <p class="text-xs text-slate-500">يبدأ في</p>
-                <p class="text-sm md:text-base font-semibold text-amber-800">{{ upcoming_subscription.display_starts_at|default:upcoming_subscription.starts_at }}</p>
-              </div>
-            </div>
-          </div>
-        {% endif %}
 
         {% if subscription.notes %}
-          <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50">
-            <p class="text-xs text-slate-500 mb-1">ملاحظات على الاشتراك</p>
-            <p class="text-sm text-slate-800 whitespace-pre-line">
-              {{ subscription.notes }}
-            </p>
+          <div class="mt-6 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-sm text-indigo-900 flex gap-3">
+            <span class="text-xl">📝</span>
+            <p class="leading-relaxed">{{ subscription.notes }}</p>
           </div>
         {% endif %}
-
-        {# بطاقة التواصل لتجديد أو ترقية الاشتراك #}
-
       </div>
     </div>
-
   {% else %}
-
-    <div class="relative bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-3xl shadow-xl border-2 border-indigo-100 overflow-hidden">
-      <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
-      <div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-200/20 rounded-full blur-3xl -ml-32 -mb-32"></div>
+    {# --- حالة عدم وجود اشتراك (Empty State) --- #}
+    <div class="relative bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 rounded-[2.5rem] shadow-2xl overflow-hidden text-white text-center py-16 px-6">
+      <!-- Background Shapes -->
+      <div class="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-[100px] -mr-20 -mt-20"></div>
+      <div class="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/20 rounded-full blur-[80px] -ml-20 -mb-20"></div>
       
-      <div class="relative px-8 py-12 text-center space-y-5">
-        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-4xl shadow-lg mb-2">
-          🎯
+      <div class="relative z-10 space-y-6 max-w-2xl mx-auto">
+        <div class="inline-flex p-4 rounded-full bg-white/10 backdrop-blur-md mb-4 shadow-inner ring-1 ring-white/20">
+          <span class="text-5xl">🚀</span>
         </div>
-        
-        <div class="space-y-2">
-          <h3 class="text-2xl md:text-3xl font-bold text-slate-900">
-            ابدأ رحلتك معنا!
-          </h3>
-          <p class="text-base md:text-lg text-slate-700 max-w-2xl mx-auto">
-            مدرستكم لا تمتلك اشتراكاً نشطاً حالياً
-          </p>
-        </div>
-
-        <div class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-indigo-200 shadow-sm">
-          <span class="text-2xl">👇</span>
-          <p class="text-sm md:text-base font-semibold text-slate-800">
-            اختر الباقة المناسبة من الأسفل وابدأ الآن
-          </p>
-        </div>
-
-        <div class="pt-4 flex items-center justify-center gap-4">
-          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm">
-            <span class="text-xl">✨</span>
-            <span class="text-xs md:text-sm font-medium text-slate-700">سهل وسريع</span>
-          </div>
-          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm">
-            <span class="text-xl">🚀</span>
-            <span class="text-xs md:text-sm font-medium text-slate-700">تفعيل فوري</span>
-          </div>
+        <h2 class="text-3xl md:text-4xl font-black tracking-tight">ابدأ رحلتك الرقمية الآن</h2>
+        <p class="text-indigo-100 text-lg md:text-xl leading-relaxed opacity-90">
+          حوّل شاشات مدرستك إلى لوحات تفاعلية مبهرة. اشترك الآن في الباقة التي تناسبك واستمتع بتجربة لا مثيل لها.
+        </p>
+        <div class="pt-6">
+          <button onclick="document.getElementById('renewal-section').scrollIntoView({behavior: 'smooth'})" class="bg-white text-indigo-900 hover:bg-indigo-50 px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+            عرض الباقات المتاحة
+            <span class="inline-block transition-transform group-hover:translate-x-1 mr-2">←</span>
+          </button>
         </div>
       </div>
     </div>
-
   {% endif %}
 
 
-  <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-    <div class="px-5 md:px-8 py-5 border-b border-slate-100">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h3 class="text-lg md:text-xl font-bold text-slate-900">طلبات التجديد والاشتراك</h3>
-          <p class="text-xs md:text-sm text-slate-500 mt-1">
-            ارفع إيصال التحويل، وسيتم مراجعة الطلب من الإدارة. يبدأ التفعيل من تاريخ رفع الطلب.
-          </p>
-        </div>
-
-        <div class="inline-flex items-center rounded-2xl bg-slate-100 p-1 w-full md:w-auto">
-          <button
-            type="button"
-            data-tab="renewal"
-            class="request-tab-btn flex-1 md:flex-none px-4 py-2 rounded-xl text-sm font-bold transition {% if active_request_tab == 'renewal' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-600 hover:text-slate-900{% endif %}"
-          >
-            تجديد
-          </button>
-          <button
-            type="button"
-            data-tab="new"
-            class="request-tab-btn flex-1 md:flex-none px-4 py-2 rounded-xl text-sm font-bold transition {% if active_request_tab == 'new' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-600 hover:text-slate-900{% endif %}"
-          >
-            اشتراك جديد
-          </button>
-        </div>
+  {# --- قسم التجديد والدفع (Renewal/Banking Section) --- #}
+  <div id="renewal-section" class="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8">
+    
+    <!-- الجانب الأيمن: البطاقة البنكية -->
+    <div class="lg:col-span-5 space-y-6">
+      <div class="space-y-2 mb-6">
+        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-emerald-500">🏦</span>
+          بيانات التحويل البنكي
+        </h3>
+        <p class="text-sm text-slate-500">قم بتحويل مبلغ الاشتراك إلى الحساب التالي.</p>
       </div>
-    </div>
 
-    <!-- بطاقة الحساب البنكي -->
-    <div class="px-5 md:px-8 py-6 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-slate-100">
-      <div class="max-w-3xl mx-auto">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-2xl shadow-lg">
-            🏦
-          </div>
-          <div>
-            <h4 class="text-base md:text-lg font-bold text-slate-900">معلومات التحويل البنكي</h4>
-            <p class="text-xs text-slate-600">قم بتحويل المبلغ إلى الحساب التالي ثم ارفع الإيصال</p>
-          </div>
-        </div>
+      <!-- Credit Card Style -->
+      <div class="relative w-full aspect-[1.586/1] rounded-3xl bg-gradient-to-br from-slate-800 to-black p-6 md:p-8 text-white shadow-2xl shadow-slate-400/50 overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
+        <!-- Shine Effect -->
+        <div class="absolute top-0 right-0 w-[150%] h-full bg-gradient-to-l from-transparent via-white/5 to-transparent -skew-x-12 translate-x-full animate-shimmer"></div>
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px]"></div>
 
-        <div class="bg-white rounded-2xl border-2 border-emerald-100 shadow-sm overflow-hidden">
-          <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3">
-            <p class="text-white font-bold text-sm">منصور محمد بن حامد الغامدي</p>
-            <p class="text-emerald-100 text-xs">برمجة و تطوير</p>
-          </div>
-
-          <div class="p-4 space-y-3">
-            <!-- اسم البنك -->
-            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
-              <div class="flex-1">
-                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">اسم البنك</p>
-                <p class="text-sm md:text-base font-bold text-slate-900">مصرف الراجحي</p>
-              </div>
+        <div class="relative z-10 flex flex-col justify-between h-full">
+          <div class="flex justify-between items-start">
+            <div class="space-y-1">
+              <p class="text-xs text-emerald-400 font-bold tracking-widest uppercase">اسم البنك</p>
+              <h4 class="text-xl font-bold tracking-wide">Al Rajhi Bank</h4>
+              <p class="text-[10px] text-slate-400">مصرف الراجحي</p>
             </div>
-
-            <!-- رقم الحساب -->
-            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
-              <div class="flex-1">
-                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">رقم الحساب</p>
-                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all" dir="ltr">660000010006086220957</p>
-              </div>
-              <button 
-                onclick="copyToClipboard('660000010006086220957', this)"
-                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
-              >
-                <span class="copy-text">نسخ</span>
-              </button>
-            </div>
-
-            <!-- الآيبان -->
-            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
-              <div class="flex-1">
-                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">رقم الآيبان (IBAN)</p>
-                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all break-all" dir="ltr">SA8580000660608016220957</p>
-              </div>
-              <button 
-                onclick="copyToClipboard('SA8580000660608016220957', this)"
-                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
-              >
-                <span class="copy-text">نسخ</span>
-              </button>
-            </div>
-
-            <!-- كود سويفت -->
-            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
-              <div class="flex-1">
-                <p class="text-[10px] md:text-xs text-slate-500 font-semibold mb-1">كود سويفت (SWIFT)</p>
-                <p class="text-sm md:text-base font-mono font-bold text-slate-900 select-all" dir="ltr">RJHISARI</p>
-              </div>
-              <button 
-                onclick="copyToClipboard('RJHISARI', this)"
-                class="flex-shrink-0 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm hover:shadow active:scale-95"
-              >
-                <span class="copy-text">نسخ</span>
-              </button>
+            <!-- Chip Icon -->
+            <div class="w-12 h-9 rounded bg-gradient-to-br from-amber-200 to-amber-400 border border-amber-500/50 flex relative overflow-hidden opacity-90">
+               <div class="absolute top-1/2 left-0 w-full h-[1px] bg-amber-600/50"></div>
+               <div class="absolute left-1/2 top-0 w-[1px] h-full bg-amber-600/50"></div>
             </div>
           </div>
 
-          <div class="px-4 pb-4">
-            <div class="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-              <span class="text-base flex-shrink-0 mt-0.5">💡</span>
-              <p class="text-xs text-amber-900">
-                <strong>ملاحظة:</strong> بعد إتمام التحويل، قم برفع صورة واضحة للإيصال في النموذج أدناه لتسريع عملية المراجعة والتفعيل.
-              </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-end mb-1">
+                <p class="text-[10px] text-slate-400 uppercase tracking-wider">رقم الآيبان (IBAN)</p>
+                <button onclick="copyToClipboard('SA8580000660608016220957', this)" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-emerald-300 transition flex items-center gap-1 group">
+                   <span class="copy-text">نسخ</span>
+                   <span class="text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity">📋</span>
+                </button>
+              </div>
+              <p class="font-mono text-sm md:text-lg tracking-wider text-slate-100 select-all" dir="ltr">SA85 8000 0660 6080 1622 0957</p>
             </div>
+          </div>
+          
+          <div class="flex justify-between items-end">
+             <div>
+                <p class="text-[10px] text-slate-400 uppercase">اسم المستفيد</p>
+                <p class="font-medium text-sm md:text-base tracking-wide">MANSOUR ALGHAMDI</p>
+             </div>
+             <div>
+                <p class="text-[10px] text-slate-400 uppercase text-right">رقم الحساب</p>
+                <p class="font-mono font-bold text-sm select-all">660000010006086220957</p>
+             </div>
           </div>
         </div>
       </div>
+
+       <div class="rounded-xl bg-amber-50 border border-amber-100 p-4 flex items-center gap-3">
+         <div class="text-lg">💡</div>
+         <p class="text-xs text-amber-900 leading-relaxed">يرجى التأكد من الاحتفاظ بصورة إيصال التحويل لتقوم برفعها في النموذج التالي لإتمام عملية التفعيل.</p>
+       </div>
     </div>
 
-    <div class="px-5 md:px-8 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- تجديد الاشتراك -->
-      <div id="tab-renewal" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 {% if active_request_tab != 'renewal' %}hidden{% endif %}">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h4 class="font-bold text-slate-900">تجديد الاشتراك الحالي</h4>
-            <p class="text-xs text-slate-500 mt-1">
-              {% if subscription %}
-                الخطة الحالية: <span class="font-semibold text-slate-700">{{ subscription.plan.name }}</span>
-                {% if subscription.plan.price %}
-                  — السعر: <span class="font-semibold text-slate-700">{{ subscription.plan.price }} ر.س</span>
-                {% endif %}
-              {% else %}
-                لا يوجد اشتراك حالي.
-              {% endif %}
-            </p>
-          </div>
-        </div>
 
-        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="text-xs font-bold text-slate-700 mb-3">تفاصيل الخطة</p>
-          {% if renewal_plan_details %}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                <p class="text-[11px] text-slate-500">سعر الباقة (ر.س)</p>
-                <p class="font-bold text-slate-900">{{ renewal_plan_details.price|default:"—" }}</p>
-              </div>
-              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                <p class="text-[11px] text-slate-500">مدة الاشتراك (بالأيام)</p>
-                <p class="font-bold text-slate-900">{% if renewal_plan_details.duration_days %}{{ renewal_plan_details.duration_days }}{% else %}—{% endif %}</p>
-              </div>
-              <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                <p class="text-[11px] text-slate-500">الحد الأقصى لشاشات العرض</p>
-                <p class="font-bold text-slate-900">{% if renewal_plan_details.max_screens %}{{ renewal_plan_details.max_screens }}{% else %}غير محدود{% endif %}</p>
-              </div>
+    <!-- الجانب الأيسر: نموذج الطلب -->
+    <div class="lg:col-span-7 bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8">
+      
+      <!-- Tabs Layout -->
+      <div class="flex p-1.5 bg-slate-100 rounded-2xl mb-8">
+        <button
+          type="button"
+          data-tab="renewal"
+          class="request-tab-btn flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 text-center flex items-center justify-center gap-2"
+        >
+          <span>🔄</span> تجديد اشتراك
+        </button>
+        <button
+          type="button"
+          data-tab="new"
+          class="request-tab-btn flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-300 text-center flex items-center justify-center gap-2"
+        >
+          <span>✨</span> اشتراك جديد
+        </button>
+      </div>
+
+      <!-- Tab Content: Renewal -->
+        <div id="tab-renewal" class="{% if active_request_tab != 'renewal' %}hidden{% endif %} animate-fade-in">
+          {% if subscription %}
+            <div class="mb-6 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-center justify-between">
+               <div>
+                 <p class="text-xs text-indigo-400 font-bold uppercase mb-1">الخطة الحالية</p>
+                 <p class="text-lg font-bold text-indigo-900">{{ subscription.plan.name }}</p>
+               </div>
+               <div class="text-left">
+                  {% if renewal_plan_details %}
+                     <p class="text-2xl font-black text-indigo-700">{{ renewal_plan_details.price|default:"—" }} <span class="text-xs font-medium text-indigo-400">ر.س</span></p>
+                     <p class="text-[10px] text-indigo-400">لمدة {{ renewal_plan_details.duration_days }} يوم</p>
+                  {% endif %}
+               </div>
             </div>
+
+            <form method="post" enctype="multipart/form-data" class="space-y-5">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="renewal">
+              
+              <div class="space-y-1">
+                <label class="block text-sm font-bold text-slate-700">صورة الإيصال</label>
+                <div class="relative">
+                   {{ renew_form.receipt_image }}
+                   <!-- Custom file input styling can be added via JS or CSS, keeping default for compatibility but styled wrappers -->
+                </div>
+                <p class="text-[11px] text-slate-400">يرجى رفع صورة واضحة (JPEG, PNG, PDF)</p>
+                 {% if renew_form.receipt_image.errors %}
+                   <p class="text-xs text-red-500 mt-1">{{ renew_form.receipt_image.errors }}</p>
+                 {% endif %}
+              </div>
+
+               <div class="space-y-1">
+                <label class="block text-sm font-bold text-slate-700">ملاحظات (اختياري)</label>
+                {{ renew_form.transfer_note }}
+                 {% if renew_form.transfer_note.errors %}
+                   <p class="text-xs text-red-500 mt-1">{{ renew_form.transfer_note.errors }}</p>
+                 {% endif %}
+              </div>
+
+              <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span>إرسال طلب التجديد</span>
+                <span>🚀</span>
+              </button>
+            </form>
           {% else %}
-            <p class="text-sm text-slate-500">لا توجد خطة حالية للتجديد. استخدم تبويب "اشتراك جديد".</p>
+             <div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+               <p class="text-slate-500 mb-2">لا يوجد اشتراك حالي لتجديده.</p>
+               <button onclick="document.querySelector('[data-tab=new]').click()" class="text-indigo-600 font-bold hover:underline">انتقل لطلب اشتراك جديد</button>
+             </div>
           {% endif %}
         </div>
 
-        {% if subscription %}
-          <form method="post" enctype="multipart/form-data" class="mt-4 space-y-3">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="renewal">
-
-            {% if renew_form.non_field_errors %}
-              <div class="text-sm text-rose-700">{{ renew_form.non_field_errors }}</div>
-            {% endif %}
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">{{ renew_form.receipt_image.label }}</label>
-              {{ renew_form.receipt_image }}
-              {% if renew_form.receipt_image.errors %}
-                <div class="text-xs text-rose-700 mt-1">{{ renew_form.receipt_image.errors }}</div>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">{{ renew_form.transfer_note.label }}</label>
-              {{ renew_form.transfer_note }}
-              {% if renew_form.transfer_note.errors %}
-                <div class="text-xs text-rose-700 mt-1">{{ renew_form.transfer_note.errors }}</div>
-              {% endif %}
-            </div>
-
-            <button type="submit" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2">
-              إرسال طلب التجديد
-            </button>
-          </form>
-        {% else %}
-          <div class="mt-4 text-sm text-slate-600">
-            لا يمكن إرسال طلب تجديد بدون اشتراك حالي. استخدم "اشتراك جديد".
-          </div>
-        {% endif %}
-      </div>
-
-      <!-- اشتراك جديد -->
-      <div id="tab-new" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 {% if active_request_tab != 'new' %}hidden{% endif %}">
-        <h4 class="font-bold text-slate-900">طلب اشتراك جديد</h4>
-        <p class="text-xs text-slate-500 mt-1">اختر الخطة وارفق إيصال التحويل.</p>
-
+      <!-- Tab Content: New Subscription -->
+      <div id="tab-new" class="{% if active_request_tab != 'new' %}hidden{% endif %} animate-fade-in">
         {{ plans_map|json_script:"plans-map" }}
 
-        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="text-xs font-bold text-slate-700 mb-3">تفاصيل الخطة المختارة</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-              <p class="text-[11px] text-slate-500">سعر الباقة (ر.س)</p>
-              <p id="plan-price" class="font-bold text-slate-900">—</p>
+        <!-- Plan Details Card -->
+        <div class="mb-6 p-5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl text-white shadow-lg relative overflow-hidden">
+          <div class="relative z-10 flex justify-between items-center text-center">
+            <div>
+               <p class="text-indigo-200 text-xs mb-1">السعر</p>
+               <p class="text-2xl font-bold"><span id="plan-price">—</span> <span class="text-xs font-normal opacity-70">ر.س</span></p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-              <p class="text-[11px] text-slate-500">مدة الاشتراك (بالأيام)</p>
-              <p id="plan-duration" class="font-bold text-slate-900">—</p>
+            <div class="w-px h-10 bg-white/20"></div>
+            <div>
+               <p class="text-indigo-200 text-xs mb-1">المدة</p>
+               <p class="text-xl font-bold"><span id="plan-duration">—</span> <span class="text-xs font-normal opacity-70">يوم</span></p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-              <p class="text-[11px] text-slate-500">الحد الأقصى لشاشات العرض</p>
-              <p id="plan-max-screens" class="font-bold text-slate-900">—</p>
+            <div class="w-px h-10 bg-white/20"></div>
+            <div>
+               <p class="text-indigo-200 text-xs mb-1">الشاشات</p>
+               <p class="text-xl font-bold" id="plan-max-screens">—</p>
             </div>
           </div>
         </div>
 
-        <form method="post" enctype="multipart/form-data" class="mt-4 space-y-3">
+        <form method="post" enctype="multipart/form-data" class="space-y-5">
           {% csrf_token %}
           <input type="hidden" name="action" value="new">
-
-          {% if new_form.non_field_errors %}
-            <div class="text-sm text-rose-700">{{ new_form.non_field_errors }}</div>
-          {% endif %}
-
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">{{ new_form.plan.label }}</label>
+          
+          <div class="space-y-1">
+            <label class="block text-sm font-bold text-slate-700">اختر الباقة</label>
             {{ new_form.plan }}
-            {% if new_form.plan.errors %}
-              <div class="text-xs text-rose-700 mt-1">{{ new_form.plan.errors }}</div>
-            {% endif %}
+             {% if new_form.plan.errors %}
+               <p class="text-xs text-red-500 mt-1">{{ new_form.plan.errors }}</p>
+             {% endif %}
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">{{ new_form.receipt_image.label }}</label>
+          <div class="space-y-1">
+            <label class="block text-sm font-bold text-slate-700">صورة الإيصال</label>
             {{ new_form.receipt_image }}
-            {% if new_form.receipt_image.errors %}
-              <div class="text-xs text-rose-700 mt-1">{{ new_form.receipt_image.errors }}</div>
-            {% endif %}
+             {% if new_form.receipt_image.errors %}
+               <p class="text-xs text-red-500 mt-1">{{ new_form.receipt_image.errors }}</p>
+             {% endif %}
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">{{ new_form.transfer_note.label }}</label>
+          <div class="space-y-1">
+            <label class="block text-sm font-bold text-slate-700">ملاحظات (اختياري)</label>
             {{ new_form.transfer_note }}
-            {% if new_form.transfer_note.errors %}
-              <div class="text-xs text-rose-700 mt-1">{{ new_form.transfer_note.errors }}</div>
-            {% endif %}
+             {% if new_form.transfer_note.errors %}
+               <p class="text-xs text-red-500 mt-1">{{ new_form.transfer_note.errors }}</p>
+             {% endif %}
           </div>
 
-          <button type="submit" class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2">
-            إرسال طلب اشتراك جديد
+          <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+            <span>إرسال طلب اشتراك</span>
+            <span>✨</span>
           </button>
         </form>
       </div>
+
     </div>
+  </div>
 
-    <!-- جدول الطلبات وحالتها -->
-    <div class="px-5 md:px-8 pb-6">
-      <div class="flex items-center justify-between mb-3">
-        <h4 class="font-bold text-slate-900">سجل الطلبات</h4>
-        <span class="text-xs text-slate-500">آخر 10 طلبات</span>
-      </div>
 
-      <div class="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-50 text-slate-600">
-            <tr>
-              <th class="px-4 py-3 text-right font-semibold">التاريخ</th>
-              <th class="px-4 py-3 text-right font-semibold">النوع</th>
-              <th class="px-4 py-3 text-right font-semibold">الخطة</th>
-              <th class="px-4 py-3 text-right font-semibold">المبلغ</th>
-              <th class="px-4 py-3 text-right font-semibold">الحالة</th>
-              <th class="px-4 py-3 text-right font-semibold">الإيصال</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
+  {# --- سجل الطلبات (History Table) --- #}
+  <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+     <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h4 class="font-bold text-slate-800">سجل العمليات السابقة</h4>
+     </div>
+     <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+           <thead class="bg-slate-50 text-slate-500 font-medium">
+              <tr>
+                 <th class="px-6 py-4 text-right">التاريخ</th>
+                 <th class="px-6 py-4 text-right">النوع</th>
+                 <th class="px-6 py-4 text-right">الخطة</th>
+                 <th class="px-6 py-4 text-right">المبلغ</th>
+                 <th class="px-6 py-4 text-right">الحالة</th>
+                 <th class="px-6 py-4 text-right">الإيصال</th>
+              </tr>
+           </thead>
+           <tbody class="divide-y divide-slate-100">
             {% for r in subscription_requests %}
-              <tr class="hover:bg-slate-50/60">
-                <td class="px-4 py-3 text-slate-700">{{ r.created_at|date:"Y-m-d" }}</td>
-                <td class="px-4 py-3 text-slate-700">{{ r.get_request_type_display }}</td>
-                <td class="px-4 py-3 text-slate-700">{{ r.plan.name }}</td>
-                <td class="px-4 py-3 text-slate-700">{{ r.amount }} ر.س</td>
-                <td class="px-4 py-3">
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+              <tr class="hover:bg-slate-50 transition-colors">
+                 <td class="px-6 py-4 font-mono text-slate-600">{{ r.created_at|date:"Y-m-d" }}</td>
+                 <td class="px-6 py-4 font-bold text-slate-800">{{ r.get_request_type_display }}</td>
+                 <td class="px-6 py-4 text-slate-600">{{ r.plan.name }}</td>
+                 <td class="px-6 py-4 font-mono text-slate-700">{{ r.amount }} ر.س</td>
+                 <td class="px-6 py-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
                     {% if r.status == 'approved' %}bg-emerald-100 text-emerald-700
                     {% elif r.status == 'rejected' %}bg-rose-100 text-rose-700
                     {% elif r.status == 'under_review' %}bg-amber-100 text-amber-700
                     {% else %}bg-slate-100 text-slate-700{% endif %}">
-                    {{ r.get_status_display }}
-                  </span>
-                </td>
-                <td class="px-4 py-3">
-                  {% if r.receipt_image %}
-                    <a href="{{ r.receipt_image.url }}" target="_blank" class="text-sky-700 hover:text-sky-900 font-semibold text-xs">
-                      عرض الإيصال
-                    </a>
-                  {% else %}
-                    <span class="text-xs text-slate-400">—</span>
-                  {% endif %}
-                </td>
+                       {{ r.get_status_display }}
+                    </span>
+                 </td>
+                 <td class="px-6 py-4">
+                    {% if r.receipt_image %}
+                       <a href="{{ r.receipt_image.url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition">
+                          <span>👁️</span> عرض
+                       </a>
+                    {% else %}
+                       <span class="text-slate-300">—</span>
+                    {% endif %}
+                 </td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="6" class="px-4 py-6 text-center text-slate-400">لا توجد طلبات حتى الآن.</td>
+                 <td colspan="6" class="px-6 py-10 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <span class="text-3xl grayscale opacity-50">📭</span>
+                    <span>لا يوجد سجل طلبات سابق</span>
+                 </td>
               </tr>
             {% endfor %}
-          </tbody>
+           </tbody>
         </table>
-      </div>
-    </div>
+     </div>
   </div>
 
 </div>
 
 <script>
   (function () {
+    // --- Tabs Logic ---
     function setActiveTab(tab) {
       var renewal = document.getElementById('tab-renewal');
       var fresh = document.getElementById('tab-new');
@@ -562,31 +495,34 @@
       btns.forEach(function (b) {
         var isActive = b.getAttribute('data-tab') === tab;
         if (isActive) {
-          b.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
-          b.classList.remove('text-slate-600');
+          b.classList.add('bg-white', 'text-indigo-600', 'shadow-md', 'ring-1', 'ring-indigo-100');
+          b.classList.remove('text-slate-500', 'hover:bg-slate-200');
         } else {
-          b.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
-          b.classList.add('text-slate-600');
+          b.classList.remove('bg-white', 'text-indigo-600', 'shadow-md', 'ring-1', 'ring-indigo-100');
+          b.classList.add('text-slate-500', 'hover:bg-slate-200');
         }
       });
     }
 
-    // tab buttons
+    // Attach click handlers
     document.querySelectorAll('.request-tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         setActiveTab(btn.getAttribute('data-tab') || 'renewal');
       });
     });
 
-    // plan details (new request)
+    // --- Dynamic Plan Details (New Subscription) ---
     function updatePlanDetails() {
       var script = document.getElementById('plans-map');
       if (!script) return;
       var plans = {};
       try { plans = JSON.parse(script.textContent || '{}'); } catch (e) { plans = {}; }
 
-      var select = document.querySelector('select[name="new-plan"]');
+      var select = document.querySelector('select[name="new-plan"]'); 
+      if (!select) select = document.querySelector('#tab-new select');
+
       if (!select) return;
+
       var planId = select.value;
       var d = plans[String(planId)] || null;
 
@@ -602,22 +538,22 @@
         return;
       }
 
-      priceEl.textContent = (d.price !== undefined && d.price !== null && d.price !== '') ? d.price : '—';
+      priceEl.textContent = (d.price !== undefined && d.price !== null && d.price !== '') ? d.price : 'مجاني';
       durEl.textContent = (d.duration_days !== undefined && d.duration_days !== null) ? String(d.duration_days) : '—';
       maxEl.textContent = (d.max_screens !== undefined && d.max_screens !== null) ? String(d.max_screens) : 'غير محدود';
     }
 
-    var planSelect = document.querySelector('select[name="new-plan"]');
+    var planSelect = document.querySelector('select[name="new-plan"]') || document.querySelector('#tab-new select');
     if (planSelect) {
       planSelect.addEventListener('change', updatePlanDetails);
       updatePlanDetails();
     }
 
-    // initial tab
+    // Initialize Tab
     setActiveTab('{% if active_request_tab == "new" %}new{% else %}renewal{% endif %}');
   })();
 
-  // Copy to clipboard function
+  // --- Copy Clipboard Tool ---
   function copyToClipboard(text, button) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function() {
@@ -648,16 +584,36 @@
 
   function showCopyFeedback(button, success) {
     var textSpan = button.querySelector('.copy-text');
-    if (!textSpan) return;
+    var originalText = textSpan ? textSpan.textContent : 'نسخ';
     
-    var originalText = textSpan.textContent;
-    textSpan.textContent = success ? '✓ تم النسخ' : '✗ فشل';
-    button.classList.add('bg-emerald-700');
+    if(textSpan) textSpan.textContent = success ? 'تم!' : 'فشل';
+    button.classList.add(success ? 'bg-emerald-500' : 'bg-red-500', 'text-white');
+    button.classList.remove('bg-white/10', 'text-emerald-300');
     
     setTimeout(function() {
-      textSpan.textContent = originalText;
-      button.classList.remove('bg-emerald-700');
+      if(textSpan) textSpan.textContent = originalText;
+      button.classList.remove(success ? 'bg-emerald-500' : 'bg-red-500', 'text-white');
+      button.classList.add('bg-white/10', 'text-emerald-300');
     }, 2000);
   }
 </script>
+
+<style>
+  @keyframes shimmer {
+    100% { transform: translateX(-100%) skewX(-12deg); }
+  }
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+  }
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
+</style>
 {% endblock %}

@@ -4,656 +4,456 @@
 {% block title %}إعدادات المدرسة{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <!-- رأس الصفحة -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-800 mb-2">إعدادات المدرسة</h1>
-        <p class="text-slate-600">إدارة الإعدادات العامة للمدرسة وتخصيص العرض</p>
-    </div>
-
-    <!-- بطاقة الأمان: تغيير كلمة المرور -->
-    <div class="mt-8 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-white">الأمان</h2>
-                        <p class="text-indigo-100 text-sm">تغيير كلمة المرور لحسابك</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-6 flex items-center justify-between gap-4">
-            <div>
-                <div class="text-slate-800 font-semibold">تغيير كلمة المرور</div>
-                <div class="text-slate-600 text-sm">لرفع مستوى الأمان، حدّث كلمة المرور بشكل دوري.</div>
-            </div>
-            <a
-                href="{% url 'dashboard:change_password' %}?next={% url 'dashboard:settings' %}"
-                class="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700
-                       text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40
-                       transition-all duration-200 transform hover:-translate-y-0.5 inline-flex items-center space-x-2 space-x-reverse"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3zm0 0c-3.866 0-7 2.239-7 5v1h14v-1c0-2.761-3.134-5-7-5z"></path>
-                </svg>
-                <span>تغيير كلمة المرور</span>
-            </a>
+<div class="max-w-5xl mx-auto pb-12 animate-fade-in-up">
+    <!-- Header -->
+    <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 mb-2">
+                إعدادات المدرسة
+            </h1>
+            <p class="text-slate-500 font-medium">تخصيص العرض والتحكم في الخيارات العامة</p>
         </div>
     </div>
 
-    <!-- بطاقة الإعدادات -->
-    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-        <!-- شريط العنوان -->
-        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543 .94-3.31 -.826-2.37 -2.37a1.724 1.724 0 00-1.065 -2.572c-1.756 -.426-1.756 -2.924 0 -3.35a1.724 1.724 0 001.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37 .996 .608 2.296 .07 2.572 -1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
+    <!-- Security Card (Enhanced) -->
+    <div class="group relative bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-white overflow-hidden mb-8 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1">
+        <div class="absolute top-0 right-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        <div class="p-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-5 w-full md:w-auto">
+                    <div class="w-14 h-14 shrink-0 rounded-2xl bg-indigo-50 flex items-center justify-center shadow-inner shadow-indigo-100/50 text-indigo-600">
+                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">الإعدادات العامة</h2>
-                        <p class="text-emerald-100 text-sm">تعديل إعدادات النظام والعرض</p>
+                        <h2 class="text-xl font-bold text-slate-800">الأمان والحماية</h2>
+                        <p class="text-slate-500 mt-1 text-sm md:text-base">تحديث كلمة مرور الحساب وتعزيز الأمان بشكل دوري</p>
                     </div>
                 </div>
-                <div class="bg-white/20 px-3 py-1 rounded-full">
-                    <span class="text-white text-sm font-medium">المدرسة</span>
-                </div>
+                <a href="{% url 'dashboard:change_password' %}?next={% url 'dashboard:settings' %}" 
+                   class="w-full md:w-auto relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-indigo-600 rounded-xl group-hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-lg shadow-indigo-500/30">
+                    <span class="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
+                    <span class="relative flex items-center gap-2">
+                        <span>تغيير كلمة المرور</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </span>
+                </a>
             </div>
         </div>
+    </div>
 
-        <!-- نموذج الإعدادات -->
-        <form method="post" enctype="multipart/form-data" class="p-6 space-y-6" id="settingsForm" novalidate>
+    <!-- Main Settings Form -->
+    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-white overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-3">
+                <span class="w-2 h-8 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500"></span>
+                إعدادات العرض والنظام
+            </h3>
+            <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">الأعدادات العامة</span>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="settingsForm" class="p-8" novalidate>
             {% csrf_token %}
-
+            
             {% if form.non_field_errors %}
-                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {% for error in form.non_field_errors %}
-                        <p>{{ error }}</p>
-                    {% endfor %}
+                <div class="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 animate-pulse">
+                    <svg class="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="space-y-1 text-red-700 text-sm font-medium">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
                 </div>
             {% endif %}
 
-            <!-- مجموعة الإعدادات الأساسية -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for field in form %}
-                    {% if field.name != 'theme' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-slate-700">
-                                {{ field.label }}
-                                {% if field.field.required %}
-                                    <span class="text-red-500">*</span>
-                                {% endif %}
-                            </label>
-
-                            {% if field.field.widget.input_type == 'select' %}
+            <!-- Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+                
+                <!-- Section 1: Basic Fields -->
+                <div class="col-span-1 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                     {% for field in form %}
+                        {% if field.name != 'theme' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
+                            <div class="group">
+                                <label class="block text-sm font-bold text-slate-700 mb-2 transition-colors group-focus-within:text-indigo-600">
+                                    {{ field.label }}
+                                    {% if field.field.required %}<span class="text-rose-500">*</span>{% endif %}
+                                </label>
                                 <div class="relative">
-                                    {{ field }}
-                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-slate-500">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M19 9l-7 7-7-7"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            {% else %}
-                                {{ field }}
-                            {% endif %}
-
-                            {% if field.help_text %}
-                                <p class="text-xs text-slate-500">{{ field.help_text }}</p>
-                            {% endif %}
-
-                            {% if field.errors %}
-                                <div class="text-red-600 text-sm">
-                                    {% for error in field.errors %}
-                                        <p>{{ error }}</p>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-
-            <!-- خط فاصل -->
-            <div class="border-t border-slate-200 my-6"></div>
-
-            <!-- إعدادات العرض المتقدمة -->
-            <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <svg class="w-5 h-5 text-slate-600 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707 .707M21 12h-1M4 12H3m3.343 -5.657l-.707 -.707m2.828 9.9a5 5 0 117.072 0l-.548 .547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0 -.895 -.356 -1.754 -.988 -2.386l-.548 -.547z"></path>
-                    </svg>
-                    إعدادات العرض
-                </h3>
-
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                                        <!-- لون ثيم شاشة العرض (مُدمج: ثيم + لون) -->
-                                        <div class="lg:col-span-2 space-y-4">
-                                                <div>
-                                                    <label class="block text-sm font-medium text-slate-700">لون ثيم شاشة العرض</label>
-                                                    <p class="text-xs text-slate-500">اختيار واحد يحدد ثيم شاشة العرض ولونها الرئيسي معًا.</p>
-                                                </div>
-
-                                                {# نخزّن اللون فعليًا في display_accent_color لكن نخفي الحقل لتجنب التكرار #}
-                                                <div class="hidden">
-                                                    {{ form.display_accent_color }}
-                                                </div>
-
-                                                {% with value=form.theme.value|default:"indigo" %}
-                                                    <div id="displayThemePalette" class="flex flex-wrap gap-2">
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="indigo" data-hex="#6366F1" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#6366F1"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">نيلي</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="emerald" data-hex="#22C55E" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#22C55E"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">أخضر</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="rose" data-hex="#EC4899" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#EC4899"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">وردي</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="cyan" data-hex="#06B6D4" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#06B6D4"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">سماوي</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="amber" data-hex="#EAB308" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#EAB308"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">أصفر</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="orange" data-hex="#F97316" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#F97316"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">برتقالي</span>
-                                                        </button>
-
-                                                        <button type="button" class="group px-3 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                                                                        data-theme="violet" data-hex="#A855F7" aria-pressed="false">
-                                                            <span class="w-4 h-4 rounded-full" style="background:#A855F7"></span>
-                                                            <span class="text-sm font-semibold text-slate-800">بنفسجي</span>
-                                                        </button>
-
-                                                    </div>
-
-                                                    {# نحتفظ بحقل theme كـ radio مخفي (نفس name) #}
-                                                    <div class="hidden">
-                                                        <input type="radio" name="theme" value="indigo" {% if value == "indigo" or value == "default" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="emerald" {% if value == "emerald" or value == "boys" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="rose" {% if value == "rose" or value == "girls" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="cyan" {% if value == "cyan" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="amber" {% if value == "amber" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="orange" {% if value == "orange" %}checked{% endif %}>
-                                                        <input type="radio" name="theme" value="violet" {% if value == "violet" %}checked{% endif %}>
-                                                    </div>
-                                                {% endwith %}
-
-                                                {% if form.theme.errors %}
-                                                    <div class="mt-1 text-red-600 text-sm">
-                                                        {% for error in form.theme.errors %}
-                                                            <p>{{ error }}</p>
-                                                        {% endfor %}
-                                                    </div>
-                                                {% endif %}
-                                                {% if form.display_accent_color.errors %}
-                                                    <div class="mt-1 text-red-600 text-sm">
-                                                        {% for error in form.display_accent_color.errors %}
-                                                            <p>{{ error }}</p>
-                                                        {% endfor %}
-                                                    </div>
-                                                {% endif %}
-                                        </div>
-
-                                        <!-- معاينة فعلية لشاشة العرض -->
-                                        <div class="space-y-3">
-                                            <div>
-                                                <div class="text-sm font-medium text-slate-700">معاينة</div>
-                                                <div class="text-xs text-slate-500">عرض شاشة العرض داخل الإعدادات (يتحدث مع اختيارك).</div>
+                                    {% if field.field.widget.input_type == 'select' %}
+                                        <div class="relative">
+                                            {{ field }}
+                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-slate-500">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                             </div>
-
-                                            {% if display_preview_url %}
-                                                <div class="rounded-2xl border border-slate-200 bg-slate-950 overflow-hidden">
-                                                    <div class="flex items-center justify-between px-4 py-3 bg-white/60">
-                                                        <div class="text-xs text-slate-700 font-semibold">شاشة العرض (Live Preview)</div>
-                                                        <a href="{{ display_preview_url }}" target="_blank" class="text-xs px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700">فتح</a>
-                                                    </div>
-                                                    <div class="aspect-[16/9] w-full">
-                                                        <iframe
-                                                            id="displayPreviewFrame"
-                                                            class="w-full h-full"
-                                                            src="{{ display_preview_url }}?preview=1&nocache=1"
-                                                            data-preview-base="{{ display_preview_url }}"
-                                                            loading="lazy"
-                                                            referrerpolicy="no-referrer-when-downgrade"
-                                                        ></iframe>
-                                                    </div>
-                                                </div>
-                                            {% else %}
-                                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                                    لا توجد شاشة عرض مضافة لهذه المدرسة لعرض المعاينة.
-                                                    <div class="mt-2 text-xs text-slate-500">أضف شاشة من (شاشات العرض) ثم ارجع هنا.</div>
-                                                </div>
-                                            {% endif %}
                                         </div>
-
-                    <!-- فاصل تحديث الشاشة -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700">
-                            {{ form.refresh_interval_sec.label }}
-                        </label>
-
-                        <div class="relative">
-                            {{ form.refresh_interval_sec }}
-                            <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">ثانية</span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            الحد الأدنى المسموح به: <span class="font-bold">15 ثانية</span>. (موصى به: 20–30)
-                        </div>
-
-                        <div id="refreshWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                            لا يمكن إدخال أقل من <span class="font-bold">15</span> ثانية.
-                        </div>
-
-                        {% if form.refresh_interval_sec.errors %}
-                            <div class="mt-1 text-red-600 text-sm">
-                                {% for error in form.refresh_interval_sec.errors %}
-                                    <p>{{ error }}</p>
-                                {% endfor %}
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                </div>
+                                {% if field.help_text %}
+                                    <p class="mt-2 text-xs text-slate-400 group-focus-within:text-indigo-400 transition-colors">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="mt-2 text-sm text-rose-600 font-medium">
+                                        {% for error in field.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endif %}
-                    </div>
-
-                    <!-- سرعة تمرير الانتظار -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700">
-                            {{ form.standby_scroll_speed.label }}
-                        </label>
-
-                        <div class="relative">
-                            {{ form.standby_scroll_speed }}
-                            <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">×</span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
-                            قيم مقترحة: <span class="font-bold">0.5 – 1.2</span>.
-                            <span class="font-bold">كلما زادت القيمة زادت السرعة</span>.
-                        </div>
-
-                        <div id="standbyWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                            لا يمكن إدخال أقل من <span class="font-bold">0.5</span>.
-                        </div>
-
-                        {% if form.standby_scroll_speed.help_text %}
-                            <p class="text-xs text-slate-500">{{ form.standby_scroll_speed.help_text }}</p>
-                        {% endif %}
-
-                        {% if form.standby_scroll_speed.errors %}
-                            <div class="mt-1 text-red-600 text-sm">
-                                {% for error in form.standby_scroll_speed.errors %}
-                                    <p>{{ error }}</p>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- سرعة تمرير جدول الحصص -->
-                    <div class="space-y-2 md:col-span-3">
-                        <label class="block text-sm font-medium text-slate-700">
-                            {{ form.periods_scroll_speed.label }}
-                        </label>
-
-                        <div class="relative max-w-xs">
-                            {{ form.periods_scroll_speed }}
-                            <div class="absolute inset-y-0 left-0 flex items-center px-3 bg-slate-50 border border-r-0 border-slate-300 rounded-r-lg">
-                                <span class="text-slate-500 text-sm">×</span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 max-w-xl">
-                            الحد الأدنى المسموح به: <span class="font-bold">0.5</span>.
-                            قيم مقترحة: <span class="font-bold">0.5 – 1.0</span>.
-                            <span class="font-bold">كلما زادت القيمة زادت السرعة</span>.
-                        </div>
-
-                        <div id="periodsWarn" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 max-w-xl">
-                            لا يمكن إدخال أقل من <span class="font-bold">0.5</span>.
-                        </div>
-
-                        {% if form.periods_scroll_speed.help_text %}
-                            <p class="text-xs text-slate-500">{{ form.periods_scroll_speed.help_text }}</p>
-                        {% endif %}
-
-                        {% if form.periods_scroll_speed.errors %}
-                            <div class="mt-1 text-red-600 text-sm">
-                                {% for error in form.periods_scroll_speed.errors %}
-                                    <p>{{ error }}</p>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
+                    {% endfor %}
                 </div>
+
+                <div class="col-span-1 lg:col-span-2 my-2 border-t border-slate-100"></div>
+
+                <!-- Section 2: Display & Theme -->
+                 <div class="space-y-8">
+                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                         <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                         </div>
+                        ألوان وثيم العرض
+                    </h4>
+                    
+                     <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100/60 shadow-sm transition-shadow hover:shadow-md">
+                        <label class="block text-sm font-semibold text-slate-700 mb-4">اختر لون الثيم المناسب</label>
+                        <div class="hidden">
+                            {{ form.display_accent_color }}
+                        </div>
+                        
+                         {% with value=form.theme.value|default:"indigo" %}
+                         <div id="displayThemePalette" class="flex flex-wrap gap-4">
+                            <!-- Theme Buttons -->
+                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="indigo" data-hex="#6366F1" style="background: linear-gradient(135deg, #6366F1, #818CF8);" title="نيلي">
+                                <span class="sr-only">نيلي</span>
+                            </button>
+                            <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="emerald" data-hex="#22C55E" style="background: linear-gradient(135deg, #22C55E, #4ADE80);" title="أخضر">
+                                <span class="sr-only">أخضر</span>
+                            </button>
+                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="rose" data-hex="#EC4899" style="background: linear-gradient(135deg, #EC4899, #F472B6);" title="وردي">
+                                <span class="sr-only">وردي</span>
+                            </button>
+                            <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="cyan" data-hex="#06B6D4" style="background: linear-gradient(135deg, #06B6D4, #22D3EE);" title="سماوي">
+                                <span class="sr-only">سماوي</span>
+                            </button>
+                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="amber" data-hex="#EAB308" style="background: linear-gradient(135deg, #EAB308, #FBBF24);" title="أصفر">
+                                <span class="sr-only">أصفر</span>
+                            </button>
+                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="orange" data-hex="#F97316" style="background: linear-gradient(135deg, #F97316, #FB923C);" title="برتقالي">
+                                <span class="sr-only">برتقالي</span>
+                            </button>
+                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
+                                    data-theme="violet" data-hex="#A855F7" style="background: linear-gradient(135deg, #A855F7, #C084FC);" title="بنفسجي">
+                                <span class="sr-only">بنفسجي</span>
+                            </button>
+                         </div>
+                         
+                         <div class="hidden">
+                            <input type="radio" name="theme" value="indigo" {% if value == "indigo" or value == "default" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="emerald" {% if value == "emerald" or value == "boys" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="rose" {% if value == "rose" or value == "girls" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="cyan" {% if value == "cyan" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="amber" {% if value == "amber" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="orange" {% if value == "orange" %}checked{% endif %}>
+                            <input type="radio" name="theme" value="violet" {% if value == "violet" %}checked{% endif %}>
+                        </div>
+                        {% endwith %}
+                     </div>
+                 </div>
+
+                <!-- Section 3: Timings & Speeds -->
+                 <div class="space-y-8">
+                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                         <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                         </div>
+                        فترات التحديث والسرعة
+                    </h4>
+
+                    <!-- Refresh Interval -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:border-emerald-300 transition-colors shadow-sm">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.refresh_interval_sec.label }}</label>
+                        <div class="flex items-center gap-3">
+                            <div class="relative flex-1">
+                                {{ form.refresh_interval_sec }}
+                                <div class="absolute inset-y-0 left-0 flex items-center px-4 bg-slate-50 border-r border-slate-200 rounded-l-xl text-slate-500 text-sm font-medium">ثانية</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center justify-between text-xs">
+                             <span class="text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-lg">القيمة الافتراضية: 20 ثانية</span>
+                             <span class="text-slate-400">المدى المسموح: 20 - 50</span>
+                        </div>
+                        <div id="refreshWarn" class="hidden mt-3 text-xs font-bold text-rose-600 bg-rose-50 px-3 py-2.5 rounded-xl border border-rose-100 animate-pulse">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span>القيمة يجب أن تكون بين 20 و 50 ثانية</span>
+                            </div>
+                        </div>
+                         {% if form.refresh_interval_sec.errors %}
+                            <div class="mt-1 text-red-600 text-sm">{% for error in form.refresh_interval_sec.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Scroll Speeds Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Standby Speed -->
+                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
+                             <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.standby_scroll_speed.label }}</label>
+                             <div class="relative">
+                                {{ form.standby_scroll_speed }}
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">×</span>
+                             </div>
+                             <p class="mt-2 text-xs text-slate-400">كلما زادت القيمة زادت السرعة (0.5 - 1.2)</p>
+                             <div id="standbyWarn" class="hidden mt-1 text-xs text-rose-600 font-bold">القيمة لا تقل عن 0.5</div>
+                        </div>
+
+                        <!-- Periods Speed -->
+                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
+                             <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.periods_scroll_speed.label }}</label>
+                             <div class="relative">
+                                {{ form.periods_scroll_speed }}
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">×</span>
+                             </div>
+                             <p class="mt-2 text-xs text-slate-400">كلما زادت القيمة زادت السرعة (0.5 - 1.0)</p>
+                             <div id="periodsWarn" class="hidden mt-1 text-xs text-rose-600 font-bold">القيمة لا تقل عن 0.5</div>
+                        </div>
+                    </div>
+                 </div>
+
             </div>
 
-            <!-- أزرار الإجراءات -->
-            <div class="flex items-center justify-between pt-6 border-t border-slate-200">
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    <button type="submit"
-                            class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700
-                                   text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40
-                                   transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <span>حفظ الإعدادات</span>
-                    </button>
-
-                    <a href="{% url 'dashboard:index' %}"
-                       class="px-6 py-3 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-xl transition-all duration-200">
-                        إلغاء
-                    </a>
-                </div>
+             <!-- Footer Actions -->
+            <div class="mt-10 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+                 <a href="{% url 'dashboard:index' %}" class="px-6 py-3.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-900 transition-colors">إلغاء</a>
+                 <button type="submit" class="group relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-emerald-500 rounded-xl hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5">
+                    <span class="mr-2">حفظ التغييرات</span>
+                    <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 </button>
             </div>
+
         </form>
     </div>
+</div>
 
-    <!-- Toast -->
-    <div id="toast"
-         class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg px-4 py-3">
-        <div class="flex items-start gap-3">
-            <div id="toastIcon" class="mt-0.5 w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <div class="font-bold text-slate-800 text-sm" id="toastTitle">تنبيه</div>
-                <div class="text-slate-600 text-sm mt-0.5" id="toastMsg">تحقق من القيم.</div>
-            </div>
-            <button type="button" class="text-slate-500 hover:text-slate-700" onclick="hideToast()">✕</button>
+<!-- Toast & Scripts -->
+<div id="toast" class="fixed bottom-6 left-6 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-center gap-4 min-w-[340px]">
+        <div id="toastIcon" class="w-12 h-12 shrink-0 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
         </div>
+        <div class="flex-1">
+            <h5 id="toastTitle" class="font-bold text-slate-800 text-base">تم الحفظ</h5>
+            <p id="toastMsg" class="text-slate-500 text-sm mt-0.5">تم تحديث الإعدادات بنجاح</p>
+        </div>
+        <button onclick="hideToast()" class="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
     </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ستايل عام للحقول (مع استثناء الراديو)
-    const inputs = document.querySelectorAll('input, select, textarea');
+    // Style inputs
+    const inputs = document.querySelectorAll('input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]), select, textarea');
     inputs.forEach(input => {
         if (input.classList.contains('sr-only')) return;
-        if (input.type === 'radio' || input.type === 'checkbox') return;
-
-        if (input.type === 'color') {
-            input.className = 'w-10 h-10 p-0 border border-slate-200 rounded-xl cursor-pointer bg-transparent';
-            return;
-        }
-
-        input.className = 'w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white text-slate-700 placeholder-slate-400';
+        input.classList.add('w-full', 'px-4', 'py-3.5', 'rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'text-slate-800', 'font-semibold', 'focus:bg-white', 'focus:ring-4', 'focus:ring-indigo-500/10', 'focus:border-indigo-500', 'transition-all', 'duration-200', 'placeholder-slate-400', 'outline-none');
     });
 
     const form = document.getElementById('settingsForm');
-
     const refreshEl = document.getElementById('id_refresh_interval_sec');
     const standbyEl = document.getElementById('id_standby_scroll_speed');
     const periodsEl = document.getElementById('id_periods_scroll_speed');
+    const accentInput = document.getElementById('id_display_accent_color');
+    const themePalette = document.getElementById('displayThemePalette');
 
     const refreshWarn = document.getElementById('refreshWarn');
     const standbyWarn = document.getElementById('standbyWarn');
     const periodsWarn = document.getElementById('periodsWarn');
 
-    const accentInput = document.getElementById('id_display_accent_color');
-    const themePalette = document.getElementById('displayThemePalette');
-    const previewFrame = document.getElementById('displayPreviewFrame');
-
-    function $(id){ return document.getElementById(id); }
-
-    function showToast(title, msg, kind) {
-        const box = $('toast');
-        const tTitle = $('toastTitle');
-        const tMsg = $('toastMsg');
-        const iconBox = $('toastIcon');
-
-        if (!box || !tTitle || !tMsg || !iconBox) return;
-
-        tTitle.textContent = title || 'تنبيه';
-        tMsg.textContent = msg || 'تحقق من القيم.';
-
-        // تغيير لون الأيقونة حسب النوع
-        iconBox.className = 'mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center';
-        if (kind === 'error') {
-            iconBox.classList.add('bg-red-50');
-            iconBox.innerHTML = '<svg class="w-4 h-4 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    // Toast functions
+    window.showToast = function(title, msg, type = 'success') {
+        const toast = document.getElementById('toast');
+        if(!toast) return;
+        
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastMsg').textContent = msg;
+        const icon = document.getElementById('toastIcon');
+        
+        if(type === 'error') {
+            icon.className = 'w-12 h-12 shrink-0 rounded-full flex items-center justify-center bg-rose-100 text-rose-600';
+            icon.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
         } else {
-            iconBox.classList.add('bg-emerald-50');
-            iconBox.innerHTML = '<svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            icon.className = 'w-12 h-12 shrink-0 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600';
+            icon.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
         }
 
-        box.classList.remove('hidden');
-        clearTimeout(window.__toastTimer);
-        window.__toastTimer = setTimeout(hideToast, 2500);
-    }
+        toast.classList.remove('hidden');
+        // Small delay to allow display:block to apply before opacity transition
+        setTimeout(() => {
+            toast.classList.remove('translate-y-2', 'opacity-0');
+        }, 10);
+
+        if(window.toastTimer) clearTimeout(window.toastTimer);
+        window.toastTimer = setTimeout(hideToast, 4000);
+    };
 
     window.hideToast = function() {
-        const box = $('toast');
-        if (box) box.classList.add('hidden');
+        const toast = document.getElementById('toast');
+        if(!toast) return;
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.classList.add('hidden'), 300);
     };
 
-    function asNumber(v) {
-        const n = Number(v);
-        return isNaN(n) ? null : n;
-    }
+    // Validation
+    function validateInput(el, min, max, warnEl) {
+        if(!el) return true;
+        let val = parseFloat(el.value);
+        if(isNaN(val)) return true; // Let backend handle empty if needed, or required attr
+        
+        // Remove error styles first
+        el.classList.remove('border-rose-300', 'bg-rose-50', 'text-rose-600', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+        if(warnEl) warnEl.classList.add('hidden');
 
-    function applyConstraints(el, minVal, stepVal) {
-        if (!el) return;
-        el.setAttribute('min', String(minVal));
-        el.setAttribute('step', String(stepVal));
-        el.setAttribute('inputmode', 'decimal');
-    }
+        let isValid = true;
+        if (min !== null && val < min) isValid = false;
+        if (max !== null && val > max) isValid = false;
 
-    function normHex(v) {
-        if (!v) return '';
-        const s = String(v).trim();
-        if (!s) return '';
-        const m = s.match(/^#([0-9a-fA-F]{6})$/);
-        return m ? ('#' + m[1].toUpperCase()) : '';
-    }
-
-    const THEME_PRESETS = {
-        indigo: { main: '#6366F1', sub: '#0EA5E9' },
-        emerald: { main: '#22C55E', sub: '#10B981' },
-        rose: { main: '#EC4899', sub: '#F97316' },
-        cyan: { main: '#06B6D4', sub: '#22D3EE' },
-        amber: { main: '#EAB308', sub: '#FBBF24' },
-        orange: { main: '#F97316', sub: '#FB923C' },
-        violet: { main: '#A855F7', sub: '#C084FC' },
-    };
-
-    function setThemeValue(themeKey) {
-        const key = String(themeKey || '').trim().toLowerCase();
-        const radios = document.querySelectorAll('input[type="radio"][name="theme"]');
-        radios.forEach(r => { r.checked = (r.value === key); });
-    }
-
-    function setAccentHidden(hex) {
-        if (!accentInput) return;
-        const v = normHex(hex);
-        accentInput.value = v || '';
-        accentInput.dataset.userCleared = v ? '0' : '1';
-    }
-
-    function refreshPreviewFrame(themeKey, hex) {
-        if (!previewFrame) return;
-        const base = previewFrame.getAttribute('data-preview-base') || previewFrame.getAttribute('src') || '';
-        if (!base) return;
-
-        const key = String(themeKey || '').trim().toLowerCase();
-        const color = normHex(hex);
-        const url = new URL(base, window.location.origin);
-        url.searchParams.set('preview', '1');
-        url.searchParams.set('nocache', '1');
-        url.searchParams.set('preview_theme', key);
-        if (color) url.searchParams.set('preview_accent', color);
-        else url.searchParams.delete('preview_accent');
-        previewFrame.src = url.toString();
-    }
-
-    function syncPaletteSelection(themeKey) {
-        if (!themePalette) return;
-        const key = String(themeKey || '').trim().toLowerCase();
-        themePalette.querySelectorAll('button[data-theme]').forEach(btn => {
-            const isActive = (btn.getAttribute('data-theme') === key);
-            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            btn.classList.toggle('ring-2', isActive);
-            btn.classList.toggle('ring-emerald-300', isActive);
-            btn.classList.toggle('border-emerald-300', isActive);
-        });
-    }
-
-    function setDisplayTheme(themeKey, hex) {
-        setThemeValue(themeKey);
-        setAccentHidden(hex);
-        syncPaletteSelection(themeKey);
-        refreshPreviewFrame(themeKey, hex);
-    }
-
-    // قبل الإرسال: لو المستخدم ضغط افتراضي نخلي القيمة فارغة
-    function normalizeAccentForSubmit() {
-        if (!accentInput) return;
-        const cleared = accentInput.dataset.userCleared === '1';
-        if (cleared) {
-            accentInput.value = '';
-            return;
-        }
-        const hex = normHex(accentInput.value);
-        accentInput.value = hex;
-    }
-
-    function markInvalid(el, warnEl) {
-        if (warnEl) warnEl.classList.remove('hidden');
-        if (!el) return;
-        el.classList.add('border-red-400');
-        el.classList.remove('focus:ring-emerald-500', 'focus:border-emerald-500');
-        el.classList.add('focus:ring-red-200', 'focus:border-red-400');
-    }
-
-    function markValid(el, warnEl) {
-        if (warnEl) warnEl.classList.add('hidden');
-        if (!el) return;
-        el.classList.remove('border-red-400', 'focus:ring-red-200', 'focus:border-red-400');
-        el.classList.add('focus:ring-emerald-500', 'focus:border-emerald-500');
-    }
-
-    function validateMin(el, minVal, warnEl) {
-        if (!el) return true;
-        const n = asNumber(el.value);
-        if (n === null) {
-            markValid(el, warnEl);
-            return true;
-        }
-        if (n < minVal) {
-            markInvalid(el, warnEl);
+        if (!isValid) {
+            el.classList.add('border-rose-300', 'bg-rose-50', 'text-rose-600', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+            if(warnEl) warnEl.classList.remove('hidden');
             return false;
         }
-        markValid(el, warnEl);
         return true;
     }
 
-    // ضبط قيود HTML
-    applyConstraints(refreshEl, 15, 1);
-    applyConstraints(standbyEl, 0.5, 0.1);
-    applyConstraints(periodsEl, 0.5, 0.1);
+    // Apply strict attributes
+    if(refreshEl) {
+        refreshEl.setAttribute('min', '20');
+        refreshEl.setAttribute('max', '50');
+        refreshEl.setAttribute('step', '1');
+        
+        // Default to 20 if empty
+        if(!refreshEl.value) refreshEl.value = '20';
 
-    // تهيئة الثيم/اللون (مُدمج)
-    (function initDisplayTheme(){
-        // اقرأ الثيم المحدد (قد يكون legacy)
-        let current = 'indigo';
-        const checked = document.querySelector('input[type="radio"][name="theme"]:checked');
-        if (checked && checked.value) current = String(checked.value);
-        if (current === 'default') current = 'indigo';
-        if (current === 'boys') current = 'emerald';
-        if (current === 'girls') current = 'rose';
+        refreshEl.addEventListener('input', () => validateInput(refreshEl, 20, 50, refreshWarn));
+    }
+    if(standbyEl) {
+        standbyEl.setAttribute('min', '0.5');
+        standbyEl.setAttribute('step', '0.1');
+        standbyEl.addEventListener('input', () => validateInput(standbyEl, 0.5, null, standbyWarn));
+    }
+    if(periodsEl) {
+        periodsEl.setAttribute('min', '0.5');
+        periodsEl.setAttribute('step', '0.1');
+        periodsEl.addEventListener('input', () => validateInput(periodsEl, 0.5, null, periodsWarn));
+    }
 
-        const preset = THEME_PRESETS[current] || THEME_PRESETS.indigo;
-        setDisplayTheme(current, preset.main);
-    })();
+    // Theme Logic
+    const THEME_PRESETS = {
+        indigo: '#6366F1', emerald: '#22C55E', rose: '#EC4899', 
+        cyan: '#06B6D4', amber: '#EAB308', orange: '#F97316', violet: '#A855F7'
+    };
 
-    if (themePalette) {
-        themePalette.addEventListener('click', function(e){
-            const btn = e.target && e.target.closest ? e.target.closest('button[data-theme][data-hex]') : null;
-            if (!btn) return;
-            const t = btn.getAttribute('data-theme');
-            const h = btn.getAttribute('data-hex');
-            setDisplayTheme(t, h);
+    function setActiveTheme(themeName) {
+         // Update radios
+        const radio = document.querySelector(`input[name="theme"][value="${themeName}"]`);
+        if(radio) radio.checked = true;
+
+        // Update Buttons UI
+        document.querySelectorAll('#displayThemePalette button').forEach(btn => {
+            if(btn.dataset.theme === themeName) {
+                btn.classList.add('ring-4', 'ring-indigo-100', 'scale-110', 'z-10');
+                btn.classList.remove('scale-100');
+            } else {
+                btn.classList.remove('ring-4', 'ring-indigo-100', 'scale-110', 'z-10');
+                btn.classList.add('scale-100');
+            }
+        });
+
+        // Update hidden accent color if cleared
+        if(accentInput && (!accentInput.value || accentInput.dataset.auto === '1')) {
+            accentInput.value = THEME_PRESETS[themeName] || '';
+            accentInput.dataset.auto = '1';
+        }
+    }
+
+    // Init Theme
+    let currentTheme = 'indigo';
+    const checkedRadio = document.querySelector('input[name="theme"]:checked');
+    if(checkedRadio) currentTheme = checkedRadio.value;
+    
+    // Map legacy names
+    if(currentTheme === 'default') currentTheme = 'indigo';
+    if(currentTheme === 'boys') currentTheme = 'emerald';
+    if(currentTheme === 'girls') currentTheme = 'rose';
+    
+    setActiveTheme(currentTheme);
+
+    // Initial check for accent color input
+    if(accentInput && !accentInput.value) {
+        accentInput.dataset.auto = '1';
+        accentInput.value = THEME_PRESETS[currentTheme];
+    } else if(accentInput) {
+        accentInput.dataset.auto = '0';
+    }
+
+    // Theme Button Click
+    if(themePalette) {
+        themePalette.addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if(!btn) return;
+            const theme = btn.dataset.theme;
+            setActiveTheme(theme);
         });
     }
 
-    // تحقق لحظي
-    if (refreshEl) refreshEl.addEventListener('input', function(){ validateMin(refreshEl, 15, refreshWarn); });
-    if (standbyEl) standbyEl.addEventListener('input', function(){ validateMin(standbyEl, 0.5, standbyWarn); });
-    if (periodsEl) periodsEl.addEventListener('input', function(){ validateMin(periodsEl, 0.5, periodsWarn); });
+    // Form Submit
+    if(form) {
+        form.addEventListener('submit', function(e) {
+            const valid1 = validateInput(refreshEl, 20, 50, refreshWarn);
+            const valid2 = validateInput(standbyEl, 0.5, null, standbyWarn);
+            const valid3 = validateInput(periodsEl, 0.5, null, periodsWarn);
 
-    // منع الحفظ إذا كانت القيم أقل من الحد
-    if (form) {
-        form.addEventListener('submit', function(e){
-            normalizeAccentForSubmit();
-            const ok1 = validateMin(refreshEl, 15, refreshWarn);
-            const ok2 = validateMin(standbyEl, 0.5, standbyWarn);
-            const ok3 = validateMin(periodsEl, 0.5, periodsWarn);
-
-            if (!(ok1 && ok2 && ok3)) {
+            if(!valid1 || !valid2 || !valid3) {
                 e.preventDefault();
-                e.stopPropagation();
-                showToast('قيمة غير مسموحة', 'تأكد من الحدود الدنيا: التحديث ≥ 15 ثانية، والسرعات ≥ 0.5', 'error');
-                // تمرير نحو أول حقل خاطئ
-                if (!ok1 && refreshEl) refreshEl.scrollIntoView({behavior:'smooth', block:'center'});
-                if (ok1 && !ok2 && standbyEl) standbyEl.scrollIntoView({behavior:'smooth', block:'center'});
-                if (ok1 && ok2 && !ok3 && periodsEl) periodsEl.scrollIntoView({behavior:'smooth', block:'center'});
+                showToast('تنبيه', 'يرجى تصحيح القيم المدخلة قبل الحفظ', 'error');
+                
+                // Scroll to first error
+                if(!valid1) refreshEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                else if(!valid2) standbyEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                else if(!valid3) periodsEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                
+                return;
             }
         });
     }
+
 });
 </script>
 
 <style>
+/* Custom animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
 select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: left 0.75rem center;
+    background-position: left 1rem center;
     background-repeat: no-repeat;
-    background-size: 16px 12px;
-    padding-right: 0.75rem;
+    background-size: 1.5em 1.5em;
+    padding-left: 2.5rem;
 }
 </style>
-
 {% endblock %}

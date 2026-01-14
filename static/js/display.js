@@ -578,6 +578,8 @@
   let hasActiveCountdown = false;
   let lastStateCoreSig = "";
 
+  let lastZeroHandledCoreSig = "";
+
   let lastCountdownZeroAt = 0;
   function onCountdownZero() {
     if (isBlocked) return;
@@ -614,6 +616,7 @@
   }
 
   let forceRefreshInProgress = false;
+  let reloadFallbackTs = 0;
   async function forceRefreshNow(reason) {
     if (isBlocked) return;
     if (forceRefreshInProgress) return;
@@ -645,6 +648,53 @@
         ensureDebugOverlay();
         if (isDebug()) setDebugText("force render error: " + (e && e.message ? e.message : String(e)));
       }
+
+      // If we forced a refresh at countdown==0 but the state still didn't advance,
+      // do one bounded retry, then a bounded hard reload as a last resort.
+      try {
+        const s = (snap && snap.state) || {};
+        const stType = safeText(s.type || "");
+        const coreSig =
+          stType + "||" + safeText(s.label || "") + "||" + safeText(s.from || "") + "||" + safeText(s.to || "");
+        const rem = typeof s.remaining_seconds === "number" ? Math.max(0, Math.floor(s.remaining_seconds)) : null;
+
+        if ((stType === "period" || stType === "break" || stType === "before") && rem === 0) {
+          // One quick retry (server might still be computing the transition)
+          setTimeout(() => {
+            try {
+              safeFetchSnapshot({ force: true, bypassEtag: true, bypassServerCache: true, reason: "countdown_zero_retry" })
+                .then((snap2) => {
+                  if (!snap2 || (snap2 && snap2._notModified)) return;
+                  try {
+                    renderState(snap2);
+                    renderAnnouncements(snap2.announcements || []);
+                    renderExcellence(snap2.excellence || []);
+                    renderStandby(snap2.standby || []);
+                    renderPeriodClasses(snap2.period_classes || []);
+                  } catch (e) {}
+
+                  try {
+                    const s2 = (snap2 && snap2.state) || {};
+                    const st2 = safeText(s2.type || "");
+                    const core2 =
+                      st2 + "||" + safeText(s2.label || "") + "||" + safeText(s2.from || "") + "||" + safeText(s2.to || "");
+                    const rem2 = typeof s2.remaining_seconds === "number" ? Math.max(0, Math.floor(s2.remaining_seconds)) : null;
+                    if ((st2 === "period" || st2 === "break" || st2 === "before") && rem2 === 0 && core2 === coreSig) {
+                      const now2 = Date.now();
+                      if (now2 - reloadFallbackTs > 60000) {
+                        reloadFallbackTs = now2;
+                        try {
+                          window.location.reload();
+                        } catch (e) {}
+                      }
+                    }
+                  } catch (e) {}
+                })
+                .catch(() => {});
+            } catch (e) {}
+          }, 800);
+        }
+      } catch (e) {}
     } catch (e) {
       // Fallback to normal loop on unexpected errors.
       try {
@@ -1407,6 +1457,15 @@
       hasActiveCountdown = true;
     }
 
+    // If the server says 0 (or we clamped to 0) and we haven't handled this core state yet,
+    // trigger the countdown-zero refresh even if we didn't observe a local 1->0 transition.
+    if (hasActiveCountdown && typeof countdownSeconds === "number" && countdownSeconds === 0) {
+      if (nextCoreSig && nextCoreSig !== lastZeroHandledCoreSig) {
+        lastZeroHandledCoreSig = nextCoreSig;
+        onCountdownZero();
+      }
+    }
+
     if ((stType === "period" || stType === "break") && s.from && s.to) {
       const start = hmToMs(s.from, baseMs);
       const end = hmToMs(s.to, baseMs);
@@ -1491,6 +1550,12 @@
         const prev = countdownSeconds;
         if (countdownSeconds > 0) countdownSeconds -= 1;
         if (prev > 0 && countdownSeconds === 0) onCountdownZero();
+
+        // Handle cases where countdown starts at 0 (server rounding/caching) without a local 1->0 transition.
+        if (countdownSeconds === 0 && lastStateCoreSig && lastStateCoreSig !== lastZeroHandledCoreSig) {
+          lastZeroHandledCoreSig = lastStateCoreSig;
+          onCountdownZero();
+        }
       }
 
       if (dom.countdown) {
