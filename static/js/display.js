@@ -27,8 +27,15 @@
 
   function toggleHidden(el, hidden) {
     if (!el) return;
-    if (hidden) el.classList.add("hidden");
-    else el.classList.remove("hidden");
+    // Use a dedicated hide utility to avoid CSS-lint conflicts with Tailwind display classes (e.g., flex).
+    // Keep backward compatibility by toggling both.
+    if (hidden) {
+      el.classList.add("u-hidden");
+      el.classList.add("hidden");
+    } else {
+      el.classList.remove("u-hidden");
+      el.classList.remove("hidden");
+    }
   }
 
   function toArabicDigits(v) {

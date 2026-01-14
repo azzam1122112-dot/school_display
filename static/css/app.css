@@ -34,6 +34,7 @@ img,svg,video,canvas{max-width:100%;height:auto;display:block;}
 
 /* Helpers */
 .hidden{display:none !important;}
+.u-hidden{display:none !important;}
 .truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .no-scrollbar::-webkit-scrollbar{display:none;}
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}
