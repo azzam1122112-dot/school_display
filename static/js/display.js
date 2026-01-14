@@ -50,6 +50,41 @@
     }
   }
 
+  function isLiteMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const v = (qs.get("lite") || qs.get("liteMode") || "").trim().toLowerCase();
+      if (v === "1" || v === "true" || v === "yes") return true;
+      if (v === "0" || v === "false" || v === "no") return false;
+    } catch (e) {}
+
+    try {
+      const ua = String(navigator.userAgent || "").toLowerCase();
+      if (
+        ua.includes("smarttv") ||
+        ua.includes("hbbtv") ||
+        ua.includes("tizen") ||
+        ua.includes("web0s") ||
+        ua.includes("netcast")
+      ) {
+        return true;
+      }
+    } catch (e) {}
+
+    // Conservative heuristics for older/low-end devices
+    try {
+      const hc = Number(navigator.hardwareConcurrency || 0);
+      if (hc && hc <= 2) return true;
+    } catch (e) {}
+
+    try {
+      const mem = Number(navigator.deviceMemory || 0);
+      if (mem && mem <= 2) return true;
+    } catch (e) {}
+
+    return false;
+  }
+
   // ===== DOM =====
   const dom = {};
   function bindDom() {
@@ -446,12 +481,16 @@
     const schoolType = safeText(settings.school_type || "");
     const accent = safeText(settings.display_accent_color || "");
 
+    const previewLock = (document.body && document.body.dataset && document.body.dataset.previewLock === '1');
+
     const sig = name + "||" + logo + "||" + theme + "||" + schoolType;
     if (sig === last.brandSig) return;
     last.brandSig = sig;
 
-    if (theme) applyTheme(theme);
-    applyAccentColor(accent);
+    if (!previewLock) {
+      if (theme) applyTheme(theme);
+      applyAccentColor(accent);
+    }
 
     if (name) {
       document.title = name + " — لوحة العرض الذكية";
@@ -710,7 +749,7 @@
     return vp || trackEl.parentElement || null;
   }
 
-  function createScroller(trackEl, getSpeed) {
+  function createScroller(trackEl, getSpeed, opts) {
     const st = {
       raf: null,
       y: 0,
@@ -721,6 +760,9 @@
       lastSig: "",
       running: false,
     };
+
+    const maxFps = opts && opts.maxFps ? Number(opts.maxFps) : 0;
+    const minFrameMs = maxFps > 0 ? 1000 / Math.max(1, maxFps) : 0;
 
     function stop() {
       if (st.raf) cancelAnimationFrame(st.raf);
@@ -797,7 +839,12 @@
       }
 
       if (!st.lastTs) st.lastTs = ts;
-      const dt = Math.min(40, ts - st.lastTs);
+      let dt = ts - st.lastTs;
+      if (minFrameMs > 0 && dt < minFrameMs) {
+        st.raf = requestAnimationFrame(loop);
+        return;
+      }
+      dt = Math.min(120, dt);
       st.lastTs = ts;
 
       const v = Number(getSpeed()) || 0.5;
@@ -1650,6 +1697,11 @@
 
     const body = document.body || document.documentElement;
 
+    const lite = isLiteMode();
+    try {
+      body.dataset.lite = lite ? "1" : "0";
+    } catch (e) {}
+
     cfg.REFRESH_EVERY = clamp(parseFloat(body.dataset.refresh || "10") || 10, 5, 120);
     cfg.STANDBY_SPEED = normSpeed(body.dataset.standby || "0.8", 0.8);
     cfg.PERIODS_SPEED = normSpeed(body.dataset.periodsSpeed || "0.5", 0.5);
@@ -1675,8 +1727,10 @@
     bindFullscreen();
 
     // init scrollers (مستقلين)
-    periodsScroller = dom.periodClassesTrack ? createScroller(dom.periodClassesTrack, () => cfg.PERIODS_SPEED) : null;
-    standbyScroller = dom.standbyTrack ? createScroller(dom.standbyTrack, () => cfg.STANDBY_SPEED) : null;
+    // For low-end TVs: cap FPS to reduce paint cost.
+    const scrollerOpts = lite ? { maxFps: 20 } : undefined;
+    periodsScroller = dom.periodClassesTrack ? createScroller(dom.periodClassesTrack, () => cfg.PERIODS_SPEED, scrollerOpts) : null;
+    standbyScroller = dom.standbyTrack ? createScroller(dom.standbyTrack, () => cfg.STANDBY_SPEED, scrollerOpts) : null;
 
     renderAlert("جاري التحميل…", "يتم الآن جلب البيانات من الخادم.");
     scheduleNext(0.2);

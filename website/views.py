@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from core.models import DisplayScreen
 from schedule.models import SchoolSettings
@@ -87,7 +88,10 @@ def _build_display_context(request, key: str | None) -> dict | None:
         return None
 
     # ?nocache=1 مفيد أثناء التطوير
-    bypass_cache = (request.GET.get("nocache") == "1")
+    preview_theme = (request.GET.get("preview_theme") or "").strip().lower()
+    preview_accent = (request.GET.get("preview_accent") or "").strip()
+    preview_lock = bool(preview_theme or preview_accent)
+    bypass_cache = (request.GET.get("nocache") == "1") or preview_lock
 
     screen, settings_obj, effective_token = _resolve_screen_and_settings(key)
     if not screen or not settings_obj or not effective_token:
@@ -114,9 +118,22 @@ def _build_display_context(request, key: str | None) -> dict | None:
     raw_theme = getattr(settings_obj, "theme", "default")
     theme = THEME_MAP.get(raw_theme, "indigo")
 
+    # Preview overrides (non-persistent, per-request)
+    if preview_theme:
+        theme = THEME_MAP.get(preview_theme, theme)
+
+    if isinstance(preview_accent, str):
+        preview_accent = preview_accent.strip()
+    else:
+        preview_accent = ""
+    if preview_accent and (len(preview_accent) != 7 or not preview_accent.startswith("#")):
+        preview_accent = ""
+
     school_name = getattr(settings_obj, "name", None) or getattr(settings_obj.school, "name", "مدرستنا")
     school_type = getattr(settings_obj.school, "school_type", "") if getattr(settings_obj, "school", None) else ""
     display_accent_color = getattr(settings_obj, "display_accent_color", None)
+    if preview_accent:
+        display_accent_color = preview_accent
 
     ctx = {
         "screen": screen,
@@ -131,6 +148,7 @@ def _build_display_context(request, key: str | None) -> dict | None:
         "now_hour": timezone.localtime().hour,
         "theme": theme,
         "theme_key": raw_theme,
+        "preview_lock": preview_lock,
         # ✅ نعطي الواجهة token الحقيقي دائمًا
         "api_token": effective_token,
         "display_token": effective_token,
@@ -166,6 +184,7 @@ def display(request):
     return home(request)
 
 
+@xframe_options_sameorigin
 def display_view(request, screen_key: str):
     """
     /display/<screen_key> (اختياري)

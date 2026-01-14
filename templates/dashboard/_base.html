@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="ar" dir="rtl" class="h-full">
 <head>
@@ -5,12 +6,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}لوحة التحكم{% endblock %}</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-01-14">
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  {% load static %}
 
   <style>
     [x-cloak] { display: none !important; }

@@ -572,6 +572,24 @@ def school_settings(request):
         defaults={"name": school.name},
     )
 
+    # Preview: use latest active screen short_code if exists
+    preview_url = None
+    try:
+        from core.models import DisplayScreen  # local import
+
+        scr = (
+            DisplayScreen.objects
+            .filter(school=school, is_active=True)
+            .exclude(short_code__isnull=True)
+            .exclude(short_code__exact="")
+            .order_by("-id")
+            .first()
+        )
+        if scr:
+            preview_url = f"/s/{scr.short_code}/"
+    except Exception:
+        preview_url = None
+
     if request.method == "POST":
         form = SchoolSettingsForm(request.POST, request.FILES, instance=obj)
         if form.is_valid():
@@ -582,7 +600,7 @@ def school_settings(request):
     else:
         form = SchoolSettingsForm(instance=obj)
 
-    return render(request, "dashboard/settings.html", {"form": form})
+    return render(request, "dashboard/settings.html", {"form": form, "display_preview_url": preview_url})
 
 
 # ======================
