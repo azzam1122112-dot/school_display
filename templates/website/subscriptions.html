@@ -1,590 +1,0 @@
-{% extends "base.html" %}
-{% load static %}
-
-{% block title %}أسعار الاشتراكات{% endblock %}
-
-{% block content %}
-<section class="relative">
-  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14 space-y-10">
-
-    <!-- Top Bar -->
-    <div class="glass px-5 sm:px-7 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl">💳</div>
-        <div>
-          <div class="text-lg sm:text-xl font-extrabold leading-tight"
-               style="background:linear-gradient(90deg, var(--green2), var(--sky)); -webkit-background-clip:text; background-clip:text; color:transparent;">
-            أسعار الاشتراكات
-          </div>
-          <div class="text-xs sm:text-sm" style="color:var(--muted2)">
-            شاشة واحدة لكل مدرسة • تحديث تلقائي متوسط 15 ثانية
-          </div>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3 justify-end">
-        <a href="{% url 'website:home' %}"
-           class="btnGhost px-5 py-2.5 text-sm font-extrabold inline-flex items-center gap-2"
-           aria-label="عودة للشاشة الرئيسية">
-          <span aria-hidden="true">↩</span>
-          <span>عودة للرئيسية</span>
-        </a>
-
-        <a href="#tamara"
-           class="btnGhost px-5 py-2.5 text-sm font-bold inline-flex items-center gap-2">
-          <span aria-hidden="true">🛍️</span>
-          <span>تمارا</span>
-        </a>
-
-        <a href="#bank"
-           class="btnGhost px-5 py-2.5 text-sm font-bold inline-flex items-center gap-2">
-          <span aria-hidden="true">🏦</span>
-          <span>التحويل البنكي</span>
-        </a>
-
-        <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer"
-           class="btnBrand px-5 py-2.5 text-sm font-extrabold inline-flex items-center gap-2">
-          <span aria-hidden="true">🟢</span>
-          <span>محادثة واتساب</span>
-        </a>
-      </div>
-    </div>
-
-    <!-- Hero -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
-      <div class="glass p-6 sm:p-8">
-        <div class="inline-flex items-center gap-2 tag px-4 py-2 text-sm">
-          <span class="h-2 w-2 rounded-full inline-block" style="background:var(--green2)"></span>
-          <span style="color:var(--muted)">اشتراك واضح • تفعيل سريع • هوية لكل مدرسة</span>
-        </div>
-
-        <h1 class="mt-5 text-3xl sm:text-4xl font-extrabold leading-tight">
-          باقات لوحة العرض الذكية
-          <span style="background:linear-gradient(90deg, var(--gold), #fde68a); -webkit-background-clip:text; background-clip:text; color:transparent;">
-            للمدارس
-          </span>
-        </h1>
-
-        <p class="mt-4 text-base sm:text-lg leading-relaxed" style="color:var(--muted)">
-          باقات مصممة لتشغيل شاشة المدرسة بشكل احترافي: عرض الحصص والتنبيهات والمحتوى المدرسي بهوية أنيقة،
-          مع تحديثات تلقائية لتبقى الشاشة محدثة طوال اليوم الدراسي.
-        </p>
-
-        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="soft p-4">
-            <div class="text-sm font-extrabold">⚡ تحديث تلقائي</div>
-            <div class="text-xs mt-1" style="color:var(--muted2)">متوسط 15 ثانية</div>
-          </div>
-          <div class="soft p-4">
-            <div class="text-sm font-extrabold">🖥️ شاشة واحدة</div>
-            <div class="text-xs mt-1" style="color:var(--muted2)">لكل مدرسة</div>
-          </div>
-          <div class="soft p-4">
-            <div class="text-sm font-extrabold">🎨 تخصيص الهوية</div>
-            <div class="text-xs mt-1" style="color:var(--muted2)">ألوان/خلفية/شعار</div>
-          </div>
-        </div>
-
-        <div class="mt-6 flex flex-col sm:flex-row gap-3">
-          <a href="#plans" class="btnBrand px-7 py-3.5 text-center font-extrabold text-base">
-            عرض الباقات
-          </a>
-          <a href="#tamara" class="btnGhost px-7 py-3.5 text-center font-bold text-base">
-            الدفع عبر تمارا
-          </a>
-        </div>
-      </div>
-
-      <!-- Trust / Info -->
-      <div class="glass p-6 sm:p-8">
-        <div class="flex items-start gap-3">
-          <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl"
-               style="background: rgba(212,175,55,.10); border-color: rgba(212,175,55,.25);">⭐</div>
-          <div class="flex-1">
-            <div class="text-lg font-extrabold">معلومة مهمة قبل الاشتراك</div>
-            <div class="text-sm mt-2 leading-relaxed" style="color:var(--muted)">
-              الأسعار أدناه مخصصة لـ <strong class="text-white">شاشة واحدة لكل مدرسة</strong>.
-              إذا رغبت المدرسة بتعدد الشاشات أو حلول إضافية يتم تسعيرها بعرض مستقل حسب الاحتياج.
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-6 soft p-5" style="border-color: rgba(34,197,94,.28); background: rgba(34,197,94,.08);">
-          <div class="font-extrabold text-white">توثيق مهني</div>
-          <div class="text-sm mt-2" style="color: var(--muted)">
-            وثيقة العمل الحر: <strong class="text-white">FL-719915135</strong>
-          </div>
-        </div>
-
-        <div class="mt-4 soft p-5">
-          <div class="text-sm leading-relaxed" style="color:var(--muted)">
-            بعد التحويل البنكي، يتم تفعيل الاشتراك خلال <strong class="text-white">24 ساعة عمل</strong> عند إرسال إيصال التحويل وبيانات المدرسة عبر واتساب.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Plans -->
-    <div id="plans" class="glass p-6 sm:p-8">
-      <div class="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold">أسعار الاشتراكات</h2>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            الأسعار بالريال السعودي — تفعيل + تحديثات + دعم فني عن بُعد خلال مدة الاشتراك.
-          </p>
-        </div>
-
-        <div class="tag px-4 py-2 text-xs" style="color:var(--muted)">
-          مناسبة لشاشة واحدة لكل مدرسة
-        </div>
-      </div>
-
-      <div class="mt-7 grid gap-5 lg:grid-cols-3">
-
-        <!-- Current year -->
-        <div class="soft p-6">
-          <div class="flex items-center justify-between gap-2">
-            <span class="tag px-3 py-1 text-xs font-bold" style="color:var(--muted)">السنة الحالية</span>
-            <span class="text-xs" style="color:var(--muted2)">حتى نهاية العام</span>
-          </div>
-
-          <div class="mt-4 text-lg font-extrabold">اشتراك مخفّض</div>
-          <div class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-            خيار اقتصادي للاستفادة من لوحة العرض حتى نهاية السنة الدراسية الحالية.
-          </div>
-
-          <div class="mt-5 flex items-end gap-2">
-            <div class="text-4xl font-extrabold">600</div>
-            <div class="pb-1 text-sm font-bold" style="color:var(--muted2)">ريال</div>
-          </div>
-
-          <ul class="mt-5 space-y-2 text-sm" style="color:var(--muted)">
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> تحديث تلقائي متوسط 15 ثانية</li>
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> تخصيص الهوية (شعار/ألوان/خلفية)</li>
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> دعم فني عن بُعد خلال الاشتراك</li>
-          </ul>
-
-          <button type="button"
-                  class="mt-6 w-full btnGhost px-4 py-3 text-sm font-extrabold"
-                  data-plan="السنة الحالية — 600 ريال">
-            اختيار هذه الباقة
-          </button>
-        </div>
-
-        <!-- Next year best -->
-        <div class="soft p-6"
-             style="border-color: rgba(34,197,94,.30); background: linear-gradient(180deg, rgba(34,197,94,.12), rgba(255,255,255,.05));">
-          <div class="flex items-center justify-between gap-2">
-            <span class="tag px-3 py-1 text-xs font-extrabold"
-                  style="border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); color:#eafff3;">
-              الأفضل قيمة
-            </span>
-            <span class="text-xs" style="color:var(--muted2)">1448–1449</span>
-          </div>
-
-          <div class="mt-4 text-lg font-extrabold">اشتراك سنة دراسية</div>
-          <div class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-            تغطية كاملة للسنة الدراسية القادمة مع تحديثات وتحسينات ضمن مدة الاشتراك.
-          </div>
-
-          <div class="mt-5 flex items-end gap-2">
-            <div class="text-4xl font-extrabold">1000</div>
-            <div class="pb-1 text-sm font-bold" style="color:var(--muted2)">ريال</div>
-          </div>
-
-          <ul class="mt-5 space-y-2 text-sm" style="color:var(--muted)">
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> أفضل عائد مقابل المدة</li>
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> تحديثات وتحسينات ضمن الاشتراك</li>
-            <li class="flex gap-2"><span style="color:var(--green2)">✓</span> دعم فني عن بُعد طوال العام</li>
-          </ul>
-
-          <button type="button"
-                  class="mt-6 w-full btnBrand px-4 py-3 text-sm font-extrabold text-slate-950"
-                  data-plan="سنة دراسية 1448–1449 — 1000 ريال">
-            اختيار هذه الباقة
-          </button>
-        </div>
-
-        <!-- Semester -->
-        <div class="soft p-6">
-          <div class="flex items-center justify-between gap-2">
-            <span class="tag px-3 py-1 text-xs font-bold"
-                  style="border-color: rgba(56,189,248,.30); background: rgba(56,189,248,.10); color:#dff3ff;">
-              خيار مرن
-            </span>
-            <span class="text-xs" style="color:var(--muted2)">فصل دراسي</span>
-          </div>
-
-          <div class="mt-4 text-lg font-extrabold">اشتراك فصل دراسي 1448–1449</div>
-          <div class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-            مناسب للمدارس التي ترغب بالاشتراك لفصل واحد ضمن السنة الدراسية القادمة.
-          </div>
-
-          <div class="mt-5 flex items-end gap-2">
-            <div class="text-4xl font-extrabold">600</div>
-            <div class="pb-1 text-sm font-bold" style="color:var(--muted2)">ريال</div>
-          </div>
-
-          <ul class="mt-5 space-y-2 text-sm" style="color:var(--muted)">
-            <li class="flex gap-2"><span style="color:var(--sky)">✓</span> مرونة في التجديد حسب الفصل</li>
-            <li class="flex gap-2"><span style="color:var(--sky)">✓</span> تحديثات خلال فترة الاشتراك</li>
-            <li class="flex gap-2"><span style="color:var(--sky)">✓</span> دعم فني عن بُعد خلال الفصل</li>
-          </ul>
-
-          <button type="button"
-                  class="mt-6 w-full btnGhost px-4 py-3 text-sm font-extrabold"
-                  data-plan="فصل دراسي 1448–1449 — 600 ريال">
-            اختيار هذه الباقة
-          </button>
-        </div>
-      </div>
-
-      <div class="mt-6 soft p-5" style="border-color: rgba(212,175,55,.28); background: rgba(212,175,55,.07);">
-        <div class="flex items-start gap-3">
-          <div class="h-10 w-10 rounded-xl soft flex items-center justify-center"
-               style="background: rgba(212,175,55,.10); border-color: rgba(212,175,55,.22);">⚠️</div>
-          <div class="text-sm leading-relaxed" style="color:var(--muted)">
-            التفعيل مرتبط بإرسال <strong class="text-white">بيانات المدرسة</strong>.
-            وإذا كان الدفع عبر تحويل بنكي، يُفضّل كتابة <strong class="text-white">اسم المدرسة</strong> في وصف التحويل لتسريع المطابقة.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tamara -->
-    <div id="tamara" class="glass p-6 sm:p-8">
-      <div class="flex items-end justify-between gap-4 flex-wrap">
-        <div class="flex items-center gap-3">
-          <div class="h-11 w-11 rounded-2xl soft flex items-center justify-center text-xl"
-               style="background: rgba(99,102,241,.10); border-color: rgba(99,102,241,.22);">🛍️</div>
-          <div>
-            <h2 class="text-2xl sm:text-3xl font-extrabold">الدفع عبر تمارا</h2>
-            <p class="mt-2 text-sm" style="color:var(--muted)">
-              متاح الدفع بالتقسيط عبر <strong class="text-white">تمارا</strong>. لطلب الدفع عبر تمارا تواصل واتساب لتجهيز وإرسال رابط الدفع.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <div class="soft px-4 py-2 flex items-center gap-3"
-               style="border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.05);">
-            <img src="{% static 'img/tamara.svg' %}" alt="Tamara" class="h-6 w-auto"
-                 onerror="this.style.display='none'; this.parentElement.querySelector('.tamaraFallback').classList.remove('hidden');">
-            <span class="tamaraFallback hidden text-sm font-extrabold text-white">تمارا</span>
-          </div>
-          <a id="tamaraWhatsApp"
-             href="https://wa.me/966537720207"
-             target="_blank" rel="noopener noreferrer"
-             class="btnBrand px-5 py-2.5 text-sm font-extrabold inline-flex items-center gap-2">
-            <span aria-hidden="true">🟢</span>
-            <span>طلب رابط تمارا</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="mt-7 grid gap-5 lg:grid-cols-2">
-        <!-- How it works -->
-        <div class="soft p-6"
-             style="border-color: rgba(99,102,241,.25); background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(255,255,255,.05));">
-          <h3 class="text-lg font-extrabold">كيف يتم الدفع عبر تمارا؟</h3>
-          <p class="mt-2 text-sm leading-relaxed" style="color:var(--muted)">
-            لضمان مطابقة الباقة والمدرسة بشكل صحيح، يتم تجهيز رابط تمارا يدويًا وإرساله لك عبر واتساب.
-            اختر الباقة من الأعلى ثم اضغط <strong class="text-white">طلب رابط تمارا</strong>.
-          </p>
-
-          <div class="mt-5 space-y-3 text-sm">
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">1) اختر الباقة</div>
-              <div style="color:var(--muted)">اختر باقتك من قسم الأسعار لتجهيز رابط مطابق.</div>
-            </div>
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">2) أرسل بيانات المدرسة</div>
-              <div style="color:var(--muted)">اسم المدرسة + اسم المسؤول + جوال للتواصل.</div>
-            </div>
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">3) نستخرج رابط الدفع</div>
-              <div style="color:var(--muted)">نجهز ونرسل رابط تمارا خلال أقرب وقت.</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- What to send -->
-        <div class="soft p-6">
-          <h3 class="text-lg font-extrabold">ماذا تكتب في واتساب؟</h3>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            انسخ/أرسل البيانات التالية — سيتم تجهيز رابط تمارا وإرساله لك.
-          </p>
-
-          <div class="mt-5 space-y-3 text-sm">
-            <div class="soft p-4">
-              <div class="text-xs" style="color:var(--muted2)">الباقة المختارة</div>
-              <div class="mt-1 font-bold text-white" id="chosenPlanTextTamara">لم يتم اختيار باقة بعد</div>
-            </div>
-
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">بيانات المدرسة</div>
-              <ul class="space-y-1" style="color:var(--muted)">
-                <li>• اسم المدرسة</li>
-                <li>• المدينة (اختياري)</li>
-                <li>• اسم المسؤول</li>
-                <li>• رقم الجوال</li>
-                <li>• الإيميل </li>
-                <li>• شعار المدرسة </li>
-
-              </ul>
-            </div>
-
-            <div class="soft p-4" style="border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.10);">
-              <div class="font-extrabold text-white">ملاحظة</div>
-              <div class="mt-1" style="color:var(--muted)">
-                في حال رغبت بالدفع باستخدام <strong class="text-white">تمارا</strong>، يلزم التواصل عبر واتساب
-                لتجهيز وإرسال <strong class="text-white">رابط الدفع</strong> المناسب.
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- Bank Transfer -->
-    <div id="bank" class="glass p-6 sm:p-8">
-      <div class="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold">التحويل البنكي</h2>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            التحويل عبر <strong class="text-white">مصرف الراجحي</strong>. بعد التحويل أرسل الإيصال وبيانات المدرسة عبر واتساب لإكمال التفعيل.
-          </p>
-        </div>
-
-        <a href="https://wa.me/966537720207" target="_blank" rel="noopener noreferrer"
-           class="btnBrand px-5 py-2.5 text-sm font-extrabold inline-flex items-center gap-2">
-          <span aria-hidden="true">🟢</span>
-          <span>إرسال الإيصال عبر واتساب</span>
-        </a>
-      </div>
-
-      <div class="mt-7 grid gap-5 lg:grid-cols-2">
-
-        <!-- Beneficiary -->
-        <div class="soft p-6">
-          <h3 class="text-lg font-extrabold">بيانات المستفيد</h3>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            يرجى التأكد من إدخال البيانات كما هي.
-          </p>
-
-          <div class="mt-5 space-y-4 text-sm">
-
-            <div class="soft p-4">
-              <div class="text-xs" style="color:var(--muted2)">اسم المستفيد</div>
-              <div class="mt-1 font-semibold text-white leading-relaxed">
-                منصور محمد حامد الغامدي برمجة وتطوير المواقع الالكترونية
-              </div>
-            </div>
-
-            <div class="soft p-4 flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-xs" style="color:var(--muted2)">رقم الحساب</div>
-                <div class="mt-1 font-mono text-white break-all" id="acc">660000010006086220957</div>
-              </div>
-              <button type="button" class="btnGhost px-3 py-2 text-xs font-extrabold" data-copy="#acc">نسخ</button>
-            </div>
-
-            <div class="soft p-4 flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-xs" style="color:var(--muted2)">رقم الآيبان (IBAN)</div>
-                <div class="mt-1 font-mono text-white break-all" id="iban">SA8580000660608016220957</div>
-              </div>
-              <button type="button" class="btnGhost px-3 py-2 text-xs font-extrabold" data-copy="#iban">نسخ</button>
-            </div>
-
-            <div class="soft p-4 flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-xs" style="color:var(--muted2)">كود سويفت (SWIFT)</div>
-                <div class="mt-1 font-mono text-white break-all" id="swift">RJHISARI</div>
-              </div>
-              <button type="button" class="btnGhost px-3 py-2 text-xs font-extrabold" data-copy="#swift">نسخ</button>
-            </div>
-
-            <div class="soft p-4">
-              <div class="text-xs" style="color:var(--muted2)">البنك</div>
-              <div class="mt-1 font-semibold text-white">مصرف الراجحي</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- After transfer -->
-        <div class="soft p-6">
-          <h3 class="text-lg font-extrabold">ماذا ترسل بعد التحويل؟</h3>
-          <p class="mt-2 text-sm" style="color:var(--muted)">
-            لتسريع المطابقة والتفعيل، أرسل التالي:
-          </p>
-
-          <div class="mt-5 space-y-3 text-sm">
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">1) إيصال التحويل</div>
-              <div style="color:var(--muted)">صورة واضحة لإيصال التحويل البنكي.</div>
-            </div>
-
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">2) بيانات المدرسة</div>
-              <ul class="space-y-1" style="color:var(--muted)">
-                <li>• اسم المدرسة</li>
-                <li>• المدينة </li>
-                <li>• اسم المسؤول</li>
-                <li>• رقم الجوال للتواصل</li>
-                <li>• الإيميل</li>
-                <li>• شعار المدرسة</li>
-              </ul>
-            </div>
-
-            <div class="soft p-4">
-              <div class="font-extrabold text-white mb-1">3) الباقة المختارة</div>
-              <div style="color:var(--muted)">
-                <span id="chosenPlanText" class="font-bold text-white">لم يتم اختيار باقة بعد</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-6 soft p-5" style="border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.10);">
-            <div class="font-extrabold text-white">ملاحظة</div>
-            <div class="mt-1 text-sm" style="color:var(--muted)">
-              إذا لم يتم اختيار باقة من الأعلى، يمكنك كتابة اسم الباقة يدويًا داخل رسالة واتساب مع الإيصال.
-              <br>
-              وإذا رغبت بالدفع عبر <strong class="text-white">تمارا</strong>، انتقل لقسم تمارا واضغط زر <strong class="text-white">طلب رابط تمارا</strong>.
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Copy Toast -->
-    <div id="toast"
-         class="fixed bottom-4 left-4 right-4 md:left-6 md:right-auto md:w-[360px] hidden glass p-4 text-sm text-white">
-      تم نسخ البيانات ✅
-    </div>
-
-  </div>
-</section>
-
-<script>
-(function () {
-  "use strict";
-
-  // ---------- Toast ----------
-  const toast = document.getElementById("toast");
-  let t;
-
-  function showToast(msg) {
-    if (!toast) return;
-    toast.textContent = msg || "تم نسخ البيانات ✅";
-    toast.classList.remove("hidden");
-    clearTimeout(t);
-    t = setTimeout(function () {
-      toast.classList.add("hidden");
-    }, 1700);
-  }
-
-  // ---------- Copy ----------
-  async function copyText(text) {
-    const val = (text || "").trim();
-    if (!val) return false;
-
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(val);
-        return true;
-      }
-    } catch (e) {}
-
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = val;
-      ta.setAttribute("readonly", "readonly");
-      ta.style.position = "fixed";
-      ta.style.top = "-9999px";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      return ok;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  document.addEventListener("click", async function (ev) {
-    const btn = ev.target.closest("[data-copy]");
-    if (!btn) return;
-
-    const sel = btn.getAttribute("data-copy");
-    const el = sel ? document.querySelector(sel) : null;
-    const text = el ? el.textContent : "";
-
-    const ok = await copyText(text);
-    showToast(ok ? "تم نسخ البيانات ✅" : "تعذر النسخ — انسخ يدويًا");
-  });
-
-  // ---------- Plan chooser ----------
-  const chosenPlanText = document.getElementById("chosenPlanText");
-  const chosenPlanTextTamara = document.getElementById("chosenPlanTextTamara");
-  const tamaraWhatsApp = document.getElementById("tamaraWhatsApp");
-
-  let selectedPlan = "";
-
-  function buildTamaraWhatsAppLink(planText) {
-    const base = "https://wa.me/966537720207";
-    const planLine = planText ? planText : "لم يتم تحديد باقة بعد";
-    const msg = [
-      "السلام عليكم ورحمة الله وبركاته،",
-      "",
-      "أرغب بالدفع عبر *تمارا* لاشتراك لوحة العرض الذكية.",
-      "",
-      "*الباقة المختارة:*",
-      planLine,
-      "",
-      "*بيانات المدرسة:*",
-      "- اسم المدرسة:",
-      "- المدينة (اختياري):",
-      "- اسم المسؤول:",
-      "- رقم الجوال:",
-      "",
-      "فضلاً تجهيز وإرسال رابط الدفع عبر تمارا.",
-      "شاكرين لكم."
-    ].join("\n");
-
-    return base + "?text=" + encodeURIComponent(msg);
-  }
-
-  function syncTamaraLink() {
-    if (!tamaraWhatsApp) return;
-    tamaraWhatsApp.href = buildTamaraWhatsAppLink(selectedPlan);
-  }
-
-  document.addEventListener("click", function (ev) {
-    const planBtn = ev.target.closest("[data-plan]");
-    if (!planBtn) return;
-
-    const plan = planBtn.getAttribute("data-plan") || "";
-    if (!plan) return;
-
-    selectedPlan = plan;
-
-    if (chosenPlanText) chosenPlanText.textContent = plan;
-    if (chosenPlanTextTamara) chosenPlanTextTamara.textContent = plan;
-
-    syncTamaraLink();
-    showToast("تم اختيار الباقة ✅");
-
-    const bank = document.getElementById("bank");
-    if (bank) bank.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  // init tamara link with empty plan
-  syncTamaraLink();
-
-})();
-</script>
-{% endblock %}

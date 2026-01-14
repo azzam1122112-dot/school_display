@@ -78,11 +78,11 @@
         .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
         .flex-center { display: flex; align-items: center; justify-content: center; }
         .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
             border-radius: 24px;
         }
         .text-gradient {
@@ -101,56 +101,42 @@
         .blur-2 { width: 350px; height: 350px; background: #c084fc; bottom: 80px; left: -100px; animation: float 16s ease-in-out infinite reverse; }
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
 
-        /* ============ NAVBAR (Desktop + Mobile Drawer) ============ */
+        /* Navbar (Desktop + Mobile Drawer) */
         nav {
             position: fixed;
-            top: calc(14px + env(safe-area-inset-top, 0px));
+            top: calc(12px + env(safe-area-inset-top, 0px));
             left: 50%;
             transform: translateX(-50%);
-            width: min(1080px, calc(100% - 24px));
+            width: min(1140px, calc(100% - 32px));
             z-index: 1000;
-            padding: 14px 18px;
+            padding: 10px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.25s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         nav .brand {
-            display: flex; align-items: center; gap: 12px;
-            font-weight: 900; font-size: 1.1rem;
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 900; font-size: 1.05rem;
             color: var(--text-1); text-decoration: none;
-            min-width: 0;
+            flex-shrink: 0;
         }
-        nav .brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         nav .brand i {
-            width: 42px; height: 42px;
+            width: 38px; height: 38px;
             background: linear-gradient(135deg, var(--primary), #4f46e5);
-            color: white; border-radius: 12px;
-            display: grid; place-items: center; font-size: 1.25rem;
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
-            flex: 0 0 auto;
+            color: white; border-radius: 10px;
+            display: grid; place-items: center; font-size: 1.15rem;
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
         }
 
-        nav .links { display: flex; gap: 28px; align-items: center; }
+        nav .links { display: flex; gap: 24px; align-items: center; }
         nav .links a {
             text-decoration: none; color: var(--text-2);
-            font-weight: 800; transition: 0.2s; font-size: 0.95rem;
+            font-weight: 700; transition: 0.2s; font-size: 0.9rem;
         }
-        nav .links a:hover { color: var(--primary); }
 
-        .nav-cta {
-            padding: 10px 20px;
-            background: var(--dark);
-            color: white;
-            border-radius: 999px;
-            text-decoration: none;
-            font-weight: 900;
-            font-size: 0.95rem;
-            white-space: nowrap;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
+        .nav-btn-group { display: flex; gap: 8px; align-items: center; }
         .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(15, 23, 42, 0.22); }
 
         /* Mobile menu button */
@@ -507,45 +493,75 @@
         /* ============ Responsive ============ */
         @media (max-width: 1024px) {
             nav { width: calc(100% - 24px); padding: 10px 14px; }
-            nav .links { gap: 16px; }
+            nav .links { display: none; } /* Hide links earlier for cleaner tablet view */
         }
 
-        /* Mobile: compact header + drawer */
-        @media (max-width: 860px) {
-            nav .links { display: none; }
-            .nav-menu-btn { display: grid; place-items: center; }
-            nav { padding: 10px 12px; }
-            .nav-cta { display: none; } /* Show in drawer only for cleaner header */
+        /* Essential Mobile Centering & Polish */
+        @media (max-width: 820px) {
+            nav {
+                display: grid;
+                grid-template-columns: 48px 1fr 48px;
+                align-items: center;
+                top: calc(8px + env(safe-area-inset-top, 0px));
+                padding: 6px 12px;
+                width: calc(100% - 20px);
+                border-radius: 20px;
+            }
+            /* Right Side (Start in RTL) - Menu */
+            .nav-btn-group {
+                grid-column: 1;
+                display: flex;
+                justify-content: center;
+            }
+            .nav-cta { display: none; }
+
+            /* Middle - Logo */
+            nav .brand {
+                grid-column: 2;
+                justify-content: center;
+                font-size: 1rem;
+                margin: 0;
+            }
+            nav .brand span { font-size: 0.95rem; }
+
+            /* Left Side (End in RTL) - Empty space to balance the brand */
+            nav::before {
+                content: "";
+                grid-column: 3;
+                width: 48px;
+            }
+            .nav-menu-btn {
+                display: grid;
+                place-items: center;
+                width: 40px; height: 40px;
+                border-radius: 12px;
+            }
         }
 
         @media (max-width: 768px) {
             .container { padding: 0 16px; }
-            .hero { padding: 180px 10px 48px; }
-            .hero h1 { font-size: 2.3rem; }
-            .hero p { font-size: 1.05rem; padding: 0 10px; }
+            .hero { padding: 130px 10px 40px; }
+            .hero h1 { font-size: 2.1rem; line-height: 1.25; margin-bottom: 22px; }
+            .hero h1 br { display: none; }
+            .hero p { font-size: 1.02rem; padding: 0 5%; }
             
             .hero-btns { flex-direction: column; width: 100%; max-width: 320px; margin: 0 auto; gap: 12px; }
-            .btn-main, .btn-sec { width: 100%; justify-content: center; padding: 14px 20px; }
+            .btn-main, .btn-sec { width: 100%; justify-content: center; padding: 14px 20px; font-size: 1rem; }
 
-            .grid-cards { grid-template-columns: 1fr; gap: 14px; margin: 40px 0 60px; }
-            .feature-card { padding: 28px 20px; }
+            .hero-badges { margin-top: 30px; gap: 10px; }
+            .badge { font-size: 0.88rem; padding: 8px 14px; width: 100%; justify-content: center; } /* Make badges full width/centered */
             
-            .pricing-section { padding: 50px 0; }
-            .pricing-grid { flex-direction: column; align-items: stretch; gap: 20px; }
-            .plan-card { max-width: 100%; }
-            .plan-card.popular { transform: none; border-width: 2px; }
-            .plan-card.popular:hover { transform: translateY(-5px); }
+            .grid-cards { grid-template-columns: 1fr; gap: 14px; margin: 30px 0 50px; }
+            
+            .showcase { margin-top: 34px; perspective: none; }
+            .mockup-container { transform: none !important; padding: 4px; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .mockup-inner { border-radius: 10px; }
+        }
 
-            .toggle-container { width: 100%; margin-bottom: 30px; }
-            .toggle-btn { flex: 1; min-width: 0; padding: 12px 6px; font-size: 0.9rem; }
-
-            .footer-grid { grid-template-columns: 1fr; gap: 30px; text-align: center; }
-            .footer-col a:hover { transform: none; }
-            .footer-brand { justify-content: center; }
-
-            .showcase { margin-top: 40px; }
-            .mockup-container { transform: none !important; padding: 6px; border-radius: 16px; }
-            .mockup-inner { border-radius: 12px; }
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 1.85rem; }
+            nav .brand span { display: none; } /* On very small screens just show icon to keep it centered */
+            nav .brand { gap: 0; }
         }
 
         @media (max-width: 480px) {
@@ -672,23 +688,23 @@
             <span>لوحة العرض الذكية</span>
         </a>
 
-        <!-- Desktop links -->
         <div class="links" aria-label="روابط التنقل">
             <a href="#features">المميزات</a>
             <a href="#pricing">الأسعار</a>
             <a href="#" onclick="openModal(event)">جرب النظام</a>
         </div>
 
-        <!-- Mobile menu button -->
-        <button class="nav-menu-btn" type="button" aria-label="فتح القائمة" onclick="openDrawer()">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-
-        {% if login_url %}
-            <a href="{{ login_url }}" class="nav-cta">دخول النظام</a>
-        {% else %}
-            <a href="#pricing" class="nav-cta">ابدأ الآن</a>
-        {% endif %}
+        <div class="nav-btn-group">
+            {% if login_url %}
+                <a href="{{ login_url }}" class="nav-cta">دخول النظام</a>
+            {% else %}
+                <a href="#pricing" class="nav-cta">ابدأ الآن</a>
+            {% endif %}
+            
+            <button class="nav-menu-btn" type="button" aria-label="فتح القائمة" onclick="openDrawer()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
     </nav>
 
     <!-- Mobile Drawer -->
