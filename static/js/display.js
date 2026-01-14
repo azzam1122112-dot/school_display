@@ -681,7 +681,8 @@
                     const rem2 = typeof s2.remaining_seconds === "number" ? Math.max(0, Math.floor(s2.remaining_seconds)) : null;
                     if ((st2 === "period" || st2 === "break" || st2 === "before") && rem2 === 0 && core2 === coreSig) {
                       const now2 = Date.now();
-                      if (now2 - reloadFallbackTs > 60000) {
+                      // Reduced timeout to 3s to ensure screen updates immediately if stuck at 00:00
+                      if (now2 - reloadFallbackTs > 3000) {
                         reloadFallbackTs = now2;
                         try {
                           window.location.reload();

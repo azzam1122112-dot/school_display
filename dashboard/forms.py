@@ -196,6 +196,12 @@ class DayScheduleForm(forms.ModelForm):
     class Meta:
         model = DaySchedule
         fields = ["periods_count"]
+        widgets = {
+            "periods_count": forms.NumberInput(attrs={
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-slate-800 font-bold bg-white text-center",
+                "min": "0"
+            })
+        }
 
     def clean_periods_count(self):
         v = self.cleaned_data.get("periods_count")
@@ -209,8 +215,20 @@ class PeriodForm(forms.ModelForm):
         model = Period
         fields = ["index", "starts_at", "ends_at"]
         widgets = {
-            "starts_at": forms.TimeInput(attrs={"type": "time", "step": 60}),
-            "ends_at": forms.TimeInput(attrs={"type": "time", "step": 60}),
+            "index": forms.NumberInput(attrs={
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-slate-800 font-bold bg-white text-center placeholder-slate-400",
+                "placeholder": "#"
+            }),
+            "starts_at": forms.TimeInput(attrs={
+                "type": "time", 
+                "step": 60,
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-slate-800 font-medium bg-white ltr:text-right"
+            }),
+            "ends_at": forms.TimeInput(attrs={
+                "type": "time", 
+                "step": 60,
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-slate-800 font-medium bg-white ltr:text-right"
+            }),
         }
 
     def clean(self):
@@ -255,7 +273,19 @@ class BreakForm(forms.ModelForm):
         model = Break
         fields = ["label", "starts_at", "duration_min"]
         widgets = {
-            "starts_at": forms.TimeInput(attrs={"type": "time", "step": 60}),
+            "label": forms.TextInput(attrs={
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500 text-slate-800 font-medium bg-white placeholder-slate-400",
+                "placeholder": "مثار: فسحة الصلاة"
+            }),
+            "starts_at": forms.TimeInput(attrs={
+                "type": "time", 
+                "step": 60,
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500 text-slate-800 font-medium bg-white ltr:text-right"
+            }),
+            "duration_min": forms.NumberInput(attrs={
+                "class": "form-input w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500 text-slate-800 font-medium bg-white text-center",
+                "min": "1"
+            }),
         }
 
     def clean(self):
