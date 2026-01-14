@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -318,6 +319,15 @@ STORAGES = {
 
 WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_MANIFEST_STRICT = env_bool("WHITENOISE_MANIFEST_STRICT", "True")
+
+# The Django test runner sets DEBUG=False by default, which activates the manifest storage.
+# In local/dev CI runs we may not have run collectstatic; do not fail tests on missing manifest entries.
+if "test" in sys.argv:
+    WHITENOISE_MANIFEST_STRICT = False
+    try:
+        STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
+    except Exception:
+        pass
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

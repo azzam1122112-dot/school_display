@@ -603,10 +603,59 @@
       }
     } catch (e) {}
 
-    // Default: refresh data ASAP (lighter than reload).
+    // Default: force-refresh data ASAP (bypasses ETag + server-side snapshot cache).
     try {
-      scheduleNext(0.2);
-    } catch (e) {}
+      forceRefreshNow("countdown_zero");
+    } catch (e) {
+      try {
+        scheduleNext(0.2);
+      } catch (e2) {}
+    }
+  }
+
+  let forceRefreshInProgress = false;
+  async function forceRefreshNow(reason) {
+    if (isBlocked) return;
+    if (forceRefreshInProgress) return;
+    forceRefreshInProgress = true;
+
+    try {
+      // Force a fresh snapshot build on the server to avoid waiting for the server cache TTL.
+      const snap = await safeFetchSnapshot({
+        force: true,
+        bypassEtag: true,
+        bypassServerCache: true,
+        reason: reason || "manual",
+      });
+
+      if (!snap || (snap && snap._notModified)) {
+        return;
+      }
+
+      try {
+        // Same render path as refreshLoop
+        failStreak = 0;
+        renderState(snap);
+        renderAnnouncements(snap.announcements || []);
+        renderExcellence(snap.excellence || []);
+        renderStandby(snap.standby || []);
+        renderPeriodClasses(snap.period_classes || []);
+      } catch (e) {
+        renderAlert("حدث خطأ أثناء العرض", "افتح ?debug=1 لمزيد من التفاصيل.");
+        ensureDebugOverlay();
+        if (isDebug()) setDebugText("force render error: " + (e && e.message ? e.message : String(e)));
+      }
+    } catch (e) {
+      // Fallback to normal loop on unexpected errors.
+      try {
+        scheduleNext(0.2);
+      } catch (e2) {}
+    } finally {
+      forceRefreshInProgress = false;
+      try {
+        scheduleNext(cfg.REFRESH_EVERY);
+      } catch (e) {}
+    }
   }
 
   function setRing(pct) {
@@ -1489,14 +1538,20 @@
     });
   }
 
-  async function safeFetchSnapshot() {
-    if (inflight) return inflight;
+  async function safeFetchSnapshot(opts) {
+    opts = opts || {};
+    if (inflight && !opts.force) return inflight;
 
     const token = getToken();
     const baseUrl = resolveSnapshotUrl();
 
     const u = new URL(baseUrl, window.location.origin);
     u.searchParams.set("_t", String(Date.now()));
+
+    if (opts.bypassServerCache) {
+      u.searchParams.set("nocache", "1");
+      u.searchParams.set("_cb", String(Date.now()));
+    }
 
     if (ctrl) {
       try {
@@ -1507,10 +1562,16 @@
 
     const headers = { Accept: "application/json", "X-Display-Token": token || "" };
 
-    try {
-      const prev = localStorage.getItem(etagKey) || "";
-      if (prev) headers["If-None-Match"] = prev;
-    } catch (e) {}
+    if (!opts.bypassEtag) {
+      try {
+        const prev = localStorage.getItem(etagKey) || "";
+        if (prev) headers["If-None-Match"] = prev;
+      } catch (e) {}
+    } else {
+      try {
+        localStorage.removeItem(etagKey);
+      } catch (e) {}
+    }
 
     const fetchPromise = fetch(u.toString(), {
       method: "GET",

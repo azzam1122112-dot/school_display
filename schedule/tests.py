@@ -8,6 +8,11 @@ class DisplayApiAliasesTests(TestCase):
         r = self.client.get(f"/api/display/snapshot/?token={bundle.screen.token}")
         self.assertEqual(r.status_code, 200)
 
+    def test_snapshot_nocache_ok(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        r = self.client.get(f"/api/display/snapshot/?token={bundle.screen.token}&nocache=1")
+        self.assertEqual(r.status_code, 200)
+
     def test_today_alias_ok(self):
         bundle = make_active_school_with_screen(max_screens=3)
         r = self.client.get(f"/api/display/today/?token={bundle.screen.token}")

@@ -632,6 +632,8 @@ def snapshot(request, token: str | None = None):
     GET /api/display/snapshot/<token>/
     """
     try:
+        force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
+
         token_value = _extract_token(request, token)
         settings_obj = None
         hashed_token = _sha256(token_value) if token_value else None
@@ -658,7 +660,7 @@ def snapshot(request, token: str | None = None):
                         pass
         
         # 1) If we have school_id, try to fetch Snapshot directly from cache
-        if cached_school_id:
+        if cached_school_id and not force_nocache:
              snap_key = f"snapshot:v1:school:{cached_school_id}"
              cached_snap = cache.get(snap_key)
              if isinstance(cached_snap, dict):
@@ -724,6 +726,24 @@ def snapshot(request, token: str | None = None):
         cache_key = _snapshot_cache_key(settings_obj)
         lock_key = f"{cache_key}:lock"
         ttl_s = _snapshot_cache_ttl_seconds()
+
+        # If the client explicitly requests nocache, bypass any cached snapshot reads.
+        if force_nocache:
+            try:
+                snap = _build_final_snapshot(request, settings_obj)
+                try:
+                    cache.set(cache_key, snap, timeout=ttl_s)
+                except Exception:
+                    pass
+
+                resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
+                resp["Cache-Control"] = "no-store"
+                return resp
+            except Exception:
+                logger.exception("snapshot: failed to build nocache snapshot")
+                resp = JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
+                resp["Cache-Control"] = "no-store"
+                return resp
 
         cached = cache.get(cache_key)
         if isinstance(cached, dict):
