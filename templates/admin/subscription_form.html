@@ -404,6 +404,7 @@
 
           const payWrap = document.getElementById("paymentMethodWrap");
           const payEl = document.getElementById("id_payment_method");
+          const payHintEl = document.getElementById("paymentMethodHint");
 
           let planDurations = null;
           const planDurationsEl = document.getElementById("planDurations");
@@ -434,8 +435,10 @@
             if (Number.isFinite(price) && price <= 0) {
               payWrap.classList.add("hidden");
               if (payEl) payEl.value = "";
+              if (payHintEl) payHintEl.textContent = "هذه باقة مجانية — لا حاجة لاختيار/حفظ طريقة دفع.";
             } else {
               payWrap.classList.remove("hidden");
+              if (payHintEl) payHintEl.textContent = "اختر طريقة الدفع للاشتراكات المدفوعة. (الباقة المجانية لا تحتاج)";
             }
           }
 
