@@ -262,12 +262,67 @@
         }
 
         @media print {
-            body { background: none; padding: 0; }
-            .invoice-container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; min-height: 0; }
+            @page {
+                size: A4;
+                margin: 8mm;
+            }
+
+            html, body {
+                background: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
             .print-toolbar { display: none !important; }
+
+            .invoice-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 0 !important;
+            }
+
+            /* Make everything fit into a single page when possible */
+            .content-wrap { padding: 12mm 12mm !important; }
+            .header { margin-bottom: 10mm !important; padding-bottom: 6mm !important; }
+            .brand h1 { font-size: 22px !important; }
+            .brand p { font-size: 12px !important; }
+
+            .parties { gap: 18mm !important; margin-bottom: 10mm !important; }
+            .party-name { font-size: 16px !important; margin-bottom: 6px !important; }
+            .party-detail { font-size: 12px !important; line-height: 1.55 !important; }
+
+            .table-wrap { margin-bottom: 8mm !important; }
+            th { padding: 10px 12px !important; font-size: 11px !important; }
+            td { padding: 12px 12px !important; }
+            .service-title { font-size: 13px !important; }
+            .service-meta { font-size: 11px !important; }
+
+            .summary-section { margin-bottom: 10mm !important; }
+            .summary-row { font-size: 12.5px !important; }
+            .summary-row.total { border-color: #000 !important; font-size: 16px !important; }
+
+            .footer { padding-top: 6mm !important; font-size: 11px !important; }
+
+            /* Avoid splitting key blocks across pages */
+            .header,
+            .parties,
+            .table-wrap,
+            .summary-section,
+            .footer {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            table, tr, td, th {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
             .top-stripe { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             th { background-color: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .summary-row.total { border-color: #000 !important; }
         }
     </style>
 </head>
