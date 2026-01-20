@@ -386,9 +386,13 @@
                                 <div class="service-meta" style="margin-top: 4px;">
                                     طريقة الدفع: {{ invoice.get_payment_method_display }}
                                 </div>
-                                {% if invoice.operation and invoice.operation.note %}
+                                {% if subscription.notes %}
                                 <div class="service-meta" style="margin-top: 4px;">
-                                    <strong>ملاحظات:</strong> {{ invoice.operation.note }}
+                                    <strong>ملاحظات:</strong> <bdi>{{ subscription.notes|linebreaksbr }}</bdi>
+                                </div>
+                                {% elif invoice.operation and invoice.operation.note and invoice.operation.note != 'Updated via edit' %}
+                                <div class="service-meta" style="margin-top: 4px;">
+                                    <strong>ملاحظات:</strong> <bdi>{{ invoice.operation.note|linebreaksbr }}</bdi>
                                 </div>
                                 {% endif %}
                             </td>
