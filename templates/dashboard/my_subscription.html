@@ -193,39 +193,65 @@
     </div>
   {% else %}
     {# --- حالة عدم وجود اشتراك (Empty State) --- #}
-    <div class="relative bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden text-white text-center py-20 px-8 border border-white/10">
+    <div class="relative group overflow-hidden rounded-[2rem] bg-slate-900 shadow-2xl transition-all duration-500 hover:shadow-indigo-900/20 py-20 px-8 border border-white/10">
       
-      <!-- Background Shapes & Effects -->
-      <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-      <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/30 rounded-full blur-[100px] -mr-20 -mt-20 mix-blend-screen animate-pulse-slow"></div>
-      <div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] -ml-20 -mb-20 mix-blend-screen"></div>
-      
-      <div class="relative z-10 space-y-8 max-w-3xl mx-auto">
-        <!-- Floating Icon -->
-        <div class="inline-flex p-6 rounded-3xl bg-white/10 backdrop-blur-xl mb-4 shadow-2xl ring-1 ring-white/20 hover:scale-110 transition-transform duration-500">
-          <span class="text-6xl filter drop-shadow-lg">🚀</span>
-        </div>
+      <!-- الخلفية المتحركة -->
+      <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-slate-900 to-slate-900"></div>
+        <div class="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-indigo-500/10 blur-[120px] mix-blend-screen animate-pulse-slow"></div>
+        <div class="absolute -bottom-[20%] -left-[10%] w-[500px] h-[500px] rounded-full bg-purple-500/10 blur-[100px] mix-blend-screen"></div>
+        <!-- نمط شبكي خفيف -->
+        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 mix-blend-overlay"></div>
+      </div>
+
+      <div class="relative z-10 px-6 py-8 md:py-10 text-center space-y-8 max-w-4xl mx-auto">
         
-        <!-- Headlines -->
-        <div class="space-y-4">
-          <h2 class="text-4xl md:text-5xl font-black tracking-tight leading-tight">
-            <span class="bg-clip-text text-transparent bg-gradient-to-b from-white to-indigo-200">
-              ابدأ رحلتك الرقمية الآن
-            </span>
-          </h2>
-          <p class="text-indigo-100/90 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light">
-            حوّل شاشات مدرستك إلى لوحات تفاعلية مبهرة. <br class="hidden md:block" />
-            اشترك الآن في الباقة التي تناسبك واستمتع بتجربة لا مثيل لها.
-          </p>
+        <!-- أيقونة التاج الذهبي -->
+        <div class="inline-flex relative group-hover:-translate-y-2 transition-transform duration-500">
+          <div class="absolute inset-0 bg-amber-400 blur-2xl opacity-20 rounded-full"></div>
+          <div class="relative w-28 h-28 bg-gradient-to-br from-amber-100 to-amber-300 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20 border border-amber-200/50 transform rotate-3">
+             <span class="text-6xl filter drop-shadow-md">👑</span>
+          </div>
+          <div class="absolute -right-3 -top-3 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm animate-bounce text-indigo-600 text-xl">✨</div>
         </div>
 
-        <!-- CTA Button -->
-        <div class="pt-6">
-          <button onclick="document.getElementById('renewal-section').scrollIntoView({behavior: 'smooth'})" 
-            class="group relative inline-flex items-center gap-3 bg-white text-indigo-950 hover:bg-indigo-50 px-10 py-5 rounded-2xl font-bold text-lg shadow-xl shadow-indigo-900/40 transform hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 outline-none focus:ring-4 focus:ring-indigo-500/50">
-            <span>عرض الباقات المتاحة</span>
-            <span class="text-xl transition-transform group-hover:-translate-x-1">←</span>
-          </button>
+        <div class="space-y-4">
+            <h2 class="text-4xl md:text-6xl font-black text-white tracking-tight leading-tight">
+            ارتقِ بمدرستك إلى <br class="hidden md:block" />
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400">المستوى الاحترافي</span>
+            </h2>
+
+            <p class="text-slate-300 text-lg md:text-xl font-light max-w-2xl mx-auto leading-relaxed">
+            شاشات العرض هي واجهة مدرستك الحديثة. قم بتفعيل اشتراكك الآن وافتح عالماً من الإمكانيات الرقمية التي تبهر الزوار وتسهل التواصل.
+            </p>
+        </div>
+
+        <!-- المميزات السريعة -->
+        <div class="flex flex-wrap justify-center gap-4 mb-2 text-sm font-medium text-slate-400">
+          <span class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+            <span class="text-emerald-400 font-bold text-lg">✓</span> تصاميم احترافية غير محدودة
+          </span>
+          <span class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+            <span class="text-emerald-400 font-bold text-lg">✓</span> تحكم كامل في الشاشات عن بعد
+          </span>
+          <span class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+            <span class="text-emerald-400 font-bold text-lg">✓</span> دعم فني مميز واستجابة سريعة
+          </span>
+        </div>
+
+        <div class="pt-4">
+            <button onclick="document.getElementById('renewal-section').scrollIntoView({behavior: 'smooth'})" 
+            class="group relative inline-flex items-center justify-center gap-4 px-12 py-5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-2xl font-bold text-xl shadow-xl shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-indigo-500/50 focus:ring-4 focus:ring-indigo-500/40 outline-none">
+            <span>اشترك الآن وابدأ فوراً</span>
+            <svg class="w-6 h-6 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+            <!-- Shinning effect -->
+            <div class="absolute inset-0 rounded-2xl overflow-hidden">
+                 <div class="absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 group-hover:animate-shimmer"></div>
+            </div>
+            </button>
+            <p class="mt-4 text-sm text-slate-500 font-medium">خطط مرنة تناسب جميع المدارس • تفعيل فوري</p>
         </div>
       </div>
     </div>
