@@ -482,41 +482,43 @@
                  <th class="px-6 py-4 text-right">الإيصال</th>
               </tr>
            </thead>
-           <tbody class="divide-y divide-slate-100">
-            {% for r in subscription_requests %}
+            <tbody class="divide-y divide-slate-100">
+            {% for row in subscription_history %}
               <tr class="hover:bg-slate-50 transition-colors">
-                 <td class="px-6 py-4 font-mono text-slate-600">{{ r.created_at|date:"Y-m-d" }}</td>
-                 <td class="px-6 py-4 font-bold text-slate-800">{{ r.get_request_type_display }}</td>
-                 <td class="px-6 py-4 text-slate-600">{{ r.plan.name }}</td>
-                 <td class="px-6 py-4 font-mono text-slate-700">{{ r.amount }} ر.س</td>
-                 <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
-                    {% if r.status == 'approved' %}bg-emerald-100 text-emerald-700
-                    {% elif r.status == 'rejected' %}bg-rose-100 text-rose-700
-                    {% elif r.status == 'under_review' %}bg-amber-100 text-amber-700
-                    {% else %}bg-slate-100 text-slate-700{% endif %}">
-                       {{ r.get_status_display }}
-                    </span>
-                 </td>
-                 <td class="px-6 py-4">
-                    {% if r.receipt_image %}
-                       <a href="{{ r.receipt_image.url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition">
-                          <span>👁️</span> عرض
-                       </a>
-                    {% else %}
-                       <span class="text-slate-300">—</span>
-                    {% endif %}
-                 </td>
+                <td class="px-6 py-4 font-mono text-slate-600">{{ row.date|date:"Y-m-d" }}</td>
+                <td class="px-6 py-4 font-bold text-slate-800">{{ row.type_label }}</td>
+                <td class="px-6 py-4 text-slate-600">{{ row.plan_name }}</td>
+                <td class="px-6 py-4 font-mono text-slate-700">
+                 {% if row.amount is not None %}{{ row.amount }} ر.س{% else %}<span class="text-slate-300">—</span>{% endif %}
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
+                  {% if row.status_code == 'approved' or row.status_code == 'active' %}bg-emerald-100 text-emerald-700
+                  {% elif row.status_code == 'rejected' or row.status_code == 'expired' or row.status_code == 'cancelled' %}bg-rose-100 text-rose-700
+                  {% elif row.status_code == 'under_review' or row.status_code == 'pending' or row.status_code == 'submitted' %}bg-amber-100 text-amber-700
+                  {% else %}bg-slate-100 text-slate-700{% endif %}">
+                    {{ row.status_label|default:"—" }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  {% if row.receipt_url %}
+                    <a href="{{ row.receipt_url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition">
+                      <span>👁️</span> عرض
+                    </a>
+                  {% else %}
+                    <span class="text-slate-300">—</span>
+                  {% endif %}
+                </td>
               </tr>
             {% empty %}
               <tr>
-                 <td colspan="6" class="px-6 py-10 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-                    <span class="text-3xl grayscale opacity-50">📭</span>
-                    <span>لا يوجد سجل طلبات سابق</span>
-                 </td>
+                <td colspan="6" class="px-6 py-10 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                  <span class="text-3xl grayscale opacity-50">📭</span>
+                  <span>لا يوجد سجل سابق</span>
+                </td>
               </tr>
             {% endfor %}
-           </tbody>
+            </tbody>
         </table>
      </div>
   </div>

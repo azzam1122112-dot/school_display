@@ -3207,6 +3207,7 @@ def my_subscription(request):
             messages.error(request, "الرجاء تصحيح الأخطاء في نموذج الاشتراك الجديد.")
 
     subscription_requests = []
+    subscription_history = []
     if RequestModel is not None:
         try:
             subscription_requests = list(
@@ -3216,6 +3217,71 @@ def my_subscription(request):
             )
         except Exception:
             subscription_requests = []
+
+    # ==========================
+    # سجل العمليات: دمج الطلبات + الاشتراكات اليدوية
+    # ==========================
+    try:
+        approved_sub_ids = set()
+        if RequestModel is not None:
+            approved_sub_ids = set(
+                RequestModel.objects.filter(
+                    school=school,
+                    approved_subscription__isnull=False,
+                ).values_list("approved_subscription_id", flat=True)
+            )
+
+        manual_subscriptions = []
+        if SubModel is not None:
+            manual_subscriptions = list(
+                SubModel.objects.filter(school=school)
+                .exclude(id__in=approved_sub_ids)
+                .select_related("plan")
+                .order_by("-created_at", "-id")[:10]
+            )
+
+        for r in subscription_requests:
+            receipt_url = None
+            try:
+                ri = getattr(r, "receipt_image", None)
+                if ri and getattr(ri, "name", ""):
+                    receipt_url = ri.url
+            except Exception:
+                receipt_url = None
+            subscription_history.append(
+                {
+                    "date": getattr(r, "created_at", None),
+                    "type_label": getattr(r, "get_request_type_display", lambda: "طلب")(),
+                    "plan_name": getattr(getattr(r, "plan", None), "name", "—"),
+                    "amount": getattr(r, "amount", None),
+                    "status_code": getattr(r, "status", ""),
+                    "status_label": getattr(r, "get_status_display", lambda: "")(),
+                    "receipt_url": receipt_url,
+                }
+            )
+
+        for s in manual_subscriptions:
+            plan_obj = getattr(s, "plan", None)
+            subscription_history.append(
+                {
+                    "date": getattr(s, "created_at", None),
+                    "type_label": "تفعيل يدوي",
+                    "plan_name": getattr(plan_obj, "name", "—"),
+                    "amount": getattr(plan_obj, "price", None),
+                    "status_code": getattr(s, "status", ""),
+                    "status_label": getattr(s, "get_status_display", lambda: "")(),
+                    "receipt_url": None,
+                }
+            )
+
+        safe_min_dt = timezone.make_aware(datetime(1970, 1, 1))
+        subscription_history.sort(
+            key=lambda x: (x.get("date") or safe_min_dt),
+            reverse=True,
+        )
+        subscription_history = subscription_history[:10]
+    except Exception:
+        subscription_history = []
 
     return render(
         request,
@@ -3236,6 +3302,7 @@ def my_subscription(request):
             "renew_form": renew_form,
             "new_form": new_form,
             "subscription_requests": subscription_requests,
+            "subscription_history": subscription_history,
 
             "active_request_tab": active_request_tab,
             "renewal_plan_details": _plan_details(renewal_plan_obj),
