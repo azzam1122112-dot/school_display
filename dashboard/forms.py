@@ -625,6 +625,19 @@ class SchoolSubscriptionForm(forms.ModelForm):
             "status": forms.Select(),
         }
 
+    payment_method = forms.ChoiceField(
+        label="طريقة الدفع",
+        required=False,
+        choices=[
+            ("", "— اختر —"),
+            ("bank_transfer", "تحويل"),
+            ("payment_link", "رابط دفع"),
+            ("tamara", "تمارا"),
+        ],
+        widget=forms.Select(),
+        help_text="يُطلب فقط عند إنشاء اشتراك مدفوع (غير مجاني).",
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["school"].queryset = School.objects.all().order_by("name")
@@ -651,6 +664,25 @@ class SchoolSubscriptionForm(forms.ModelForm):
         end = cleaned.get("ends_at")
         if start and end and end < start:
             raise ValidationError("تاريخ النهاية يجب أن يكون بعد تاريخ البداية.")
+
+        # في إضافة اشتراك يدويًا: نطلب طريقة الدفع للخطط المدفوعة فقط.
+        plan = cleaned.get("plan")
+        payment_method = (cleaned.get("payment_method") or "").strip()
+        is_create = not getattr(self.instance, "pk", None)
+        try:
+            plan_price = getattr(plan, "price", 0) or 0
+        except Exception:
+            plan_price = 0
+
+        # الباقة المجانية (السعر 0) لا نطلب طريقة دفع.
+        if is_create and plan is not None:
+            try:
+                if float(plan_price) > 0 and not payment_method:
+                    raise ValidationError("الرجاء تحديد طريقة الدفع للاشتراك المدفوع.")
+            except Exception:
+                # إذا تعذر تحويل السعر لرقم، لا نكسر النموذج
+                pass
+
         return cleaned
 
 

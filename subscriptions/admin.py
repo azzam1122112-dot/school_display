@@ -1,7 +1,12 @@
 from django.contrib import admin
 
 from core.models import SubscriptionPlan
-from .models import SchoolSubscription, SubscriptionScreenAddon, SubscriptionRequest
+from .models import (
+    SchoolSubscription,
+    SubscriptionPaymentOperation,
+    SubscriptionScreenAddon,
+    SubscriptionRequest,
+)
 
 
 # إدارة خطط الاشتراك
@@ -77,3 +82,20 @@ class SubscriptionRequestAdmin(admin.ModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+
+@admin.register(SubscriptionPaymentOperation)
+class SubscriptionPaymentOperationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "school",
+        "plan",
+        "amount",
+        "method",
+        "source",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("method", "source", "created_at")
+    search_fields = ("school__name", "plan__name", "created_by__username", "note")
+    autocomplete_fields = ("school", "subscription", "plan", "created_by")

@@ -488,3 +488,83 @@ class SubscriptionRequest(models.Model):
 
     def __str__(self) -> str:
         return f"{self.school} - {self.get_request_type_display()} ({self.get_status_display()})"
+
+
+class SubscriptionPaymentOperation(models.Model):
+    """سجل عمليات الدفع/التفعيل للاشتراكات.
+
+    الهدف: عند إنشاء اشتراك يدويًا من لوحة النظام، نسجل طريقة الدفع (تحويل/رابط/تمارا)
+    حتى يظهر لدينا تاريخ واضح لآلية الدفع.
+    """
+
+    METHOD_CHOICES = [
+        ("bank_transfer", "تحويل"),
+        ("payment_link", "رابط دفع"),
+        ("tamara", "تمارا"),
+    ]
+
+    SOURCE_CHOICES = [
+        ("admin_manual", "إضافة يدوية"),
+        ("request", "طلب اشتراك"),
+    ]
+
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="subscription_payment_operations",
+        verbose_name="المدرسة",
+    )
+    subscription = models.ForeignKey(
+        SchoolSubscription,
+        on_delete=models.CASCADE,
+        related_name="payment_operations",
+        verbose_name="الاشتراك",
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="payment_operations",
+        verbose_name="الخطة",
+    )
+
+    amount = models.DecimalField(
+        "المبلغ (ر.س)",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    method = models.CharField(
+        "طريقة الدفع",
+        max_length=20,
+        choices=METHOD_CHOICES,
+    )
+    source = models.CharField(
+        "مصدر العملية",
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default="admin_manual",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_subscription_payment_operations",
+        verbose_name="تمت بواسطة",
+    )
+    note = models.CharField(
+        "ملاحظة",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ العملية")
+
+    class Meta:
+        verbose_name = "عملية دفع اشتراك"
+        verbose_name_plural = "عمليات دفع الاشتراكات"
+        ordering = ("-created_at", "-id")
+
+    def __str__(self) -> str:
+        return f"{self.school} - {self.plan} - {self.get_method_display()}"

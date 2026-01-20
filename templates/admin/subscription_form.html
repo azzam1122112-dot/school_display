@@ -264,10 +264,12 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               {% for field in form %}
                 {% if field.name != "school" and field.name != "plan" and field.name != "starts_at" and field.name != "ends_at" and field.name != "status" %}
-                  <div class="space-y-2">
+                  <div class="space-y-2" {% if field.name == "payment_method" %}id="paymentMethodWrap"{% endif %}>
                     <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
                     {{ field }}
-                    {% if field.help_text %}
+                    {% if field.name == "payment_method" %}
+                      <p class="text-[11px] text-slate-500" id="paymentMethodHint">اختر طريقة الدفع للاشتراكات المدفوعة. (الباقة المجانية لا تحتاج)</p>
+                    {% elif field.help_text %}
                       <p class="text-[11px] text-slate-500">{{ field.help_text }}</p>
                     {% endif %}
                     {% if field.errors %}
@@ -386,6 +388,9 @@
       {% if plan_durations %}
         {{ plan_durations|json_script:"planDurations" }}
       {% endif %}
+      {% if plan_prices %}
+        {{ plan_prices|json_script:"planPrices" }}
+      {% endif %}
       <script>
         (function () {
           "use strict";
@@ -397,6 +402,9 @@
           const hintEl = document.getElementById("rangeHint");
           const daysEl = document.getElementById("daysCount");
 
+          const payWrap = document.getElementById("paymentMethodWrap");
+          const payEl = document.getElementById("id_payment_method");
+
           let planDurations = null;
           const planDurationsEl = document.getElementById("planDurations");
           if (planDurationsEl) {
@@ -404,6 +412,30 @@
               planDurations = JSON.parse(planDurationsEl.textContent || "{}");
             } catch (e) {
               planDurations = null;
+            }
+          }
+
+          let planPrices = null;
+          const planPricesEl = document.getElementById("planPrices");
+          if (planPricesEl) {
+            try {
+              planPrices = JSON.parse(planPricesEl.textContent || "{}");
+            } catch (e) {
+              planPrices = null;
+            }
+          }
+
+          function togglePaymentMethod() {
+            if (!payWrap || !planEl || !planPrices) return;
+            const planId = String(planEl.value || "").trim();
+            const raw = planPrices[planId];
+            const price = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
+
+            if (Number.isFinite(price) && price <= 0) {
+              payWrap.classList.add("hidden");
+              if (payEl) payEl.value = "";
+            } else {
+              payWrap.classList.remove("hidden");
             }
           }
 
@@ -506,8 +538,12 @@
 
           if (startEl) startEl.addEventListener("change", update);
           if (endEl) endEl.addEventListener("change", update);
-          if (planEl) planEl.addEventListener("change", update);
+          if (planEl) planEl.addEventListener("change", function () {
+            update();
+            togglePaymentMethod();
+          });
           update();
+          togglePaymentMethod();
         })();
       </script>
 

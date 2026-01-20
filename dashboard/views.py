@@ -2650,6 +2650,7 @@ def system_subscription_create(request):
         return redirect("dashboard:system_subscriptions_list")
 
     plan_durations = {p.id: p.duration_days for p in SubscriptionPlan.objects.all().only("id", "duration_days")}
+    plan_prices = {p.id: str(p.price) for p in SubscriptionPlan.objects.all().only("id", "price")}
 
     if request.method == "POST":
         form = SchoolSubscriptionForm(request.POST)
@@ -2666,6 +2667,29 @@ def system_subscription_create(request):
             except Exception:
                 pass
             obj.save()
+
+            # سجل طريقة الدفع عند إنشاء اشتراك مدفوع يدويًا (لا تشمل الباقة المجانية)
+            try:
+                from subscriptions.models import SubscriptionPaymentOperation
+
+                plan_obj = getattr(obj, "plan", None)
+                price = getattr(plan_obj, "price", 0) if plan_obj is not None else 0
+                method = (form.cleaned_data.get("payment_method") or "").strip()
+
+                if plan_obj is not None and float(price or 0) > 0:
+                    if method:
+                        SubscriptionPaymentOperation.objects.create(
+                            school=getattr(obj, "school", None),
+                            subscription=obj,
+                            plan=plan_obj,
+                            amount=price or 0,
+                            method=method,
+                            source="admin_manual",
+                            created_by=request.user,
+                        )
+            except Exception:
+                pass
+
             messages.success(request, "تم إنشاء الاشتراك بنجاح.")
             return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -2675,7 +2699,7 @@ def system_subscription_create(request):
     return render(
         request,
         "admin/subscription_form.html",
-        {"form": form, "title": "إضافة اشتراك", "plan_durations": plan_durations},
+        {"form": form, "title": "إضافة اشتراك", "plan_durations": plan_durations, "plan_prices": plan_prices},
     )
 
 
@@ -2687,6 +2711,7 @@ def system_subscription_edit(request, pk: int):
         return redirect("dashboard:system_subscriptions_list")
 
     plan_durations = {p.id: p.duration_days for p in SubscriptionPlan.objects.all().only("id", "duration_days")}
+    plan_prices = {p.id: str(p.price) for p in SubscriptionPlan.objects.all().only("id", "price")}
 
     obj = get_object_or_404(SubModel, pk=pk)
 
@@ -2714,7 +2739,7 @@ def system_subscription_edit(request, pk: int):
     return render(
         request,
         "admin/subscription_form.html",
-        {"form": form, "title": "تعديل اشتراك", "edit": True, "plan_durations": plan_durations},
+        {"form": form, "title": "تعديل اشتراك", "edit": True, "plan_durations": plan_durations, "plan_prices": plan_prices},
     )
 
 
@@ -3248,10 +3273,20 @@ def my_subscription(request):
                     receipt_url = ri.url
             except Exception:
                 receipt_url = None
+
+            # طلبات الاشتراك الحالية تعتمد على رفع إيصال (تحويل بنكي)
+            payment_method_label = "تحويل" if receipt_url else "—"
+            try:
+                amt = getattr(r, "amount", 0) or 0
+                if float(amt) <= 0:
+                    payment_method_label = "مجاني"
+            except Exception:
+                pass
             subscription_history.append(
                 {
                     "date": getattr(r, "created_at", None),
                     "type_label": getattr(r, "get_request_type_display", lambda: "طلب")(),
+                    "payment_method_label": payment_method_label,
                     "plan_name": getattr(getattr(r, "plan", None), "name", "—"),
                     "amount": getattr(r, "amount", None),
                     "status_code": getattr(r, "status", ""),
@@ -3260,14 +3295,53 @@ def my_subscription(request):
                 }
             )
 
+        payment_ops_by_sub_id = {}
+        try:
+            from subscriptions.models import SubscriptionPaymentOperation
+
+            sub_ids = [getattr(s, "pk", None) for s in manual_subscriptions if getattr(s, "pk", None) is not None]
+            if sub_ids:
+                ops = (
+                    SubscriptionPaymentOperation.objects.filter(
+                        school=school,
+                        subscription_id__in=sub_ids,
+                    )
+                    .order_by("-created_at", "-id")
+                )
+                for op in ops:
+                    sid = getattr(op, "subscription_id", None)
+                    if sid and sid not in payment_ops_by_sub_id:
+                        payment_ops_by_sub_id[sid] = op
+        except Exception:
+            payment_ops_by_sub_id = {}
+
         for s in manual_subscriptions:
             plan_obj = getattr(s, "plan", None)
+
+            plan_price = 0
+            try:
+                plan_price = getattr(plan_obj, "price", 0) or 0
+            except Exception:
+                plan_price = 0
+
+            payment_method_label = "غير محددة"
+            try:
+                if float(plan_price) <= 0:
+                    payment_method_label = "مجاني"
+                else:
+                    op = payment_ops_by_sub_id.get(getattr(s, "pk", None))
+                    if op is not None:
+                        payment_method_label = getattr(op, "get_method_display", lambda: "غير محددة")()
+            except Exception:
+                pass
+
             subscription_history.append(
                 {
                     "date": getattr(s, "created_at", None),
                     "type_label": "تفعيل يدوي",
+                    "payment_method_label": payment_method_label,
                     "plan_name": getattr(plan_obj, "name", "—"),
-                    "amount": getattr(plan_obj, "price", None),
+                    "amount": plan_price,
                     "status_code": getattr(s, "status", ""),
                     "status_label": getattr(s, "get_status_display", lambda: "")(),
                     "receipt_url": None,

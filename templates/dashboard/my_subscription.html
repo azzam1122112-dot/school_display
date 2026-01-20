@@ -475,7 +475,7 @@
            <thead class="bg-slate-50 text-slate-500 font-medium">
               <tr>
                  <th class="px-6 py-4 text-right">التاريخ</th>
-                 <th class="px-6 py-4 text-right">النوع</th>
+                  <th class="px-6 py-4 text-right">طريقة الدفع</th>
                  <th class="px-6 py-4 text-right">الخطة</th>
                  <th class="px-6 py-4 text-right">المبلغ</th>
                  <th class="px-6 py-4 text-right">الحالة</th>
@@ -486,7 +486,7 @@
             {% for row in subscription_history %}
               <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-6 py-4 font-mono text-slate-600">{{ row.date|date:"Y-m-d" }}</td>
-                <td class="px-6 py-4 font-bold text-slate-800">{{ row.type_label }}</td>
+                 <td class="px-6 py-4 font-bold text-slate-800">{{ row.payment_method_label|default:"—" }}</td>
                 <td class="px-6 py-4 text-slate-600">{{ row.plan_name }}</td>
                 <td class="px-6 py-4 font-mono text-slate-700">
                  {% if row.amount is not None %}{{ row.amount }} ر.س{% else %}<span class="text-slate-300">—</span>{% endif %}
