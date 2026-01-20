@@ -652,7 +652,6 @@ class SchoolSubscriptionForm(forms.ModelForm):
                     SubscriptionPaymentOperation.objects.filter(
                         school=getattr(self.instance, "school", None),
                         subscription=self.instance,
-                        source="admin_manual",
                     )
                     .order_by("-created_at", "-id")
                     .first()

@@ -2733,9 +2733,6 @@ def system_subscription_edit(request, pk: int):
 
             # حفظ/تحديث طريقة الدفع لاشتراك سابق (عملية دفع + فاتورة إن وجدت)
             try:
-                from django.template.loader import render_to_string
-
-                from subscriptions.invoicing import _get_seller_info, build_invoice_from_operation
                 from subscriptions.models import SubscriptionPaymentOperation
 
                 plan_obj = getattr(obj2, "plan", None)
@@ -2743,11 +2740,11 @@ def system_subscription_edit(request, pk: int):
                 method = (form.cleaned_data.get("payment_method") or "").strip()
 
                 if plan_obj is not None and float(price or 0) > 0 and method:
+                    # استخدم آخر عملية دفع موجودة للاشتراك (سواء كانت من طلب أو إضافة يدوية)
                     op = (
                         SubscriptionPaymentOperation.objects.filter(
                             school=getattr(obj2, "school", None),
                             subscription=obj2,
-                            source="admin_manual",
                         )
                         .order_by("-created_at", "-id")
                         .first()
@@ -2781,32 +2778,39 @@ def system_subscription_edit(request, pk: int):
                         if changed:
                             op.save(update_fields=["method", "plan", "amount"])
 
-                    # ضمان وجود فاتورة + تحديثها إذا تغيرت طريقة الدفع
+                    # تحديث/إنشاء الفاتورة بشكل منفصل حتى لا يمنع حفظ طريقة الدفع
                     try:
-                        inv = getattr(op, "invoice", None)
-                    except Exception:
-                        inv = None
+                        from django.template.loader import render_to_string
 
-                    if inv is None:
-                        build_invoice_from_operation(op)
-                    else:
-                        inv.payment_method = op.method
-                        inv.amount = op.amount
-                        inv.plan = op.plan
-                        html = render_to_string(
-                            "invoices/subscription_invoice.html",
-                            {
-                                "invoice": inv,
-                                "seller": _get_seller_info(),
-                                "school": inv.school,
-                                "subscription": inv.subscription,
-                                "plan": inv.plan,
-                            },
-                        )
-                        inv.html_snapshot = html
-                        inv.save(update_fields=["payment_method", "amount", "plan", "html_snapshot"])
+                        from subscriptions.invoicing import _get_seller_info, build_invoice_from_operation
+
+                        try:
+                            inv = getattr(op, "invoice", None)
+                        except Exception:
+                            inv = None
+
+                        if inv is None:
+                            build_invoice_from_operation(op)
+                        else:
+                            inv.payment_method = op.method
+                            inv.amount = op.amount
+                            inv.plan = op.plan
+                            html = render_to_string(
+                                "invoices/subscription_invoice.html",
+                                {
+                                    "invoice": inv,
+                                    "seller": _get_seller_info(),
+                                    "school": inv.school,
+                                    "subscription": inv.subscription,
+                                    "plan": inv.plan,
+                                },
+                            )
+                            inv.html_snapshot = html
+                            inv.save(update_fields=["payment_method", "amount", "plan", "html_snapshot"])
+                    except Exception:
+                        logger.exception("Failed to update/generate invoice for subscription %s", getattr(obj2, "pk", None))
             except Exception:
-                pass
+                logger.exception("Failed to update payment method for subscription %s", getattr(obj2, "pk", None))
 
             messages.success(request, "تم تحديث بيانات الاشتراك.")
             return redirect("dashboard:system_subscriptions_list")
