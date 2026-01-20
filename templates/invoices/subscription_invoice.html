@@ -207,13 +207,52 @@
         }
         .footer strong { color: #fff; }
 
+        /* Print Toolbar */
+        .print-toolbar {
+            max-width: 850px;
+            margin: 0 auto 20px auto;
+            text-align: left;
+        }
+        .btn-print {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn-print:hover {
+            background-color: #334155;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+        }
+
         @media print {
+            .print-toolbar { display: none !important; }
             body { padding: 0; background-color: #fff; }
             .invoice-box { box-shadow: none; max-width: 100%; border-radius: 0; }
         }
     </style>
 </head>
 <body>
+
+    <div class="print-toolbar">
+        <button onclick="window.print()" class="btn-print">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            طباعة الفاتورة
+        </button>
+    </div>
 
     <div class="invoice-box">
         <!-- Header -->
