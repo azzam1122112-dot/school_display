@@ -11,6 +11,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("demo-login/", views.demo_login, name="demo_login"),
     path("logout/", views.logout_view, name="logout"),
+        path("subscription/invoices/<int:pk>/", views.subscription_invoice_view, name="subscription_invoice_view"),
     path("password/", views.change_password, name="change_password"),
     path("switch-school/<int:school_id>/", views.switch_school, name="switch_school"),
     path("", views.index, name="index"),
@@ -121,6 +122,7 @@ urlpatterns = [
     path("admin-panel/subscriptions/add/", views.system_subscription_create, name="system_subscription_create"),
     path("admin-panel/subscriptions/<int:pk>/edit/", views.system_subscription_edit, name="system_subscription_edit"),
     path("admin-panel/subscriptions/<int:pk>/delete/", views.system_subscription_delete, name="system_subscription_delete"),
+    path("admin-panel/subscriptions/invoices/<int:pk>/", views.system_subscription_invoice_view, name="system_subscription_invoice_view"),
 
     # Subscription Requests (Renewal / New)
     path("admin-panel/subscription-requests/", views.system_subscription_requests_list, name="system_subscription_requests_list"),

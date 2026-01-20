@@ -643,6 +643,25 @@ class SchoolSubscriptionForm(forms.ModelForm):
         self.fields["school"].queryset = School.objects.all().order_by("name")
         self.fields["plan"].queryset = SubscriptionPlan.objects.all().order_by("name")
 
+        # عند تعديل اشتراك سابق: عبّئ طريقة الدفع من آخر عملية دفع (إن وجدت)
+        try:
+            if getattr(self.instance, "pk", None) and "payment_method" in self.fields:
+                from subscriptions.models import SubscriptionPaymentOperation
+
+                op = (
+                    SubscriptionPaymentOperation.objects.filter(
+                        school=getattr(self.instance, "school", None),
+                        subscription=self.instance,
+                        source="admin_manual",
+                    )
+                    .order_by("-created_at", "-id")
+                    .first()
+                )
+                if op is not None and getattr(op, "method", None):
+                    self.fields["payment_method"].initial = op.method
+        except Exception:
+            pass
+
         # المطلوب: منع إدخال/تعديل تاريخ النهاية (يُحسب تلقائيًا من مدة الباقة).
         if "ends_at" in self.fields:
             self.fields["ends_at"].required = False

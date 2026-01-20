@@ -3,6 +3,7 @@ from django.contrib import admin
 from core.models import SubscriptionPlan
 from .models import (
     SchoolSubscription,
+    SubscriptionInvoice,
     SubscriptionPaymentOperation,
     SubscriptionScreenAddon,
     SubscriptionRequest,
@@ -99,3 +100,20 @@ class SubscriptionPaymentOperationAdmin(admin.ModelAdmin):
     list_filter = ("method", "source", "created_at")
     search_fields = ("school__name", "plan__name", "created_by__username", "note")
     autocomplete_fields = ("school", "subscription", "plan", "created_by")
+
+
+@admin.register(SubscriptionInvoice)
+class SubscriptionInvoiceAdmin(admin.ModelAdmin):
+    list_display = (
+        "invoice_number",
+        "school",
+        "plan",
+        "amount",
+        "payment_method",
+        "issued_at",
+        "created_at",
+    )
+    list_filter = ("payment_method", "currency", "issued_at")
+    search_fields = ("invoice_number", "school__name", "plan__name")
+    autocomplete_fields = ("school", "subscription", "plan", "operation")
+    readonly_fields = ("invoice_number", "created_at")

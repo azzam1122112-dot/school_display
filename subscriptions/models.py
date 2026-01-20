@@ -3,6 +3,8 @@ from decimal import Decimal
 from datetime import timedelta
 
 from django.conf import settings
+import secrets
+
 from django.db import models
 from django.utils import timezone
 
@@ -568,3 +570,112 @@ class SubscriptionPaymentOperation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.school} - {self.plan} - {self.get_method_display()}"
+
+class SubscriptionInvoice(models.Model):
+    """فاتورة إلكترونية محفوظة (HTML snapshot) مرتبطة بعملية دفع اشتراك."""
+
+    CURRENCY_CHOICES = [
+        ("SAR", "ر.س"),
+    ]
+
+    operation = models.OneToOneField(
+        SubscriptionPaymentOperation,
+        on_delete=models.PROTECT,
+        related_name="invoice",
+        verbose_name="عملية الدفع",
+    )
+
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        related_name="subscription_invoices",
+        verbose_name="المدرسة",
+    )
+    subscription = models.ForeignKey(
+        SchoolSubscription,
+        on_delete=models.PROTECT,
+        related_name="invoices",
+        verbose_name="الاشتراك",
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="subscription_invoices",
+        verbose_name="الخطة",
+    )
+
+    invoice_number = models.CharField(
+        "رقم الفاتورة",
+        max_length=40,
+        unique=True,
+        editable=False,
+    )
+    issued_at = models.DateTimeField(
+        "تاريخ الإصدار",
+        default=timezone.now,
+    )
+
+    currency = models.CharField(
+        "العملة",
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default="SAR",
+    )
+    amount = models.DecimalField(
+        "المبلغ (ر.س)",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    payment_method = models.CharField(
+        "طريقة الدفع",
+        max_length=20,
+        choices=SubscriptionPaymentOperation.METHOD_CHOICES,
+    )
+
+    seller_name = models.CharField(
+        "الطرف الأول (المنصة)",
+        max_length=200,
+        blank=True,
+        default="",
+    )
+    buyer_name = models.CharField(
+        "الطرف الثاني (المدرسة)",
+        max_length=200,
+        blank=True,
+        default="",
+    )
+
+    html_snapshot = models.TextField(
+        "نسخة HTML",
+        blank=True,
+        default="",
+        help_text="يُحفظ HTML النهائي للفاتورة لضمان ثباتها حتى لو تغيّر تصميم القالب لاحقًا.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
+
+    class Meta:
+        verbose_name = "فاتورة اشتراك"
+        verbose_name_plural = "فواتير الاشتراكات"
+        ordering = ("-issued_at", "-id")
+
+    def __str__(self) -> str:
+        return self.invoice_number
+
+    @staticmethod
+    def _make_invoice_number() -> str:
+        # رقم فريد وبسيط للقراءة (بدون الاعتماد على تسلسل DB)
+        token = secrets.token_hex(4).upper()
+        stamp = timezone.now().strftime("%Y%m%d")
+        return f"INV-{stamp}-{token}"
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            # حاول عدة مرات لضمان uniqueness
+            for _ in range(10):
+                cand = self._make_invoice_number()
+                if not SubscriptionInvoice.objects.filter(invoice_number=cand).exclude(pk=self.pk).exists():
+                    self.invoice_number = cand
+                    break
+        super().save(*args, **kwargs)

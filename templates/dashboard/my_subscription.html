@@ -479,7 +479,7 @@
                  <th class="px-6 py-4 text-right">الخطة</th>
                  <th class="px-6 py-4 text-right">المبلغ</th>
                  <th class="px-6 py-4 text-right">الحالة</th>
-                 <th class="px-6 py-4 text-right">الإيصال</th>
+                 <th class="px-6 py-4 text-right">الفاتورة</th>
               </tr>
            </thead>
             <tbody class="divide-y divide-slate-100">
@@ -501,9 +501,9 @@
                   </span>
                 </td>
                 <td class="px-6 py-4">
-                  {% if row.receipt_url %}
-                    <a href="{{ row.receipt_url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition">
-                      <span>👁️</span> عرض
+                  {% if row.invoice_url %}
+                    <a href="{{ row.invoice_url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition">
+                      <span>🧾</span> عرض
                     </a>
                   {% else %}
                     <span class="text-slate-300">—</span>

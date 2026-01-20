@@ -2730,6 +2730,84 @@ def system_subscription_edit(request, pk: int):
             except Exception:
                 pass
             obj2.save()
+
+            # حفظ/تحديث طريقة الدفع لاشتراك سابق (عملية دفع + فاتورة إن وجدت)
+            try:
+                from django.template.loader import render_to_string
+
+                from subscriptions.invoicing import _get_seller_info, build_invoice_from_operation
+                from subscriptions.models import SubscriptionPaymentOperation
+
+                plan_obj = getattr(obj2, "plan", None)
+                price = getattr(plan_obj, "price", 0) if plan_obj is not None else 0
+                method = (form.cleaned_data.get("payment_method") or "").strip()
+
+                if plan_obj is not None and float(price or 0) > 0 and method:
+                    op = (
+                        SubscriptionPaymentOperation.objects.filter(
+                            school=getattr(obj2, "school", None),
+                            subscription=obj2,
+                            source="admin_manual",
+                        )
+                        .order_by("-created_at", "-id")
+                        .first()
+                    )
+
+                    if op is None:
+                        op = SubscriptionPaymentOperation.objects.create(
+                            school=getattr(obj2, "school", None),
+                            subscription=obj2,
+                            plan=plan_obj,
+                            amount=price or 0,
+                            method=method,
+                            source="admin_manual",
+                            created_by=request.user,
+                            note="Updated via edit",
+                        )
+                    else:
+                        changed = False
+                        if getattr(op, "method", None) != method:
+                            op.method = method
+                            changed = True
+                        if getattr(op, "plan_id", None) != getattr(plan_obj, "id", None):
+                            op.plan = plan_obj
+                            changed = True
+                        try:
+                            if float(getattr(op, "amount", 0) or 0) != float(price or 0):
+                                op.amount = price or 0
+                                changed = True
+                        except Exception:
+                            pass
+                        if changed:
+                            op.save(update_fields=["method", "plan", "amount"])
+
+                    # ضمان وجود فاتورة + تحديثها إذا تغيرت طريقة الدفع
+                    try:
+                        inv = getattr(op, "invoice", None)
+                    except Exception:
+                        inv = None
+
+                    if inv is None:
+                        build_invoice_from_operation(op)
+                    else:
+                        inv.payment_method = op.method
+                        inv.amount = op.amount
+                        inv.plan = op.plan
+                        html = render_to_string(
+                            "invoices/subscription_invoice.html",
+                            {
+                                "invoice": inv,
+                                "seller": _get_seller_info(),
+                                "school": inv.school,
+                                "subscription": inv.subscription,
+                                "plan": inv.plan,
+                            },
+                        )
+                        inv.html_snapshot = html
+                        inv.save(update_fields=["payment_method", "amount", "plan", "html_snapshot"])
+            except Exception:
+                pass
+
             messages.success(request, "تم تحديث بيانات الاشتراك.")
             return redirect("dashboard:system_subscriptions_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -2755,6 +2833,45 @@ def system_subscription_delete(request, pk: int):
     obj.delete()
     messages.warning(request, "تم حذف الاشتراك.")
     return redirect("dashboard:system_subscriptions_list")
+
+
+@system_staff_required
+def system_subscription_invoice_view(request, pk: int):
+    """عرض الفاتورة (HTML snapshot) لعمليات الدفع."""
+    from django.http import HttpResponse
+
+    from subscriptions.models import SubscriptionInvoice
+
+    invoice = get_object_or_404(SubscriptionInvoice.objects.select_related("school", "subscription", "plan"), pk=pk)
+    html = (invoice.html_snapshot or "").strip()
+
+    # كحل احتياطي: إن لم تُحفظ النسخة لأي سبب، نعيد توليدها.
+    if not html:
+        try:
+            from django.template.loader import render_to_string
+
+            from subscriptions.invoicing import _get_seller_info
+
+            html = render_to_string(
+                "invoices/subscription_invoice.html",
+                {
+                    "invoice": invoice,
+                    "seller": _get_seller_info(),
+                    "school": invoice.school,
+                    "subscription": invoice.subscription,
+                    "plan": invoice.plan,
+                },
+            )
+            invoice.html_snapshot = html
+            invoice.save(update_fields=["html_snapshot"])
+        except Exception:
+            html = ""
+
+    if not html:
+        messages.error(request, "تعذر عرض الفاتورة حاليًا.")
+        return redirect("dashboard:system_subscriptions_list")
+
+    return HttpResponse(html, content_type="text/html; charset=utf-8")
 
 
 # ===============================
@@ -2917,6 +3034,29 @@ def system_subscription_request_detail(request, pk: int):
                         "updated_at",
                     ]
                 )
+
+                # إنشاء عملية دفع لطلبات الاشتراك المدفوعة (لإنشاء الفاتورة تلقائياً عبر signals)
+                try:
+                    from subscriptions.models import SubscriptionPaymentOperation
+
+                    amt = getattr(obj, "amount", 0) or 0
+                    if float(amt) > 0 and not SubscriptionPaymentOperation.objects.filter(
+                        school=obj.school,
+                        subscription=sub_obj,
+                        source="request",
+                    ).exists():
+                        SubscriptionPaymentOperation.objects.create(
+                            school=obj.school,
+                            subscription=sub_obj,
+                            plan=obj.plan,
+                            amount=amt,
+                            method="bank_transfer",
+                            source="request",
+                            created_by=request.user,
+                            note=f"Approved from request #{obj.pk}",
+                        )
+                except Exception:
+                    pass
 
             messages.success(request, "تم اعتماد الطلب وإنشاء/ربط الاشتراك.")
             return redirect("dashboard:system_subscription_request_detail", pk=pk)
@@ -3265,6 +3405,50 @@ def my_subscription(request):
                 .order_by("-created_at", "-id")[:10]
             )
 
+        payment_ops_by_sub_id = {}
+        try:
+            from subscriptions.models import SubscriptionPaymentOperation
+
+            sub_ids = [getattr(s, "pk", None) for s in manual_subscriptions if getattr(s, "pk", None) is not None]
+            for r in subscription_requests:
+                sid = getattr(r, "approved_subscription_id", None)
+                if sid is not None:
+                    sub_ids.append(sid)
+            sub_ids = list({s for s in sub_ids if s is not None})
+
+            if sub_ids:
+                ops = (
+                    SubscriptionPaymentOperation.objects.filter(
+                        school=school,
+                        subscription_id__in=sub_ids,
+                    )
+                    .prefetch_related("invoice")
+                    .order_by("-created_at", "-id")
+                )
+                for op in ops:
+                    sid = getattr(op, "subscription_id", None)
+                    if sid and sid not in payment_ops_by_sub_id:
+                        payment_ops_by_sub_id[sid] = op
+        except Exception:
+            payment_ops_by_sub_id = {}
+
+        def _invoice_url_for_subscription_id(subscription_id: int | None) -> str | None:
+            if not subscription_id:
+                return None
+            op = payment_ops_by_sub_id.get(subscription_id)
+            if op is None:
+                return None
+            try:
+                inv = getattr(op, "invoice", None)
+            except Exception:
+                inv = None
+            if inv is None:
+                return None
+            try:
+                return reverse("dashboard:subscription_invoice_view", kwargs={"pk": getattr(inv, "pk", None)})
+            except Exception:
+                return None
+
         for r in subscription_requests:
             receipt_url = None
             try:
@@ -3292,28 +3476,9 @@ def my_subscription(request):
                     "status_code": getattr(r, "status", ""),
                     "status_label": getattr(r, "get_status_display", lambda: "")(),
                     "receipt_url": receipt_url,
+                    "invoice_url": _invoice_url_for_subscription_id(getattr(r, "approved_subscription_id", None)),
                 }
             )
-
-        payment_ops_by_sub_id = {}
-        try:
-            from subscriptions.models import SubscriptionPaymentOperation
-
-            sub_ids = [getattr(s, "pk", None) for s in manual_subscriptions if getattr(s, "pk", None) is not None]
-            if sub_ids:
-                ops = (
-                    SubscriptionPaymentOperation.objects.filter(
-                        school=school,
-                        subscription_id__in=sub_ids,
-                    )
-                    .order_by("-created_at", "-id")
-                )
-                for op in ops:
-                    sid = getattr(op, "subscription_id", None)
-                    if sid and sid not in payment_ops_by_sub_id:
-                        payment_ops_by_sub_id[sid] = op
-        except Exception:
-            payment_ops_by_sub_id = {}
 
         for s in manual_subscriptions:
             plan_obj = getattr(s, "plan", None)
@@ -3345,6 +3510,7 @@ def my_subscription(request):
                     "status_code": getattr(s, "status", ""),
                     "status_label": getattr(s, "get_status_display", lambda: "")(),
                     "receipt_url": None,
+                    "invoice_url": _invoice_url_for_subscription_id(getattr(s, "pk", None)),
                 }
             )
 
@@ -3383,6 +3549,55 @@ def my_subscription(request):
             "plans_map": plans_map,
         },
     )
+
+
+@login_required
+def subscription_invoice_view(request, pk: int):
+    """عرض الفاتورة للعميل (حسب المدرسة النشطة)."""
+    from django.http import HttpResponse
+
+    from subscriptions.models import SubscriptionInvoice
+
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    invoice = get_object_or_404(
+        SubscriptionInvoice.objects.select_related("school", "subscription", "plan"),
+        pk=pk,
+    )
+
+    if getattr(invoice, "school_id", None) != getattr(school, "id", None):
+        messages.error(request, "لا تملك صلاحية الوصول لهذه الفاتورة.")
+        return redirect("dashboard:my_subscription")
+
+    html = (invoice.html_snapshot or "").strip()
+    if not html:
+        try:
+            from django.template.loader import render_to_string
+
+            from subscriptions.invoicing import _get_seller_info
+
+            html = render_to_string(
+                "invoices/subscription_invoice.html",
+                {
+                    "invoice": invoice,
+                    "seller": _get_seller_info(),
+                    "school": invoice.school,
+                    "subscription": invoice.subscription,
+                    "plan": invoice.plan,
+                },
+            )
+            invoice.html_snapshot = html
+            invoice.save(update_fields=["html_snapshot"])
+        except Exception:
+            html = ""
+
+    if not html:
+        messages.error(request, "تعذر عرض الفاتورة حاليًا.")
+        return redirect("dashboard:my_subscription")
+
+    return HttpResponse(html, content_type="text/html; charset=utf-8")
 
 
 # ==================

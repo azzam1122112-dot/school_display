@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from core.models import School
-from .models import SchoolSubscription
+from .models import SchoolSubscription, SubscriptionPaymentOperation
 
 logger = logging.getLogger(__name__)
 
@@ -53,3 +53,27 @@ def connect_signals():
 
     post_save.connect(_safe_sync, sender=SchoolSubscription, dispatch_uid="subscriptions_sync_school_active_save")
     post_delete.connect(_safe_sync_delete, sender=SchoolSubscription, dispatch_uid="subscriptions_sync_school_active_delete")
+
+    def _safe_create_invoice(sender, instance: SubscriptionPaymentOperation, created: bool, **kwargs):
+        if not created:
+            return
+        try:
+            if not instance.amount or instance.amount <= 0:
+                return
+            if hasattr(instance, "invoice"):
+                return
+
+            from .invoicing import build_invoice_from_operation
+
+            build_invoice_from_operation(instance)
+        except Exception:
+            logger.exception(
+                "Failed to create invoice for payment operation id=%s",
+                getattr(instance, "id", None),
+            )
+
+    post_save.connect(
+        _safe_create_invoice,
+        sender=SubscriptionPaymentOperation,
+        dispatch_uid="subscriptions_create_invoice_on_payment_operation_save",
+    )

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>فاتورة {{ invoice.invoice_number }}</title>
+  <style>
+    :root{--bg:#f7f7fb;--card:#fff;--muted:#6b7280;--ink:#111827;--line:#e5e7eb;--accent:#2563eb;}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+    .page{max-width:920px;margin:24px auto;padding:0 16px;}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);overflow:hidden;}
+    .hdr{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;}
+    .brand{font-weight:800;font-size:18px;letter-spacing:.2px}
+    .meta{display:grid;gap:6px;text-align:left}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:700;font-size:12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px;}
+    .box{border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+    .box h3{margin:0 0 10px;font-size:13px;color:var(--muted);font-weight:800}
+    .row{display:flex;justify-content:space-between;gap:16px;padding:6px 0;border-bottom:1px dashed #f0f0f0;}
+    .row:last-child{border-bottom:none}
+    .k{color:var(--muted);font-size:13px}
+    .v{font-weight:700;font-size:13px}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top;font-size:13px}
+    th{background:#fafafa;color:var(--muted);font-weight:800}
+    .sum{padding:14px 20px;display:flex;justify-content:flex-start;}
+    .total{margin-right:auto;min-width:320px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fbfdff}
+    .total .big{font-size:18px;font-weight:900;color:var(--accent)}
+    .ftr{padding:14px 20px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    @media print{
+      body{background:#fff}
+      .page{max-width:none;margin:0;padding:0}
+      .card{box-shadow:none;border:none;border-radius:0}
+      .ftr{page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="hdr">
+        <div>
+          <div class="brand">{{ seller.name|default:"منصة شاشات المدارس" }}</div>
+          <div style="margin-top:6px;color:var(--muted);font-size:12px">
+            {% if seller.address %}{{ seller.address }}{% endif %}
+            {% if seller.phone %}<span style="margin:0 6px">•</span>{{ seller.phone }}{% endif %}
+            {% if seller.email %}<span style="margin:0 6px">•</span>{{ seller.email }}{% endif %}
+          </div>
+        </div>
+        <div class="meta">
+          <span class="pill">فاتورة إلكترونية</span>
+          <div><span class="k">رقم الفاتورة:</span> <span class="v">{{ invoice.invoice_number }}</span></div>
+          <div><span class="k">تاريخ الإصدار:</span> <span class="v">{{ invoice.issued_at|date:"Y-m-d" }}</span></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="box">
+          <h3>الطرف الأول (البائع)</h3>
+          <div class="row"><div class="k">الاسم</div><div class="v">{{ invoice.seller_name|default:seller.name|default:"" }}</div></div>
+          {% if seller.vat %}<div class="row"><div class="k">الرقم الضريبي</div><div class="v">{{ seller.vat }}</div></div>{% endif %}
+          {% if seller.cr %}<div class="row"><div class="k">السجل التجاري</div><div class="v">{{ seller.cr }}</div></div>{% endif %}
+        </div>
+        <div class="box">
+          <h3>الطرف الثاني (المشتري)</h3>
+          <div class="row"><div class="k">المدرسة</div><div class="v">{{ invoice.buyer_name|default:school.name|default:"" }}</div></div>
+          {% if school.city %}<div class="row"><div class="k">المدينة</div><div class="v">{{ school.city }}</div></div>{% endif %}
+          {% if school.phone %}<div class="row"><div class="k">الهاتف</div><div class="v">{{ school.phone }}</div></div>{% endif %}
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:55%">البند</th>
+            <th style="width:15%">الكمية</th>
+            <th style="width:15%">السعر</th>
+            <th style="width:15%">الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style="font-weight:900">اشتراك: {{ plan.name }}</div>
+              <div style="margin-top:4px;color:var(--muted)">
+                {% if subscription.starts_at %}من {{ subscription.starts_at }}{% endif %}
+                {% if subscription.ends_at %} إلى {{ subscription.ends_at }}{% endif %}
+              </div>
+              <div style="margin-top:4px;color:var(--muted)">طريقة الدفع: {{ invoice.get_payment_method_display }}</div>
+            </td>
+            <td>1</td>
+            <td>{{ invoice.amount }} {{ invoice.get_currency_display }}</td>
+            <td style="font-weight:900">{{ invoice.amount }} {{ invoice.get_currency_display }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="sum">
+        <div class="total">
+          <div class="row"><div class="k">المجموع</div><div class="v">{{ invoice.amount }} {{ invoice.get_currency_display }}</div></div>
+          <div class="row"><div class="k">الضريبة</div><div class="v">0.00 {{ invoice.get_currency_display }}</div></div>
+          <div class="row"><div class="k">الإجمالي المستحق</div><div class="v big">{{ invoice.amount }} {{ invoice.get_currency_display }}</div></div>
+        </div>
+      </div>
+
+      <div class="ftr">
+        <div>هذه الفاتورة تم إنشاؤها إلكترونيًا وتُعرض كما تم حفظها في وقت الإصدار.</div>
+        <div>Invoice: {{ invoice.invoice_number }}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
