@@ -2790,7 +2790,7 @@ def system_subscription_edit(request, pk: int):
                     try:
                         from django.template.loader import render_to_string
 
-                        from subscriptions.invoicing import _get_seller_info, build_invoice_from_operation
+                        from subscriptions.invoicing import _get_seller_info, _get_school_contact_info, build_invoice_from_operation
 
                         try:
                             inv = getattr(op, "invoice", None)
@@ -2803,15 +2803,8 @@ def system_subscription_edit(request, pk: int):
                             inv.payment_method = op.method
                             inv.amount = op.amount
                             inv.plan = op.plan
-                            
-                            # Fetch contact info
-                            c_name, c_mobile = "", ""
-                            try:
-                                profile = inv.school.users.first()
-                                if profile:
-                                    c_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
-                                    c_mobile = profile.mobile
-                            except Exception: pass
+
+                            c_name, c_mobile = _get_school_contact_info(inv.school)
 
                             html = render_to_string(
                                 "invoices/subscription_invoice.html",
@@ -3603,27 +3596,51 @@ def subscription_invoice_view(request, pk: int):
             messages.error(request, "لا تملك صلاحية الوصول لهذه الفاتورة.")
             return redirect("dashboard:my_subscription")
 
-    html = (invoice.html_snapshot or "").strip()
-    if not html:
-        try:
-            from django.template.loader import render_to_string
+    try:
+        from django.template.loader import render_to_string
 
-            from subscriptions.invoicing import _get_seller_info
+        from subscriptions.invoicing import _get_seller_info, _get_school_contact_info
+    except Exception:
+        render_to_string = None
+        _get_seller_info = None
+        _get_school_contact_info = None
 
-            html = render_to_string(
-                "invoices/subscription_invoice.html",
-                {
-                    "invoice": invoice,
-                    "seller": _get_seller_info(),
-                    "school": invoice.school,
-                    "subscription": invoice.subscription,
-                    "plan": invoice.plan,
-                },
-            )
-            invoice.html_snapshot = html
-            invoice.save(update_fields=["html_snapshot"])
-        except Exception:
-            html = ""
+    # للمدارس: نعرض الفاتورة ببيانات المستخدم الحالي حتى لا تظهر بيانات الآدمن.
+    if not request.user.is_superuser and render_to_string and _get_seller_info and _get_school_contact_info:
+        contact_name, contact_mobile = _get_school_contact_info(invoice.school, preferred_user=request.user)
+        html = render_to_string(
+            "invoices/subscription_invoice.html",
+            {
+                "invoice": invoice,
+                "seller": _get_seller_info(),
+                "school": invoice.school,
+                "subscription": invoice.subscription,
+                "plan": invoice.plan,
+                "contact_name": contact_name,
+                "contact_mobile": contact_mobile,
+            },
+        )
+    else:
+        html = (invoice.html_snapshot or "").strip()
+        if not html and render_to_string and _get_seller_info and _get_school_contact_info:
+            try:
+                contact_name, contact_mobile = _get_school_contact_info(invoice.school)
+                html = render_to_string(
+                    "invoices/subscription_invoice.html",
+                    {
+                        "invoice": invoice,
+                        "seller": _get_seller_info(),
+                        "school": invoice.school,
+                        "subscription": invoice.subscription,
+                        "plan": invoice.plan,
+                        "contact_name": contact_name,
+                        "contact_mobile": contact_mobile,
+                    },
+                )
+                invoice.html_snapshot = html
+                invoice.save(update_fields=["html_snapshot"])
+            except Exception:
+                html = ""
 
     if not html:
         messages.error(request, "تعذر عرض الفاتورة حاليًا.")

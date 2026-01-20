@@ -9,7 +9,7 @@ django.setup()
 
 from django.template.loader import render_to_string
 from subscriptions.models import SubscriptionInvoice
-from subscriptions.invoicing import _get_seller_info
+from subscriptions.invoicing import _get_seller_info, _get_school_contact_info
 
 def regenerate_snapshots():
     invoices = SubscriptionInvoice.objects.all()
@@ -19,15 +19,8 @@ def regenerate_snapshots():
     
     for inv in invoices:
         print(f"Updating Invoice #{inv.id} ({inv.invoice_number})...")
-        
-        # Get contact info
-        c_name, c_mobile = "", ""
-        try:
-            profile = inv.school.users.first()
-            if profile:
-                c_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
-                c_mobile = profile.mobile
-        except Exception: pass
+
+        c_name, c_mobile = _get_school_contact_info(inv.school)
         
         context = {
             "invoice": inv,
