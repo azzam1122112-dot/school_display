@@ -22,10 +22,10 @@ class SellerInfo:
 def _get_seller_info() -> SellerInfo:
     # يمكن ضبط هذه القيم من settings.py لاحقًا
     return SellerInfo(
-        name=getattr(settings, "INVOICE_SELLER_NAME", "منصة شاشات المدارس") or "منصة شاشات المدارس",
+        name=getattr(settings, "INVOICE_SELLER_NAME", "منصة شاشة العرض الذكية") or "منصة شاشة العرض الذكية",
         vat=getattr(settings, "INVOICE_SELLER_VAT", "") or "",
         cr=getattr(settings, "INVOICE_SELLER_CR", "") or "",
-        address=getattr(settings, "INVOICE_SELLER_ADDRESS", "") or "",
+        address=getattr(settings, "INVOICE_SELLER_ADDRESS", "المالك: منصور محمد الغامدي") or "المالك: منصور محمد الغامدي",
         phone=getattr(settings, "INVOICE_SELLER_PHONE", "") or "",
         email=getattr(settings, "INVOICE_SELLER_EMAIL", "") or "",
     )

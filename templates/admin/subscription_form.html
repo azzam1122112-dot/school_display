@@ -36,12 +36,28 @@
         </div>
       </div>
 
-      <a href="{% url 'dashboard:system_subscriptions_list' %}"
-         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
-                bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
-        <span class="text-base">↩</span>
-        <span>العودة للقائمة</span>
-      </a>
+      <div class="flex items-center gap-2">
+        {% if form.instance.pk %}
+          {% with last_invoice=form.instance.invoices.last %}
+            {% if last_invoice %}
+              <a href="{% url 'dashboard:subscription_invoice_view' pk=last_invoice.pk %}" target="_blank"
+                 class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
+                        bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                 title="طباعة الفاتورة">
+                <span class="text-base">🖨️</span>
+                <span class="hidden sm:inline">طباعة الفاتورة</span>
+              </a>
+            {% endif %}
+          {% endwith %}
+        {% endif %}
+
+        <a href="{% url 'dashboard:system_subscriptions_list' %}"
+           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
+                  bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
+          <span class="text-base">↩</span>
+          <span>العودة للقائمة</span>
+        </a>
+      </div>
     </div>
   </div>
 

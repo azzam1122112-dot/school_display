@@ -3585,9 +3585,11 @@ def subscription_invoice_view(request, pk: int):
         pk=pk,
     )
 
-    if getattr(invoice, "school_id", None) != getattr(school, "id", None):
-        messages.error(request, "لا تملك صلاحية الوصول لهذه الفاتورة.")
-        return redirect("dashboard:my_subscription")
+    # السماح للمشرفين (Superuser) بالوصول لأي فاتورة
+    if not request.user.is_superuser:
+        if getattr(invoice, "school_id", None) != getattr(school, "id", None):
+            messages.error(request, "لا تملك صلاحية الوصول لهذه الفاتورة.")
+            return redirect("dashboard:my_subscription")
 
     html = (invoice.html_snapshot or "").strip()
     if not html:
