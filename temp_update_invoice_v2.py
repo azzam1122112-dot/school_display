@@ -1,4 +1,8 @@
-{% load static %}
+
+import os
+
+file_path = r'c:\Users\manso\school_display\templates\invoices\subscription_invoice.html'
+content = """{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -339,7 +343,7 @@
                     
                     {% if contact_name %}
                     <div class="party-detail" style="margin-bottom:8px;">
-                        <strong>العميل:</strong> {{ contact_name }}
+                        <strong>المستخدم:</strong> {{ contact_name }}
                     </div>
                     {% endif %}
 
@@ -434,3 +438,12 @@
 
 </body>
 </html>
+"""
+
+print(f"Writing to {file_path}")
+try:
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print("Write successful")
+except Exception as e:
+    print(f"Error: {e}")

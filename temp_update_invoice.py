@@ -1,4 +1,5 @@
-{% load static %}
+
+content = """{% load static %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -277,7 +278,7 @@
          <button onclick="window.print()" class="btn-print">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2-2v5a2 2 0 0 1-2 2h-2"></path>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                 <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
             طباعة الفاتورة
@@ -339,7 +340,7 @@
                     
                     {% if contact_name %}
                     <div class="party-detail" style="margin-bottom:8px;">
-                        <strong>العميل:</strong> {{ contact_name }}
+                        <strong>المستخدم:</strong> {{ contact_name }}
                     </div>
                     {% endif %}
 
@@ -434,3 +435,7 @@
 
 </body>
 </html>
+"""
+
+with open('c:\\Users\\manso\\school_display\\templates\\invoices\\subscription_invoice.html', 'w', encoding='utf-8') as f:
+    f.write(content)
