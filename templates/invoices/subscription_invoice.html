@@ -8,378 +8,346 @@
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
 
         :root {
-            --primary: #1e293b;   /* Slate 800 - Deep dignified blue-grey */
-            --accent: #ca8a04;    /* Gold/Amber - Luxury */
-            --bg-body: #f3f4f6;
-            --bg-paper: #ffffff;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
+            --primary: #000000;
+            --secondary: #555555;
+            --border: #e0e0e0;
+            --bg-table: #f9fafb;
         }
 
         body {
-            margin: 0;
-            padding: 40px 20px;
             font-family: 'Tajawal', sans-serif;
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-
-        .invoice-box {
-            max-width: 850px;
-            margin: auto;
-            background: var(--bg-paper);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* Soft luxurious shadow */
-            border-radius: 8px; /* Slightly softer corners, not too round */
-            overflow: hidden;
-            position: relative;
-            border-top: 6px solid var(--primary); /* Dignified top strip */
-        }
-
-        /* HEADER */
-        .header {
-            padding: 40px 50px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(to bottom, #fff, #fafafa);
-        }
-
-        .brand-section h1 {
+            background-color: #525659; /* Browser viewer background */
             margin: 0;
-            color: var(--primary);
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-        .brand-section .subtitle {
-            margin-top: 6px;
-            color: var(--accent);
-            font-size: 14px;
-            font-weight: 700;
+            padding: 20px;
+            color: #000;
         }
 
-        .invoice-meta {
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            min-height: 1000px;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        /* Print Toolbar */
+        .print-toolbar {
+            max-width: 800px;
+            margin: 0 auto 15px auto;
             text-align: left;
         }
-        .invoice-meta .title {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .btn-print {
+            background-color: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: 'Tajawal', sans-serif;
             font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
         }
-        .invoice-meta .value {
-            font-size: 16px;
-            color: var(--text-main);
-            font-weight: 700;
-            margin-bottom: 8px;
-            font-family: 'Tajawal', sans-serif; /* For numbers */
-        }
-        .invoice-meta .status-badge {
-            display: inline-block;
-            background: #dcfce7;
-            color: #166534;
-            padding: 4px 12px;
-            border-radius: 99px;
-            font-size: 12px;
-            font-weight: 700;
-            margin-top: 4px;
-        }
+        .btn-print:hover { background-color: #1d4ed8; }
 
-        /* PARTIES */
-        .parties {
+        /* Header */
+        .header {
             display: flex;
-            padding: 40px 50px;
-            gap: 40px;
+            justify-content: space-between;
+            align-items: start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
         }
-        .party {
-            flex: 1;
-        }
-        .party-title {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
+        .header-brand h1 {
+            margin: 0;
+            font-size: 26px;
             font-weight: 800;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 6px;
-            display: inline-block;
+            color: #000;
+        }
+        .header-brand p {
+            margin: 4px 0 0;
+            font-size: 14px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+        .header-meta {
+            text-align: left;
+        }
+        .header-meta h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
+        }
+        .meta-row {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .meta-row span { display: block; }
+        .meta-label { color: var(--secondary); font-size: 12px; }
+        .meta-val { font-weight: 700; font-family: sans-serif; font-size: 15px; }
+
+        /* Info Grid */
+        .info-grid {
+            display: flex;
+            gap: 0;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+        }
+        .info-box {
+            flex: 1;
+            padding: 20px;
+        }
+        .info-box:first-child {
+            border-left: 1px solid var(--border);
+            background-color: #fcfcfc;
+        }
+        
+        .box-title {
+            font-size: 12px;
+            color: var(--secondary);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-transform: uppercase;
         }
         .party-name {
             font-size: 18px;
             font-weight: 800;
-            color: var(--primary);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            color: #000;
         }
         .party-detail {
             font-size: 13px;
-            color: var(--text-muted);
             line-height: 1.6;
-            margin-bottom: 2px;
+            color: #333;
         }
-        .party-detail strong { color: var(--text-main); font-weight: 700; }
+        .party-detail strong { font-weight: 700; color: #000; }
 
-        /* TABLE */
-        .table-container {
-            padding: 0 50px 20px 50px;
-        }
+        /* Table */
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 30px;
         }
         th {
+            background-color: #000;
+            color: #fff;
             text-align: right;
-            padding: 15px 10px;
-            font-size: 12px;
-            font-weight: 800;
-            color: var(--primary);
-            border-bottom: 2px solid var(--primary);
-            text-transform: uppercase;
+            padding: 12px 15px;
+            font-size: 13px;
+            font-weight: 700;
         }
         td {
-            padding: 20px 10px;
             border-bottom: 1px solid var(--border);
-            vertical-align: top;
+            padding: 15px;
             font-size: 14px;
+            vertical-align: top;
+            color: #000;
         }
-        tr:last-child td {
-            border-bottom: none;
-        }
+        .col-idx { width: 5%; text-align: center; }
+        .col-desc { width: 50%; }
+        .col-qty { width: 10%; text-align: center; }
+        .col-price { width: 15%; text-align: center; }
+        .col-total { width: 20%; text-align: center; font-weight: 700; }
         
-        .item-main {
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 4px;
-        }
-        .item-sub {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
+        tr:nth-child(even) { background-color: #fafafa; }
+        
+        .desc-main { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+        .desc-sub { font-size: 12px; color: var(--secondary); }
 
-        /* SUMMARY */
-        .summary-section {
-            background-color: #f8fafc;
-            border-top: 1px solid var(--border);
-            padding: 30px 50px;
+        /* Summary */
+        .summary-wrapper {
             display: flex;
             justify-content: flex-end;
         }
-        .totals-box {
-            width: 300px;
+        .summary-box {
+            width: 350px;
+            border: 1px solid var(--border);
         }
-        .total-row {
+        .summary-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            padding: 10px 15px;
             font-size: 14px;
-            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
         }
-        .total-row.final {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid var(--border);
-            color: var(--primary);
+        .summary-row:last-child {
+            border-bottom: none;
+            background-color: #f3f4f6;
             font-weight: 800;
-            font-size: 20px;
-            align-items: center;
+            font-size: 16px;
+            color: #000;
         }
-        .currency {
-            font-size: 14px;
-            font-weight: 500;
-            margin-right: 4px;
-            color: var(--text-muted);
-        }
+        .summary-label { color: var(--secondary); }
+        .summary-row:last-child .summary-label { color: #000; }
 
-        /* FOOTER */
+        /* Footer */
         .footer {
-            padding: 20px 50px;
-            background-color: var(--primary);
-            color: rgba(255,255,255,0.7);
+            margin-top: 50px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            text-align: center;
             font-size: 12px;
+            color: var(--secondary);
             display: flex;
             justify-content: space-between;
-            align-items: center;
-        }
-        .footer strong { color: #fff; }
-
-        /* Print Toolbar */
-        .print-toolbar {
-            max-width: 850px;
-            margin: 0 auto 20px auto;
-            text-align: left;
-        }
-        .btn-print {
-            background-color: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .btn-print:hover {
-            background-color: #334155;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
         }
 
         @media print {
-            .print-toolbar { display: none !important; }
-            body { padding: 0; background-color: #fff; }
-            .invoice-box { box-shadow: none; max-width: 100%; border-radius: 0; }
+            body { background-color: #fff; padding: 0; margin: 0; }
+            .invoice-container { box-shadow: none; padding: 30px; max-width: 100%; border: none; }
+            .print-toolbar { display: none; }
         }
     </style>
 </head>
 <body>
 
     <div class="print-toolbar">
-        <button onclick="window.print()" class="btn-print">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+         <button onclick="window.print()" class="btn-print">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
             طباعة الفاتورة
         </button>
     </div>
 
-    <div class="invoice-box">
+    <div class="invoice-container">
         <!-- Header -->
         <div class="header">
-            <div class="brand-section">
-                <!-- Replace with Logo img if available -->
+            <div class="header-brand">
                 <h1>منصة شاشة العرض الذكية</h1>
-                <div class="subtitle">Smart Display Platform</div>
+                <p>Smart Display Platform</p>
             </div>
-            
-            <div class="invoice-meta">
-                <div class="title">رقم الفاتورة | INVOICE NO</div>
-                <div class="value">{{ invoice.invoice_number }}</div>
-
-                <div class="title" style="margin-top:10px;">تاريخ الإصدار | DATE</div>
-                <div class="value">{{ invoice.issued_at|date:"Y/m/d" }}</div>
-                
-                <span class="status-badge">مدفوعة</span>
+            <div class="header-meta">
+                <h2>فاتورة ضريبية</h2>
+                <div class="meta-row">
+                    <span class="meta-label">رقم الفاتورة | Invoice No</span>
+                    <span class="meta-val">{{ invoice.invoice_number }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">تاريخ الإصدار | Date</span>
+                    <span class="meta-val">{{ invoice.issued_at|date:"Y/m/d" }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- Info -->
-        <div class="parties">
-            <!-- Seller -->
-            <div class="party">
-                <div class="party-title">الطرف الأول (البائع)</div>
+        <!-- Parties -->
+        <div class="info-grid">
+            <div class="info-box">
+                <div class="box-title">الطرف الأول (البائع)</div>
                 <div class="party-name">منصة شاشة العرض الذكية</div>
                 <div class="party-detail">
-                    <strong>المالك:</strong> منصور محمد الغامدي
+                    {% if seller.address %}
+                        {{ seller.address|linebreaksbr }}
+                    {% endif %}
                 </div>
                 {% if seller.vat %}
-                <div class="party-detail">
-                    <strong>الرقم الضريبي:</strong> {{ seller.vat }}
-                </div>
+                    <div class="party-detail" style="margin-top:6px;">
+                        <strong>الرقم الضريبي:</strong> {{ seller.vat }}
+                    </div>
                 {% endif %}
                 {% if seller.cr %}
-                <div class="party-detail">
-                    <strong>السجل التجاري:</strong> {{ seller.cr }}
-                </div>
+                    <div class="party-detail">
+                        <strong>السجل التجاري:</strong> {{ seller.cr }}
+                    </div>
                 {% endif %}
-                <div class="party-detail" style="margin-top:8px; font-size:12px;">
-                    {% if seller.address %}{{ seller.address }}<br>{% endif %}
-                    {% if seller.phone %}{{ seller.phone }}{% endif %}
-                    {% if seller.email %} | {{ seller.email }}{% endif %}
+                <div class="party-detail" style="margin-top:6px; font-size:12px; color:#666;">
+                   {% if seller.email %}{{ seller.email }}{% endif %}
+                   {% if seller.phone %} | {{ seller.phone }}{% endif %}
                 </div>
             </div>
 
-            <!-- Buyer -->
-            <div class="party">
-                <div class="party-title">الطرف الثاني (المشتري)</div>
+            <div class="info-box" style="background: #fff;">
+                <div class="box-title">الطرف الثاني (العميل)</div>
                 <div class="party-name">{{ invoice.buyer_name|default:school.name }}</div>
-                {% if school.city %}
-                <div class="party-detail">
-                     {{ school.city }}
+                
+                {% if contact_name %}
+                <div class="party-detail" style="margin-bottom:6px;">
+                    <strong>المستخدم:</strong> {{ contact_name }}
                 </div>
                 {% endif %}
-                {% if school.phone %}
+
                 <div class="party-detail">
-                    {{ school.phone }}
+                    {% if school.city %}{{ school.city }}{% endif %}
                 </div>
-                {% endif %}
-                {% if school.email %}
-                <div class="party-detail">
-                    {{ school.email }}
+                <div class="party-detail" style="margin-top:5px;">
+                    {% if contact_mobile %}
+                    <div style="direction:ltr; text-align:right;">{{ contact_mobile }}</div>
+                    {% elif school.phone %}
+                    <div style="direction:ltr; text-align:right;">{{ school.phone }}</div>
+                    {% endif %}
+                    
+                    {% if school.email %}{{ school.email }}{% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
 
-        <!-- Items -->
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 50%">تفاصيل الخدمة / المنتج</th>
-                        <th style="width: 15%">الكمية</th>
-                        <th style="width: 15%">السعر الافرادي</th>
-                        <th style="width: 20%">الإجمالي</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div class="item-main">اشتراك باقة: {{ plan.name }}</div>
-                            <div class="item-sub">
-                                الفترة: 
-                                <span dir="ltr">{{ subscription.starts_at|date:"Y-m-d" }}</span> 
-                                إلى 
-                                <span dir="ltr">{{ subscription.ends_at|date:"Y-m-d" }}</span>
-                            </div>
-                            <div class="item-sub" style="margin-top:4px;">
-                                طريقة الدفع: {{ invoice.get_payment_method_display }}
-                            </div>
-                        </td>
-                        <td>1</td>
-                        <td>{{ invoice.amount }} <span style="font-size:10px">{{ invoice.get_currency_display }}</span></td>
-                        <td style="font-weight:700">{{ invoice.amount }} <span style="font-size:10px">{{ invoice.get_currency_display }}</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <!-- Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-desc">تفاصيل الخدمة / المنتج</th>
+                    <th class="col-qty">الكمية</th>
+                    <th class="col-price">السعر</th>
+                    <th class="col-total">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-idx">1</td>
+                    <td class="col-desc">
+                        <div class="desc-main">اشتراك باقة: {{ plan.name }}</div>
+                        <div class="desc-sub">
+                             الفترة: <span dir="ltr">{{ subscription.starts_at|date:"Y-m-d" }}</span> إلى <span dir="ltr">{{ subscription.ends_at|date:"Y-m-d" }}</span>
+                        </div>
+                        <div class="desc-sub">
+                            طريقة الدفع: {{ invoice.get_payment_method_display }}
+                        </div>
+                    </td>
+                    <td class="col-qty">1</td>
+                    <td class="col-price">{{ invoice.amount }}</td>
+                    <td class="col-total">{{ invoice.amount }} <span style="font-size:0.8em">{{ invoice.get_currency_display }}</span></td>
+                </tr>
+            </tbody>
+        </table>
 
-        <!-- Totals -->
-        <div class="summary-section">
-            <div class="totals-box">
-                <div class="total-row">
-                    <span>المجموع الفرعي</span>
+        <!-- Summary -->
+        <div class="summary-wrapper">
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span class="summary-label">المجموع الفرعي</span>
+                    <span>{{ invoice.amount }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">ضريبة القيمة المضافة (0%)</span>
+                    <span>0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">الإجمالي المستحق</span>
                     <span>{{ invoice.amount }} {{ invoice.get_currency_display }}</span>
-                </div>
-                <div class="total-row">
-                    <span>الضريبة (0%)</span>
-                    <span>0.00 {{ invoice.get_currency_display }}</span>
-                </div>
-                <div class="total-row final">
-                    <span>الإجمالي المستحق</span>
-                    <span>
-                        <span class="currency">{{ invoice.get_currency_display }}</span>
-                        {{ invoice.amount }}
-                    </span>
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <div><strong>شكرًا لتعاملكم معنا.</strong> نسعد بخدمتكم دائمًا.</div>
-            <div dir="ltr">System Gen. ID: #{{ invoice.id }}</div>
+            <div style="text-align:right">
+                شكرًا لتعاملكم معنا.<br>
+                نسعد بخدمتكم دائمًا.
+            </div>
+            <div style="text-align:left; font-family:sans-serif;">
+                System ID: #{{ invoice.id }}
+            </div>
         </div>
     </div>
 

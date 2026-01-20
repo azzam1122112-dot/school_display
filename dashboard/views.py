@@ -2803,6 +2803,16 @@ def system_subscription_edit(request, pk: int):
                             inv.payment_method = op.method
                             inv.amount = op.amount
                             inv.plan = op.plan
+                            
+                            # Fetch contact info
+                            c_name, c_mobile = "", ""
+                            try:
+                                profile = inv.school.users.first()
+                                if profile:
+                                    c_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
+                                    c_mobile = profile.mobile
+                            except Exception: pass
+
                             html = render_to_string(
                                 "invoices/subscription_invoice.html",
                                 {
@@ -2811,6 +2821,8 @@ def system_subscription_edit(request, pk: int):
                                     "school": inv.school,
                                     "subscription": inv.subscription,
                                     "plan": inv.plan,
+                                    "contact_name": c_name,
+                                    "contact_mobile": c_mobile,
                                 },
                             )
                             inv.html_snapshot = html

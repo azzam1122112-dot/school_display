@@ -51,6 +51,18 @@ def build_invoice_from_operation(op: SubscriptionPaymentOperation) -> Subscripti
     )
     inv.save()
 
+    # محاولة جلب بيانات المستخدم المسؤول عن المدرسة (الاسم والجوال)
+    contact_name = ""
+    contact_mobile = ""
+    try:
+        # school.users -> UserProfile related manager
+        profile = school.users.first()
+        if profile:
+            contact_name = f"{profile.user.first_name} {profile.user.last_name}".strip() or profile.user.username
+            contact_mobile = profile.mobile or ""
+    except Exception:
+        pass
+
     html = render_to_string(
         "invoices/subscription_invoice.html",
         {
@@ -59,6 +71,8 @@ def build_invoice_from_operation(op: SubscriptionPaymentOperation) -> Subscripti
             "school": school,
             "subscription": subscription,
             "plan": plan,
+            "contact_name": contact_name,
+            "contact_mobile": contact_mobile,
         },
     )
     inv.html_snapshot = html
