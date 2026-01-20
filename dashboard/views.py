@@ -2731,6 +2731,9 @@ def system_subscription_edit(request, pk: int):
                 pass
             obj2.save()
 
+            payment_method_saved_label = None
+            payment_method_save_failed = False
+
             # حفظ/تحديث طريقة الدفع لاشتراك سابق (عملية دفع + فاتورة إن وجدت)
             try:
                 from subscriptions.models import SubscriptionPaymentOperation
@@ -2778,6 +2781,11 @@ def system_subscription_edit(request, pk: int):
                         if changed:
                             op.save(update_fields=["method", "plan", "amount"])
 
+                    try:
+                        payment_method_saved_label = getattr(op, "get_method_display", lambda: op.method)()
+                    except Exception:
+                        payment_method_saved_label = op.method
+
                     # تحديث/إنشاء الفاتورة بشكل منفصل حتى لا يمنع حفظ طريقة الدفع
                     try:
                         from django.template.loader import render_to_string
@@ -2811,6 +2819,12 @@ def system_subscription_edit(request, pk: int):
                         logger.exception("Failed to update/generate invoice for subscription %s", getattr(obj2, "pk", None))
             except Exception:
                 logger.exception("Failed to update payment method for subscription %s", getattr(obj2, "pk", None))
+                payment_method_save_failed = True
+
+            if payment_method_save_failed:
+                messages.warning(request, "تم حفظ الاشتراك، لكن تعذّر حفظ/تحديث طريقة الدفع. راجع سجل الأخطاء.")
+            elif payment_method_saved_label:
+                messages.success(request, f"تم حفظ طريقة الدفع: {payment_method_saved_label}.")
 
             messages.success(request, "تم تحديث بيانات الاشتراك.")
             return redirect("dashboard:system_subscriptions_list")
