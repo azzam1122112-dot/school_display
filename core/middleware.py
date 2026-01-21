@@ -27,8 +27,8 @@ class SnapshotEdgeCacheMiddleware:
 
     هدفه Phase 1:
     - منع أي Set-Cookie أو Vary: Cookie على مسار snapshot (حتى لا يصبح CF-Cache-Status: DYNAMIC)
-    - منع كاش المتصفح (max-age=0)
-    - السماح لـ Cloudflare Edge بالكاش القصير (s-maxage=10 افتراضيًا)
+    - منع كاش المتصفح نهائيًا (Cache-Control: no-store)
+    - السماح لـ Cloudflare Edge بالكاش القصير عبر Cloudflare-CDN-Cache-Control (افتراضيًا 10 ثواني)
     """
 
     SNAPSHOT_PREFIX = "/api/display/snapshot/"
@@ -43,18 +43,21 @@ class SnapshotEdgeCacheMiddleware:
         if not (path == self.SNAPSHOT_PREFIX or path.startswith(self.SNAPSHOT_PREFIX)):
             return response
 
+        # Only apply to GET requests for snapshot.
+        if request.method != "GET":
+            return response
+
         # 1) Never set cookies on snapshot.
         try:
             response.cookies.clear()
         except Exception:
             pass
 
-        # 2) Never vary by Cookie / Accept-Encoding on snapshot.
-        #    (Cloudflare Free behavior may treat these as non-cacheable for some setups.)
+        # 2) Never vary by Cookie on snapshot (but keep Accept-Encoding for compression).
         vary = response.get("Vary")
         if vary:
             parts = [p.strip() for p in vary.split(",") if p.strip()]
-            parts = [p for p in parts if p.lower() not in {"cookie", "accept-encoding"}]
+            parts = [p for p in parts if p.lower() != "cookie"]
             if parts:
                 response["Vary"] = ", ".join(parts)
             else:
@@ -63,10 +66,11 @@ class SnapshotEdgeCacheMiddleware:
                 except Exception:
                     pass
 
-        # 3) Cache-Control policy.
+        # 3) Cache policy.
         force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
-        if force_nocache or request.method != "GET" or response.status_code != 200:
+        if force_nocache or response.status_code != 200:
             response["Cache-Control"] = "no-store"
+            response["Cloudflare-CDN-Cache-Control"] = "no-store"
             return response
 
         try:
@@ -75,7 +79,9 @@ class SnapshotEdgeCacheMiddleware:
             edge_ttl = 10
         edge_ttl = max(1, min(60, edge_ttl))
 
-        response["Cache-Control"] = f"public, max-age=0, s-maxage={edge_ttl}"
+        # Browser: no-store. Cloudflare edge: cache for a short TTL.
+        response["Cache-Control"] = "no-store"
+        response["Cloudflare-CDN-Cache-Control"] = f"public, max-age={edge_ttl}"
         return response
 
 

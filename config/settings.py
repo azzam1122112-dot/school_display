@@ -154,7 +154,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
 
     # Phase 1: ensure /api/display/snapshot/* is edge-cacheable and cookie/vary-free.
-    # Put it BEFORE WhiteNoise so it runs AFTER it on the response path.
+    # Note: Django executes response middleware in reverse order.
+    # Placing this BEFORE WhiteNoise ensures it runs AFTER WhiteNoise on the response path.
     "core.middleware.SnapshotEdgeCacheMiddleware",
 
     "whitenoise.middleware.WhiteNoiseMiddleware",
