@@ -1407,39 +1407,62 @@
     const dutyLabel = safeText(it.duty_label || (dutyType === "supervision" ? "إشراف" : "مناوبة"));
     const location = safeText(it.location || "");
 
+    // Luxury container
     const row = document.createElement("div");
-    row.className = "flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md";
+    row.className =
+      "relative flex items-center justify-between gap-5 px-6 py-4 rounded-2xl " +
+      "bg-gradient-to-l from-white/5 to-white/[0.02] border border-white/10 " +
+      "shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md overflow-hidden group";
+
+    // Glow effect via pseudo-element manually
+    const glow = document.createElement("div");
+    glow.className = "absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100";
+    row.appendChild(glow);
 
     const left = document.createElement("div");
-    left.className = "flex items-center gap-3 min-w-0";
+    left.className = "flex items-center gap-5 min-w-0 z-10";
 
+    // Premium Avatar
     const avatar = document.createElement("div");
-    avatar.className = "w-10 h-10 rounded-xl bg-black/20 border border-white/10 flex items-center justify-center text-slate-200 font-black";
+    avatar.className =
+      "w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 " +
+      "border border-white/10 shadow-inner flex items-center justify-center " +
+      "text-indigo-200 text-lg font-black shrink-0";
     avatar.textContent = teacher ? teacher.slice(0, 1) : "—";
 
     const meta = document.createElement("div");
-    meta.className = "min-w-0";
+    meta.className = "min-w-0 flex flex-col justify-center";
 
     const nm = document.createElement("div");
-    nm.className = "text-lg font-extrabold text-white truncate";
+    nm.className = "text-xl font-bold text-white truncate drop-shadow-sm";
     nm.textContent = teacher || "—";
 
     const sub = document.createElement("div");
-    sub.className = "text-sm text-slate-400 truncate";
-    sub.textContent = location ? "المكان: " + location : "المكان: —";
+    sub.className = "flex items-center gap-2 text-sm text-indigo-200/70 truncate mt-0.5";
+    // Location icon
+    const locIcon = document.createElement("span");
+    locIcon.textContent = "📍";
+    locIcon.className = "opacity-60 grayscale";
+    
+    const locText = document.createElement("span");
+    locText.textContent = location || "غير محدد";
+    
+    sub.appendChild(locIcon);
+    sub.appendChild(locText);
 
     meta.appendChild(nm);
     meta.appendChild(sub);
     left.appendChild(avatar);
     left.appendChild(meta);
 
+    // Badge
     const badge = document.createElement("div");
     const isSup = dutyType === "supervision";
     badge.className =
-      "shrink-0 px-3 py-1 rounded-full text-sm font-black border " +
+      "relative z-10 shrink-0 px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg " +
       (isSup
-        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/25"
-        : "bg-amber-500/15 text-amber-200 border-amber-500/25");
+        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+        : "bg-amber-500/20 text-amber-200 border-amber-500/30");
     badge.textContent = dutyLabel;
 
     row.appendChild(left);

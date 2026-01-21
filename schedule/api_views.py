@@ -811,7 +811,7 @@ def snapshot(request, token: str | None = None):
                 device_key = (request.GET.get("dk") or request.GET.get("device_key") or "").strip()
 
             if not device_key:
-                resp = JsonResponse({"detail": "device_required"}, status=400)
+                resp = JsonResponse({"detail": "device_required"}, status=403)
                 return _finalize(resp, cache_status="ERROR", device_bound=False)
 
             device_hash = _sha256(device_key)

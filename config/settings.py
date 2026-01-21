@@ -423,11 +423,29 @@ SECURE_HSTS_PRELOAD = (not DEBUG)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "snapshot_request_noise": {
+            "()": "core.logging_filters.SnapshotRequestNoiseFilter",
+        },
+    },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+        "request_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "filters": ["snapshot_request_noise"],
+        },
     },
     "formatters": {
         "simple": {"format": "[{levelname}] {message}", "style": "{"},
+    },
+    "loggers": {
+        # Keep django.request warnings, but drop expected snapshot polling noise.
+        "django.request": {
+            "handlers": ["request_console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
     "root": {
         "handlers": ["console"],
