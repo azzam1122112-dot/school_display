@@ -70,6 +70,28 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 
 
 # =========================
+# Origin snapshot TTL (seconds)
+# Used by schedule.api_views.snapshot origin-only caching/ETag.
+# =========================
+try:
+    DISPLAY_SNAPSHOT_TTL = int(os.environ.get("DISPLAY_SNAPSHOT_TTL", str(DISPLAY_SNAPSHOT_CACHE_TTL)))
+except Exception:
+    DISPLAY_SNAPSHOT_TTL = DISPLAY_SNAPSHOT_CACHE_TTL
+
+DISPLAY_SNAPSHOT_TTL = max(1, min(60, DISPLAY_SNAPSHOT_TTL))
+
+
+# Build/revision identifier (optional; used for diagnostics headers)
+APP_REVISION = (
+    os.getenv("APP_REVISION")
+    or os.getenv("RENDER_GIT_COMMIT")
+    or os.getenv("GIT_COMMIT")
+    or os.getenv("SOURCE_VERSION")
+    or ""
+).strip()
+
+
+# =========================
 # Snapshot Edge cache max-age (seconds)
 # Used for Cache-Control on /api/display/snapshot/* to enable short Cloudflare caching.
 # Keep it short; Cloudflare Cache Rules should be set to "Edge TTL: Respect origin".

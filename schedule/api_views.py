@@ -1,6 +1,7 @@
 # schedule/api_views.py
 from __future__ import annotations
 
+import json
 import hashlib
 import logging
 import re
@@ -12,7 +13,7 @@ from django.conf import settings as dj_settings
 from django.core.cache import cache
 from django.db import models
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotModified
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
@@ -21,6 +22,109 @@ from schedule.models import SchoolSettings, ClassLesson, Period
 from schedule.time_engine import build_day_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+def _snapshot_ttl_seconds() -> int:
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_TTL", 10) or 10)
+    except Exception:
+        v = 10
+    return max(1, min(60, v))
+
+
+def _snapshot_build_lock_ttl_seconds() -> int:
+    # Short lock to coalesce concurrent requests.
+    return 2
+
+
+def _snapshot_bind_ttl_seconds() -> int:
+    # How long a token stays bound to the first seen device_key.
+    return 60 * 60 * 24 * 30  # 30 days
+
+
+def _stable_json_bytes(payload: dict) -> bytes:
+    # Stable encoding for ETag hashing (order-independent).
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _etag_from_json_bytes(json_bytes: bytes) -> str:
+    return hashlib.sha256(json_bytes).hexdigest()
+
+
+def _parse_if_none_match(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    s = raw.strip()
+    # We only support a single strong ETag value.
+    if s.startswith("W/"):
+        s = s[2:].strip()
+    if s.startswith('"') and s.endswith('"') and len(s) > 1:
+        s = s[1:-1]
+    if not s:
+        return None
+    return s
+
+
+def _snapshot_rate_limit_allow(token_hash: str, device_hash: str) -> bool:
+    """Token bucket: 1 req/sec with burst 3, keyed by token_hash + device_hash."""
+
+    capacity = 3.0
+    refill_per_sec = 1.0
+    state_key = f"rl:snapshot:{token_hash}:{device_hash}"
+    lock_key = f"{state_key}:lock"
+
+    now = time.monotonic()
+    state = None
+
+    have_lock = False
+    try:
+        have_lock = bool(cache.add(lock_key, "1", timeout=1))
+    except Exception:
+        have_lock = False
+
+    if not have_lock:
+        # Best effort: if we can't lock, avoid hard-failing the request.
+        return True
+
+    try:
+        state = cache.get(state_key)
+        if not isinstance(state, dict):
+            state = {"tokens": capacity, "ts": now}
+
+        tokens = float(state.get("tokens", capacity))
+        last_ts = float(state.get("ts", now))
+        elapsed = max(0.0, now - last_ts)
+        tokens = min(capacity, tokens + elapsed * refill_per_sec)
+
+        allowed = tokens >= 1.0
+        if allowed:
+            tokens -= 1.0
+
+        state = {"tokens": tokens, "ts": now}
+        try:
+            cache.set(state_key, state, timeout=60)
+        except Exception:
+            pass
+
+        return allowed
+    finally:
+        try:
+            cache.delete(lock_key)
+        except Exception:
+            pass
+
+
+def _app_revision() -> str:
+    try:
+        v = str(getattr(dj_settings, "APP_REVISION", "") or "").strip()
+    except Exception:
+        v = ""
+    return v
 
 
 def _as_list(value):
@@ -671,12 +775,91 @@ def snapshot(request, token: str | None = None):
     try:
         force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
 
-        edge_ttl_s = _snapshot_edge_cache_max_age_seconds()
-        edge_cache_control = f"public, max-age=0, s-maxage={edge_ttl_s}"
+        path = getattr(request, "path", "") or ""
+        is_snapshot_path = path.startswith("/api/display/snapshot/")
+
+        app_rev = _app_revision()
+
+        def _finalize(resp, *, cache_status: str, device_bound: bool | None = None):
+            if not resp.get("Cache-Control"):
+                resp["Cache-Control"] = "no-store"
+            # Keep compression negotiation; never vary on Cookie.
+            resp["Vary"] = "Accept-Encoding"
+            resp["X-Snapshot-Cache"] = cache_status
+            if device_bound is not None:
+                resp["X-Snapshot-Device-Bound"] = "1" if device_bound else "0"
+            if app_rev:
+                resp["X-App-Revision"] = app_rev
+            return resp
 
         token_value = _extract_token(request, token)
+        if not token_value:
+            resp = JsonResponse(
+                _fallback_payload("رمز الدخول غير صحيح"),
+                json_dumps_params={"ensure_ascii": False},
+                status=403,
+            )
+            return _finalize(resp, cache_status="ERROR", device_bound=False if is_snapshot_path else None)
+
+        token_hash = _sha256(token_value)
+
+        device_key = ""
+        if is_snapshot_path:
+            # Device binding without cookies: bind token -> device_key (header or query)
+            device_key = (request.headers.get("X-Display-Device") or "").strip()
+            if not device_key:
+                device_key = (request.GET.get("dk") or request.GET.get("device_key") or "").strip()
+
+            if not device_key:
+                resp = JsonResponse({"detail": "device_required"}, status=400)
+                return _finalize(resp, cache_status="ERROR", device_bound=False)
+
+            device_hash = _sha256(device_key)
+
+            # Rate limit: 1 req/sec per token+device with burst 3
+            if not _snapshot_rate_limit_allow(token_hash, device_hash):
+                resp = JsonResponse({"detail": "rate_limited"}, status=429)
+                return _finalize(resp, cache_status="MISS", device_bound=True)
+
+            bind_key = f"bind:snapshot:{token_hash}"
+            existing = cache.get(bind_key)
+            if existing:
+                if str(existing) != device_key:
+                    resp = JsonResponse({"detail": "device_mismatch"}, status=403)
+                    return _finalize(resp, cache_status="ERROR", device_bound=True)
+            else:
+                added = False
+                try:
+                    added = bool(cache.add(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds()))
+                except Exception:
+                    added = False
+
+                if not added:
+                    # If another request raced and bound it, respect that.
+                    existing2 = cache.get(bind_key)
+                    if existing2 and str(existing2) != device_key:
+                        resp = JsonResponse({"detail": "device_mismatch"}, status=403)
+                        return _finalize(resp, cache_status="ERROR", device_bound=True)
+
+        # Origin cache (token-keyed)
+        ttl_s = _snapshot_ttl_seconds()
+        cache_key = f"snapshot:token:{token_hash}"
+        lock_key = f"{cache_key}:lock"
+
+        cached_entry = None if force_nocache else cache.get(cache_key)
+        if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
+            inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+            if inm and inm == cached_entry.get("etag"):
+                resp = HttpResponseNotModified()
+                resp["ETag"] = f"\"{cached_entry['etag']}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+            resp = JsonResponse(cached_entry["snap"], json_dumps_params={"ensure_ascii": False})
+            resp["ETag"] = f"\"{cached_entry['etag']}\""
+            return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
         settings_obj = None
-        hashed_token = _sha256(token_value) if token_value else None
+        hashed_token = token_hash
         cached_school_id = None
 
         # 0) ✅ Cache Hit: Check if token is already mapped to school_id
@@ -684,9 +867,13 @@ def snapshot(request, token: str | None = None):
             # Negative cache check
             neg_key = f"display:token_neg:{hashed_token}"
             if cache.get(neg_key):
-                 resp = JsonResponse(_fallback_payload("رمز الدخول غير صحيح (cached)"), json_dumps_params={"ensure_ascii": False})
-                 resp["Cache-Control"] = "no-store"
-                 return resp
+                resp = JsonResponse(
+                    _fallback_payload("رمز الدخول غير صحيح (cached)"),
+                    json_dumps_params={"ensure_ascii": False},
+                    status=403,
+                )
+                resp["Cache-Control"] = "no-store"
+                return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None)
 
             # Positive cache check
             map_key = f"display:token_map:{hashed_token}"
@@ -703,19 +890,33 @@ def snapshot(request, token: str | None = None):
         
         # 1) If we have school_id, try to fetch Snapshot directly from cache
         if cached_school_id and not force_nocache:
-             snap_key = f"snapshot:v1:school:{cached_school_id}"
-             cached_snap = cache.get(snap_key)
-             if isinstance(cached_snap, dict):
-                 # HUGE WIN: Returned without ANY DB query
-                 resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
-                 resp["Cache-Control"] = edge_cache_control
-                 return resp
-             
-             # If snapshot missing, we need settings_obj to build it
-             try:
-                 settings_obj = _get_settings_by_school_id(int(cached_school_id))
-             except Exception:
-                 pass
+            snap_key = f"snapshot:v1:school:{cached_school_id}"
+            cached_snap = cache.get(snap_key)
+            if isinstance(cached_snap, dict):
+                # We'll still go through token-keyed cache so ETag/304 and rate limit are consistent.
+                try:
+                    json_bytes = _stable_json_bytes(cached_snap)
+                    etag = _etag_from_json_bytes(json_bytes)
+                    cache.set(cache_key, {"snap": cached_snap, "etag": etag}, timeout=ttl_s)
+                except Exception:
+                    etag = None
+
+                inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                if etag and inm and inm == etag:
+                    resp = HttpResponseNotModified()
+                    resp["ETag"] = f"\"{etag}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+                resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
+                if etag:
+                    resp["ETag"] = f"\"{etag}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+            # If snapshot missing, we need settings_obj to build it
+            try:
+                settings_obj = _get_settings_by_school_id(int(cached_school_id))
+            except Exception:
+                pass
 
         # 2) DisplayScreen (DB Lookup if not found yet)
         if not settings_obj:
@@ -751,7 +952,7 @@ def snapshot(request, token: str | None = None):
                     )
                 resp = JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
                 resp["Cache-Control"] = "no-store"
-                return resp
+                return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None)
         
         # ✅ Cache Update: Store valid token mapping if not cached (24h)
         if token_value and settings_obj and len(token_value) > 10 and not cached_school_id:
@@ -766,70 +967,66 @@ def snapshot(request, token: str | None = None):
             except Exception:
                 pass
 
-        # 6) snapshot (with short-lived server-side cache + lock)
-        cache_key = _snapshot_cache_key(settings_obj)
-        lock_key = f"{cache_key}:lock"
-        ttl_s = min(_snapshot_cache_ttl_seconds(), edge_ttl_s)
+        # 6) snapshot build (coalesced) + token-keyed cache
+        have_lock = False
+        try:
+            have_lock = bool(cache.add(lock_key, "1", timeout=_snapshot_build_lock_ttl_seconds()))
+        except Exception:
+            have_lock = False
 
-        # If the client explicitly requests nocache, bypass any cached snapshot reads.
-        if force_nocache:
-            try:
-                snap = _build_final_snapshot(request, settings_obj)
+        if not have_lock:
+            # Another worker is building. If a cached value appears quickly, serve it.
+            deadline = time.monotonic() + 0.5
+            while time.monotonic() < deadline:
+                cached2 = cache.get(cache_key)
+                if isinstance(cached2, dict) and isinstance(cached2.get("snap"), dict) and isinstance(cached2.get("etag"), str):
+                    inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                    if inm and inm == cached2.get("etag"):
+                        resp = HttpResponseNotModified()
+                        resp["ETag"] = f"\"{cached2['etag']}\""
+                        return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+                    resp = JsonResponse(cached2["snap"], json_dumps_params={"ensure_ascii": False})
+                    resp["ETag"] = f"\"{cached2['etag']}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                time.sleep(0.05)
+
+            resp = JsonResponse({"detail": "building"}, status=503)
+            resp["Retry-After"] = "1"
+            return _finalize(resp, cache_status="MISS", device_bound=True if is_snapshot_path else None)
+
+        try:
+            snap = _build_final_snapshot(request, settings_obj)
+            json_bytes = _stable_json_bytes(snap)
+            etag = _etag_from_json_bytes(json_bytes)
+
+            if not force_nocache:
                 try:
-                    cache.set(cache_key, snap, timeout=ttl_s)
+                    cache.set(cache_key, {"snap": snap, "etag": etag}, timeout=ttl_s)
                 except Exception:
                     pass
 
-                resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
-                resp["Cache-Control"] = "no-store"
-                return resp
-            except Exception:
-                logger.exception("snapshot: failed to build nocache snapshot")
-                resp = JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
-                resp["Cache-Control"] = "no-store"
-                return resp
+            inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+            if inm and inm == etag:
+                resp = HttpResponseNotModified()
+                resp["ETag"] = f"\"{etag}\""
+                return _finalize(resp, cache_status="MISS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None)
 
-        cached = cache.get(cache_key)
-        if isinstance(cached, dict):
-            snap = dict(cached)
-        else:
-            have_lock = False
+            resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
+            resp["ETag"] = f"\"{etag}\""
+            return _finalize(resp, cache_status="BYPASS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None)
+        finally:
             try:
-                have_lock = bool(cache.add(lock_key, "1", timeout=5))
+                cache.delete(lock_key)
             except Exception:
-                have_lock = False
-
-            if not have_lock:
-                # Another worker is building. Wait briefly and serve cache if it appears.
-                deadline = time.monotonic() + 0.5
-                while time.monotonic() < deadline:
-                    time.sleep(0.05)
-                    cached2 = cache.get(cache_key)
-                    if isinstance(cached2, dict):
-                        snap = dict(cached2)
-                        break
-                else:
-                    # Fallback: build without lock (do not fail).
-                    snap = _build_final_snapshot(request, settings_obj)
-            else:
-                try:
-                    snap = _build_final_snapshot(request, settings_obj)
-                    try:
-                        cache.set(cache_key, snap, timeout=ttl_s)
-                    except Exception:
-                        pass
-                finally:
-                    try:
-                        cache.delete(lock_key)
-                    except Exception:
-                        pass
-
-        resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
-        resp["Cache-Control"] = edge_cache_control
-        return resp
+                pass
 
     except Exception as e:
         logger.exception("snapshot error: %s", e)
         resp = JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
         resp["Cache-Control"] = "no-store"
+        resp["Vary"] = "Accept-Encoding"
+        resp["X-Snapshot-Cache"] = "ERROR"
+        if app_rev:
+            resp["X-App-Revision"] = app_rev
         return resp

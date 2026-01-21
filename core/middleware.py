@@ -66,22 +66,16 @@ class SnapshotEdgeCacheMiddleware:
                 except Exception:
                     pass
 
-        # 3) Cache policy.
-        force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
-        if force_nocache or response.status_code != 200:
-            response["Cache-Control"] = "no-store"
-            response["Cloudflare-CDN-Cache-Control"] = "no-store"
-            return response
-
+        # 3) Origin-only caching strategy: do not emit Cloudflare cache headers.
+        # The view is responsible for Cache-Control/ETag; this middleware just sanitizes.
         try:
-            edge_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_EDGE_MAX_AGE", 10) or 10)
+            if "Cloudflare-CDN-Cache-Control" in response:
+                del response["Cloudflare-CDN-Cache-Control"]
         except Exception:
-            edge_ttl = 10
-        edge_ttl = max(1, min(60, edge_ttl))
+            pass
 
-        # Browser: no-store. Cloudflare edge: cache for a short TTL.
-        response["Cache-Control"] = "no-store"
-        response["Cloudflare-CDN-Cache-Control"] = f"public, max-age={edge_ttl}"
+        if not response.get("Cache-Control"):
+            response["Cache-Control"] = "no-store"
         return response
 
 
