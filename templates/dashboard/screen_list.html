@@ -80,6 +80,50 @@
       </div>
   </div>
 
+  <!-- Technical Linkage Protocol Banner -->
+  <div class="mb-10 relative overflow-hidden rounded-3xl bg-slate-900 p-8 shadow-2xl group transition-all duration-500 hover:shadow-blue-500/10 border border-slate-800">
+      <div class="absolute top-0 right-0 -tr-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/15 transition-all"></div>
+      <div class="absolute bottom-0 left-0 -bl-10 w-48 h-48 bg-indigo-500/5 rounded-full blur-2xl"></div>
+      
+      <div class="relative flex flex-col lg:flex-row items-center gap-8">
+          <div class="shrink-0">
+              <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xl shadow-blue-900/40 border border-blue-400/20 relative">
+                  <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  <span class="absolute -top-2 -right-2 flex h-4 w-4">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+                  </span>
+              </div>
+          </div>
+          
+          <div class="flex-1 text-center lg:text-right">
+              <div class="flex flex-col lg:flex-row lg:items-center gap-3 mb-3 justify-center lg:justify-start">
+                  <h4 class="text-xl font-extrabold text-white tracking-tight">بروتوكول حماية البث وإدارة الارتباط الحصري</h4>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-widest leading-none">Safe-Link v2.0</span>
+              </div>
+              <p class="text-slate-400 text-base leading-relaxed max-w-4xl font-medium">
+                  لضمان أعلى معايير الأمان واستقرار البث المباشر، يعتمد النظام تقنية <span class="text-blue-400 font-bold">"حجز المورد الذكي"</span>. 
+                  بمجرد اقتران الشاشة بجهاز معين، يتم تشفير جلسة العرض وتخصيصها لهذا الجهاز حصرياً. 
+                  <span class="text-slate-200">لا يمكن عرض المحتوى على جهاز بديل إلا بعد تنفيذ إجراء <strong>"فك ارتباط الجهاز"</strong> من لوحة التحكم،</span> 
+                  وذلك لمنع التداخل التقني وحماية خصوصية العرض المدرسي.
+              </p>
+          </div>
+          
+          <div class="grid grid-cols-2 lg:flex lg:flex-col gap-3 shrink-0">
+                <div class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Status</p>
+                    <p class="text-blue-400 text-xs font-black">ACTIVE PROTECT</p>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Access</p>
+                    <p class="text-emerald-400 text-xs font-black">1:1 SESSION</p>
+                </div>
+          </div>
+      </div>
+  </div>
+
   {% if show_screen_limit_message %}
     <div class="mb-8 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 flex items-start gap-3">
         <svg class="w-6 h-6 text-rose-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -95,19 +139,36 @@
     {% if screens %}
        {% for screen in screens %}
         
-        <div class="group relative bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden flex flex-col">
-            <!-- Active Indicator Strip -->
-            <div class="absolute top-0 inset-x-0 h-1.5 {% if screen.is_active %}bg-gradient-to-r from-emerald-400 to-teal-500{% else %}bg-slate-200{% endif %}"></div>
+        <div class="group relative bg-white rounded-3xl border transition-all duration-500 overflow-hidden flex flex-col 
+            {% if screen.bound_device_id %}border-blue-100/60 shadow-lg shadow-indigo-100/30 hover:shadow-indigo-500/10 hover:border-blue-300{% else %}border-slate-100 shadow-sm hover:shadow-slate-200/50{% endif %}">
+            
+            <!-- Dynamic Indicator Strip -->
+            <div class="absolute top-0 inset-x-0 h-1.5 transition-all duration-500
+                {% if screen.is_active %}
+                    {% if screen.bound_device_id %}
+                        bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400
+                    {% else %}
+                        bg-gradient-to-r from-emerald-400 to-teal-500
+                    {% endif %}
+                {% else %}
+                    bg-slate-200
+                {% endif %}">
+            </div>
             
             <div class="p-6 flex-1 flex flex-col">
-                <div class="flex items-start justify-between mb-4">
+                <div class="flex items-start justify-between mb-6">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center {% if screen.is_active %}bg-emerald-50 text-emerald-600{% else %}bg-slate-100 text-slate-400{% endif %}">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 
+                            {% if screen.bound_device_id %}
+                                bg-blue-600 text-white shadow-lg shadow-blue-200
+                            {% else %}
+                                {% if screen.is_active %}bg-emerald-50 text-emerald-600{% else %}bg-slate-100 text-slate-400{% endif %}
+                            {% endif %}">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                         </div>
                         <div>
-                            <h3 class="font-bold text-slate-800 text-lg">{{ screen.name }}</h3>
-                            <div class="flex items-center gap-2 mt-1">
+                            <h3 class="font-bold text-slate-800 text-xl tracking-tight leading-tight">{{ screen.name }}</h3>
+                            <div class="flex items-center gap-2 mt-1.5">
                                 <span class="relative flex h-2.5 w-2.5">
                                   {% if screen.is_active %}
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -116,63 +177,89 @@
                                     <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-300"></span>
                                   {% endif %}
                                 </span>
-                                <span class="text-xs font-semibold {% if screen.is_active %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                                <span class="text-xs font-bold {% if screen.is_active %}text-emerald-600{% else %}text-slate-400{% endif %}">
                                     {% if screen.is_active %}نشط وتعمل{% else %}متوقفة{% endif %}
                                 </span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Binding Status Badge -->
+                    {% if screen.bound_device_id %}
+                         <div class="flex flex-col items-end gap-1">
+                             <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm">
+                                 <span class="relative flex h-1.5 w-1.5">
+                                     <span class="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                     <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                                 </span>
+                                 <span class="text-[10px] font-black uppercase tracking-wider">متصل الآن</span>
+                             </div>
+                         </div>
+                    {% else %}
+                         <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-400 rounded-full border border-slate-100 italic">
+                             <span class="text-[10px] font-bold uppercase tracking-wider">بانتظار الربط</span>
+                         </div>
+                    {% endif %}
                 </div>
 
                 {% if screen.short_code %}
                  {% with sc=screen.short_code %}
                  {% with short_url=request.scheme|add:"://"|add:request.get_host|add:"/s/"|add:sc %}
-                    <div class="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 mb-6 group-hover:bg-blue-50/30 group-hover:border-blue-100 transition-colors">
-                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">رابط التلفاز (Short Link)</label>
-                        <div class="flex items-center gap-2">
+                    <div class="relative group/link bg-slate-50/50 rounded-2xl p-5 border border-slate-100 mb-6 transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1">
+                        <div class="absolute -top-3 left-6 px-3 py-1 bg-white border border-slate-100 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest shadow-sm">Short Link</div>
+                        
+                        <div class="flex items-center gap-3 mt-2">
                              <div class="flex-1 relative">
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">/s/</span>
-                                <input type="text" readonly value="{{ sc|upper }}" class="w-full bg-white border border-slate-200 rounded-xl py-2 pl-8 pr-3 font-mono text-center font-bold text-slate-800 tracking-widest focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-mono text-sm">/s/</span>
+                                <input type="text" readonly value="{{ sc|upper }}" class="w-full bg-white border border-slate-100 rounded-xl py-3 pl-10 pr-4 font-mono text-center font-bold text-slate-800 text-lg tracking-widest focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all shadow-sm">
                              </div>
-                             <button type="button" data-copy-target="link-{{ screen.id }}" class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm" title="نسخ الرابط الكامل">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                             <button type="button" data-copy-target="link-{{ screen.id }}" class="p-3.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm active:scale-95" title="نسخ الرابط الكامل">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                              </button>
                              <input type="hidden" id="link-{{ screen.id }}" value="{{ short_url }}">
                         </div>
-                        <div class="mt-2 text-center">
-                            <a href="{{ short_url }}" target="_blank" class="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">تجربة الرابط في المتصفح &rarr;</a>
+                        
+                        <div class="mt-4 flex items-center justify-center">
+                            <a href="{{ short_url }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:gap-3 transition-all">
+                                <span>تجربة الرابط في المتصفح</span>
+                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                            </a>
                         </div>
                     </div>
                  {% endwith %}
                  {% endwith %}
                 {% else %}
-                    <div class="bg-amber-50 rounded-2xl p-4 border border-amber-100 mb-6">
-                        <div class="flex items-center gap-2 text-amber-700">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                             <span class="text-sm font-bold">بانتظار التفعيل</span>
+                    <div class="bg-amber-50/50 rounded-2xl p-6 border border-amber-100 mb-6 flex flex-col items-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3">
+                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         </div>
-                        <p class="text-xs text-amber-600/80 mt-1">سيتم توليد الرابط تلقائياً قريباً.</p>
+                        <h4 class="text-sm font-bold text-amber-800">بانتظار التفعيل</h4>
+                        <p class="text-xs text-amber-600 mt-1 max-w-[200px]">سيتم توليد الرابط المختصر تلقائياً خلال لحظات.</p>
                     </div>
                 {% endif %}
                 
-                <div class="mt-auto border-t border-slate-50 pt-4 flex items-center justify-between">
+                <div class="mt-auto border-t border-slate-50 pt-5 flex items-center justify-between">
                      {% if screen.bound_device_id %}
                          <form method="post" action="{% url 'dashboard:screen_unbind_device' screen.pk %}"
                               onsubmit="return confirm('سيتم فصل الشاشة من الجهاز الحالي. هل أنت متأكد؟');">
                           {% csrf_token %}
-                          <button type="submit" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors">
-                            فك ارتباط الجهاز
+                          <button type="submit" class="group/btn flex items-center gap-2 text-[11px] font-black text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl transition-all duration-300 hover:bg-rose-600 hover:text-white border border-rose-100 shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                            <span>فك ارتباط الجهاز</span>
                           </button>
                         </form>
                      {% else %}
-                        <span class="text-xs text-slate-400 font-medium px-2">غير مقترن بجهاز</span>
+                        <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-dashed border-slate-200">
+                             <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                             <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">غير مرتبط</span>
+                        </div>
                      {% endif %}
 
                      <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}" onsubmit="return confirm('هل أنت متأكد من حذف الشاشة؟ سيتوقف الرابط عن العمل.');">
                         {% csrf_token %}
-                        <button type="submit" class="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-3 py-2 rounded-lg transition-colors flex items-center gap-1">
+                        <button type="submit" class="text-xs font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-lg transition-all flex items-center gap-2 grayscale hover:grayscale-0 opacity-60 hover:opacity-100">
                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                             حذف
+                             <span>حذف</span>
                         </button>
                       </form>
                 </div>
