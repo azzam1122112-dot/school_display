@@ -1980,7 +1980,15 @@
     const snap = await safeFetchSnapshot();
     if (!snap) {
       failStreak += 1;
-      const backoff = Math.min(60, cfg.REFRESH_EVERY + failStreak * 5);
+      // INITIAL LOAD FAST RETRY:
+      // If we haven't successfully loaded data yet, retry quickly (e.g. 2s) 
+      // instead of the long backoff. This helps with cold starts.
+      let backoff;
+      if (!lastPayloadForFiltering) {
+          backoff = 2;
+      } else {
+          backoff = Math.min(60, cfg.REFRESH_EVERY + failStreak * 5);
+      }
       scheduleNext(backoff);
       return;
     }
