@@ -154,6 +154,9 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
+    # Phase 1: ensure /api/display/snapshot/* is edge-cacheable and cookie-free
+    "core.middleware.SnapshotEdgeCacheMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

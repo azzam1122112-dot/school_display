@@ -11,11 +11,71 @@ import json
 from django.apps import apps
 from django.db.models import Q
 from django.http import JsonResponse
+from django.conf import settings as dj_settings
 from django.utils import timezone
 from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
+
+
+# ==========================================================
+# Snapshot Edge Cache Middleware (Cloudflare)
+# ==========================================================
+class SnapshotEdgeCacheMiddleware:
+    """Hard-enforce cache headers for /api/display/snapshot/*.
+
+    هدفه Phase 1:
+    - منع أي Set-Cookie أو Vary: Cookie على مسار snapshot (حتى لا يصبح CF-Cache-Status: DYNAMIC)
+    - منع كاش المتصفح (max-age=0)
+    - السماح لـ Cloudflare Edge بالكاش القصير (s-maxage=10 افتراضيًا)
+    """
+
+    SNAPSHOT_PREFIX = "/api/display/snapshot/"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        path = getattr(request, "path", "") or ""
+        if not (path == self.SNAPSHOT_PREFIX or path.startswith(self.SNAPSHOT_PREFIX)):
+            return response
+
+        # 1) Never set cookies on snapshot.
+        try:
+            response.cookies.clear()
+        except Exception:
+            pass
+
+        # 2) Never vary by Cookie on snapshot.
+        vary = response.get("Vary")
+        if vary:
+            parts = [p.strip() for p in vary.split(",") if p.strip()]
+            parts = [p for p in parts if p.lower() != "cookie"]
+            if parts:
+                response["Vary"] = ", ".join(parts)
+            else:
+                try:
+                    del response["Vary"]
+                except Exception:
+                    response["Vary"] = ""
+
+        # 3) Cache-Control policy.
+        force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
+        if force_nocache or request.method != "GET" or response.status_code != 200:
+            response["Cache-Control"] = "no-store"
+            return response
+
+        try:
+            edge_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_EDGE_MAX_AGE", 10) or 10)
+        except Exception:
+            edge_ttl = 10
+        edge_ttl = max(1, min(60, edge_ttl))
+
+        response["Cache-Control"] = f"public, max-age=0, s-maxage={edge_ttl}"
+        return response
 
 
 # ==========================================================
