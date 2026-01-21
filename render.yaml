@@ -20,8 +20,8 @@ services:
           --email "${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" || true
       fi
 
-      gunicorn config.asgi:application \
-        -k uvicorn.workers.UvicornWorker \
+      # Run as WSGI to avoid Django async StreamingHttpResponse warnings (static files via WhiteNoise).
+      gunicorn config.wsgi:application \
         --bind 0.0.0.0:$PORT \
         --workers=${WEB_CONCURRENCY:-2} \
         --timeout=120 \
