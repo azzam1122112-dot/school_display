@@ -822,24 +822,54 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="MISS", device_bound=True)
 
             bind_key = f"bind:snapshot:{token_hash}"
-            existing = cache.get(bind_key)
-            if existing:
-                if str(existing) != device_key:
-                    resp = JsonResponse({"detail": "device_mismatch"}, status=403)
-                    return _finalize(resp, cache_status="ERROR", device_bound=True)
-            else:
-                added = False
-                try:
-                    added = bool(cache.add(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds()))
-                except Exception:
-                    added = False
 
-                if not added:
-                    # If another request raced and bound it, respect that.
-                    existing2 = cache.get(bind_key)
-                    if existing2 and str(existing2) != device_key:
-                        resp = JsonResponse({"detail": "device_mismatch"}, status=403)
-                        return _finalize(resp, cache_status="ERROR", device_bound=True)
+            # Prefer DB binding if this token belongs to a DisplayScreen.
+            # This keeps "unbind" actions in the dashboard effective.
+            screen = None
+            try:
+                screen = DisplayScreen.objects.only("id", "bound_device_id", "bound_at").filter(token=token_value).first()
+            except Exception:
+                screen = None
+
+            db_bound = (getattr(screen, "bound_device_id", "") or "").strip() if screen else ""
+            if db_bound:
+                if db_bound != device_key:
+                    resp = JsonResponse(
+                        {
+                            "detail": "screen_bound",
+                            "message": "هذه الشاشة مرتبطة بجهاز آخر",
+                        },
+                        status=403,
+                    )
+                    return _finalize(resp, cache_status="ERROR", device_bound=True)
+
+                # Keep cache binding in sync
+                try:
+                    cache.set(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds())
+                except Exception:
+                    pass
+            else:
+                # If DB says unbound, delete any stale cache binding and bind to this device.
+                existing = cache.get(bind_key)
+                if existing and str(existing) != device_key:
+                    try:
+                        cache.delete(bind_key)
+                    except Exception:
+                        pass
+
+                try:
+                    cache.set(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds())
+                except Exception:
+                    pass
+
+                # Persist binding in DB when possible (so dashboard can unbind it).
+                if screen:
+                    try:
+                        screen.bound_device_id = device_key
+                        screen.bound_at = timezone.now()
+                        screen.save(update_fields=["bound_device_id", "bound_at"])
+                    except Exception:
+                        pass
 
         # Origin cache (token-keyed)
         ttl_s = _snapshot_ttl_seconds()

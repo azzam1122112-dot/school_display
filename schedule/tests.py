@@ -73,6 +73,11 @@ class DisplayApiAliasesTests(TestCase):
 
         r2 = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devB"})
         self.assertEqual(r2.status_code, 403)
+        try:
+            body = r2.json()
+        except Exception:
+            body = {}
+        self.assertIn(body.get("detail"), {"device_mismatch", "screen_bound", None})
 
     def test_today_alias_ok(self):
         bundle = make_active_school_with_screen(max_screens=3)
