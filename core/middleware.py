@@ -49,18 +49,19 @@ class SnapshotEdgeCacheMiddleware:
         except Exception:
             pass
 
-        # 2) Never vary by Cookie on snapshot.
+        # 2) Never vary by Cookie / Accept-Encoding on snapshot.
+        #    (Cloudflare Free behavior may treat these as non-cacheable for some setups.)
         vary = response.get("Vary")
         if vary:
             parts = [p.strip() for p in vary.split(",") if p.strip()]
-            parts = [p for p in parts if p.lower() != "cookie"]
+            parts = [p for p in parts if p.lower() not in {"cookie", "accept-encoding"}]
             if parts:
                 response["Vary"] = ", ".join(parts)
             else:
                 try:
                     del response["Vary"]
                 except Exception:
-                    response["Vary"] = ""
+                    pass
 
         # 3) Cache-Control policy.
         force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}

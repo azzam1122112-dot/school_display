@@ -15,6 +15,7 @@ class DisplayApiAliasesTests(TestCase):
 
         vary = (r.get("Vary") or "")
         self.assertNotIn("Cookie", vary)
+        self.assertNotIn("Accept-Encoding", vary)
         self.assertFalse(bool(r.cookies))
         self.assertIsNone(r.get("Set-Cookie"))
 
@@ -26,6 +27,7 @@ class DisplayApiAliasesTests(TestCase):
         self.assertEqual(r.get("Cache-Control"), "no-store")
         vary = (r.get("Vary") or "")
         self.assertNotIn("Cookie", vary)
+        self.assertNotIn("Accept-Encoding", vary)
         self.assertFalse(bool(r.cookies))
         self.assertIsNone(r.get("Set-Cookie"))
 
