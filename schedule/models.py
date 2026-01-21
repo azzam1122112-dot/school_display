@@ -8,6 +8,7 @@ from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
+from django.utils import timezone
 
 from core.models import School
 
@@ -84,6 +85,21 @@ class SchoolSettings(models.Model):
     show_lessons = models.BooleanField("إظهار الحصص المجدولة", default=True)
     show_school_data = models.BooleanField("إظهار الفصول والمواد والمعلم/ـةون", default=True)
 
+    FEATURE_PANEL_EXCELLENCE = "excellence"
+    FEATURE_PANEL_DUTY = "duty"
+    FEATURE_PANEL_CHOICES = [
+        (FEATURE_PANEL_EXCELLENCE, "لوحة الشرف"),
+        (FEATURE_PANEL_DUTY, "لوحة الإشراف والمناوبة"),
+    ]
+
+    featured_panel = models.CharField(
+        "الكرت المميز في شاشة العرض",
+        max_length=20,
+        choices=FEATURE_PANEL_CHOICES,
+        default=FEATURE_PANEL_EXCELLENCE,
+        help_text="يحدد محتوى الكرت المميز في شاشة العرض لجميع شاشات المدرسة.",
+    )
+
     school = models.OneToOneField(
         School,
         on_delete=models.CASCADE,
@@ -111,7 +127,6 @@ class SchoolSettings(models.Model):
         validators=[MinValueValidator(5)],
         help_text="عدد الثواني بين كل تحديث تلقائي للشاشة.",
     )
-
     standby_scroll_speed = models.FloatField(
         "سرعة تمرير الانتظار",
         default=0.8,
@@ -145,6 +160,54 @@ class SchoolSettings(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class DutyAssignment(models.Model):
+    DUTY_SUPERVISION = "supervision"
+    DUTY_DUTY = "duty"
+    DUTY_CHOICES = [
+        (DUTY_SUPERVISION, "إشراف"),
+        (DUTY_DUTY, "مناوبة"),
+    ]
+
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="duty_assignments",
+        verbose_name="المدرسة",
+        null=True,
+        blank=True,
+    )
+    date = models.DateField("التاريخ", default=timezone.localdate)
+    teacher_name = models.CharField("اسم المعلم/ـة", max_length=100)
+    duty_type = models.CharField("النوع", max_length=20, choices=DUTY_CHOICES)
+    location = models.CharField("المكان (اختياري)", max_length=120, blank=True)
+    priority = models.PositiveSmallIntegerField("ترتيب العرض", default=10)
+    is_active = models.BooleanField("نشط", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "إشراف/مناوبة"
+        verbose_name_plural = "الإشراف والمناوبة"
+        ordering = ("date", "priority", "-id")
+        indexes = [
+            models.Index(fields=["school", "date"], name="duty_school_date_idx"),
+            models.Index(fields=["school", "date", "duty_type"], name="duty_school_date_type"),
+        ]
+
+    def __str__(self) -> str:
+        loc = f" — {self.location}" if self.location else ""
+        return f"{self.date} — {self.teacher_name} — {self.get_duty_type_display()}{loc}"
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "date": self.date.isoformat() if self.date else None,
+            "teacher_name": self.teacher_name,
+            "duty_type": self.duty_type,
+            "duty_label": self.get_duty_type_display(),
+            "location": self.location or "",
+        }
 
 
 # ============================================================

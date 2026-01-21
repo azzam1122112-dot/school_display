@@ -5,6 +5,7 @@ from django.contrib import admin
 
 from .models import (
     SchoolSettings,
+    DutyAssignment,
     SchoolClass,
     Subject,
     Teacher,
@@ -21,11 +22,20 @@ from .models import (
 
 @admin.register(SchoolSettings)
 class SchoolSettingsAdmin(admin.ModelAdmin):
-    list_display = ("name", "school", "theme", "timezone_name", "refresh_interval_sec")
-    list_filter = ("theme", "timezone_name")
+    list_display = ("name", "school", "theme", "featured_panel", "timezone_name", "refresh_interval_sec")
+    list_filter = ("theme", "featured_panel", "timezone_name")
     search_fields = ("name", "school__name")
     autocomplete_fields = ("school",)
     ordering = ("name",)
+
+
+@admin.register(DutyAssignment)
+class DutyAssignmentAdmin(admin.ModelAdmin):
+    list_display = ("date", "school", "teacher_name", "duty_type", "location", "priority", "is_active")
+    list_filter = ("date", "duty_type", "is_active")
+    search_fields = ("teacher_name", "location", "school__name")
+    autocomplete_fields = ("school",)
+    ordering = ("-date", "priority", "-id")
 
 
 # ============================================================

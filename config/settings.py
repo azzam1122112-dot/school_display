@@ -70,6 +70,19 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 
 
 # =========================
+# Snapshot Edge cache max-age (seconds)
+# Used for Cache-Control on /api/display/snapshot/* to enable short Cloudflare caching.
+# Keep it short; Cloudflare Cache Rules should be set to "Edge TTL: Respect origin".
+# =========================
+try:
+    DISPLAY_SNAPSHOT_EDGE_MAX_AGE = int(os.getenv("DISPLAY_SNAPSHOT_EDGE_MAX_AGE", "10"))
+except Exception:
+    DISPLAY_SNAPSHOT_EDGE_MAX_AGE = 10
+
+DISPLAY_SNAPSHOT_EDGE_MAX_AGE = max(1, min(60, DISPLAY_SNAPSHOT_EDGE_MAX_AGE))
+
+
+# =========================
 # Hosts / CSRF
 # =========================
 # يسمح بإضافة hosts من env (مفيد عند تغيير الدومين أو إضافة subdomains)

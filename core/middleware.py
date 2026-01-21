@@ -86,6 +86,8 @@ class DisplayTokenMiddleware:
     def __call__(self, request):
         path = request.path or ""
 
+        is_snapshot_path = path == "/api/display/snapshot/" or path.startswith("/api/display/snapshot/")
+
         if not path.startswith(self.API_PREFIX):
             return self.get_response(request)
 
@@ -94,7 +96,10 @@ class DisplayTokenMiddleware:
 
         token = self._extract_token(request)
         if not token or not self.TOKEN_RE.match(token):
-            return JsonResponse({"error": "Invalid display token"}, status=403)
+            resp = JsonResponse({"error": "Invalid display token"}, status=403)
+            if is_snapshot_path:
+                resp["Cache-Control"] = "no-store"
+            return resp
 
         # ------------------------------------------------------------------
         # Performance: Search Redis First
@@ -105,7 +110,10 @@ class DisplayTokenMiddleware:
 
         # 1. Negative Cache (Invalid Token)
         if cache.get(neg_key):
-            return JsonResponse({"error": "Invalid or inactive display token (cached)"}, status=403)
+            resp = JsonResponse({"error": "Invalid or inactive display token (cached)"}, status=403)
+            if is_snapshot_path:
+                resp["Cache-Control"] = "no-store"
+            return resp
 
         # 2. Positive Cache (Valid Token)
         cached_data = cache.get(map_key)
@@ -155,10 +163,16 @@ class DisplayTokenMiddleware:
             except DisplayScreen.DoesNotExist:
                 # Cache Failure
                 cache.set(neg_key, "1", timeout=60)
-                return JsonResponse({"error": "Invalid or inactive display token"}, status=403)
+                resp = JsonResponse({"error": "Invalid or inactive display token"}, status=403)
+                if is_snapshot_path:
+                    resp["Cache-Control"] = "no-store"
+                return resp
             except Exception:
                 logger.exception("DisplayTokenMiddleware failed while fetching screen")
-                return JsonResponse({"error": "Display token lookup failed"}, status=500)
+                resp = JsonResponse({"error": "Display token lookup failed"}, status=500)
+                if is_snapshot_path:
+                    resp["Cache-Control"] = "no-store"
+                return resp
 
         request.display_screen = screen
         if not hasattr(request, "school") or not request.school:
@@ -168,68 +182,71 @@ class DisplayTokenMiddleware:
 
         # ======================================================
         # ✅ Device Binding (منع مشاركة رابط الشاشة)
-        #    لو لم يوجد كوكي للجهاز ننشئ واحدًا تلقائيًا
+        #
+        # ملاحظة (Phase 1 caching): مسار snapshot يجب ألا يرسل Set-Cookie حتى يكون قابل للكاش على Cloudflare.
+        # لذلك نتجنب إنشاء/تعيين كوكي sd_device على snapshot.
         # ======================================================
         new_device_id: Optional[str] = None
-        device_id = (request.COOKIES.get("sd_device") or "").strip()
-        if not device_id:
-            try:
-                new_device_id = secrets.token_hex(16)
-                device_id = new_device_id
-                # حتى ترى الـ view نفس الـ id في نفس الطلب
-                request.COOKIES["sd_device"] = device_id
-            except Exception:
-                device_id = ""
+        if not is_snapshot_path:
+            device_id = (request.COOKIES.get("sd_device") or "").strip()
+            if not device_id:
+                try:
+                    new_device_id = secrets.token_hex(16)
+                    device_id = new_device_id
+                    # حتى ترى الـ view نفس الـ id في نفس الطلب
+                    request.COOKIES["sd_device"] = device_id
+                except Exception:
+                    device_id = ""
 
-        if device_id:
-            has_binding_fields = True
-            try:
-                DisplayScreen._meta.get_field("bound_device_id")
-                DisplayScreen._meta.get_field("bound_at")
-            except Exception:
-                has_binding_fields = False
+            if device_id:
+                has_binding_fields = True
+                try:
+                    DisplayScreen._meta.get_field("bound_device_id")
+                    DisplayScreen._meta.get_field("bound_at")
+                except Exception:
+                    has_binding_fields = False
 
-            if has_binding_fields:
-                bound = (getattr(screen, "bound_device_id", None) or "").strip()
-                if not bound:
-                    updated = (
-                        DisplayScreen.objects.filter(pk=screen.pk)
-                        .filter(Q(bound_device_id__isnull=True) | Q(bound_device_id=""))
-                        .update(bound_device_id=device_id, bound_at=timezone.now())
-                    )
-                    if updated:
-                        bound = device_id
-                        # ✅ Update Cache to reflect binding
-                        try:
-                            new_payload = {
-                                "id": screen.pk,
-                                "school_id": getattr(screen, "school_id", getattr(request.school, "pk", None)),
-                                "bound_device_id": bound
-                            }
-                            # Ensure we have a valid map number
-                            if map_key:
-                                cache.set(map_key, new_payload, timeout=86400)
-                        except Exception:
-                            pass
-                    else:
-                        # تم ربطها من جهاز آخر قبلنا
-                        try:
-                            # Re-fetch from DB if concurrency issue
-                            screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
-                            request.display_screen = screen
-                            request.school = screen.school
-                            bound = (getattr(screen, "bound_device_id", None) or "").strip()
-                        except Exception:
-                            bound = bound
+                if has_binding_fields:
+                    bound = (getattr(screen, "bound_device_id", None) or "").strip()
+                    if not bound:
+                        updated = (
+                            DisplayScreen.objects.filter(pk=screen.pk)
+                            .filter(Q(bound_device_id__isnull=True) | Q(bound_device_id=""))
+                            .update(bound_device_id=device_id, bound_at=timezone.now())
+                        )
+                        if updated:
+                            bound = device_id
+                            # ✅ Update Cache to reflect binding
+                            try:
+                                new_payload = {
+                                    "id": screen.pk,
+                                    "school_id": getattr(screen, "school_id", getattr(request.school, "pk", None)),
+                                    "bound_device_id": bound
+                                }
+                                # Ensure we have a valid map number
+                                if map_key:
+                                    cache.set(map_key, new_payload, timeout=86400)
+                            except Exception:
+                                pass
+                        else:
+                            # تم ربطها من جهاز آخر قبلنا
+                            try:
+                                # Re-fetch from DB if concurrency issue
+                                screen = DisplayScreen.objects.select_related("school").get(pk=screen.pk)
+                                request.display_screen = screen
+                                request.school = screen.school
+                                bound = (getattr(screen, "bound_device_id", None) or "").strip()
+                            except Exception:
+                                bound = bound
 
-                if bound and bound != device_id:
-                    return JsonResponse(
-                        {
-                            "error": "screen_bound",
-                            "message": "هذه الشاشة مرتبطة بجهاز آخر. قم بفصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد.",
-                        },
-                        status=403,
-                    )
+                    if bound and bound != device_id:
+                        return JsonResponse(
+                            {
+                                "error": "screen_bound",
+                                "message": "هذه الشاشة مرتبطة بجهاز آخر. قم بفصل الجهاز من لوحة التحكم لتفعيلها على جهاز جديد.",
+                            },
+                            status=403,
+                        )
 
         # تحديث last_seen_at إن كان موجودًا
         now = timezone.now()
@@ -242,7 +259,7 @@ class DisplayTokenMiddleware:
             pass
 
         response = self.get_response(request)
-        if new_device_id and hasattr(response, "set_cookie"):
+        if (not is_snapshot_path) and new_device_id and hasattr(response, "set_cookie"):
             try:
                 # كوكي طويل المدى للجهاز (٥ سنوات تقريبًا)
                 response.set_cookie(

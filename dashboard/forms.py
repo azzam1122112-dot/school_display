@@ -15,6 +15,7 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from schedule.models import (
     SchoolSettings,
+    DutyAssignment,
     DaySchedule,
     Period,
     Break,
@@ -76,6 +77,7 @@ class SchoolSettingsForm(forms.ModelForm):
         model = SchoolSettings
         fields = [
             "name",
+            "featured_panel",
             "theme",
             "refresh_interval_sec",
             "standby_scroll_speed",
@@ -83,6 +85,7 @@ class SchoolSettingsForm(forms.ModelForm):
             "display_accent_color",
         ]
         widgets = {
+            "featured_panel": forms.Select(),
             "theme": forms.Select(),
 
             # ✅ حد أدنى 15 ثانية + خطوة 1 (أوضح للمستخدم)
@@ -538,6 +541,37 @@ class StandbyForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+# ========================
+# الإشراف والمناوبة
+# ========================
+
+class DutyAssignmentForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        self._school = kwargs.pop("school", None)
+        super().__init__(*args, **kwargs)
+
+        # دعم UI: datalist + تعطيل autocomplete الافتراضي للمتصفح
+        if "teacher_name" in self.fields:
+            self.fields["teacher_name"].widget.attrs.setdefault("list", "teacher_suggestions")
+            self.fields["teacher_name"].widget.attrs.setdefault("autocomplete", "off")
+
+    class Meta:
+        model = DutyAssignment
+        fields = [
+            "date",
+            "teacher_name",
+            "duty_type",
+            "location",
+            "priority",
+            "is_active",
+        ]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "teacher_name": forms.TextInput(attrs={"maxlength": 100}),
+            "location": forms.TextInput(attrs={"maxlength": 120}),
+        }
 
 
 # ========================

@@ -27,7 +27,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Max, Q, Sum, Count
 from django.db.utils import OperationalError, ProgrammingError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, NoReverseMatch, get_resolver
 from django.utils import timezone
@@ -45,6 +45,7 @@ from .forms import (
     AnnouncementForm,
     ExcellenceForm,
     StandbyForm,
+    DutyAssignmentForm,
     DisplayScreenForm,
     SchoolSubscriptionForm,
     SystemUserCreateForm,
@@ -204,6 +205,11 @@ def ExcellenceModel():
 @lru_cache(maxsize=32)
 def StandbyAssignmentModel():
     return _get_model_first(("standby", "StandbyAssignment"))
+
+
+@lru_cache(maxsize=32)
+def DutyAssignmentModel():
+    return _get_model_first(("schedule", "DutyAssignment"))
 
 
 @lru_cache(maxsize=32)
@@ -1120,6 +1126,135 @@ def standby_import(request):
         return redirect("dashboard:standby_list")
 
     return render(request, "dashboard/standby_import.html")
+
+
+# ======================
+# الإشراف والمناوبة
+# ======================
+
+@manager_required
+def duty_list(request):
+    DutyAssignment = DutyAssignmentModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    today = timezone.localdate()
+    q_date = (request.GET.get("date") or "").strip()
+    selected_date = today
+    if q_date:
+        try:
+            selected_date = datetime.strptime(q_date, "%Y-%m-%d").date()
+        except ValueError:
+            messages.warning(request, "صيغة التاريخ غير صحيحة.")
+
+    include_inactive = (request.GET.get("all") or "").strip() in {"1", "true", "yes"}
+
+    qs = DutyAssignment.objects.filter(school=school, date=selected_date)
+    if not include_inactive:
+        qs = qs.filter(is_active=True)
+    qs = qs.order_by("priority", "duty_type", "teacher_name", "-id")
+
+    total_count = DutyAssignment.objects.filter(school=school, date=selected_date).count()
+    active_count = DutyAssignment.objects.filter(school=school, date=selected_date, is_active=True).count()
+
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+
+    return render(
+        request,
+        "dashboard/duty_list.html",
+        {
+            "page": page,
+            "selected_date": selected_date,
+            "include_inactive": include_inactive,
+            "total_count": total_count,
+            "active_count": active_count,
+        },
+    )
+
+
+@manager_required
+def duty_create(request):
+    DutyAssignment = DutyAssignmentModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    initial = {}
+    q_date = (request.GET.get("date") or "").strip()
+    if q_date:
+        try:
+            initial["date"] = datetime.strptime(q_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    if request.method == "POST":
+        form = DutyAssignmentForm(request.POST, school=school)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.school = school
+            obj.save()
+            messages.success(request, "تم إضافة تكليف الإشراف/المناوبة.")
+            return redirect("dashboard:duty_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = DutyAssignmentForm(initial=initial, school=school)
+
+    return render(request, "dashboard/duty_form.html", {"form": form, "title": "إضافة تكليف"})
+
+
+@manager_required
+def duty_edit(request, pk: int):
+    DutyAssignment = DutyAssignmentModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    obj = get_object_or_404(DutyAssignment, pk=pk, school=school)
+
+    if request.method == "POST":
+        form = DutyAssignmentForm(request.POST, instance=obj, school=school)
+        if form.is_valid():
+            updated = form.save(commit=False)
+            updated.school = school
+            updated.save()
+            messages.success(request, "تم حفظ التعديلات.")
+            return redirect("dashboard:duty_list")
+        messages.error(request, "الرجاء تصحيح الأخطاء.")
+    else:
+        form = DutyAssignmentForm(instance=obj, school=school)
+
+    return render(request, "dashboard/duty_form.html", {"form": form, "title": "تعديل تكليف"})
+
+
+@manager_required
+@require_POST
+def duty_delete(request, pk: int):
+    DutyAssignment = DutyAssignmentModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+    obj = get_object_or_404(DutyAssignment, pk=pk, school=school)
+    obj.delete()
+    messages.success(request, "تم الحذف.")
+    return redirect("dashboard:duty_list")
+
+
+@manager_required
+def duty_teacher_search(request):
+    """JSON: اقتراح أسماء المعلمين للبحث الديناميكي داخل نموذج الإشراف/المناوبة."""
+    Teacher = TeacherModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return JsonResponse({"results": [], "error": "no_active_school"}, status=403)
+
+    q = (request.GET.get("q") or "").strip()
+    qs = Teacher.objects.filter(school=school)
+    if q:
+        qs = qs.filter(name__icontains=q)
+
+    names = list(qs.order_by("name").values_list("name", flat=True)[:25])
+    return JsonResponse({"results": names})
 
 
 # ======================

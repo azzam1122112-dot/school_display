@@ -122,6 +122,12 @@
     dom.exIndex = $("exIndex");
     dom.exTotal = $("exTotal");
 
+    dom.exCard = $("exCard");
+    dom.dutyCard = $("dutyCard");
+    dom.dutySlot = $("dutySlot");
+    dom.dutyTrack = $("dutyTrack");
+    dom.dutyTotal = $("dutyTotal");
+
     dom.pcCount = $("pcCount");
     dom.periodClassesTrack = $("periodClassesTrack");
 
@@ -640,7 +646,7 @@
         failStreak = 0;
         renderState(snap);
         renderAnnouncements(snap.announcements || []);
-        renderExcellence(snap.excellence || []);
+        renderFeaturedPanel(snap);
         renderStandby(snap.standby || []);
         renderPeriodClasses(snap.period_classes || []);
       } catch (e) {
@@ -668,7 +674,7 @@
                   try {
                     renderState(snap2);
                     renderAnnouncements(snap2.announcements || []);
-                    renderExcellence(snap2.excellence || []);
+                    renderFeaturedPanel(snap2);
                     renderStandby(snap2.standby || []);
                     renderPeriodClasses(snap2.period_classes || []);
                   } catch (e) {}
@@ -1102,6 +1108,7 @@
   // ===== Scrollers instances =====
   let periodsScroller = null;
   let standbyScroller = null;
+  let dutyScroller = null;
 
   let lastPayloadForFiltering = null;
 
@@ -1376,6 +1383,120 @@
     if (exList.length > 1) exTimer = setInterval(() => showExcellence(exPtr + 1), EX_INT);
   }
 
+  // ===== Duty / Supervision =====
+  function dutySignature(list) {
+    const arr = Array.isArray(list) ? list : [];
+    return JSON.stringify(
+      arr.map((x) => {
+        x = x || {};
+        return [
+          safeText(x.teacher_name || ""),
+          safeText(x.duty_type || ""),
+          safeText(x.duty_label || ""),
+          safeText(x.location || ""),
+          safeText(x.priority || ""),
+        ];
+      })
+    );
+  }
+
+  function buildDutyRow(it) {
+    it = it || {};
+    const teacher = safeText(it.teacher_name || "");
+    const dutyType = safeText(it.duty_type || "");
+    const dutyLabel = safeText(it.duty_label || (dutyType === "supervision" ? "إشراف" : "مناوبة"));
+    const location = safeText(it.location || "");
+
+    const row = document.createElement("div");
+    row.className = "flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md";
+
+    const left = document.createElement("div");
+    left.className = "flex items-center gap-3 min-w-0";
+
+    const avatar = document.createElement("div");
+    avatar.className = "w-10 h-10 rounded-xl bg-black/20 border border-white/10 flex items-center justify-center text-slate-200 font-black";
+    avatar.textContent = teacher ? teacher.slice(0, 1) : "—";
+
+    const meta = document.createElement("div");
+    meta.className = "min-w-0";
+
+    const nm = document.createElement("div");
+    nm.className = "text-lg font-extrabold text-white truncate";
+    nm.textContent = teacher || "—";
+
+    const sub = document.createElement("div");
+    sub.className = "text-sm text-slate-400 truncate";
+    sub.textContent = location ? "المكان: " + location : "المكان: —";
+
+    meta.appendChild(nm);
+    meta.appendChild(sub);
+    left.appendChild(avatar);
+    left.appendChild(meta);
+
+    const badge = document.createElement("div");
+    const isSup = dutyType === "supervision";
+    badge.className =
+      "shrink-0 px-3 py-1 rounded-full text-sm font-black border " +
+      (isSup
+        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/25"
+        : "bg-amber-500/15 text-amber-200 border-amber-500/25");
+    badge.textContent = dutyLabel;
+
+    row.appendChild(left);
+    row.appendChild(badge);
+    return row;
+  }
+
+  function renderDuty(items) {
+    const raw = items && items.items ? items.items : Array.isArray(items) ? items : [];
+    const list = Array.isArray(raw) ? raw : [];
+
+    if (dom.dutyTotal) setTextIfChanged(dom.dutyTotal, String(list.length || 0));
+    if (!dom.dutyTrack || !dutyScroller) return;
+
+    const sig = dutySignature(list);
+    dutyScroller.render(sig, () => {
+      if (!list.length) {
+        const msg = document.createElement("div");
+        msg.style.textAlign = "center";
+        msg.style.opacity = "0.75";
+        msg.style.padding = "30px 12px";
+        msg.textContent = "لا توجد تكليفات إشراف/مناوبة لليوم";
+        return msg;
+      }
+
+      const wrap = document.createElement("div");
+      wrap.style.display = "flex";
+      wrap.style.flexDirection = "column";
+      wrap.style.gap = "12px";
+      wrap.style.paddingBottom = "12px";
+      // نفس سلوك كرت الحصص الجارية
+      wrap.dataset.forceScroll = list.length >= 4 ? "1" : "0";
+
+      list.forEach((it) => {
+        wrap.appendChild(buildDutyRow(it));
+      });
+
+      return wrap;
+    });
+  }
+
+  // ===== Featured panel toggle =====
+  function renderFeaturedPanel(snap) {
+    const s = (snap && snap.settings) || {};
+    const mode = safeText(s.featured_panel || "excellence");
+    const showDuty = mode === "duty";
+
+    toggleHidden(dom.exCard, showDuty);
+    toggleHidden(dom.dutyCard, !showDuty);
+
+    if (showDuty) {
+      renderDuty(snap.duty || { items: [] });
+    } else {
+      renderExcellence(snap.excellence || []);
+    }
+  }
+
   // ===== Main state render =====
   function renderState(payload) {
     if (!payload) return;
@@ -1410,6 +1531,7 @@
 
     if (periodsScroller) periodsScroller.recalc();
     if (standbyScroller) standbyScroller.recalc();
+    if (dutyScroller) dutyScroller.recalc();
 
     tickClock(payload.date_info || null);
 
@@ -1614,6 +1736,15 @@
     const u = new URL(baseUrl, window.location.origin);
     u.searchParams.set("_t", String(Date.now()));
 
+    // If the display page itself has ?nocache=1, propagate it to the snapshot API.
+    // This is useful for validating settings switches immediately.
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      if ((qs.get("nocache") || "").trim() === "1") {
+        u.searchParams.set("nocache", "1");
+      }
+    } catch (e) {}
+
     if (opts.bypassServerCache) {
       u.searchParams.set("nocache", "1");
       u.searchParams.set("_cb", String(Date.now()));
@@ -1761,7 +1892,7 @@
 
       renderState(snap);
       renderAnnouncements(snap.announcements || []);
-      renderExcellence(snap.excellence || []);
+      renderFeaturedPanel(snap);
 
       renderStandby(snap.standby || []);
       renderPeriodClasses(snap.period_classes || []);
@@ -1861,6 +1992,7 @@
     if (!document.hidden) {
       if (periodsScroller) periodsScroller.recalc();
       if (standbyScroller) standbyScroller.recalc();
+      if (dutyScroller) dutyScroller.recalc();
       scheduleNext(0.25);
     }
   });
@@ -1919,6 +2051,7 @@
     const scrollerOpts = lite ? { maxFps: 20 } : undefined;
     periodsScroller = dom.periodClassesTrack ? createScroller(dom.periodClassesTrack, () => cfg.PERIODS_SPEED, scrollerOpts) : null;
     standbyScroller = dom.standbyTrack ? createScroller(dom.standbyTrack, () => cfg.STANDBY_SPEED, scrollerOpts) : null;
+    dutyScroller = dom.dutyTrack ? createScroller(dom.dutyTrack, () => cfg.PERIODS_SPEED, scrollerOpts) : null;
 
     renderAlert("جاري التحميل…", "يتم الآن جلب البيانات من الخادم.");
     scheduleNext(0.2);

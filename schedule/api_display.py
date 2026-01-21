@@ -5,8 +5,10 @@ from typing import Optional
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
+from django.utils import timezone
 
 from core.utils import validate_display_token
+from schedule.models import DutyAssignment
 from schedule.utils import (
     get_today_state,
     get_period_classes_now,
@@ -43,9 +45,20 @@ def snapshot(request, token: Optional[str] = None):
     # 6) إعدادات العرض
     settings_payload = {
         "theme": getattr(settings, "theme", "default"),
+        "featured_panel": getattr(settings, "featured_panel", "excellence"),
         "refresh_interval_sec": getattr(settings, "refresh_interval_sec", 60),
         "standby_scroll_speed": getattr(settings, "standby_scroll_speed", 0.8),
         "periods_scroll_speed": getattr(settings, "periods_scroll_speed", 0.5),
+    }
+
+    # 6.5) الإشراف والمناوبة (لليوم الحالي)
+    today = timezone.localdate()
+    duty_items = (
+        DutyAssignment.objects.filter(school=school, date=today, is_active=True)
+        .order_by("priority", "-id")
+    )
+    duty_payload = {
+        "items": [obj.as_dict() for obj in duty_items],
     }
 
     # 7) الـ Payload النهائي (Standard Contract)
@@ -59,6 +72,7 @@ def snapshot(request, token: Optional[str] = None):
         "period_classes": period_classes,
         "standby": today_state.get("standby", {"items": []}),
         "excellence": today_state.get("excellence", {"items": []}),
+        "duty": duty_payload,
         "settings": settings_payload,
     }
 

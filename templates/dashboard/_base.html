@@ -385,6 +385,16 @@
         </div>
       </a>
 
+      <!-- Duty / Supervision -->
+      <a href="{% url 'dashboard:duty_list' %}"
+         class="nav-item block px-4 py-3 rounded-xl border transition-all
+               {% if request.resolver_match.url_name == 'duty_list' or request.resolver_match.url_name == 'duty_create' or request.resolver_match.url_name == 'duty_edit' %}active-nav{% else %}bg-white/80{% endif %}">
+        <div class="flex items-center">
+          <span class="ml-2 text-lg">🛡️</span>
+          <span class="font-medium">الإشراف والمناوبة</span>
+        </div>
+      </a>
+
       <!-- Standby -->
       <a href="{% url 'dashboard:standby_list' %}"
          class="nav-item block px-4 py-3 rounded-xl border transition-all

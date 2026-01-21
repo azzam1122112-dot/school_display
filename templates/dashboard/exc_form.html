@@ -74,7 +74,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- اسم المعلم/ـة -->
                 <div class="space-y-2">
-                    <label for="{{ form.teacher_name.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.teacher_name.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.teacher_name.label }}
                         {% if form.teacher_name.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -100,7 +100,7 @@
 
                 <!-- الأولوية -->
                 <div class="space-y-2">
-                    <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.priority.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.priority.label }}
                         {% if form.priority.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -127,7 +127,7 @@
 
             <!-- سبب التميّز -->
             <div class="space-y-2">
-                <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                <label for="{{ form.reason.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                     {{ form.reason.label }}
                     {% if form.reason.field.required %}
                         <span class="text-red-500 mr-1">*</span>
@@ -254,7 +254,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- تاريخ البدء -->
                     <div class="space-y-2">
-                        <label for="{{ form.start_at.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                        <label for="{{ form.start_at.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                             {{ form.start_at.label }}
                             {% if form.start_at.field.required %}
                                 <span class="text-red-500 mr-1">*</span>
@@ -284,7 +284,7 @@
 
                     <!-- تاريخ الانتهاء -->
                     <div class="space-y-2">
-                        <label for="{{ form.end_at.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                        <label for="{{ form.end_at.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                             {{ form.end_at.label }}
                             {% if form.end_at.field.required %}
                                 <span class="text-red-500 mr-1">*</span>

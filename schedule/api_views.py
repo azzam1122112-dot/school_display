@@ -382,6 +382,7 @@ def _merge_real_data_into_snapshot(request, snap: dict, settings_obj: SchoolSett
     - announcements  (notices.Announcement)
     - excellence     (notices.Excellence)
     - standby        (standby.StandbyAssignment)
+    - duty           (schedule.DutyAssignment)
     """
     school = getattr(settings_obj, "school", None)
     if not school:
@@ -472,6 +473,30 @@ def _merge_real_data_into_snapshot(request, snap: dict, settings_obj: SchoolSett
     except Exception:
         logger.exception("snapshot: failed to merge standby")
 
+    # -----------------------------
+    # Duty / Supervision
+    # -----------------------------
+    try:
+        from schedule.models import DutyAssignment  # type: ignore
+
+        today = timezone.localdate()
+        qs = (
+            DutyAssignment.objects.filter(school=school, date=today, is_active=True)
+            .order_by("priority", "-id")
+        )
+
+        snap["duty"] = {"items": [obj.as_dict() if hasattr(obj, "as_dict") else {
+            "id": getattr(obj, "id", None),
+            "date": getattr(obj, "date", None).isoformat() if getattr(obj, "date", None) else None,
+            "teacher_name": getattr(obj, "teacher_name", "") or "",
+            "duty_type": getattr(obj, "duty_type", "") or "",
+            "duty_label": getattr(obj, "get_duty_type_display", lambda: "")() if hasattr(obj, "get_duty_type_display") else "",
+            "location": getattr(obj, "location", "") or "",
+        } for obj in qs]}
+
+    except Exception:
+        logger.exception("snapshot: failed to merge duty")
+
 
 @require_GET
 def ping(request):
@@ -512,6 +537,14 @@ def _snapshot_cache_ttl_seconds() -> int:
     return max(5, min(30, v))
 
 
+def _snapshot_edge_cache_max_age_seconds() -> int:
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_EDGE_MAX_AGE", 10) or 10)
+    except Exception:
+        v = 10
+    return max(1, min(60, v))
+
+
 def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
     snap = _call_build_day_snapshot(settings_obj)
     snap = _normalize_snapshot_keys(snap)
@@ -526,6 +559,7 @@ def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
     snap.setdefault("period_classes", [])
     snap.setdefault("standby", [])
     snap.setdefault("excellence", [])
+    snap.setdefault("duty", {"items": []})
     snap.setdefault("announcements", [])
 
     # settings unify + theme mapping
@@ -556,6 +590,9 @@ def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
 
     # ✅ الثيم: تحويل default/boys/girls -> indigo/emerald/rose
     s["theme"] = _normalize_theme_value(getattr(settings_obj, "theme", None) or s.get("theme"))
+
+    # ✅ Featured panel toggle (excellence|duty)
+    s.setdefault("featured_panel", getattr(settings_obj, "featured_panel", "excellence") or "excellence")
 
     s.setdefault("refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", 10) or 10)
     s.setdefault("standby_scroll_speed", getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8)
@@ -634,6 +671,9 @@ def snapshot(request, token: str | None = None):
     try:
         force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
 
+        edge_ttl_s = _snapshot_edge_cache_max_age_seconds()
+        edge_cache_control = f"public, max-age=0, s-maxage={edge_ttl_s}"
+
         token_value = _extract_token(request, token)
         settings_obj = None
         hashed_token = _sha256(token_value) if token_value else None
@@ -644,7 +684,9 @@ def snapshot(request, token: str | None = None):
             # Negative cache check
             neg_key = f"display:token_neg:{hashed_token}"
             if cache.get(neg_key):
-                 return JsonResponse(_fallback_payload("رمز الدخول غير صحيح (cached)"), json_dumps_params={"ensure_ascii": False})
+                 resp = JsonResponse(_fallback_payload("رمز الدخول غير صحيح (cached)"), json_dumps_params={"ensure_ascii": False})
+                 resp["Cache-Control"] = "no-store"
+                 return resp
 
             # Positive cache check
             map_key = f"display:token_map:{hashed_token}"
@@ -666,7 +708,7 @@ def snapshot(request, token: str | None = None):
              if isinstance(cached_snap, dict):
                  # HUGE WIN: Returned without ANY DB query
                  resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
-                 resp["Cache-Control"] = "no-store"
+                 resp["Cache-Control"] = edge_cache_control
                  return resp
              
              # If snapshot missing, we need settings_obj to build it
@@ -707,7 +749,9 @@ def snapshot(request, token: str | None = None):
                         request.GET.get("school_id") or request.GET.get("school"),
                         total,
                     )
-                return JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
+                resp = JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
+                resp["Cache-Control"] = "no-store"
+                return resp
         
         # ✅ Cache Update: Store valid token mapping if not cached (24h)
         if token_value and settings_obj and len(token_value) > 10 and not cached_school_id:
@@ -725,7 +769,7 @@ def snapshot(request, token: str | None = None):
         # 6) snapshot (with short-lived server-side cache + lock)
         cache_key = _snapshot_cache_key(settings_obj)
         lock_key = f"{cache_key}:lock"
-        ttl_s = _snapshot_cache_ttl_seconds()
+        ttl_s = min(_snapshot_cache_ttl_seconds(), edge_ttl_s)
 
         # If the client explicitly requests nocache, bypass any cached snapshot reads.
         if force_nocache:
@@ -781,9 +825,11 @@ def snapshot(request, token: str | None = None):
                         pass
 
         resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
-        resp["Cache-Control"] = "no-store"
+        resp["Cache-Control"] = edge_cache_control
         return resp
 
     except Exception as e:
         logger.exception("snapshot error: %s", e)
-        return JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
+        resp = JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
+        resp["Cache-Control"] = "no-store"
+        return resp

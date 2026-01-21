@@ -65,6 +65,19 @@ urlpatterns = [
     path("standby/import/", views.standby_import, name="standby_import"),
 
     # ==================
+    # Duty / Supervision
+    # ==================
+    path("duty/", views.duty_list, name="duty_list"),
+    path("duty/new/", views.duty_create, name="duty_create"),
+    path("duty/<int:pk>/edit/", views.duty_edit, name="duty_edit"),
+    path("duty/<int:pk>/delete/", views.duty_delete, name="duty_delete"),
+
+    # ==================
+    # Duty API
+    # ==================
+    path("api/duty/teachers/search/", views.duty_teacher_search, name="duty_teacher_search"),
+
+    # ==================
     # Timetable
     # ==================
     path("timetable/day/", views.timetable_day_view, name="timetable_day"),
