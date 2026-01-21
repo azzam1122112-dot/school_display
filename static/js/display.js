@@ -1780,7 +1780,10 @@
     const baseUrl = resolveSnapshotUrl();
 
     const u = new URL(baseUrl, window.location.origin);
-    u.searchParams.set("_t", String(Date.now()));
+    // Always provide a stable device identifier.
+    // Some CDNs/proxies may strip non-standard request headers, so also include it in the query.
+    const deviceId = getOrCreateDeviceId();
+    u.searchParams.set("dk", deviceId);
 
     // If the display page itself has ?nocache=1, propagate it to the snapshot API.
     // This is useful for validating settings switches immediately.
@@ -1793,6 +1796,7 @@
 
     if (opts.bypassServerCache) {
       u.searchParams.set("nocache", "1");
+      u.searchParams.set("_t", String(Date.now()));
       u.searchParams.set("_cb", String(Date.now()));
     }
 
@@ -1806,7 +1810,7 @@
     const headers = {
       Accept: "application/json",
       "X-Display-Token": token || "",
-      "X-Display-Device": getOrCreateDeviceId(),
+      "X-Display-Device": deviceId,
     };
 
     if (!opts.bypassEtag) {

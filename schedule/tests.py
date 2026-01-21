@@ -4,6 +4,13 @@ from django.conf import settings as dj_settings
 from core.tests_utils import make_active_school_with_screen
 
 class DisplayApiAliasesTests(TestCase):
+    def test_snapshot_ok_with_query_device_key(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        r = self.client.get(
+            f"/api/display/snapshot/{bundle.screen.token}/?dk=devA",
+        )
+        self.assertEqual(r.status_code, 200)
+
     def test_snapshot_ok(self):
         bundle = make_active_school_with_screen(max_screens=3)
         r = self.client.get(
