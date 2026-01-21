@@ -1711,6 +1711,52 @@
   let ctrl = null;
   const etagKey = "display_etag_" + (location.pathname || "/");
 
+  // Device ID (stable per browser/device)
+  // تحقق سريع: localStorage.getItem("school_display_device_id")
+  const deviceIdKey = "school_display_device_id";
+  let memDeviceId = "";
+
+  function fallbackDeviceId() {
+    // No cookies. Prefer crypto, fall back to a random-ish stable value.
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+    } catch (e) {}
+
+    try {
+      if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+        const buf = new Uint8Array(16);
+        window.crypto.getRandomValues(buf);
+        const hex = Array.from(buf)
+          .map((b) => (b < 16 ? "0" : "") + b.toString(16))
+          .join("");
+        return "d-" + hex;
+      }
+    } catch (e) {}
+
+    return "d-" + String(Math.random()).slice(2) + "-" + String(Date.now());
+  }
+
+  function getOrCreateDeviceId() {
+    if (memDeviceId) return memDeviceId;
+    try {
+      const existing = (localStorage.getItem(deviceIdKey) || "").trim();
+      if (existing) {
+        memDeviceId = existing;
+        return memDeviceId;
+      }
+      const created = fallbackDeviceId();
+      localStorage.setItem(deviceIdKey, created);
+      memDeviceId = created;
+      return memDeviceId;
+    } catch (e) {
+      // If localStorage is blocked, fall back to in-memory per page load.
+      memDeviceId = fallbackDeviceId();
+      return memDeviceId;
+    }
+  }
+
   function withTimeout(promise, ms, onTimeout) {
     let t = null;
     const timeout = new Promise((_, rej) => {
@@ -1757,7 +1803,11 @@
     }
     ctrl = window.AbortController ? new AbortController() : null;
 
-    const headers = { Accept: "application/json", "X-Display-Token": token || "" };
+    const headers = {
+      Accept: "application/json",
+      "X-Display-Token": token || "",
+      "X-Display-Device": getOrCreateDeviceId(),
+    };
 
     if (!opts.bypassEtag) {
       try {
@@ -1774,22 +1824,36 @@
       method: "GET",
       headers,
       cache: "no-store",
-      credentials: "same-origin",
+      // Never send cookies on snapshot.
+      credentials: "omit",
       signal: ctrl ? ctrl.signal : undefined,
     }).then(async (r) => {
       if (r.status === 304) return { _notModified: true };
 
       if (!r.ok) {
+        // Diagnostics: log status + response body (if possible)
+        let raw = "";
+        try {
+          raw = await r.text();
+        } catch (e) {
+          raw = "";
+        }
+        if (raw) {
+          console.warn("[snapshot] HTTP", r.status, raw);
+        } else {
+          console.warn("[snapshot] HTTP", r.status);
+        }
+
         // 403 عادة تعني: الشاشة مرتبطة بجهاز آخر أو لا يوجد معرف جهاز
         if (r.status === 403) {
           let body = null;
           try {
-            body = await r.json();
+            body = raw ? JSON.parse(raw) : null;
           } catch (e) {
             body = null;
           }
 
-          const err = body && (body.error || body.code);
+          const err = body && (body.error || body.code || body.detail);
           const msg = body && (body.message || body.detail);
 
           if (err === "screen_bound") {
@@ -1801,10 +1865,19 @@
             return null;
           }
 
-          if (err === "missing_device_id") {
+          if (err === "missing_device_id" || err === "device_required") {
             showBlocker(
               "تعذر تعريف الجهاز",
               msg || "أعد فتح رابط الشاشة من المتصفح ثم انتظر ثوانٍ ليتم تفعيل العرض."
+            );
+            stopPolling();
+            return null;
+          }
+
+          if (err === "device_mismatch") {
+            showBlocker(
+              "هذه الشاشة مرتبطة بجهاز آخر",
+              msg || "لا يمكن استخدام نفس الرابط على أكثر من جهاز. افتح الشاشة من الجهاز الأصلي أو أعد ربطها من لوحة التحكم."
             );
             stopPolling();
             return null;
@@ -1819,7 +1892,15 @@
           return null;
         }
 
-        throw new Error("HTTP " + r.status);
+        // Non-403 errors: do not crash; keep polling.
+        // If body is JSON with detail, include it in the error message.
+        let msg = "";
+        try {
+          const obj = raw ? JSON.parse(raw) : null;
+          msg = obj && (obj.detail || obj.message) ? String(obj.detail || obj.message) : "";
+        } catch (e) {}
+
+        throw new Error("HTTP " + r.status + (msg ? " | " + msg : ""));
       }
 
       const et = r.headers && r.headers.get ? (r.headers.get("ETag") || "") : "";
