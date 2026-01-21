@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import resolve, Resolver404
 from django.utils import timezone
+from django.conf import settings
 
 from subscriptions.utils import school_has_active_subscription
 
@@ -37,7 +38,10 @@ class SubscriptionRequiredMiddleware:
         return self.get_response(request)
 
     def process_request(self, request):
-        print(f"[DEBUG:middleware] user={getattr(request, 'user', None)} | path={getattr(request, 'path', None)} | is_authenticated={getattr(request.user, 'is_authenticated', None)} | is_superuser={getattr(request.user, 'is_superuser', None)}")
+        if getattr(settings, "DEBUG", False) or getattr(settings, "MIDDLEWARE_DEBUG", False):
+            print(
+                f"[DEBUG:middleware] user={getattr(request, 'user', None)} | path={getattr(request, 'path', None)} | is_authenticated={getattr(request.user, 'is_authenticated', None)} | is_superuser={getattr(request.user, 'is_superuser', None)}"
+            )
         path = request.path or ""
 
         if path.startswith("/static/") or path.startswith("/media/"):

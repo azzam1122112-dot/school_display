@@ -51,6 +51,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # مهم: خلي DEBUG True افتراضيًا محليًا لتفادي مشاكل SSL/Redirect إذا ما عندك .env
 DEBUG = env_bool("DEBUG", "True")
 
+# Optional: enable noisy middleware debug prints (default off).
+MIDDLEWARE_DEBUG = env_bool("MIDDLEWARE_DEBUG", "False")
+
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key-change-me")
 if not DEBUG and (not SECRET_KEY or SECRET_KEY == "dev-insecure-key-change-me"):
     raise RuntimeError("SECRET_KEY must be set in production!")
