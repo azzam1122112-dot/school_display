@@ -95,6 +95,8 @@
   // ===== DOM =====
   const dom = {};
   function bindDom() {
+    dom.fitRoot = document.getElementById("fitRoot");
+
     dom.schoolLogo = $("schoolLogo");
     dom.schoolLogoFallback = $("schoolLogoFallback");
     dom.schoolName = $("schoolName");
@@ -197,6 +199,70 @@
     try {
       const vh = (window.innerHeight || 0) * 0.01;
       if (vh > 0) root.style.setProperty("--vh", vh + "px");
+    } catch (e) {}
+  }
+
+  // ===== Auto-fit (scale down to avoid scroll on any TV/browser) =====
+  function isFitDisabled() {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const v = (qs.get("fit") || qs.get("autofit") || "").trim().toLowerCase();
+      if (v === "0" || v === "false" || v === "no") return true;
+    } catch (e) {}
+    return false;
+  }
+
+  let fitT = null;
+  function scheduleFit(ms) {
+    if (fitT) clearTimeout(fitT);
+    fitT = setTimeout(() => {
+      fitT = null;
+      applyAutoFit();
+    }, Math.max(0, Number(ms) || 0));
+  }
+
+  function applyAutoFit() {
+    if (!dom.fitRoot) return;
+
+    // allow disabling via ?fit=0 for troubleshooting
+    if (isFitDisabled()) {
+      try {
+        dom.fitRoot.style.transform = "";
+      } catch (e) {}
+      return;
+    }
+
+    const availW = Number(window.innerWidth || 0) || 0;
+    const availH = Number(window.innerHeight || 0) || 0;
+    if (availW <= 0 || availH <= 0) return;
+
+    // Measure at scale=1
+    const prev = dom.fitRoot.style.transform;
+    dom.fitRoot.style.transform = "";
+
+    // scrollHeight/scrollWidth capture overflow even when body has overflow:hidden
+    const reqW = Math.max(dom.fitRoot.clientWidth || 0, dom.fitRoot.scrollWidth || 0);
+    const reqH = Math.max(dom.fitRoot.clientHeight || 0, dom.fitRoot.scrollHeight || 0);
+
+    if (reqW <= 0 || reqH <= 0) {
+      dom.fitRoot.style.transform = prev;
+      return;
+    }
+
+    // Only scale DOWN to guarantee all cards are visible.
+    let s = Math.min(1, availW / reqW, availH / reqH);
+    s = clamp(s, 0.35, 1);
+
+    // Center content if we scaled down.
+    const tx = Math.max(0, (availW - reqW * s) / 2);
+    const ty = Math.max(0, (availH - reqH * s) / 2);
+
+    dom.fitRoot.style.transform =
+      "translate(" + tx.toFixed(2) + "px, " + ty.toFixed(2) + "px) scale(" + s.toFixed(4) + ")";
+
+    try {
+      const body = document.body || document.documentElement;
+      body.dataset.uiScale = s.toFixed(4);
     } catch (e) {}
   }
 
@@ -2013,6 +2079,9 @@
       renderStandby(snap.standby || []);
       renderPeriodClasses(snap.period_classes || []);
 
+      // After DOM updates (cards/items counts change), re-fit to avoid clipping/scroll.
+      scheduleFit(0);
+
       ensureDebugOverlay();
       if (isDebug()) {
         const pS = periodsScroller ? periodsScroller.getState() : {};
@@ -2097,8 +2166,10 @@
       if (resizeT) clearTimeout(resizeT);
       resizeT = setTimeout(() => {
         setVhVar();
+        applyAutoFit();
         if (periodsScroller) periodsScroller.recalc();
         if (standbyScroller) standbyScroller.recalc();
+        if (dutyScroller) dutyScroller.recalc();
       }, 160);
     },
     { passive: true }
@@ -2109,6 +2180,7 @@
       if (periodsScroller) periodsScroller.recalc();
       if (standbyScroller) standbyScroller.recalc();
       if (dutyScroller) dutyScroller.recalc();
+      scheduleFit(0);
       scheduleNext(0.25);
     }
   });
@@ -2130,6 +2202,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     bindDom();
     setVhVar();
+    scheduleFit(0);
 
     const body = document.body || document.documentElement;
 
