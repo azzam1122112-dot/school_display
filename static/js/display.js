@@ -1909,19 +1909,23 @@
     const deviceId = getOrCreateDeviceId();
     u.searchParams.set("dk", deviceId);
 
-    // If the display page itself has ?nocache=1, propagate it to the snapshot API.
-    // This is useful for validating settings switches immediately.
-    try {
-      const qs = new URLSearchParams(window.location.search);
-      if ((qs.get("nocache") || "").trim() === "1") {
-        u.searchParams.set("nocache", "1");
-      }
-    } catch (e) {}
+    // IMPORTANT (Production): never add cache-busting params to snapshot requests.
+    // Allow it only in explicit debug mode (?debug=1).
+    if (isDebug()) {
+      // If the display page itself has ?nocache=1, propagate it to the snapshot API.
+      // This is useful for validating settings switches immediately.
+      try {
+        const qs = new URLSearchParams(window.location.search);
+        if ((qs.get("nocache") || "").trim() === "1") {
+          u.searchParams.set("nocache", "1");
+        }
+      } catch (e) {}
 
-    if (opts.bypassServerCache) {
-      u.searchParams.set("nocache", "1");
-      u.searchParams.set("_t", String(Date.now()));
-      u.searchParams.set("_cb", String(Date.now()));
+      if (opts.bypassServerCache) {
+        u.searchParams.set("nocache", "1");
+        u.searchParams.set("_t", String(Date.now()));
+        u.searchParams.set("_cb", String(Date.now()));
+      }
     }
 
     if (ctrl) {

@@ -208,6 +208,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
 
+    # Hard redirect legacy favicon path before WhiteNoise.
+    "core.middleware.StaticFaviconRedirectMiddleware",
+
     # Phase 1: ensure /api/display/snapshot/* is edge-cacheable and cookie/vary-free.
     # Note: Django executes response middleware in reverse order.
     # Placing this BEFORE WhiteNoise ensures it runs AFTER WhiteNoise on the response path.

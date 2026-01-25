@@ -10,13 +10,36 @@ import json
 
 from django.apps import apps
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponsePermanentRedirect
 from django.conf import settings as dj_settings
 from django.utils import timezone
 from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
+
+
+# ==========================================================
+# Favicon Redirect (Hard block /static/favicon.ico via WhiteNoise)
+# ==========================================================
+class StaticFaviconRedirectMiddleware:
+    """Permanently redirect legacy /static/favicon.ico to /favicon.ico.
+
+    هدفه: منع WhiteNoise من خدمة /static/favicon.ico (الذي قد يكون StreamingHttpResponse تحت ASGI)
+    وإغلاق التحذير نهائيًا حتى لو كانت أجهزة/كاش قديم يطلب المسار القديم.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = getattr(request, "path", "") or ""
+        if path == "/static/favicon.ico" or path == "/static/favicon.ico/":
+            resp = HttpResponsePermanentRedirect("/favicon.ico")
+            # Make the redirect cheap and cacheable.
+            resp["Cache-Control"] = "public, max-age=31536000"
+            return resp
+        return self.get_response(request)
 
 
 # ==========================================================
