@@ -2223,6 +2223,24 @@
     setVhVar();
     scheduleFit(0);
 
+    // TVs often load web fonts late; re-fit when font metrics are final.
+    try {
+      if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === "function") {
+        document.fonts.ready.then(() => scheduleFit(0)).catch(() => {});
+      }
+    } catch (e) {}
+
+    // Also re-fit after full load (images/layout settle)
+    try {
+      window.addEventListener(
+        "load",
+        () => {
+          scheduleFit(0);
+        },
+        { passive: true, once: true }
+      );
+    } catch (e) {}
+
     const body = document.body || document.documentElement;
 
     const lite = isLiteMode();

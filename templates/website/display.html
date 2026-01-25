@@ -111,6 +111,18 @@
     .track { will-change: transform; }
     .hidden { display: none !important; }
 
+        /* Responsive typography safeguards for TVs / small viewports */
+        #clock {
+            font-size: clamp(2.2rem, 4.8vw, 3.25rem);
+            line-height: 1;
+        }
+        #heroTitle {
+            font-size: clamp(2.1rem, 4.6vw, 3.75rem);
+            line-height: 1.05;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
         /* Slot item styling (applies to actual items created by display.js) */
         .slot-item {
             padding: 0.75rem 1rem;
@@ -231,7 +243,7 @@
             
             <div class="relative z-10 flex-1 p-8 flex flex-col gap-6">
                 <!-- Top Row: Badge & Progress -->
-                <div class="flex justify-between items-start">
+                <div class="flex flex-wrap justify-between items-start gap-6">
                     <div class="space-y-4">
                         <div class="flex items-center gap-3">
                             <span id="badgeKind" class="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold uppercase tracking-wider backdrop-blur-md" style="color: var(--accent-sub, #a5b4fc);">--</span>
@@ -244,7 +256,7 @@
                     </div>
 
                     <!-- Progress Circle -->
-                    <div class="relative w-32 h-32 flex-none">
+                    <div class="relative w-24 h-24 md:w-32 md:h-32 flex-none">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
                             <!-- Background Track -->
                             <circle cx="60" cy="60" r="54" class="stroke-slate-800" stroke-width="8" fill="none"></circle>
