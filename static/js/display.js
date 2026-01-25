@@ -334,7 +334,18 @@
     activePeriodIndex: null, // رقم الحصة الحالية/التالية
     activeFromHM: null, // وقت بداية النشاط الحالي/التالي
     dayOver: false, // انتهاء الدوام
+    refreshJitterSec: 0, // jitter ثابت لكل شاشة لتفريق الحمل
   };
+
+  // Pick a stable jitter per page load: [-3..-1] U [1..3]
+  (function initRefreshJitter() {
+    try {
+      const v = Math.floor(Math.random() * 7) - 3; // -3..3
+      rt.refreshJitterSec = v === 0 ? 2 : v;
+    } catch (e) {
+      rt.refreshJitterSec = 2;
+    }
+  })();
 
   function pickTokenFromUrl() {
     try {
@@ -1620,13 +1631,18 @@
     hydrateBrand(payload);
 
     const settings = payload.settings || {};
+    const meta = payload.meta || {};
 
     if (settings.school_type) {
       cfg.SCHOOL_TYPE = settings.school_type;
     }
 
     if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
-      const nInt = clamp(settings.refresh_interval_sec, 5, 864000);
+      let nInt = clamp(settings.refresh_interval_sec, 5, 864000);
+      // Phase 2: add a small jitter during active window to reduce stampedes.
+      if (meta && meta.is_active_window) {
+        nInt = clamp(nInt + (Number(rt.refreshJitterSec) || 0), 5, 864000);
+      }
       if (Math.abs(nInt - cfg.REFRESH_EVERY) > 0.001) cfg.REFRESH_EVERY = nInt;
     }
 

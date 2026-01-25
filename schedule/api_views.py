@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+import os
 import re
 import time
 from datetime import time as dt_time
@@ -24,6 +25,92 @@ from schedule.time_engine import build_day_snapshot
 logger = logging.getLogger(__name__)
 
 
+def _metrics_interval_seconds() -> int:
+    # Log cache hit/miss metrics at INFO at most once per N seconds.
+    # Keep it conservative to avoid log noise in SaaS.
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC", os.getenv("DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC", "600")))
+    except Exception:
+        v = 600
+    return max(60, min(3600, v))
+
+def _metrics_incr(key: str) -> None:
+    try:
+        cache.incr(key)
+    except Exception:
+        try:
+            cache.add(key, 1, timeout=60 * 60 * 24)
+        except Exception:
+            pass
+
+
+def _metrics_add(key: str, delta: int) -> None:
+    try:
+        cache.incr(key, int(delta))
+    except Exception:
+        try:
+            cur = cache.get(key) or 0
+            cache.set(key, int(cur) + int(delta), timeout=60 * 60 * 24)
+        except Exception:
+            pass
+
+
+def _metrics_set_max(key: str, value: int) -> None:
+    try:
+        cur = cache.get(key)
+        cur_i = int(cur) if cur is not None else 0
+        v = int(value)
+        if v > cur_i:
+            cache.set(key, v, timeout=60 * 60 * 24)
+    except Exception:
+        pass
+
+def _metrics_log_maybe() -> None:
+    interval = _metrics_interval_seconds()
+    throttle_key = f"metrics:snapshot_cache:log:{interval}"
+    try:
+        should_log = bool(cache.add(throttle_key, "1", timeout=interval))
+    except Exception:
+        should_log = False
+
+    if not should_log:
+        return
+
+    keys = [
+        "metrics:snapshot_cache:token_hit",
+        "metrics:snapshot_cache:token_miss",
+        "metrics:snapshot_cache:school_hit",
+        "metrics:snapshot_cache:school_miss",
+        "metrics:snapshot_cache:steady_hit",
+        "metrics:snapshot_cache:steady_miss",
+        "metrics:snapshot_cache:build_count",
+        "metrics:snapshot_cache:build_sum_ms",
+        "metrics:snapshot_cache:build_max_ms",
+    ]
+    try:
+        vals = {k: (cache.get(k) or 0) for k in keys}
+    except Exception:
+        vals = {k: 0 for k in keys}
+
+    build_count = int(vals.get(keys[6], 0) or 0)
+    build_sum_ms = int(vals.get(keys[7], 0) or 0)
+    build_max_ms = int(vals.get(keys[8], 0) or 0)
+    build_avg_ms = int(build_sum_ms / build_count) if build_count > 0 else 0
+
+    logger.info(
+        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s build_count=%s build_avg_ms=%s build_max_ms=%s",
+        vals.get(keys[0], 0),
+        vals.get(keys[1], 0),
+        vals.get(keys[2], 0),
+        vals.get(keys[3], 0),
+        vals.get(keys[4], 0),
+        vals.get(keys[5], 0),
+        build_count,
+        build_avg_ms,
+        build_max_ms,
+    )
+
+
 def _snapshot_ttl_seconds() -> int:
     try:
         v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_TTL", 10) or 10)
@@ -34,7 +121,7 @@ def _snapshot_ttl_seconds() -> int:
 
 def _snapshot_build_lock_ttl_seconds() -> int:
     # Short lock to coalesce concurrent requests.
-    return 2
+    return 8
 
 
 def _snapshot_bind_ttl_seconds() -> int:
@@ -664,6 +751,137 @@ def _snapshot_cache_ttl_seconds() -> int:
     return max(5, min(30, v))
 
 
+def _active_window_cache_ttl_seconds() -> int:
+    """Cache TTL during active window: hard clamp to 15–20 seconds (Phase 2)."""
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL", 15) or 15)
+    except Exception:
+        v = 15
+    return max(15, min(20, v))
+
+def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
+    """Outside active window/holidays: long TTL, aligned to refresh_interval_sec when available."""
+    try:
+        s = (day_snap.get("settings") or {}) if isinstance(day_snap, dict) else {}
+        refresh = int(s.get("refresh_interval_sec") or 3600)
+    except Exception:
+        refresh = 3600
+    # Very long, but bounded (up to 24h). Keep at least 5 minutes.
+    try:
+        max_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_STEADY_MAX_TTL", 86400) or 86400)
+    except Exception:
+        max_ttl = 86400
+    max_ttl = max(3600, min(86400, max_ttl))
+    return max(300, min(max_ttl, refresh))
+
+def _is_active_window(day_snap: dict) -> bool:
+    try:
+        meta = day_snap.get("meta") or {}
+        return bool(meta.get("is_active_window"))
+    except Exception:
+        return False
+
+def _steady_snapshot_cache_key(settings_obj: SchoolSettings, day_snap: dict) -> str:
+    school_id = int(getattr(settings_obj, "school_id", None) or 0)
+    # isolate by local date from snapshot meta to avoid cross-day bleed.
+    date_str = None
+    try:
+        date_str = (day_snap.get("meta") or {}).get("date")
+    except Exception:
+        date_str = None
+    if not date_str:
+        date_str = str(timezone.localdate())
+    return f"snapshot:v2:school:{school_id}:steady:{date_str}"
+
+
+def get_cache_key(token_hash: str, school_id: int | None = None) -> str:
+    """Tenant-safe snapshot cache key.
+
+    If tokens are globally unique, token_hash alone is enough.
+    We still include school_id whenever we have it, to avoid accidental collisions.
+    """
+    if school_id:
+        return f"display:snapshot:{int(school_id)}:{token_hash}"
+    return f"display:snapshot:{token_hash}"
+
+
+def compute_dynamic_ttl_seconds(day_snap: dict) -> int:
+    if _is_active_window(day_snap):
+        return _active_window_cache_ttl_seconds()
+    return _steady_snapshot_cache_ttl_seconds(day_snap)
+
+
+def build_steady_snapshot(
+    request,
+    settings_obj: SchoolSettings,
+    *,
+    steady_state: str,
+    refresh_interval_sec: int,
+    label: str,
+) -> dict:
+    """Build a UI-safe steady snapshot (no expensive merges/queries).
+
+    Required invariants:
+    - never returns {}
+    - includes expected arrays/keys
+    - explicit state types for off-hours / no schedule
+    """
+    now = timezone.localtime()
+    school = getattr(settings_obj, "school", None)
+
+    school_name = ""
+    if school is not None:
+        school_name = getattr(school, "name", "") or ""
+    if not school_name:
+        school_name = getattr(settings_obj, "name", "") or ""
+
+    logo = getattr(settings_obj, "logo_url", None)
+    if not logo and school is not None:
+        for attr in ("logo_url", "logo", "logo_image", "logo_file"):
+            if hasattr(school, attr):
+                val = getattr(school, attr)
+                try:
+                    logo = val.url
+                except Exception:
+                    logo = val
+                if logo:
+                    break
+
+    return {
+        "now": now.isoformat(),
+        "meta": {
+            "date": str(now.date()),
+            "weekday": ((now.date().weekday() + 1) % 7),
+            "is_school_day": steady_state != "NO_SCHEDULE_TODAY",
+            "is_active_window": False,
+            "active_window": None,
+        },
+        "settings": {
+            "name": school_name,
+            "logo_url": _abs_media_url(request, logo),
+            "theme": _normalize_theme_value(getattr(settings_obj, "theme", None)),
+            "refresh_interval_sec": int(refresh_interval_sec),
+            "standby_scroll_speed": float(getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8),
+            "periods_scroll_speed": float(getattr(settings_obj, "periods_scroll_speed", 0.5) or 0.5),
+        },
+        "state": {
+            "type": steady_state,
+            "label": label,
+            "from": None,
+            "to": None,
+            "remaining_seconds": 0,
+        },
+        "day_path": [],
+        "current_period": None,
+        "next_period": None,
+        "period_classes": [],
+        "standby": [],
+        "excellence": [],
+        "duty": {"items": []},
+        "announcements": [],
+    }
+
+
 def _snapshot_edge_cache_max_age_seconds() -> int:
     try:
         v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_EDGE_MAX_AGE", 10) or 10)
@@ -671,9 +889,14 @@ def _snapshot_edge_cache_max_age_seconds() -> int:
         v = 10
     return max(1, min(60, v))
 
-
-def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
-    snap = _call_build_day_snapshot(settings_obj)
+def _build_final_snapshot(
+    request,
+    settings_obj: SchoolSettings,
+    *,
+    day_snap: dict | None = None,
+    merge_real_data: bool = True,
+) -> dict:
+    snap = day_snap if isinstance(day_snap, dict) else _call_build_day_snapshot(settings_obj)
     snap = _normalize_snapshot_keys(snap)
 
     # مفاتيح أساسية
@@ -737,54 +960,58 @@ def _build_final_snapshot(request, settings_obj: SchoolSettings) -> dict:
     snap["settings"] = s
 
     # ✅ ROOT FIX: merge real data
-    _merge_real_data_into_snapshot(request, snap, settings_obj)
+    if merge_real_data:
+        # ✅ ROOT FIX: merge real data
+        _merge_real_data_into_snapshot(request, snap, settings_obj)
 
     # ✅ لو period_classes فاضية — نعبيها من ClassLesson
-    try:
-        current = snap.get("current_period") or {}
-        kind = None
-        if isinstance(current, dict):
-            kind = current.get("kind") or current.get("type")
-        if not kind:
-            kind = (snap.get("state") or {}).get("type")
+    if merge_real_data:
+        # ✅ لو period_classes فاضية — نعبيها من ClassLesson
+        try:
+            current = snap.get("current_period") or {}
+            kind = None
+            if isinstance(current, dict):
+                kind = current.get("kind") or current.get("type")
+            if not kind:
+                kind = (snap.get("state") or {}).get("type")
 
-        if kind == "period" and not snap.get("period_classes"):
+            if kind == "period" and not snap.get("period_classes"):
+                meta = snap.get("meta") or {}
+                weekday_raw = meta.get("weekday")
+                try:
+                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+                except Exception:
+                    weekday = (timezone.localdate().weekday() + 1) % 7
+                period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
+                if period_index:
+                    snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
+                    if isinstance(snap.get("current_period"), dict) and _is_missing_index(snap["current_period"]):
+                        snap["current_period"]["index"] = period_index
+        except Exception:
+            logger.exception("snapshot: failed to fill period_classes")
+
+        # ✅ ضمان ظهور رقم الحصة للـ current و next
+        try:
             meta = snap.get("meta") or {}
             weekday_raw = meta.get("weekday")
             try:
                 weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
             except Exception:
                 weekday = (timezone.localdate().weekday() + 1) % 7
-            period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
-            if period_index:
-                snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
-                if isinstance(snap.get("current_period"), dict) and _is_missing_index(snap["current_period"]):
-                    snap["current_period"]["index"] = period_index
-    except Exception:
-        logger.exception("snapshot: failed to fill period_classes")
 
-    # ✅ ضمان ظهور رقم الحصة للـ current و next
-    try:
-        meta = snap.get("meta") or {}
-        weekday_raw = meta.get("weekday")
-        try:
-            weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+            curp = snap.get("current_period")
+            if isinstance(curp, dict) and _is_missing_index(curp):
+                idx = _infer_period_index(settings_obj, weekday, curp)
+                if idx:
+                    curp["index"] = idx
+
+            nxtp = snap.get("next_period")
+            if isinstance(nxtp, dict) and _is_missing_index(nxtp):
+                idx2 = _infer_period_index(settings_obj, weekday, nxtp)
+                if idx2:
+                    nxtp["index"] = idx2
         except Exception:
-            weekday = (timezone.localdate().weekday() + 1) % 7
-
-        curp = snap.get("current_period")
-        if isinstance(curp, dict) and _is_missing_index(curp):
-            idx = _infer_period_index(settings_obj, weekday, curp)
-            if idx:
-                curp["index"] = idx
-
-        nxtp = snap.get("next_period")
-        if isinstance(nxtp, dict) and _is_missing_index(nxtp):
-            idx2 = _infer_period_index(settings_obj, weekday, nxtp)
-            if idx2:
-                nxtp["index"] = idx2
-    except Exception:
-        logger.exception("snapshot: failed to ensure current/next period index")
+            logger.exception("snapshot: failed to ensure current/next period index")
 
     return snap
 
@@ -908,22 +1135,24 @@ def snapshot(request, token: str | None = None):
                     except Exception:
                         pass
 
-        # Origin cache (token-keyed)
-        ttl_s = _snapshot_ttl_seconds()
-        cache_key = f"snapshot:token:{token_hash}"
-        lock_key = f"{cache_key}:lock"
+        # Phase 2: token cache (tenant-safe when school_id known)
+        cache_key = get_cache_key(token_hash)
 
         cached_entry = None if force_nocache else cache.get(cache_key)
         if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
+            _metrics_incr("metrics:snapshot_cache:token_hit")
+            _metrics_log_maybe()
             inm = _parse_if_none_match(request.headers.get("If-None-Match"))
             if inm and inm == cached_entry.get("etag"):
                 resp = HttpResponseNotModified()
                 resp["ETag"] = f"\"{cached_entry['etag']}\""
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
-
             resp = JsonResponse(cached_entry["snap"], json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{cached_entry['etag']}\""
             return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+        _metrics_incr("metrics:snapshot_cache:token_miss")
+        _metrics_log_maybe()
 
         settings_obj = None
         hashed_token = token_hash
@@ -960,11 +1189,15 @@ def snapshot(request, token: str | None = None):
             snap_key = f"snapshot:v1:school:{cached_school_id}"
             cached_snap = cache.get(snap_key)
             if isinstance(cached_snap, dict):
+                _metrics_incr("metrics:snapshot_cache:school_hit")
+                _metrics_log_maybe()
                 # We'll still go through token-keyed cache so ETag/304 and rate limit are consistent.
                 try:
                     json_bytes = _stable_json_bytes(cached_snap)
                     etag = _etag_from_json_bytes(json_bytes)
-                    cache.set(cache_key, {"snap": cached_snap, "etag": etag}, timeout=ttl_s)
+                    token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
+                    tok_key = get_cache_key(token_hash, int(cached_school_id))
+                    cache.set(tok_key, {"snap": cached_snap, "etag": etag}, timeout=token_timeout)
                 except Exception:
                     etag = None
 
@@ -978,6 +1211,36 @@ def snapshot(request, token: str | None = None):
                 if etag:
                     resp["ETag"] = f"\"{etag}\""
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+            # steady snapshot fallback (long TTL outside window/holidays)
+            steady_key = f"snapshot:v2:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
+            cached_steady = cache.get(steady_key)
+            if isinstance(cached_steady, dict):
+                _metrics_incr("metrics:snapshot_cache:steady_hit")
+                _metrics_log_maybe()
+                try:
+                    json_bytes = _stable_json_bytes(cached_steady)
+                    etag = _etag_from_json_bytes(json_bytes)
+                    token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady)
+                    tok_key = get_cache_key(token_hash, int(cached_school_id))
+                    cache.set(tok_key, {"snap": cached_steady, "etag": etag}, timeout=token_timeout)
+                except Exception:
+                    etag = None
+
+                inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                if etag and inm and inm == etag:
+                    resp = HttpResponseNotModified()
+                    resp["ETag"] = f"\"{etag}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+                resp = JsonResponse(cached_steady, json_dumps_params={"ensure_ascii": False})
+                if etag:
+                    resp["ETag"] = f"\"{etag}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+            _metrics_incr("metrics:snapshot_cache:school_miss")
+            _metrics_incr("metrics:snapshot_cache:steady_miss")
+            _metrics_log_maybe()
 
             # If snapshot missing, we need settings_obj to build it
             try:
@@ -1034,42 +1297,182 @@ def snapshot(request, token: str | None = None):
             except Exception:
                 pass
 
-        # 6) snapshot build (coalesced) + token-keyed cache
-        have_lock = False
-        try:
-            have_lock = bool(cache.add(lock_key, "1", timeout=_snapshot_build_lock_ttl_seconds()))
-        except Exception:
-            have_lock = False
+        # 6) Phase 2: build snapshot once per school (stampede guard)
+        school_id = int(getattr(settings_obj, "school_id", None) or 0)
+        tenant_cache_key = get_cache_key(token_hash, school_id)
+        if tenant_cache_key != cache_key:
+            cached_entry2 = None if force_nocache else cache.get(tenant_cache_key)
+            if isinstance(cached_entry2, dict) and isinstance(cached_entry2.get("snap"), dict) and isinstance(cached_entry2.get("etag"), str):
+                _metrics_incr("metrics:snapshot_cache:token_hit")
+                _metrics_log_maybe()
+                inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                if inm and inm == cached_entry2.get("etag"):
+                    resp = HttpResponseNotModified()
+                    resp["ETag"] = f"\"{cached_entry2['etag']}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                resp = JsonResponse(cached_entry2["snap"], json_dumps_params={"ensure_ascii": False})
+                resp["ETag"] = f"\"{cached_entry2['etag']}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+        snap_key = _snapshot_cache_key(settings_obj)
+        steady_key = f"snapshot:v2:school:{school_id}:steady:{str(timezone.localdate())}"
+
+        if not force_nocache:
+            cached_school = cache.get(snap_key)
+            if isinstance(cached_school, dict):
+                _metrics_incr("metrics:snapshot_cache:school_hit")
+                _metrics_log_maybe()
+                json_bytes = _stable_json_bytes(cached_school)
+                etag = _etag_from_json_bytes(json_bytes)
+                token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
+                try:
+                    cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag}, timeout=token_timeout)
+                except Exception:
+                    pass
+
+                inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                if inm and inm == etag:
+                    resp = HttpResponseNotModified()
+                    resp["ETag"] = f"\"{etag}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
+                resp["ETag"] = f"\"{etag}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+            cached_steady2 = cache.get(steady_key)
+            if isinstance(cached_steady2, dict):
+                _metrics_incr("metrics:snapshot_cache:steady_hit")
+                _metrics_log_maybe()
+                json_bytes = _stable_json_bytes(cached_steady2)
+                etag = _etag_from_json_bytes(json_bytes)
+                token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady2)
+                try:
+                    cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag}, timeout=token_timeout)
+                except Exception:
+                    pass
+
+                inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                if inm and inm == etag:
+                    resp = HttpResponseNotModified()
+                    resp["ETag"] = f"\"{etag}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
+                resp["ETag"] = f"\"{etag}\""
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+        # Stampede lock: one build per school
+        school_lock_key = f"lock:{snap_key}"
+        have_lock = True
+        if not force_nocache:
+            try:
+                have_lock = bool(cache.add(school_lock_key, "1", timeout=_snapshot_build_lock_ttl_seconds()))
+            except Exception:
+                have_lock = True
 
         if not have_lock:
-            # Another worker is building. If a cached value appears quickly, serve it.
+            # Another worker is building this school's snapshot.
             deadline = time.monotonic() + 0.5
             while time.monotonic() < deadline:
-                cached2 = cache.get(cache_key)
-                if isinstance(cached2, dict) and isinstance(cached2.get("snap"), dict) and isinstance(cached2.get("etag"), str):
-                    inm = _parse_if_none_match(request.headers.get("If-None-Match"))
-                    if inm and inm == cached2.get("etag"):
-                        resp = HttpResponseNotModified()
-                        resp["ETag"] = f"\"{cached2['etag']}\""
-                        return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
-
-                    resp = JsonResponse(cached2["snap"], json_dumps_params={"ensure_ascii": False})
-                    resp["ETag"] = f"\"{cached2['etag']}\""
+                cached_school = cache.get(snap_key)
+                if isinstance(cached_school, dict):
+                    json_bytes = _stable_json_bytes(cached_school)
+                    etag = _etag_from_json_bytes(json_bytes)
+                    try:
+                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag}, timeout=_active_window_cache_ttl_seconds())
+                    except Exception:
+                        pass
+                    resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
+                    resp["ETag"] = f"\"{etag}\""
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
+                cached_steady2 = cache.get(steady_key)
+                if isinstance(cached_steady2, dict):
+                    json_bytes = _stable_json_bytes(cached_steady2)
+                    etag = _etag_from_json_bytes(json_bytes)
+                    try:
+                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag}, timeout=_steady_snapshot_cache_ttl_seconds(cached_steady2))
+                    except Exception:
+                        pass
+                    resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
+                    resp["ETag"] = f"\"{etag}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+
                 time.sleep(0.05)
 
-            resp = JsonResponse({"detail": "building"}, status=503)
-            resp["Retry-After"] = "1"
-            return _finalize(resp, cache_status="MISS", device_bound=True if is_snapshot_path else None)
+            # No stale available: return a short-lived steady snapshot to avoid stampede.
+            tmp = build_steady_snapshot(
+                request,
+                settings_obj,
+                steady_state="BUILDING",
+                refresh_interval_sec=10,
+                label="جاري تجهيز الجدول...",
+            )
+            json_bytes = _stable_json_bytes(tmp)
+            etag = _etag_from_json_bytes(json_bytes)
+            try:
+                cache.set(tenant_cache_key, {"snap": tmp, "etag": etag}, timeout=5)
+            except Exception:
+                pass
+            resp = JsonResponse(tmp, json_dumps_params={"ensure_ascii": False})
+            resp["ETag"] = f"\"{etag}\""
+            return _finalize(resp, cache_status="STALE", device_bound=True if is_snapshot_path else None)
 
         try:
-            snap = _build_final_snapshot(request, settings_obj)
+            t0 = time.monotonic()
+
+            day_snap = _normalize_snapshot_keys(_call_build_day_snapshot(settings_obj))
+            active_window = _is_active_window(day_snap)
+            token_timeout = compute_dynamic_ttl_seconds(day_snap)
+
+            if active_window:
+                snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
+                if not force_nocache:
+                    try:
+                        cache.set(snap_key, snap, timeout=_active_window_cache_ttl_seconds())
+                    except Exception:
+                        pass
+            else:
+                snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=False)
+
+                meta = day_snap.get("meta") or {}
+                is_school_day = bool(meta.get("is_school_day"))
+                st = (day_snap.get("state") or {}) if isinstance(day_snap, dict) else {}
+                st_type = str(st.get("type") or "").strip().lower()
+                refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
+
+                if not is_school_day:
+                    snap["state"]["type"] = "NO_SCHEDULE_TODAY"
+                    snap["state"]["label"] = "لا يوجد جدول اليوم"
+                elif st_type == "before":
+                    snap["state"]["type"] = "BEFORE_SCHOOL"
+                    snap["state"]["label"] = "قبل بداية الدوام"
+                else:
+                    snap["state"]["type"] = "OFF_HOURS"
+                    snap["state"]["label"] = "انتهى الدوام"
+
+                try:
+                    snap["settings"]["refresh_interval_sec"] = int(refresh)
+                except Exception:
+                    pass
+
+                if not force_nocache:
+                    try:
+                        cache.set(_steady_snapshot_cache_key(settings_obj, day_snap), snap, timeout=_steady_snapshot_cache_ttl_seconds(day_snap))
+                    except Exception:
+                        pass
+
+            build_ms = int((time.monotonic() - t0) * 1000)
+            _metrics_incr("metrics:snapshot_cache:build_count")
+            _metrics_add("metrics:snapshot_cache:build_sum_ms", build_ms)
+            _metrics_set_max("metrics:snapshot_cache:build_max_ms", build_ms)
+            _metrics_log_maybe()
+
             json_bytes = _stable_json_bytes(snap)
             etag = _etag_from_json_bytes(json_bytes)
 
             if not force_nocache:
                 try:
-                    cache.set(cache_key, {"snap": snap, "etag": etag}, timeout=ttl_s)
+                    cache.set(tenant_cache_key, {"snap": snap, "etag": etag}, timeout=token_timeout)
                 except Exception:
                     pass
 
@@ -1083,10 +1486,11 @@ def snapshot(request, token: str | None = None):
             resp["ETag"] = f"\"{etag}\""
             return _finalize(resp, cache_status="BYPASS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None)
         finally:
-            try:
-                cache.delete(lock_key)
-            except Exception:
-                pass
+            if not force_nocache:
+                try:
+                    cache.delete(school_lock_key)
+                except Exception:
+                    pass
 
     except Exception as e:
         logger.exception("snapshot error: %s", e)

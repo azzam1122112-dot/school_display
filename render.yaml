@@ -42,6 +42,18 @@ services:
       - key: DEBUG
         value: "False"
 
+      - key: MIDDLEWARE_DEBUG
+        value: "False"
+
+      - key: DISPLAY_SNAPSHOT_ACTIVE_TTL
+        value: "15"
+
+      - key: DISPLAY_SNAPSHOT_STEADY_MAX_TTL
+        value: "86400"
+
+      - key: DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC
+        value: "600"
+
       - key: ALLOWED_HOSTS
         value: "school-display-p8ec.onrender.com,.onrender.com"
 

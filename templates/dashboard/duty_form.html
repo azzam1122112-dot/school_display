@@ -169,6 +169,10 @@
     let timer = null;
     let inflight = null;
     let lastQuery = null;
+    const memCache = new Map(); // q -> {ts:number, results:string[]}
+    const CACHE_TTL_MS = 60 * 1000;
+    const DEBOUNCE_MS = 400;
+    const MIN_CHARS = 2;
 
     function render(names) {
         list.innerHTML = "";
@@ -180,21 +184,35 @@
     }
 
     async function fetchNames(q) {
+        const key = (q || "").trim();
+        if (key.length < MIN_CHARS) return [];
+
+        // Client-side cache (60s)
+        const cached = memCache.get(key);
+        if (cached && typeof cached.ts === "number" && (Date.now() - cached.ts) < CACHE_TTL_MS) {
+            return Array.isArray(cached.results) ? cached.results : [];
+        }
+
         if (inflight) {
             try { inflight.abort(); } catch (e) {}
         }
         inflight = new AbortController();
-        const url = endpoint + "?q=" + encodeURIComponent(q || "");
+        const url = endpoint + "?q=" + encodeURIComponent(key);
         try {
             const resp = await fetch(url, {
                 method: "GET",
                 headers: { "Accept": "application/json" },
-                cache: "no-store",
+                // Let the browser reuse connections; server also caches for 60s.
+                cache: "default",
                 signal: inflight.signal,
             });
             if (!resp.ok) return [];
             const data = await resp.json();
-            if (data && Array.isArray(data.results)) return data.results;
+            if (data && Array.isArray(data.results)) {
+                const results = data.results.slice(0, 10);
+                memCache.set(key, { ts: Date.now(), results });
+                return results;
+            }
             return [];
         } catch (e) {
             return [];
@@ -206,12 +224,17 @@
         if (q === lastQuery) return;
         lastQuery = q;
 
+        if (q.length < MIN_CHARS) {
+            if (timer) clearTimeout(timer);
+            render([]);
+            return;
+        }
+
         if (timer) clearTimeout(timer);
         timer = setTimeout(async function() {
-            // لو الحقل فاضي اعرض قائمة صغيرة (أول 25)
             const names = await fetchNames(q);
             render(names);
-        }, 200);
+        }, DEBOUNCE_MS);
     }
 
     input.addEventListener("input", scheduleFetch);

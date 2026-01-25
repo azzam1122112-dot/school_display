@@ -23,6 +23,7 @@ from django.contrib.auth import (
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, FieldError
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Max, Q, Sum, Count
@@ -1249,11 +1250,28 @@ def duty_teacher_search(request):
         return JsonResponse({"results": [], "error": "no_active_school"}, status=403)
 
     q = (request.GET.get("q") or "").strip()
+    # Reduce noise: don't hit DB for empty/1-char queries
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    school_id = getattr(school, "id", None)
+    cache_key = f"duty:teacher_search:{school_id}:{q.lower()}"
+    try:
+        cached = cache.get(cache_key)
+        if isinstance(cached, list):
+            return JsonResponse({"results": cached})
+    except Exception:
+        pass
+
     qs = Teacher.objects.filter(school=school)
     if q:
         qs = qs.filter(name__icontains=q)
 
-    names = list(qs.order_by("name").values_list("name", flat=True)[:25])
+    names = list(qs.order_by("name").values_list("name", flat=True)[:10])
+    try:
+        cache.set(cache_key, names, timeout=60)
+    except Exception:
+        pass
     return JsonResponse({"results": names})
 
 

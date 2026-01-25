@@ -82,7 +82,13 @@ def build_day_snapshot(settings, now=None):
         settings_payload["refresh_interval_sec"] = 86400
         return {
             "now": now.isoformat(),
-            "meta": {"date": str(today), "weekday": weekday, "is_school_day": False},
+            "meta": {
+                "date": str(today),
+                "weekday": weekday,
+                "is_school_day": False,
+                "is_active_window": False,
+                "active_window": None,
+            },
             "settings": settings_payload,
             "state": {"type": "off", "label": "لا يوجد جدول لليوم", "from": None, "to": None, "remaining_seconds": None},
             "current_period": None,
@@ -141,7 +147,13 @@ def build_day_snapshot(settings, now=None):
         settings_payload["refresh_interval_sec"] = 86400
         return {
             "now": now.isoformat(),
-            "meta": {"date": str(today), "weekday": weekday, "is_school_day": True},
+            "meta": {
+                "date": str(today),
+                "weekday": weekday,
+                "is_school_day": True,
+                "is_active_window": False,
+                "active_window": None,
+            },
             "settings": settings_payload,
             "state": {"type": "off", "label": "لا يوجد مسار زمني لليوم", "from": None, "to": None, "remaining_seconds": None},
             "current_period": None,
@@ -153,25 +165,27 @@ def build_day_snapshot(settings, now=None):
         }
 
     # === Optimization: Strict Active Window & Smart Wakeup ===
-    if timeline:
-        start_t = min(t["start"] for t in timeline)
-        end_t = max(t["end"] for t in timeline)
+    start_t = min(t["start"] for t in timeline)
+    end_t = max(t["end"] for t in timeline)
 
-        # Active Window: Start - 30m to End + 30m
-        active_start = start_t - timedelta(minutes=30)
-        active_end = end_t + timedelta(minutes=30)
+    # Active Window: Start - 30m to End + 30m
+    active_start = start_t - timedelta(minutes=30)
+    active_end = end_t + timedelta(minutes=30)
+    is_active_window = bool(active_start <= now <= active_end)
 
-        if now < active_start:
-            # Before Window: Smart Wakeup
-            # Calculate remaining seconds exactly until active_start
-            wait_seconds = (active_start - now).total_seconds()
-            # Ensure at least 10s to avoid rapid polling
-            settings_payload["refresh_interval_sec"] = max(10, int(wait_seconds))
-        
-        elif now > active_end:
-            # After Window: Strict Stop (24 hours)
-            settings_payload["refresh_interval_sec"] = 86400
-            
+    if now < active_start:
+        # Before Window: Smart Wakeup
+        wait_seconds = (active_start - now).total_seconds()
+        # Ensure at least 10s to avoid rapid polling
+        settings_payload["refresh_interval_sec"] = max(10, int(wait_seconds))
+    elif now > active_end:
+        # After Window: Strict Stop (24 hours)
+        settings_payload["refresh_interval_sec"] = 86400
+
+    active_window_meta = {
+        "start": active_start.isoformat(),
+        "end": active_end.isoformat(),
+    }
     # ===================================
 
     timeline.sort(key=lambda x: x["start"])
@@ -248,7 +262,13 @@ def build_day_snapshot(settings, now=None):
 
     return {
         "now": now.isoformat(),
-        "meta": {"date": str(today), "weekday": weekday, "is_school_day": True},
+        "meta": {
+            "date": str(today),
+            "weekday": weekday,
+            "is_school_day": True,
+            "is_active_window": is_active_window,
+            "active_window": active_window_meta,
+        },
         "settings": settings_payload,
         "state": state,
         "current_period": (fmt(current) | ({"remaining_seconds": max(0, int((current["end"] - now).total_seconds()))} if current else {})) if current else None,

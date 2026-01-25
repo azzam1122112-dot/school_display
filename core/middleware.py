@@ -20,6 +20,85 @@ logger = logging.getLogger(__name__)
 
 
 # ==========================================================
+# Streaming Response Probe (Diagnostics)
+# ==========================================================
+class StreamingResponseProbeMiddleware:
+    """Logs the true source of any streaming response.
+
+    هدفه: تحديد المسار الحقيقي الذي ينتج StreamingHttpResponse (غالباً static عبر WhiteNoise عند التشغيل على ASGI).
+
+    ملاحظة:
+    - نستخدم throttle عبر cache لتفادي إغراق اللوجز.
+    - في حال كانت الاستجابة من WhiteNoise (static) لن يمر request عبر URL resolver غالباً،
+      لذلك قد يكون resolver_match = None.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        # Opt-in only to avoid noisy logs in production.
+        if not getattr(dj_settings, "MIDDLEWARE_DEBUG", False):
+            return response
+
+        try:
+            is_streaming = bool(getattr(response, "streaming", False))
+        except Exception:
+            is_streaming = False
+
+        if is_streaming:
+            path = getattr(request, "path", "") or ""
+            method = getattr(request, "method", "") or ""
+            status = getattr(response, "status_code", None)
+            resp_cls = response.__class__.__name__
+
+            # View identification (may be None for middleware-served responses e.g. WhiteNoise)
+            view_name = None
+            view_func = None
+            rm = getattr(request, "resolver_match", None)
+            if rm is not None:
+                try:
+                    view_name = getattr(rm, "view_name", None)
+                except Exception:
+                    view_name = None
+                try:
+                    func = getattr(rm, "func", None)
+                    view_func = f"{getattr(func, '__module__', '')}.{getattr(func, '__name__', '')}" if func else None
+                except Exception:
+                    view_func = None
+
+            # Throttle identical warnings (5 minutes)
+            key = f"diag:streaming:{method}:{path}:{resp_cls}:{status}:{view_name or '-'}"
+            should_log = True
+            try:
+                should_log = bool(cache.add(key, "1", timeout=300))
+            except Exception:
+                should_log = True
+
+            if should_log:
+                logger.warning(
+                    "STREAMING_RESPONSE path=%s method=%s status=%s response=%s view=%s func=%s",
+                    path,
+                    method,
+                    status,
+                    resp_cls,
+                    view_name,
+                    view_func,
+                )
+
+            # Debug headers (only when probe is enabled)
+            try:
+                response["X-Streaming-Response"] = "1"
+                response["X-Streaming-Class"] = resp_cls
+            except Exception:
+                pass
+
+        return response
+
+
+# ==========================================================
 # Snapshot Edge Cache Middleware (Cloudflare)
 # ==========================================================
 class SnapshotEdgeCacheMiddleware:

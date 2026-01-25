@@ -84,6 +84,36 @@ except Exception:
 DISPLAY_SNAPSHOT_TTL = max(1, min(60, DISPLAY_SNAPSHOT_TTL))
 
 
+# =========================
+# Phase 2: Dynamic Snapshot TTLs
+# =========================
+# Active window school-snapshot TTL (15–20s)
+try:
+    DISPLAY_SNAPSHOT_ACTIVE_TTL = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL", "15"))
+except Exception:
+    DISPLAY_SNAPSHOT_ACTIVE_TTL = 15
+
+DISPLAY_SNAPSHOT_ACTIVE_TTL = max(15, min(20, DISPLAY_SNAPSHOT_ACTIVE_TTL))
+
+
+# Outside active window: steady snapshot TTL cap (1h–24h)
+try:
+    DISPLAY_SNAPSHOT_STEADY_MAX_TTL = int(os.getenv("DISPLAY_SNAPSHOT_STEADY_MAX_TTL", "86400"))
+except Exception:
+    DISPLAY_SNAPSHOT_STEADY_MAX_TTL = 86400
+
+DISPLAY_SNAPSHOT_STEADY_MAX_TTL = max(3600, min(86400, DISPLAY_SNAPSHOT_STEADY_MAX_TTL))
+
+
+# Throttled cache metrics log interval (seconds)
+try:
+    DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = int(os.getenv("DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC", "600"))
+except Exception:
+    DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = 600
+
+DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = max(60, min(3600, DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC))
+
+
 # Build/revision identifier (optional; used for diagnostics headers)
 APP_REVISION = (
     os.getenv("APP_REVISION")
@@ -182,6 +212,10 @@ MIDDLEWARE = [
     # Note: Django executes response middleware in reverse order.
     # Placing this BEFORE WhiteNoise ensures it runs AFTER WhiteNoise on the response path.
     "core.middleware.SnapshotEdgeCacheMiddleware",
+
+    # Diagnostics: detect which endpoint actually produces StreamingHttpResponse under ASGI.
+    # Place BEFORE WhiteNoise so it runs AFTER WhiteNoise on the response path.
+    "core.middleware.StreamingResponseProbeMiddleware",
 
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
