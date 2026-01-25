@@ -1626,7 +1626,7 @@
     }
 
     if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
-      const nInt = clamp(settings.refresh_interval_sec, 5, 120);
+      const nInt = clamp(settings.refresh_interval_sec, 5, 864000);
       if (Math.abs(nInt - cfg.REFRESH_EVERY) > 0.001) cfg.REFRESH_EVERY = nInt;
     }
 
@@ -2049,6 +2049,7 @@
   // ===== Refresh loop =====
   let pollTimer = null;
   let failStreak = 0;
+  let isFetching = false;
 
   function scheduleNext(sec) {
     if (pollTimer) clearTimeout(pollTimer);
@@ -2057,13 +2058,25 @@
 
   async function refreshLoop() {
     if (isBlocked) return;
+    if (isFetching) return; // Prevent overlapping loops
+
     if (document.hidden) {
       scheduleNext(cfg.REFRESH_EVERY);
       return;
     }
 
-    const snap = await safeFetchSnapshot();
+    isFetching = true;
+    let snap = null;
+
+    try {
+        snap = await safeFetchSnapshot();
+    } catch (e) {
+        // Should be caught inside safeFetchSnapshot but just in case
+        snap = null;
+    }
+
     if (!snap) {
+      isFetching = false;
       failStreak += 1;
       // INITIAL LOAD FAST RETRY:
       // If we haven't successfully loaded data yet, retry quickly (e.g. 2s) 
@@ -2079,6 +2092,7 @@
     }
 
     if (snap && snap._notModified) {
+      isFetching = false;
       failStreak = 0;
       scheduleNext(cfg.REFRESH_EVERY);
       if (isDebug()) {
@@ -2130,6 +2144,8 @@
       renderAlert("حدث خطأ أثناء العرض", "افتح ?debug=1 لمزيد من التفاصيل.");
       ensureDebugOverlay();
       if (isDebug()) setDebugText("render error: " + (e && e.message ? e.message : String(e)));
+    } finally {
+        isFetching = false;
     }
 
     scheduleNext(cfg.REFRESH_EVERY);

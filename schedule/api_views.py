@@ -70,6 +70,28 @@ def _parse_if_none_match(raw: str | None) -> str | None:
     return s
 
 
+def _snapshot_anti_loop_check(token_hash: str) -> bool:
+    """
+    Checks if a token is requesting too frequently (looping).
+    Returns True if safe, False if looping (should receive cool-down).
+    Limit: 30 requests per minute.
+    """
+    key = f"loop:{token_hash}"
+    try:
+        # 60 seconds rolling window (approx)
+        added = cache.add(key, 1, timeout=60)
+        if added:
+            val = 1
+        else:
+            val = cache.incr(key)
+        
+        if val > 30: 
+            return False
+        return True
+    except Exception:
+        return True
+
+
 def _snapshot_rate_limit_allow(token_hash: str, device_hash: str) -> bool:
     """Token bucket: 1 req/sec with burst 3, keyed by token_hash + device_hash."""
 
@@ -98,6 +120,7 @@ def _snapshot_rate_limit_allow(token_hash: str, device_hash: str) -> bool:
 
         tokens = float(state.get("tokens", capacity))
         last_ts = float(state.get("ts", now))
+
         elapsed = max(0.0, now - last_ts)
         tokens = min(capacity, tokens + elapsed * refill_per_sec)
 
@@ -802,6 +825,20 @@ def snapshot(request, token: str | None = None):
             return _finalize(resp, cache_status="ERROR", device_bound=False if is_snapshot_path else None)
 
         token_hash = _sha256(token_value)
+
+        # === ANTI-LOOP GUARD (ISSUE #4) ===
+        # If a token is looping (>30 req/min), force a long sleep without erroring.
+        if not _snapshot_anti_loop_check(token_hash):
+            if dj_settings.DEBUG:
+                logger.warning("Anti-loop triggered for token_hash=%s", token_hash[:8])
+            
+            # Return valid (but empty/safe) payload with long refresh
+            payload = _fallback_payload("التحديث متوقف مؤقتًا (حماية النظام)")
+            payload["settings"]["refresh_interval_sec"] = 3600
+            
+            resp = JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+            return _finalize(resp, cache_status="LOOP", device_bound=True if is_snapshot_path else None)
+        # ==================================
 
         device_key = ""
         if is_snapshot_path:
