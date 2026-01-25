@@ -212,6 +212,21 @@
     return false;
   }
 
+  function getFitMargin() {
+    // Default: keep a safe border around the UI for TV overscan / browser chrome.
+    // 0.95 means: fit inside 95% of the viewport (≈ 2.5% padding each side).
+    let m = 0.95;
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const raw = (qs.get("fitMargin") || qs.get("margin") || "").trim();
+      if (raw) {
+        const v = parseFloat(raw);
+        if (isFinite(v)) m = v;
+      }
+    } catch (e) {}
+    return clamp(m, 0.7, 1);
+  }
+
   let fitT = null;
   function scheduleFit(ms) {
     if (fitT) clearTimeout(fitT);
@@ -236,6 +251,10 @@
     const availH = Number(window.innerHeight || 0) || 0;
     if (availW <= 0 || availH <= 0) return;
 
+    const margin = getFitMargin();
+    const effectiveW = availW * margin;
+    const effectiveH = availH * margin;
+
     // Measure at scale=1
     const prev = dom.fitRoot.style.transform;
     dom.fitRoot.style.transform = "";
@@ -250,7 +269,7 @@
     }
 
     // Only scale DOWN to guarantee all cards are visible.
-    let s = Math.min(1, availW / reqW, availH / reqH);
+    let s = Math.min(1, effectiveW / reqW, effectiveH / reqH);
     s = clamp(s, 0.35, 1);
 
     // Center content if we scaled down.
