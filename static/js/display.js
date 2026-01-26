@@ -358,8 +358,23 @@
     }
   }
 
+  function pickTokenFromSnapshotUrl() {
+    try {
+      const raw = (cfg.SNAPSHOT_URL || "").toString().trim();
+      if (!raw) return "";
+      const u = new URL(raw, window.location.origin);
+      const path = (u.pathname || "").toString();
+      // Supports: /api/display/snapshot/<token>/  (and aliases today/live)
+      const m = path.match(/\/api\/display\/(?:snapshot|today|live)\/([^\/]+)\/?$/i);
+      if (!m || !m[1]) return "";
+      return decodeURIComponent(m[1]).trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
   function getToken() {
-    return (cfg.SERVER_TOKEN || pickTokenFromUrl() || "").trim();
+    return (cfg.SERVER_TOKEN || pickTokenFromUrl() || pickTokenFromSnapshotUrl() || "").trim();
   }
 
   function resolveSnapshotUrl() {
@@ -370,7 +385,9 @@
   }
 
   function resolveStatusUrl() {
-    // Lightweight endpoint; keep token in headers (avoid leaking token in URLs).
+    // Lightweight endpoint; prefer token in path when available (same pattern as snapshot).
+    const t = getToken();
+    if (t) return "/api/display/status/" + encodeURIComponent(t) + "/";
     return "/api/display/status/";
   }
 

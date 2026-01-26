@@ -68,7 +68,7 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-white">قائمة التكليفات</h3>
                 <div class="bg-white/20 px-3 py-1 rounded-full">
-                    <span class="text-white text-sm font-medium">{{ selected_date }}</span>
+                    <span class="text-white text-sm font-medium">{{ selected_date|date:"j F Y" }}</span>
                 </div>
             </div>
         </div>
@@ -91,10 +91,13 @@
                     <tr class="hover:bg-slate-50 transition-all duration-200 group">
                         <td class="p-4 text-slate-700 font-medium whitespace-nowrap">
                             {% now "Y-m-d" as today_str %}
-                            {% if d.date|date:"Y-m-d" == today_str %}
-                                <span class="text-emerald-600 font-bold">اليوم</span>
+                            {% if d.date %}
+                                {% if d.date|date:"Y-m-d" == today_str %}
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 ml-2">اليوم</span>
+                                {% endif %}
+                                {{ d.date|date:"j F Y" }}
                             {% else %}
-                                {{ d.date|date:"Y-m-d" }}
+                                <span class="text-slate-400">-</span>
                             {% endif %}
                         </td>
                         <td class="p-4">

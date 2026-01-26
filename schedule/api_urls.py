@@ -7,6 +7,7 @@ app_name = "display_api"
 urlpatterns = [
     # Status / polling endpoint
     path("status/", api_views.status, name="status"),
+    path("status/<str:token>/", api_views.status, name="status_token"),
 
     # Canonical endpoint
     path("snapshot/", api_views.snapshot, name="snapshot"),
