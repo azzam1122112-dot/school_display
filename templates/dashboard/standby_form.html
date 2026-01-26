@@ -74,7 +74,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- حقل التاريخ -->
                 <div class="space-y-2">
-                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.date.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.date.label }}
                         {% if form.date.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -107,7 +107,7 @@
 
                 <!-- حقل رقم الحصة -->
                 <div class="space-y-2">
-                    <label for="{{ form.period_index.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.period_index.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.period_index.label }}
                         {% if form.period_index.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -136,7 +136,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- حقل اسم الفصل -->
                 <div class="space-y-2">
-                    <label for="{{ form.class_name.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.class_name.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.class_name.label }}
                         {% if form.class_name.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -162,7 +162,7 @@
 
                 <!-- حقل اسم المعلم/ـة -->
                 <div class="space-y-2">
-                    <label for="{{ form.teacher_name.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                    <label for="{{ form.teacher_name.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                         {{ form.teacher_name.label }}
                         {% if form.teacher_name.field.required %}
                             <span class="text-red-500 mr-1">*</span>
@@ -199,7 +199,7 @@
 
             <!-- حقل الملاحظات -->
             <div class="space-y-2">
-                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-slate-700 flex items-center">
+                <label for="{{ form.notes.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
                     {{ form.notes.label }}
                     {% if form.notes.field.required %}
                         <span class="text-red-500 mr-1">*</span>

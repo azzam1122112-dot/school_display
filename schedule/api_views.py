@@ -1143,6 +1143,30 @@ def compute_dynamic_ttl_seconds(day_snap: dict) -> int:
     return _steady_snapshot_cache_ttl_seconds(day_snap)
 
 
+def _clamp_active_ttl_by_remaining_seconds(snap: dict, ttl: int) -> int:
+    """Avoid caching an active-window snapshot past its natural boundary.
+
+    If we cache a snapshot for (say) 15–20s while a period has 3s remaining,
+    clients can keep receiving the *previous* period even after time has passed.
+    That is especially problematic with status-first polling (revision may not change).
+    """
+    try:
+        if not isinstance(snap, dict):
+            return ttl
+        if not _is_active_window(snap):
+            return ttl
+        st = snap.get("state") or {}
+        rem = st.get("remaining_seconds")
+        if isinstance(rem, (int, float)):
+            r = int(rem)
+            if r < 1:
+                r = 1
+            return max(1, min(int(ttl), r))
+    except Exception:
+        return ttl
+    return ttl
+
+
 def build_steady_snapshot(
     request,
     settings_obj: SchoolSettings,
@@ -1593,6 +1617,7 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_snap)
                     etag = _etag_from_json_bytes(json_bytes)
                     token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
+                    token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_snap, token_timeout)
                     tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
                     cache.set(tok_key, {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
                     cache.set(get_cache_key(token_hash), {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
@@ -1734,6 +1759,7 @@ def snapshot(request, token: str | None = None):
                 json_bytes = _stable_json_bytes(cached_school)
                 etag = _etag_from_json_bytes(json_bytes)
                 token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
+                token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_school, token_timeout)
                 try:
                     cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
                 except Exception:
@@ -1846,9 +1872,10 @@ def snapshot(request, token: str | None = None):
 
             if active_window:
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
+                token_timeout = _clamp_active_ttl_by_remaining_seconds(snap, token_timeout)
                 if not force_nocache:
                     try:
-                        cache.set(_snapshot_cache_key(settings_obj), snap, timeout=_active_window_cache_ttl_seconds())
+                        cache.set(_snapshot_cache_key(settings_obj), snap, timeout=token_timeout)
                     except Exception:
                         pass
             else:
@@ -1924,6 +1951,7 @@ def snapshot(request, token: str | None = None):
 
             if not force_nocache:
                 try:
+                    token_timeout = _clamp_active_ttl_by_remaining_seconds(snap, token_timeout)
                     cache.set(tenant_cache_key, {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
                     cache.set(get_cache_key(token_hash), {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
                 except Exception:
