@@ -1977,8 +1977,14 @@
 
     if (!opts.bypassEtag) {
       try {
-        const prev = localStorage.getItem(etagKey) || "";
-        if (prev) headers["If-None-Match"] = prev;
+        // Important: on a cold page load, we may not have any in-memory payload yet.
+        // If we send If-None-Match and get 304, the UI can get stuck showing "جاري التحميل".
+        // So only enable 304 optimization after we've rendered at least one payload.
+        const canUse304 = !!lastPayloadForFiltering;
+        if (canUse304) {
+          const prev = localStorage.getItem(etagKey) || "";
+          if (prev) headers["If-None-Match"] = prev;
+        }
       } catch (e) {}
     } else {
       try {
