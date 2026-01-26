@@ -10,9 +10,9 @@ from django.utils import timezone
 def _normalize_weekday_for_db(py_weekday: int) -> int:
     """
     Python: Monday=0 .. Sunday=6
-    DB (عندكم): Sunday=0 .. Saturday=6
+    DB: Monday=1 .. Sunday=7
     """
-    return (int(py_weekday) + 1) % 7
+    return py_weekday + 1
 
 
 def _to_aware_dt(today, t, tz):
@@ -78,8 +78,8 @@ def build_day_snapshot(settings, now=None):
         day = day_qs.filter(weekday=weekday, is_active=True).first()
 
     if not day:
-        # Optimization: Strict stop on holidays (24 hours)
-        settings_payload["refresh_interval_sec"] = 86400
+        # Optimization: Strict stop on holidays (reduced to 15m to allow updates/wake-up)
+        settings_payload["refresh_interval_sec"] = 900
         return {
             "now": now.isoformat(),
             "meta": {
@@ -143,8 +143,8 @@ def build_day_snapshot(settings, now=None):
             })
 
     if not timeline:
-        # Optimization: Strict stop if empty timeline (24 hours)
-        settings_payload["refresh_interval_sec"] = 86400
+        # Optimization: Strict stop if empty timeline (reduced to 15m)
+        settings_payload["refresh_interval_sec"] = 900
         return {
             "now": now.isoformat(),
             "meta": {
@@ -171,18 +171,77 @@ def build_day_snapshot(settings, now=None):
     # Active Window: Start - 30m to End + 30m
     active_start = start_t - timedelta(minutes=30)
     active_end = end_t + timedelta(minutes=30)
-    is_active_window = bool(active_start <= now <= active_end)
-
+    
+    # ✅ Strict Off-Hours Logic
     if now < active_start:
-        # Before Window: Smart Wakeup
+        # Before Window: Sleep / Smart Wakeup
         wait_seconds = (active_start - now).total_seconds()
-        # Ensure at least 10s to avoid rapid polling
-        settings_payload["refresh_interval_sec"] = max(10, int(wait_seconds))
-    elif now > active_end:
-        # After Window: Strict Stop (24 hours)
-        settings_payload["refresh_interval_sec"] = 86400
+        # Sleep until active_start, but poll every 15m max to catch schedule changes
+        settings_payload["refresh_interval_sec"] = min(900, max(10, int(wait_seconds)))
+        
+        return {
+            "now": now.isoformat(),
+            "meta": {
+                "date": str(today),
+                "weekday": weekday,
+                "is_school_day": True,
+                "is_active_window": False,
+                "active_window": {
+                    "start": active_start.isoformat(),
+                    "end": active_end.isoformat(),
+                },
+            },
+            "settings": settings_payload,
+            "state": {
+                "type": "off", 
+                "label": "خارج وقت الدوام", 
+                "from": None, 
+                "to": None, 
+                "remaining_seconds": None
+            },
+            "current_period": None,
+            "next_period": None,
+            "day_path": [],
+            "period_classes": [],
+            "standby": {"items": []},
+            "excellence": {"items": []},
+        }
 
+    elif now > active_end:
+        # After Window: Sleep
+        settings_payload["refresh_interval_sec"] = 900
+        return {
+            "now": now.isoformat(),
+            "meta": {
+                "date": str(today),
+                "weekday": weekday,
+                "is_school_day": True,
+                "is_active_window": False,
+                "active_window": {
+                    "start": active_start.isoformat(),
+                    "end": active_end.isoformat(),
+                },
+            },
+            "settings": settings_payload,
+            "state": {
+                "type": "off", 
+                "label": "انتهى الدوام", 
+                "from": None, 
+                "to": None, 
+                "remaining_seconds": None
+            },
+            "current_period": None,
+            "next_period": None,
+            "day_path": [],
+            "period_classes": [],
+            "standby": {"items": []},
+            "excellence": {"items": []},
+        }
+
+    # Within Active Window
+    is_active_window = True
     active_window_meta = {
+
         "start": active_start.isoformat(),
         "end": active_end.isoformat(),
     }
