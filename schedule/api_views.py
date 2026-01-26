@@ -1243,7 +1243,8 @@ def snapshot(request, token: str | None = None):
         
         # 1) If we have school_id, try to fetch Snapshot directly from cache
         if cached_school_id and not force_nocache:
-            snap_key = f"snapshot:v1:school:{cached_school_id}"
+            # Bump cache version v1 -> v2 to invalidate old stuck "Off" states
+            snap_key = f"snapshot:v2:school:{cached_school_id}"
             cached_snap = cache.get(snap_key)
             if isinstance(cached_snap, dict):
                 _metrics_incr("metrics:snapshot_cache:school_hit")
@@ -1270,7 +1271,8 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
 
             # steady snapshot fallback (long TTL outside window/holidays)
-            steady_key = f"snapshot:v2:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
+            # Bump cache version v2 -> v3
+            steady_key = f"snapshot:v3:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
             cached_steady = cache.get(steady_key)
             if isinstance(cached_steady, dict):
                 _metrics_incr("metrics:snapshot_cache:steady_hit")
@@ -1485,7 +1487,8 @@ def snapshot(request, token: str | None = None):
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
                 if not force_nocache:
                     try:
-                        cache.set(snap_key, snap, timeout=_active_window_cache_ttl_seconds())
+                        # Version v2
+                        cache.set(f"snapshot:v2:school:{settings_obj.school_id}", snap, timeout=_active_window_cache_ttl_seconds())
                     except Exception:
                         pass
             else:
