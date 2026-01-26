@@ -1,4 +1,10 @@
 services:
+  - type: redis
+    name: school-display-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
   - type: web
     name: school-display
     runtime: python
@@ -20,10 +26,19 @@ services:
           --email "${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" || true
       fi
 
+      # IMPORTANT:
+      # - If REDIS_URL is missing, Django falls back to LocMemCache (per-process).
+      # - With multiple gunicorn workers, that breaks cache coherence and causes repeated snapshot_build/cache=MISS.
+      WORKERS=${WEB_CONCURRENCY:-2}
+      if [ -z "$REDIS_URL" ]; then
+        echo "[WARN] REDIS_URL is not set; forcing WORKERS=1 to avoid per-process cache misses."
+        WORKERS=1
+      fi
+
       # Run as WSGI to avoid Django async StreamingHttpResponse warnings (static files via WhiteNoise).
       gunicorn config.wsgi:application \
         --bind 0.0.0.0:$PORT \
-        --workers=${WEB_CONCURRENCY:-2} \
+        --workers=$WORKERS \
         --timeout=120 \
         --keep-alive=5 \
         --log-level=info \
@@ -65,6 +80,12 @@ services:
 
       - key: WEB_CONCURRENCY
         value: "2"
+
+      - key: REDIS_URL
+        fromService:
+          name: school-display-redis
+          type: redis
+          property: connectionString
 
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
