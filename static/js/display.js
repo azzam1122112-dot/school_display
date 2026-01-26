@@ -2216,7 +2216,10 @@
       // Status-first polling: ask the cheap endpoint first, and only fetch snapshot when needed.
       // Initial load still fetches snapshot directly.
       if (!lastPayloadForFiltering) {
-        snap = await safeFetchSnapshot();
+        // Critical: on first load, always fetch a full body.
+        // If we send If-None-Match and get 304 while we have no payload in memory,
+        // the UI can remain stuck on the loading state.
+        snap = await safeFetchSnapshot({ bypassEtag: true });
       } else {
         const st = await safeFetchStatus();
         if (st && st._notModified) {
@@ -2302,6 +2305,22 @@
     }
 
     if (snap && snap._notModified) {
+      // Recovery: if a 304 arrives before any successful render, force a full fetch.
+      if (!lastPayloadForFiltering) {
+        isFetching = false;
+        scheduleNext(0.5);
+        try {
+          snap = await safeFetchSnapshot({ force: true, bypassEtag: true });
+        } catch (e) {
+          // fall through to retry path below
+        }
+        if (snap && !snap._notModified) {
+          // continue to render below
+        } else {
+          return;
+        }
+      }
+
       isFetching = false;
       failStreak = 0;
       scheduleNext(cfg.REFRESH_EVERY);
