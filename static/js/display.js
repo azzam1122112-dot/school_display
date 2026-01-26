@@ -758,11 +758,90 @@
   let lastZeroHandledCoreSig = "";
 
   let lastCountdownZeroAt = 0;
+
+  function optimisticAdvanceToNextBlock() {
+    try {
+      if (!lastPayloadForFiltering) return false;
+      const snap = lastPayloadForFiltering;
+      const nextP = snap.next_period || null;
+      if (!nextP || typeof nextP !== "object") return false;
+
+      const kind = safeText(nextP.kind || nextP.type || "").trim().toLowerCase();
+      const fromHM = safeText(nextP.from || "");
+      const toHM = safeText(nextP.to || "");
+      if (!fromHM || !toHM) return false;
+
+      const baseMs = nowMs();
+      const startMs = hmToMs(fromHM, baseMs);
+      const endMs = hmToMs(toHM, baseMs);
+      if (!startMs || !endMs || endMs <= startMs) return false;
+
+      const n = baseMs;
+      const isBefore = n < startMs;
+      const isActive = n >= startMs && n < endMs;
+
+      let stType = kind || "period";
+      if (isBefore) stType = "before";
+
+      let badge = "حالة اليوم";
+      let title = "جاري الانتقال";
+
+      if (stType === "period") {
+        badge = "درس";
+        title = formatPeriodTitle(nextP);
+      } else if (stType === "break") {
+        badge = "استراحة";
+        title = safeText(nextP.label || "استراحة");
+      } else if (stType === "before") {
+        badge = "انتظار";
+        title = "جاري الانتقال";
+      }
+
+      const range = toTimeStr(fromHM) + " → " + toTimeStr(toHM);
+
+      // Update headline immediately.
+      setTextIfChanged(dom.heroTitle, title);
+      setTextIfChanged(dom.heroRange, range);
+      setTextIfChanged(dom.badgeKind, badge);
+
+      // Update countdown/progress.
+      let rem;
+      if (isBefore) rem = Math.max(0, Math.floor((startMs - n) / 1000));
+      else rem = Math.max(0, Math.floor((endMs - n) / 1000));
+
+      countdownSeconds = rem;
+      hasActiveCountdown = true;
+      progressRange = { start: startMs, end: endMs };
+
+      // Keep runtime in sync so list filtering doesn't lag.
+      if (stType === "period") {
+        rt.activePeriodIndex = getPeriodIndex(nextP) || rt.activePeriodIndex;
+        rt.activeFromHM = fromHM;
+      } else if (stType === "break") {
+        rt.activeFromHM = fromHM;
+      }
+
+      // Prevent duplicate 00:00 handling for the just-applied optimistic state.
+      lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(fromHM || "") + "||" + safeText(toHM || "");
+      lastZeroHandledCoreSig = lastStateCoreSig;
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function onCountdownZero() {
     if (isBlocked) return;
     const now = Date.now();
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
+
+    // UX guarantee: if we already know what's next (next_period), show it immediately.
+    // This avoids waiting for schedule_revision changes or cache TTLs.
+    try {
+      optimisticAdvanceToNextBlock();
+    } catch (e) {}
 
     // Time-based transitions (period/break) don't bump schedule_revision, so /status may stay 304.
     // Enter a short window where we fetch snapshots directly until the UI advances.
