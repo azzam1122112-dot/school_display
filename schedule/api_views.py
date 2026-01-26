@@ -793,7 +793,7 @@ def _is_missing_index(d: dict) -> bool:
 
 def _snapshot_cache_key(settings_obj: SchoolSettings) -> str:
     school_id = int(getattr(settings_obj, "school_id", None) or 0)
-    return f"snapshot:v1:school:{school_id}"
+    return f"snapshot:v4:school:{school_id}"
 
 
 def _snapshot_cache_ttl_seconds() -> int:
@@ -819,12 +819,12 @@ def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
         refresh = int(s.get("refresh_interval_sec") or 3600)
     except Exception:
         refresh = 3600
-    # Very long, but bounded (default 20 minutes to prevent carrying over 'Off' state to next day).
+    # Safe cap at 10 minutes (600s) to allow schedule changes to reflect faster
     try:
-        max_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_STEADY_MAX_TTL", 1200) or 1200)
+        max_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_STEADY_MAX_TTL", 600) or 600)
     except Exception:
-        max_ttl = 1200
-    # Allow env to override up to 24h, but default logic caps at 1200s (20m)
+        max_ttl = 600
+    # Allow env to override up to 24h, but default logic caps at 600s (10m)
     max_ttl = max(300, min(86400, max_ttl))
     return max(300, min(max_ttl, refresh))
 
@@ -845,7 +845,7 @@ def _steady_snapshot_cache_key(settings_obj: SchoolSettings, day_snap: dict) -> 
         date_str = None
     if not date_str:
         date_str = str(timezone.localdate())
-    return f"snapshot:v2:school:{school_id}:steady:{date_str}"
+    return f"snapshot:v4:school:{school_id}:steady:{date_str}"
 
 
 def get_cache_key(token_hash: str, school_id: int | None = None) -> str:
@@ -1244,7 +1244,7 @@ def snapshot(request, token: str | None = None):
         # 1) If we have school_id, try to fetch Snapshot directly from cache
         if cached_school_id and not force_nocache:
             # Bump cache version v1 -> v2 to invalidate old stuck "Off" states
-            snap_key = f"snapshot:v2:school:{cached_school_id}"
+            snap_key = f"snapshot:v4:school:{cached_school_id}"
             cached_snap = cache.get(snap_key)
             if isinstance(cached_snap, dict):
                 _metrics_incr("metrics:snapshot_cache:school_hit")
@@ -1272,7 +1272,7 @@ def snapshot(request, token: str | None = None):
 
             # steady snapshot fallback (long TTL outside window/holidays)
             # Bump cache version v2 -> v3
-            steady_key = f"snapshot:v3:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
+            steady_key = f"snapshot:v4:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
             cached_steady = cache.get(steady_key)
             if isinstance(cached_steady, dict):
                 _metrics_incr("metrics:snapshot_cache:steady_hit")
@@ -1374,7 +1374,7 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
 
         snap_key = _snapshot_cache_key(settings_obj)
-        steady_key = f"snapshot:v2:school:{school_id}:steady:{str(timezone.localdate())}"
+        steady_key = f"snapshot:v4:school:{school_id}:steady:{str(timezone.localdate())}"
 
         if not force_nocache:
             cached_school = cache.get(snap_key)
@@ -1487,8 +1487,8 @@ def snapshot(request, token: str | None = None):
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
                 if not force_nocache:
                     try:
-                        # Version v2
-                        cache.set(f"snapshot:v2:school:{settings_obj.school_id}", snap, timeout=_active_window_cache_ttl_seconds())
+                        # Version v4
+                        cache.set(f"snapshot:v4:school:{settings_obj.school_id}", snap, timeout=_active_window_cache_ttl_seconds())
                     except Exception:
                         pass
             else:
