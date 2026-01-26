@@ -6,6 +6,36 @@ from django.utils import timezone
 from core.tests_utils import make_active_school_with_screen
 
 class DisplayApiAliasesTests(TestCase):
+    def test_snapshot_head_ok_with_query_device_key(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        r = self.client.head(
+            f"/api/display/snapshot/{bundle.screen.token}/?dk=devA",
+        )
+        self.assertIn(r.status_code, {200, 304})
+
+    def test_status_head_ok_revision_mode(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+
+        # Prime token->school map cache via snapshot.
+        r1 = self.client.get(
+            f"/api/display/snapshot/{bundle.screen.token}/",
+            **{"HTTP_X_DISPLAY_DEVICE": "devA"},
+        )
+        self.assertEqual(r1.status_code, 200)
+
+        # Use current revision to trigger 304.
+        if bundle.settings:
+            try:
+                bundle.settings.refresh_from_db()
+            except Exception:
+                pass
+        cur_rev = int(getattr(bundle.settings, "schedule_revision", 0) or 0)
+
+        r2 = self.client.head(
+            f"/api/display/status/{bundle.screen.token}/?v={cur_rev}",
+        )
+        self.assertEqual(r2.status_code, 304)
+
     def test_snapshot_requires_device_key_is_403(self):
         bundle = make_active_school_with_screen(max_screens=3)
         r = self.client.get(f"/api/display/snapshot/{bundle.screen.token}/")

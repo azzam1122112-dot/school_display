@@ -17,7 +17,7 @@ from django.db import models
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponseNotModified
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
 from core.models import School, DisplayScreen
 from schedule.models import SchoolSettings, ClassLesson, Period
@@ -482,7 +482,7 @@ def _extract_token(request, token_from_path: str | None) -> str | None:
     return t
 
 
-@require_GET
+@require_http_methods(["GET", "HEAD"])
 def status(request, token: str | None = None):
     """Lightweight polling endpoint.
 
@@ -1373,7 +1373,7 @@ def _build_final_snapshot(
     return snap
 
 
-@require_GET
+@require_http_methods(["GET", "HEAD"])
 def snapshot(request, token: str | None = None):
     """
     GET /api/display/snapshot/
@@ -1948,6 +1948,16 @@ def snapshot(request, token: str | None = None):
                     token_timeout = _steady_snapshot_cache_ttl_seconds(snap)
                 except Exception:
                     pass
+
+                # Also write a short-lived school-level cache entry keyed only by (school_id, rev).
+                # This increases hit-rate across devices/tokens while keeping staleness risk low.
+                if not force_nocache:
+                    try:
+                        school_ttl = _snapshot_cache_ttl_seconds()
+                        school_ttl = _clamp_active_ttl_by_remaining_seconds(snap, school_ttl)
+                        cache.set(_snapshot_cache_key(settings_obj), snap, timeout=school_ttl)
+                    except Exception:
+                        pass
 
                 if not force_nocache:
                     try:
