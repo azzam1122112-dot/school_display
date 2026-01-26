@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
@@ -156,7 +157,6 @@ def _build_display_context(request, key: str | None) -> dict | None:
         "school_id": settings_obj.school_id if settings_obj.school_id else None,
         # مهم: هذا هو المسار الذي يستدعيه display.js
         "snapshot_url": f"/api/display/snapshot/{effective_token}/",
-        "firebase_enabled": bool(getattr(settings, "USE_FIREBASE", False)),
     }
 
     cache.set(cache_key, ctx, 60)

@@ -11,10 +11,7 @@ from schedule.models import SchoolSettings, DaySchedule, Period, Break
 from notices.models import Announcement, Excellence
 
 # Try to import the signals
-try:
-    import core.signals as signals_module
-except ImportError:
-    signals_module = None
+# (Removed Firebase signals module integration)
 
 import random
 import datetime
@@ -25,18 +22,8 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **kwargs):
         # Disconnect signals to prevent issues during cleanup
-        if signals_module:
-            post_save.disconnect(signals_module.sync_announcement, sender=Announcement)
-            post_delete.disconnect(signals_module.delete_announcement, sender=Announcement)
-            post_save.disconnect(signals_module.sync_excellence, sender=Excellence)
-            post_delete.disconnect(signals_module.delete_excellence, sender=Excellence)
-            post_save.disconnect(signals_module.sync_settings, sender=SchoolSettings)
-            post_save.disconnect(signals_module.on_day_save, sender=DaySchedule)
-            post_save.disconnect(signals_module.on_period_change, sender=Period)
-            post_delete.disconnect(signals_module.on_period_change, sender=Period)
-            post_save.disconnect(signals_module.on_break_change, sender=Break)
-            post_delete.disconnect(signals_module.on_break_change, sender=Break)
-            self.stdout.write("Signals disconnected.")
+        # (Signals were removed)
+        self.stdout.write("Starting demo setup...")
 
         # 1. إعداد المدرسة والمستخدم
         username = "demo_user"

@@ -334,16 +334,18 @@
     activePeriodIndex: null, // رقم الحصة الحالية/التالية
     activeFromHM: null, // وقت بداية النشاط الحالي/التالي
     dayOver: false, // انتهاء الدوام
-    refreshJitterSec: 0, // jitter ثابت لكل شاشة لتفريق الحمل
+    refreshJitterFrac: 0, // jitter نسبي ثابت لكل شاشة لتفريق الحمل
+    statusEverySec: 0, // adaptive polling interval for status-first mode
+    status304Streak: 0, // consecutive status 304 streak
   };
 
-  // Pick a stable jitter per page load: [-3..-1] U [1..3]
+  // Pick a stable jitter per page load: ~±5% (exclude 0)
   (function initRefreshJitter() {
     try {
-      const v = Math.floor(Math.random() * 7) - 3; // -3..3
-      rt.refreshJitterSec = v === 0 ? 2 : v;
+      const v = (Math.random() * 0.1) - 0.05; // -0.05..+0.05
+      rt.refreshJitterFrac = Math.abs(v) < 0.005 ? 0.02 : v;
     } catch (e) {
-      rt.refreshJitterSec = 2;
+      rt.refreshJitterFrac = 0.02;
     }
   })();
 
@@ -365,6 +367,11 @@
     const t = getToken();
     if (t) return "/api/display/snapshot/" + encodeURIComponent(t) + "/";
     return "/api/display/snapshot/";
+  }
+
+  function resolveStatusUrl() {
+    // Lightweight endpoint; keep token in headers (avoid leaking token in URLs).
+    return "/api/display/status/";
   }
 
   function resolveImageURL(raw) {
@@ -1617,6 +1624,9 @@
   }
 
   // ===== Main state render =====
+
+
+
   function renderState(payload) {
     if (!payload) return;
 
@@ -1639,11 +1649,16 @@
 
     if (typeof settings.refresh_interval_sec === "number" && settings.refresh_interval_sec > 0) {
       let nInt = clamp(settings.refresh_interval_sec, 5, 864000);
-      // Phase 2: add a small jitter during active window to reduce stampedes.
-      if (meta && meta.is_active_window) {
-        nInt = clamp(nInt + (Number(rt.refreshJitterSec) || 0), 5, 864000);
+      // Add a small *percentage* jitter always to reduce stampedes (especially at scale).
+      // Keep it bounded and never below 5s.
+      const jf = Number(rt.refreshJitterFrac) || 0;
+      if (isFinite(jf) && jf !== 0) {
+        nInt = clamp(Math.round(nInt * (1 + jf)), 5, 864000);
       }
       if (Math.abs(nInt - cfg.REFRESH_EVERY) > 0.001) cfg.REFRESH_EVERY = nInt;
+
+      // Keep status-first polling in sync by default.
+      if (!rt.statusEverySec || rt.statusEverySec < 1) rt.statusEverySec = cfg.REFRESH_EVERY;
     }
 
     if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) {
@@ -1833,6 +1848,8 @@
   // ===== Fetch with timeout + ETag/304 =====
   let inflight = null;
   let ctrl = null;
+  let inflightStatus = null;
+  let ctrlStatus = null;
   const etagKey = "display_etag_" + (location.pathname || "/");
 
   // Device ID (stable per browser/device)
@@ -1912,16 +1929,16 @@
     // IMPORTANT (Production): never add cache-busting params to snapshot requests.
     // Allow it only in explicit debug mode (?debug=1).
     if (isDebug()) {
-      // If the display page itself has ?nocache=1, propagate it to the snapshot API.
-      // This is useful for validating settings switches immediately.
+      // Cache-busting is *opt-in* even in debug mode: require `?nocache=1` explicitly.
+      // This prevents accidental `?debug=1` deployments from spamming the snapshot API.
+      let pageNoCache = false;
       try {
         const qs = new URLSearchParams(window.location.search);
-        if ((qs.get("nocache") || "").trim() === "1") {
-          u.searchParams.set("nocache", "1");
-        }
+        pageNoCache = (qs.get("nocache") || "").trim() === "1";
+        if (pageNoCache) u.searchParams.set("nocache", "1");
       } catch (e) {}
 
-      if (opts.bypassServerCache) {
+      if (opts.bypassServerCache && pageNoCache) {
         u.searchParams.set("nocache", "1");
         u.searchParams.set("_t", String(Date.now()));
         u.searchParams.set("_cb", String(Date.now()));
@@ -1961,6 +1978,11 @@
       signal: ctrl ? ctrl.signal : undefined,
     }).then(async (r) => {
       if (r.status === 304) return { _notModified: true };
+
+      if (r.status === 429) {
+        // Rate-limited: don't hammer the server with fast retries.
+        return { _rateLimited: true };
+      }
 
       if (!r.ok) {
         // Diagnostics: log status + response body (if possible)
@@ -2066,6 +2088,85 @@
     return await inflight;
   }
 
+  async function safeFetchStatus(opts) {
+    opts = opts || {};
+    if (inflightStatus && !opts.force) return inflightStatus;
+
+    const token = getToken();
+    const baseUrl = resolveStatusUrl();
+
+    const u = new URL(baseUrl, window.location.origin);
+    // Keep device id consistent across endpoints (useful for server-side binding/diagnostics).
+    const deviceId = getOrCreateDeviceId();
+    u.searchParams.set("dk", deviceId);
+
+    if (ctrlStatus) {
+      try {
+        ctrlStatus.abort();
+      } catch (e) {}
+    }
+    ctrlStatus = window.AbortController ? new AbortController() : null;
+
+    const headers = {
+      Accept: "application/json",
+      "X-Display-Token": token || "",
+      "X-Display-Device": deviceId,
+    };
+
+    try {
+      const prev = localStorage.getItem(etagKey) || "";
+      if (prev) headers["If-None-Match"] = prev;
+    } catch (e) {}
+
+    const fetchPromise = fetch(u.toString(), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      credentials: "omit",
+      signal: ctrlStatus ? ctrlStatus.signal : undefined,
+    }).then(async (r) => {
+      if (r.status === 304) {
+        const et = r.headers && r.headers.get ? (r.headers.get("ETag") || "") : "";
+        if (et) {
+          try {
+            localStorage.setItem(etagKey, et);
+          } catch (e) {}
+        }
+        return { _notModified: true };
+      }
+
+      if (!r.ok) {
+        // Don't block the display on status errors; just fall back to snapshot.
+        return { fetch_required: true };
+      }
+
+      const body = await r.json().catch(() => null);
+      if (body && typeof body === "object" && body.etag) {
+        try {
+          localStorage.setItem(etagKey, '"' + String(body.etag) + '"');
+        } catch (e) {}
+      }
+      return body || { fetch_required: true };
+    });
+
+    inflightStatus = withTimeout(fetchPromise, 6000, () => {
+      if (ctrlStatus) {
+        try {
+          ctrlStatus.abort();
+        } catch (e) {}
+      }
+    })
+      .catch(() => {
+        // Silent fallback.
+        return { fetch_required: true };
+      })
+      .finally(() => {
+        inflightStatus = null;
+      });
+
+    return await inflightStatus;
+  }
+
   // ===== Refresh loop =====
   let pollTimer = null;
   let failStreak = 0;
@@ -2089,10 +2190,76 @@
     let snap = null;
 
     try {
+      // Status-first polling: ask the cheap endpoint first, and only fetch snapshot when needed.
+      // Initial load still fetches snapshot directly.
+      if (!lastPayloadForFiltering) {
         snap = await safeFetchSnapshot();
+      } else {
+        const st = await safeFetchStatus();
+        if (st && st._notModified) {
+          rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
+
+          // Adaptive status interval:
+          // - During active window: keep it fast (<=10s) so settings updates propagate quickly.
+          // - Outside active window: allow it to slow down (cheap polling) to reduce load.
+          const base = Number(cfg.REFRESH_EVERY) || 10;
+          const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
+          const cap = isActiveWin ? 10 : 60;
+
+          if (rt.status304Streak >= 6) {
+            rt.statusEverySec = Math.min(cap, Math.max(base, (Number(rt.statusEverySec) || base) + 5));
+          } else {
+            rt.statusEverySec = Math.min(cap, base);
+          }
+
+          isFetching = false;
+          failStreak = 0;
+          scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
+          if (isDebug()) {
+            ensureDebugOverlay();
+            setDebugText(
+              "status 304 not-modified | every=" + String(rt.statusEverySec || cfg.REFRESH_EVERY) + "s | " + new Date().toLocaleTimeString()
+            );
+          }
+          return;
+        }
+
+        // Default behavior: fetch snapshot unless server says it's not required.
+        const need = !st || st.fetch_required !== false;
+        if (need) {
+          rt.status304Streak = 0;
+          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+          snap = await safeFetchSnapshot();
+        } else {
+          rt.status304Streak = 0;
+          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+          isFetching = false;
+          failStreak = 0;
+          scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
+          if (isDebug()) {
+            ensureDebugOverlay();
+            setDebugText("status says no-fetch | " + new Date().toLocaleTimeString());
+          }
+          return;
+        }
+      }
     } catch (e) {
         // Should be caught inside safeFetchSnapshot but just in case
         snap = null;
+    }
+
+    if (snap && snap._rateLimited) {
+      // Stronger backoff on 429 to avoid bursts.
+      isFetching = false;
+      failStreak = 0;
+      const base = Number(cfg.REFRESH_EVERY) || 10;
+      const wait = Math.min(120, Math.max(15, base * 2));
+      scheduleNext(wait);
+      if (isDebug()) {
+        ensureDebugOverlay();
+        setDebugText("snapshot 429 rate-limited | backoff=" + String(wait) + "s | " + new Date().toLocaleTimeString());
+      }
+      return;
     }
 
     if (!snap) {

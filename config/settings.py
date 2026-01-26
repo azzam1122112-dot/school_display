@@ -503,3 +503,5 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 
 
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://school-display.com")
+
+

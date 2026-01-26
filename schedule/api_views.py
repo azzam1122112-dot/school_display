@@ -351,6 +351,41 @@ def _extract_token(request, token_from_path: str | None) -> str | None:
     return t
 
 
+@require_GET
+def status(request, token: str | None = None):
+    """Lightweight polling endpoint.
+
+    GET /api/display/status/?token=...   (or X-Display-Token header)
+
+    Behavior:
+    - If we have a cached snapshot entry for this token, return 304 when If-None-Match matches.
+    - Otherwise return a small JSON telling the client to fetch snapshot.
+
+    This endpoint never builds snapshots and should stay cheap.
+    """
+    token_value = _extract_token(request, token)
+    if not token_value:
+        return JsonResponse({"detail": "invalid_token"}, status=403)
+
+    token_hash = _sha256(token_value)
+    cache_key = get_cache_key(token_hash)
+
+    cached_entry = cache.get(cache_key)
+    if isinstance(cached_entry, dict) and isinstance(cached_entry.get("etag"), str):
+        inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+        etag = cached_entry.get("etag")
+        if inm and etag and inm == etag:
+            resp = HttpResponseNotModified()
+            resp["ETag"] = f"\"{etag}\""
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            return resp
+
+        return JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+
+    return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+
+
 def _is_hex_sha256(token_value: str) -> bool:
     if not token_value or len(token_value) != 64:
         return False
@@ -1023,7 +1058,10 @@ def snapshot(request, token: str | None = None):
     GET /api/display/snapshot/<token>/
     """
     try:
-        force_nocache = (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
+        # IMPORTANT (Production): do not allow query params to defeat caching.
+        # Some screens may accidentally run with `?debug=1` / `?nocache=1` and spam the server.
+        # We only honor nocache while developing locally (DEBUG=True).
+        force_nocache = bool(dj_settings.DEBUG) and (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
 
         path = getattr(request, "path", "") or ""
         is_snapshot_path = path.startswith("/api/display/snapshot/")
@@ -1438,7 +1476,22 @@ def snapshot(request, token: str | None = None):
                 is_school_day = bool(meta.get("is_school_day"))
                 st = (day_snap.get("state") or {}) if isinstance(day_snap, dict) else {}
                 st_type = str(st.get("type") or "").strip().lower()
-                refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
+
+                # Outside active window we want to dramatically reduce polling.
+                # We still keep a periodic check so screens can resume automatically.
+                base_refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
+                if not is_school_day:
+                    # Holidays / no schedule: hourly check is enough.
+                    refresh = max(base_refresh, 3600)
+                elif st_type == "before":
+                    # Before school: check occasionally; countdown/UI runs client-side.
+                    refresh = max(base_refresh, 60)
+                else:
+                    # After school / off-hours: slow down to reduce load.
+                    refresh = max(base_refresh, 600)
+
+                # Safety clamp (5s .. 24h)
+                refresh = max(5, min(86400, int(refresh)))
 
                 if not is_school_day:
                     snap["state"]["type"] = "NO_SCHEDULE_TODAY"
@@ -1455,9 +1508,15 @@ def snapshot(request, token: str | None = None):
                 except Exception:
                     pass
 
+                # Align token cache TTL to the chosen off-hours refresh interval.
+                try:
+                    token_timeout = _steady_snapshot_cache_ttl_seconds(snap)
+                except Exception:
+                    pass
+
                 if not force_nocache:
                     try:
-                        cache.set(_steady_snapshot_cache_key(settings_obj, day_snap), snap, timeout=_steady_snapshot_cache_ttl_seconds(day_snap))
+                        cache.set(_steady_snapshot_cache_key(settings_obj, day_snap), snap, timeout=_steady_snapshot_cache_ttl_seconds(snap))
                     except Exception:
                         pass
 
