@@ -1155,12 +1155,19 @@ def snapshot(request, token: str | None = None):
             db_bound = (getattr(screen, "bound_device_id", "") or "").strip() if screen else ""
             if db_bound:
                 if db_bound != device_key:
-                    # ✅ FIXED: Allow multiple devices/tabs to view the same screen during debug/setup.
-                    # Was returning 403, causing "Forbidden" when users opened a new tab.
-                    # We will just log it and allow it, or auto-rebind if needed.
-                    if dj_settings.DEBUG or True:  # Always allow for now to fix the user issue
-                        pass
-                    else:
+                    # Allow multiple devices/tabs to view the same token when explicitly enabled.
+                    # This prevents confusing 403s when an admin opens the display in another tab.
+                    allow_multi = False
+                    try:
+                        allow_multi = bool(
+                            getattr(dj_settings, "DISPLAY_ALLOW_MULTI_DEVICE", False)
+                            or (os.getenv("DISPLAY_ALLOW_MULTI_DEVICE", "") or "").strip().lower() in {"1", "true", "yes"}
+                            or bool(dj_settings.DEBUG)
+                        )
+                    except Exception:
+                        allow_multi = bool(dj_settings.DEBUG)
+
+                    if not allow_multi:
                         resp = JsonResponse(
                             {
                                 "detail": "screen_bound",
