@@ -21,7 +21,7 @@
         <form method="post" action="{% url 'dashboard:screens_refresh_now' %}">
           {% csrf_token %}
           <button type="submit"
-                  class="inline-flex items-center justify-center px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm hover:shadow-md flex items-center gap-2"
+                                    class="inline-flex items-center justify-center px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm hover:shadow-md gap-2"
                   title="يجبر جميع الشاشات على جلب بيانات جديدة فوراً">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7M19 5a9 9 0 01-14 7"/></svg>
               <span>تحديث الشاشات الآن</span>
