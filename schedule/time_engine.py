@@ -71,13 +71,18 @@ def build_day_snapshot(settings, now=None):
         "periods_scroll_speed": float(getattr(settings, "periods_scroll_speed", 0.5) or 0.5),
     }
 
-    # الحصول على جدول اليوم
+    # الحصول على جدول اليوم (All Active Schedules for this weekday)
     day_qs = getattr(settings, "day_schedules", None)
-    day = None
+    days = []
     if day_qs is not None and hasattr(day_qs, "filter"):
-        day = day_qs.filter(weekday=weekday, is_active=True).first()
+        # We fetch ALL active schedules for this day, in case of multiple (e.g. shifts not merged in one DaySchedule)
+        # Note: Model constraint uq_ds_set_wd usually prevents duplicate (settings, weekday).
+        # But if the user removed the constraint or we have multiple settings...
+        # Let's assume there is only one DaySchedule per SchoolSettings per Weekday.
+        # But we must be careful if the user *switched* it recently.
+        days = list(day_qs.filter(weekday=weekday, is_active=True))
 
-    if not day:
+    if not days:
         # Optimization: Strict stop on holidays (reduced to 15m to allow updates/wake-up)
         settings_payload["refresh_interval_sec"] = 900
         return {
@@ -99,48 +104,53 @@ def build_day_snapshot(settings, now=None):
             "excellence": {"items": []},
         }
 
-    # periods/breaks managers (توافق مع related_name)
-    periods_m = _get_manager(day, "periods", "period_set")
-    breaks_m = _get_manager(day, "breaks", "break_set")
-
+    # periods/breaks managers
     timeline = []
 
-    if periods_m:
-        for p in periods_m.select_related("subject", "teacher", "school_class").all():
-            # تجاهل أي صف بدون وقت صحيح
-            if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
-                continue
+    for day in days:
+        periods_m = _get_manager(day, "periods", "period_set")
+        breaks_m = _get_manager(day, "breaks", "break_set")
 
-            start = _to_aware_dt(today, p.starts_at, tz)
-            end = _to_aware_dt(today, p.ends_at, tz)
-            if end <= start:
-                continue
+        if periods_m:
+            for p in periods_m.select_related("subject", "teacher", "school_class").all():
+                # تجاهل أي صف بدون وقت صحيح
+                if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
+                    continue
 
-            timeline.append({
-                "kind": "period",
-                "index": getattr(p, "index", None),
-                "label": (p.subject.name if getattr(p, "subject", None) else "حصة"),
-                "class": (p.school_class.name if getattr(p, "school_class", None) else None),
-                "teacher": (p.teacher.name if getattr(p, "teacher", None) else None),
-                "start": start,
-                "end": end,
-            })
+                start = _to_aware_dt(today, p.starts_at, tz)
+                end = _to_aware_dt(today, p.ends_at, tz)
+                
+                # Handle logical crossing of day (rare, but good for robust engine)
+                if end < start: 
+                   # Likely next day, e.g. 23:00 to 00:30. Ignore for dashboard simplicity or handle?
+                   # For schools, we assume it's same day. If end < start, maybe data error.
+                   continue 
 
-    if breaks_m:
-        for b in breaks_m.all():
-            if not getattr(b, "starts_at", None):
-                continue
-            start = _to_aware_dt(today, b.starts_at, tz)
-            dur = int(getattr(b, "duration_min", 0) or 0)
-            if dur <= 0:
-                continue
-            end = start + timedelta(minutes=dur)
-            timeline.append({
-                "kind": "break",
-                "label": getattr(b, "label", None) or "استراحة",
-                "start": start,
-                "end": end,
-            })
+                timeline.append({
+                    "kind": "period",
+                    "index": getattr(p, "index", None),
+                    "label": (p.subject.name if getattr(p, "subject", None) else "حصة"),
+                    "class": (p.school_class.name if getattr(p, "school_class", None) else None),
+                    "teacher": (p.teacher.name if getattr(p, "teacher", None) else None),
+                    "start": start,
+                    "end": end,
+                })
+
+        if breaks_m:
+            for b in breaks_m.all():
+                if not getattr(b, "starts_at", None):
+                    continue
+                start = _to_aware_dt(today, b.starts_at, tz)
+                dur = int(getattr(b, "duration_min", 0) or 0)
+                if dur <= 0:
+                    continue
+                end = start + timedelta(minutes=dur)
+                timeline.append({
+                    "kind": "break",
+                    "label": getattr(b, "label", None) or "استراحة",
+                    "start": start,
+                    "end": end,
+                })
 
     if not timeline:
         # Optimization: Strict stop if empty timeline (reduced to 15m)
