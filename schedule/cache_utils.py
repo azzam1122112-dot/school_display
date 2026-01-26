@@ -11,6 +11,37 @@ from core.models import DisplayScreen
 from schedule.models import SchoolSettings
 
 
+def _school_rev_cache_key(school_id: int) -> str:
+    return f"display:school_rev:{int(school_id)}"
+
+
+def _school_rev_cache_ttl_seconds() -> int:
+    # Long TTL; correctness is preserved because signals + refresh button update this value.
+    # Even if cache is lost, DB fallback restores it.
+    return 60 * 60 * 24 * 7  # 7 days
+
+
+def get_cached_schedule_revision_for_school_id(school_id: int) -> int | None:
+    if not school_id:
+        return None
+    try:
+        v = cache.get(_school_rev_cache_key(int(school_id)))
+        if v is None:
+            return None
+        return int(v)
+    except Exception:
+        return None
+
+
+def set_cached_schedule_revision_for_school_id(school_id: int, rev: int) -> None:
+    if not school_id:
+        return
+    try:
+        cache.set(_school_rev_cache_key(int(school_id)), int(rev), timeout=_school_rev_cache_ttl_seconds())
+    except Exception:
+        pass
+
+
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
@@ -30,22 +61,30 @@ def bump_schedule_revision_for_school_id(school_id: int) -> int | None:
         return None
 
     try:
-        return int(
+        new_rev = int(
             SchoolSettings.objects.filter(school_id=int(school_id)).values_list("schedule_revision", flat=True).first()
             or 0
         )
     except Exception:
         return None
 
+    set_cached_schedule_revision_for_school_id(int(school_id), int(new_rev))
+    return new_rev
+
 
 def get_schedule_revision_for_school_id(school_id: int) -> int | None:
     if not school_id:
         return None
+    cached = get_cached_schedule_revision_for_school_id(int(school_id))
+    if cached is not None:
+        return int(cached)
     try:
-        return int(
+        rev = int(
             SchoolSettings.objects.filter(school_id=int(school_id)).values_list("schedule_revision", flat=True).first()
             or 0
         )
+        set_cached_schedule_revision_for_school_id(int(school_id), int(rev))
+        return int(rev)
     except Exception:
         return None
 

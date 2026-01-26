@@ -22,4 +22,7 @@ urlpatterns = [
 
     # Health (keep original if simple)
     path("ping/", api_views.ping, name="ping"),
+
+    # Debug / load-test metrics
+    path("metrics/", api_views.metrics, name="metrics"),
 ]

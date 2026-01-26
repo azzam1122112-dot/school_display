@@ -206,6 +206,7 @@ class DisplayTokenMiddleware:
     # مسارات لا تتطلب توكن (اختياري)
     NO_TOKEN_PATHS = {
         "/api/display/ping/",
+        "/api/display/metrics/",
     }
 
     def __init__(self, get_response):

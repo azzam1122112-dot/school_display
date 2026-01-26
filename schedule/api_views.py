@@ -12,6 +12,7 @@ from typing import Iterable, Optional
 
 from django.conf import settings as dj_settings
 from django.core.cache import cache
+from django.core.cache import caches
 from django.db import models
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponseNotModified
@@ -21,6 +22,7 @@ from django.views.decorators.http import require_GET
 from core.models import School, DisplayScreen
 from schedule.models import SchoolSettings, ClassLesson, Period
 from schedule.time_engine import build_day_snapshot
+from schedule.cache_utils import get_cached_schedule_revision_for_school_id, set_cached_schedule_revision_for_school_id
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,39 @@ def _should_log_status(token_hash: str) -> bool:
     except Exception:
         return True
 
+
+def _should_log_status_304_sample(token_hash: str) -> bool:
+    # ~1% sampling based on token hash prefix.
+    try:
+        return int(token_hash[:2], 16) < 3  # 3/256 ≈ 1.17%
+    except Exception:
+        return False
+
+
+def _get_school_revision_cached(school_id: int) -> tuple[int | None, str]:
+    """Return (revision, source) where source is cache|db|none."""
+    if not school_id:
+        return None, "none"
+
+    _metrics_incr("metrics:status:cache_get")
+    cached = get_cached_schedule_revision_for_school_id(int(school_id))
+    if cached is not None:
+        _metrics_incr("metrics:status:rev_cache_hit")
+        return int(cached), "cache"
+
+    try:
+        _metrics_incr("metrics:status:rev_db")
+        rev = int(
+            SchoolSettings.objects.filter(school_id=int(school_id)).values_list("schedule_revision", flat=True).first()
+            or 0
+        )
+        _metrics_incr("metrics:status:cache_set")
+        set_cached_schedule_revision_for_school_id(int(school_id), int(rev))
+        return int(rev), "db"
+    except Exception:
+        _metrics_incr("metrics:status:rev_none")
+        return None, "none"
+
 def _metrics_incr(key: str) -> None:
     try:
         cache.incr(key)
@@ -61,6 +96,56 @@ def _metrics_incr(key: str) -> None:
             cache.add(key, 1, timeout=60 * 60 * 24)
         except Exception:
             pass
+
+
+@require_GET
+def metrics(request):
+    """Expose internal counters for load testing / debugging.
+
+    Disabled by default in production.
+    - Enabled when DEBUG=True OR DISPLAY_METRICS_ENABLED=1
+    - Optional auth via DISPLAY_METRICS_KEY + X-Display-Metrics-Key header
+    """
+    enabled = bool(getattr(dj_settings, "DEBUG", False)) or (os.getenv("DISPLAY_METRICS_ENABLED", "").strip() == "1")
+    if not enabled:
+        return JsonResponse({"detail": "not_found"}, status=404)
+
+    required_key = os.getenv("DISPLAY_METRICS_KEY", "").strip()
+    if required_key:
+        provided = (request.headers.get("X-Display-Metrics-Key") or "").strip()
+        if provided != required_key:
+            return JsonResponse({"detail": "forbidden"}, status=403)
+
+    keys = [
+        "metrics:status:requests",
+        "metrics:status:resp_200",
+        "metrics:status:resp_304",
+        "metrics:status:cache_get",
+        "metrics:status:cache_set",
+        "metrics:status:rev_cache_hit",
+        "metrics:status:rev_db",
+        "metrics:status:rev_none",
+    ]
+
+    try:
+        backend = caches["default"]
+        backend_name = f"{backend.__class__.__module__}.{backend.__class__.__name__}"
+    except Exception:
+        backend_name = f"{cache.__class__.__module__}.{cache.__class__.__name__}"
+
+    out: dict[str, object] = {
+        "server_time": int(time.time()),
+        "cache_backend": backend_name,
+        "redis_url_configured": bool(os.getenv("REDIS_URL", "").strip()),
+        "cache_key_prefix": os.getenv("CACHE_KEY_PREFIX", "school_display"),
+    }
+    for k in keys:
+        try:
+            v = cache.get(k)
+            out[k] = int(v) if v is not None else 0
+        except Exception:
+            out[k] = 0
+    return JsonResponse(out, json_dumps_params={"ensure_ascii": False})
 
 
 def _metrics_add(key: str, delta: int) -> None:
@@ -409,6 +494,8 @@ def status(request, token: str | None = None):
             pass
         return JsonResponse({"detail": "invalid_token"}, status=403)
 
+    _metrics_incr("metrics:status:requests")
+
     token_hash = _sha256(token_value)
 
     # --- Numeric revision mode (source of truth) ---
@@ -423,6 +510,7 @@ def status(request, token: str | None = None):
     # Resolve school_id cheaply (prefer cache map)
     school_id = None
     try:
+        _metrics_incr("metrics:status:cache_get")
         cached_map = cache.get(f"display:token_map:{token_hash}")
         if isinstance(cached_map, dict):
             school_id = cached_map.get("school_id")
@@ -435,27 +523,23 @@ def status(request, token: str | None = None):
         school_id = None
 
     if client_v is not None:
-        current_rev = None
-        try:
-            if school_id:
-                current_rev = _get_schedule_revision_for_school_id(int(school_id))
-        except Exception:
-            current_rev = None
+        current_rev, rev_source = _get_school_revision_cached(int(school_id or 0))
 
         # If we couldn't resolve school_id, we can't compare; force fetch.
         if current_rev is None:
             resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
-            if _should_log_status(token_hash):
-                logger.info(
-                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-                    token_hash[:12],
-                    school_id,
-                    client_v,
-                    current_rev,
-                    200,
-                )
+            # Always log errors
+            logger.warning(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+                token_hash[:12],
+                school_id,
+                client_v,
+                current_rev,
+                rev_source,
+                200,
+            )
             return resp
 
         if int(client_v) == int(current_rev):
@@ -463,13 +547,16 @@ def status(request, token: str | None = None):
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
             resp["X-Schedule-Revision"] = str(int(current_rev))
-            if _should_log_status(token_hash):
+            _metrics_incr("metrics:status:resp_304")
+            # Do NOT log 304s except sampling.
+            if _should_log_status_304_sample(token_hash) and _should_log_status(token_hash):
                 logger.info(
-                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
                     token_hash[:12],
                     int(school_id or 0),
                     int(client_v),
                     int(current_rev),
+                    rev_source,
                     304,
                 )
             return resp
@@ -481,15 +568,17 @@ def status(request, token: str | None = None):
         resp["Cache-Control"] = "no-store"
         resp["Vary"] = "Accept-Encoding"
         resp["X-Schedule-Revision"] = str(int(current_rev))
-        if _should_log_status(token_hash):
-            logger.info(
-                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-                token_hash[:12],
-                int(school_id or 0),
-                int(client_v),
-                int(current_rev),
-                200,
-            )
+        _metrics_incr("metrics:status:resp_200")
+        # Always log 200 updates (these are important events)
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+            token_hash[:12],
+            int(school_id or 0),
+            int(client_v),
+            int(current_rev),
+            rev_source,
+            200,
+        )
         return resp
     cache_key = get_cache_key(token_hash)
 
@@ -522,39 +611,43 @@ def status(request, token: str | None = None):
             resp["ETag"] = f"\"{etag}\""
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
-            if _should_log_status(token_hash):
+            _metrics_incr("metrics:status:resp_304")
+            if _should_log_status_304_sample(token_hash) and _should_log_status(token_hash):
                 logger.info(
-                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
                     token_hash[:12],
                     current_school_id,
                     None,
                     current_rev,
+                    "legacy",
                     304,
                 )
             return resp
 
         resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
-        if _should_log_status(token_hash):
-            logger.info(
-                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-                token_hash[:12],
-                current_school_id,
-                None,
-                current_rev,
-                200,
-            )
+        _metrics_incr("metrics:status:resp_200")
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+            token_hash[:12],
+            current_school_id,
+            None,
+            current_rev,
+            "legacy",
+            200,
+        )
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
-    if _should_log_status(token_hash):
-        logger.info(
-            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-            token_hash[:12],
-            school_id,
-            None,
-            None,
-            200,
-        )
+    _metrics_incr("metrics:status:resp_200")
+    logger.info(
+        "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+        token_hash[:12],
+        school_id,
+        None,
+        None,
+        "none",
+        200,
+    )
     return resp
 
 
