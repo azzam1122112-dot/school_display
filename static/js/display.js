@@ -338,6 +338,8 @@
     statusEverySec: 0, // adaptive polling interval for status-first mode
     status304Streak: 0, // consecutive status 304 streak
     scheduleRevision: 0, // last known schedule_revision (numeric truth for /status?v=...)
+    transitionUntilTs: 0, // while > Date.now(): force snapshot fetch to cross 00:00 boundaries
+    transitionBackoffSec: 1.2, // bounded backoff during transition window
   };
 
   function revStorageKey() {
@@ -762,6 +764,13 @@
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
 
+    // Time-based transitions (period/break) don't bump schedule_revision, so /status may stay 304.
+    // Enter a short window where we fetch snapshots directly until the UI advances.
+    try {
+      rt.transitionUntilTs = Date.now() + 15000; // 15s max
+      rt.transitionBackoffSec = 1.2;
+    } catch (e) {}
+
     // Optional (heavier) behavior: full page reload if explicitly requested.
     // Example: /display/<token>/?reload_on_zero=1
     try {
@@ -821,6 +830,15 @@
         return;
       }
 
+      // If we got rate-limited exactly at the boundary, retry via the normal loop with backoff.
+      if (snap && snap._rateLimited) {
+        try {
+          const base = Number(rt.transitionBackoffSec) || 1.2;
+          rt.transitionBackoffSec = Math.min(10, Math.max(1.2, base * 1.7));
+        } catch (e) {}
+        return;
+      }
+
       try {
         // Same render path as refreshLoop
         failStreak = 0;
@@ -834,6 +852,16 @@
         ensureDebugOverlay();
         if (isDebug()) setDebugText("force render error: " + (e && e.message ? e.message : String(e)));
       }
+
+      // If we successfully crossed into a new block with a fresh countdown, exit transition window.
+      try {
+        const sOk = (snap && snap.state) || {};
+        const remOk = typeof sOk.remaining_seconds === "number" ? Math.max(0, Math.floor(sOk.remaining_seconds)) : null;
+        if (remOk !== null && remOk > 0) {
+          rt.transitionUntilTs = 0;
+          rt.transitionBackoffSec = 1.2;
+        }
+      } catch (e) {}
 
       // If we forced a refresh at countdown==0 but the state still didn't advance,
       // do one bounded retry, then a bounded hard reload as a last resort.
@@ -890,7 +918,12 @@
     } finally {
       forceRefreshInProgress = false;
       try {
-        scheduleNext(cfg.REFRESH_EVERY);
+        const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+        if (inTrans) {
+          scheduleNext(Number(rt.transitionBackoffSec) || 1.2);
+        } else {
+          scheduleNext(cfg.REFRESH_EVERY);
+        }
       } catch (e) {}
     }
   }
@@ -2294,8 +2327,13 @@
         // the UI can remain stuck on the loading state.
         snap = await safeFetchSnapshot({ bypassEtag: true });
       } else {
-        const st = await safeFetchStatus();
-        if (st && st._notModified) {
+        const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+        if (inTrans) {
+          // Cross boundary reliably: revision may not change, so don't rely on /status.
+          snap = await safeFetchSnapshot({ bypassEtag: true });
+        } else {
+          const st = await safeFetchStatus();
+          if (st && st._notModified) {
           rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
 
           // Adaptive status interval:
@@ -2321,25 +2359,26 @@
             );
           }
           return;
-        }
-
-        // Default behavior: fetch snapshot unless server says it's not required.
-        const need = !st || st.fetch_required !== false;
-        if (need) {
-          rt.status304Streak = 0;
-          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
-          snap = await safeFetchSnapshot();
-        } else {
-          rt.status304Streak = 0;
-          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
-          isFetching = false;
-          failStreak = 0;
-          scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
-          if (isDebug()) {
-            ensureDebugOverlay();
-            setDebugText("status says no-fetch | " + new Date().toLocaleTimeString());
           }
-          return;
+
+          // Default behavior: fetch snapshot unless server says it's not required.
+          const need = !st || st.fetch_required !== false;
+          if (need) {
+            rt.status304Streak = 0;
+            rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+            snap = await safeFetchSnapshot();
+          } else {
+            rt.status304Streak = 0;
+            rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+            isFetching = false;
+            failStreak = 0;
+            scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
+            if (isDebug()) {
+              ensureDebugOverlay();
+              setDebugText("status says no-fetch | " + new Date().toLocaleTimeString());
+            }
+            return;
+          }
         }
       }
     } catch (e) {
@@ -2351,8 +2390,16 @@
       // Stronger backoff on 429 to avoid bursts.
       isFetching = false;
       failStreak = 0;
-      const base = Number(cfg.REFRESH_EVERY) || 10;
-      const wait = Math.min(120, Math.max(15, base * 2));
+      const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+      let wait;
+      if (inTrans) {
+        const base = Number(rt.transitionBackoffSec) || 1.2;
+        wait = Math.min(10, Math.max(1.2, base * 1.7));
+        rt.transitionBackoffSec = wait;
+      } else {
+        const base = Number(cfg.REFRESH_EVERY) || 10;
+        wait = Math.min(120, Math.max(15, base * 2));
+      }
       scheduleNext(wait);
       if (isDebug()) {
         ensureDebugOverlay();
@@ -2414,6 +2461,16 @@
       renderStandby(snap.standby || []);
       renderPeriodClasses(snap.period_classes || []);
 
+      // If we crossed into a new block with a fresh countdown, exit transition window.
+      try {
+        const sOk = (snap && snap.state) || {};
+        const remOk = typeof sOk.remaining_seconds === "number" ? Math.max(0, Math.floor(sOk.remaining_seconds)) : null;
+        if (remOk !== null && remOk > 0) {
+          rt.transitionUntilTs = 0;
+          rt.transitionBackoffSec = 1.2;
+        }
+      } catch (e) {}
+
       // After DOM updates (cards/items counts change), re-fit to avoid clipping/scroll.
       scheduleFit(0);
 
@@ -2450,7 +2507,10 @@
         isFetching = false;
     }
 
-    scheduleNext(cfg.REFRESH_EVERY);
+    {
+      const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : cfg.REFRESH_EVERY);
+    }
   }
 
   // ===== Fullscreen compat =====
