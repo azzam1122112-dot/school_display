@@ -482,10 +482,41 @@
     return n;
   }
 
+  function arabicOrdinalFeminine(n) {
+    const idx = parseInt(String(n), 10);
+    if (!idx || isNaN(idx) || idx <= 0) return null;
+
+    const ord = [
+      "الأولى",
+      "الثانية",
+      "الثالثة",
+      "الرابعة",
+      "الخامسة",
+      "السادسة",
+      "السابعة",
+      "الثامنة",
+      "التاسعة",
+      "العاشرة",
+      "الحادية عشرة",
+      "الثانية عشرة",
+      "الثالثة عشرة",
+      "الرابعة عشرة",
+      "الخامسة عشرة",
+    ];
+
+    if (idx <= ord.length) return ord[idx - 1];
+    return null;
+  }
+
   function formatPeriodTitle(p) {
     const idx = getPeriodIndex(p);
-    if (!idx) return "حصة";
-    return "حصة (" + toArabicDigits(idx) + ")";
+    if (!idx) return "الحصة";
+
+    const ord = arabicOrdinalFeminine(idx);
+    if (ord) return "الحصة " + ord;
+
+    // fallback for uncommon indices
+    return "الحصة رقم " + toArabicDigits(idx);
   }
 
   function getCurrentPeriodIdxFromPayload(payload) {
