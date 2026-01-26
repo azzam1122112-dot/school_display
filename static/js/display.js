@@ -781,8 +781,19 @@
     } catch (e) {}
 
     // Default: force-refresh data ASAP (bypasses ETag + server-side snapshot cache).
+    // Add a tiny randomized jitter so many screens don't thump the server at the exact same second.
+    // (Keeps it < 1s so UX still feels instant.)
     try {
-      forceRefreshNow("countdown_zero");
+      const jitterMs = 150 + Math.floor(Math.random() * 500); // 150..649ms
+      setTimeout(() => {
+        try {
+          forceRefreshNow("countdown_zero");
+        } catch (e) {
+          try {
+            scheduleNext(0.2);
+          } catch (e2) {}
+        }
+      }, jitterMs);
     } catch (e) {
       try {
         scheduleNext(0.2);

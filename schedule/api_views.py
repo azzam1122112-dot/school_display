@@ -1144,18 +1144,19 @@ def compute_dynamic_ttl_seconds(day_snap: dict) -> int:
 
 
 def _clamp_active_ttl_by_remaining_seconds(snap: dict, ttl: int) -> int:
-    """Avoid caching an active-window snapshot past its natural boundary.
+    """Avoid caching a countdown snapshot past its natural boundary.
 
-    If we cache a snapshot for (say) 15–20s while a period has 3s remaining,
-    clients can keep receiving the *previous* period even after time has passed.
+    If we cache a snapshot for (say) 15–20s while a period/break has 3s remaining,
+    clients can keep receiving the *previous* block even after time has passed.
     That is especially problematic with status-first polling (revision may not change).
     """
     try:
         if not isinstance(snap, dict):
             return ttl
-        if not _is_active_window(snap):
-            return ttl
         st = snap.get("state") or {}
+        st_type = str(st.get("type") or "").strip().lower()
+        if st_type not in ("period", "break", "before"):
+            return ttl
         rem = st.get("remaining_seconds")
         if isinstance(rem, (int, float)):
             r = int(rem)
@@ -1813,7 +1814,9 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_school)
                     etag = _etag_from_json_bytes(json_bytes)
                     try:
-                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=_active_window_cache_ttl_seconds())
+                        tmo = _active_window_cache_ttl_seconds()
+                        tmo = _clamp_active_ttl_by_remaining_seconds(cached_school, tmo)
+                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
                     except Exception:
                         pass
                     resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
