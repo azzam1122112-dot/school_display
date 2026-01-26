@@ -819,12 +819,13 @@ def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
         refresh = int(s.get("refresh_interval_sec") or 3600)
     except Exception:
         refresh = 3600
-    # Very long, but bounded (up to 24h). Keep at least 5 minutes.
+    # Very long, but bounded (default 20 minutes to prevent carrying over 'Off' state to next day).
     try:
-        max_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_STEADY_MAX_TTL", 86400) or 86400)
+        max_ttl = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_STEADY_MAX_TTL", 1200) or 1200)
     except Exception:
-        max_ttl = 86400
-    max_ttl = max(3600, min(86400, max_ttl))
+        max_ttl = 1200
+    # Allow env to override up to 24h, but default logic caps at 1200s (20m)
+    max_ttl = max(300, min(86400, max_ttl))
     return max(300, min(max_ttl, refresh))
 
 def _is_active_window(day_snap: dict) -> bool:
