@@ -1608,6 +1608,25 @@ def snapshot(request, token: str | None = None):
         if cached_school_id and not force_nocache:
             # Bump cache version v1 -> v2 to invalidate old stuck "Off" states
             cached_rev = _get_schedule_revision_for_school_id(int(cached_school_id))
+            # If we already have a rev-specific tenant cache entry, prefer it.
+            # This is especially helpful during stampedes where we may have cached a short-lived
+            # response under the tenant key but not yet populated the per-school key.
+            try:
+                tenant_key_early = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
+                cached_entry_early = cache.get(tenant_key_early)
+                if isinstance(cached_entry_early, dict) and isinstance(cached_entry_early.get("snap"), dict) and isinstance(cached_entry_early.get("etag"), str):
+                    _metrics_incr("metrics:snapshot_cache:token_hit")
+                    _metrics_log_maybe()
+                    inm = _parse_if_none_match(request.headers.get("If-None-Match"))
+                    if inm and inm == cached_entry_early.get("etag"):
+                        resp = HttpResponseNotModified()
+                        resp["ETag"] = f"\"{cached_entry_early['etag']}\""
+                        return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
+                    resp = JsonResponse(cached_entry_early["snap"], json_dumps_params={"ensure_ascii": False})
+                    resp["ETag"] = f"\"{cached_entry_early['etag']}\""
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
+            except Exception:
+                pass
             snap_key = f"snapshot:v5:school:{cached_school_id}:rev:{int(cached_rev)}"
             cached_snap = cache.get(snap_key)
             if isinstance(cached_snap, dict):
@@ -1817,6 +1836,7 @@ def snapshot(request, token: str | None = None):
                         tmo = _active_window_cache_ttl_seconds()
                         tmo = _clamp_active_ttl_by_remaining_seconds(cached_school, tmo)
                         cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
+                        cache.set(get_cache_key(token_hash), {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
                     except Exception:
                         pass
                     resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
@@ -1828,7 +1848,9 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_steady2)
                     etag = _etag_from_json_bytes(json_bytes)
                     try:
-                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=_steady_snapshot_cache_ttl_seconds(cached_steady2))
+                        tmo = _steady_snapshot_cache_ttl_seconds(cached_steady2)
+                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=tmo)
+                        cache.set(get_cache_key(token_hash), {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=tmo)
                     except Exception:
                         pass
                     resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
@@ -1849,6 +1871,7 @@ def snapshot(request, token: str | None = None):
             etag = _etag_from_json_bytes(json_bytes)
             try:
                 cache.set(tenant_cache_key, {"snap": tmp, "etag": etag, "rev": int(rev)}, timeout=5)
+                cache.set(get_cache_key(token_hash), {"snap": tmp, "etag": etag, "rev": int(rev)}, timeout=5)
             except Exception:
                 pass
             resp = JsonResponse(tmp, json_dumps_params={"ensure_ascii": False})
