@@ -199,7 +199,9 @@ class DisplayTokenMiddleware:
 
     API_PREFIX = "/api/display/"
     TOKEN_RE = re.compile(r"^(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{64})$")
-    SNAPSHOT_PATH_RE = re.compile(r"^/api/display/snapshot/(?P<token>[0-9a-fA-F]{32}|[0-9a-fA-F]{64})/?$")
+    TOKEN_PATH_RE = re.compile(
+        r"^/api/display/(?:snapshot|today|live|status)/(?P<token>[0-9a-fA-F]{32}|[0-9a-fA-F]{64})/?$"
+    )
 
     # مسارات لا تتطلب توكن (اختياري)
     NO_TOKEN_PATHS = {
@@ -210,8 +212,8 @@ class DisplayTokenMiddleware:
         self.get_response = get_response
 
     def _extract_token(self, request) -> Optional[str]:
-        # 1) token في المسار (snapshot/<token>/)
-        m = self.SNAPSHOT_PATH_RE.match(request.path or "")
+        # 1) token في المسار (snapshot|today|live|status/<token>/)
+        m = self.TOKEN_PATH_RE.match(request.path or "")
         if m:
             return (m.group("token") or "").strip()
 
@@ -250,6 +252,15 @@ class DisplayTokenMiddleware:
         path = request.path or ""
 
         is_snapshot_path = path == "/api/display/snapshot/" or path.startswith("/api/display/snapshot/")
+        is_display_client_path = (
+            is_snapshot_path
+            or path == "/api/display/status/"
+            or path.startswith("/api/display/status/")
+            or path == "/api/display/today/"
+            or path.startswith("/api/display/today/")
+            or path == "/api/display/live/"
+            or path.startswith("/api/display/live/")
+        )
 
         if not path.startswith(self.API_PREFIX):
             return self.get_response(request)
@@ -260,7 +271,7 @@ class DisplayTokenMiddleware:
         token = self._extract_token(request)
         if not token or not self.TOKEN_RE.match(token):
             resp = JsonResponse({"error": "Invalid display token"}, status=403)
-            if is_snapshot_path:
+            if is_display_client_path:
                 resp["Cache-Control"] = "no-store"
             return resp
 
@@ -274,7 +285,7 @@ class DisplayTokenMiddleware:
         # 1. Negative Cache (Invalid Token)
         if cache.get(neg_key):
             resp = JsonResponse({"error": "Invalid or inactive display token (cached)"}, status=403)
-            if is_snapshot_path:
+            if is_display_client_path:
                 resp["Cache-Control"] = "no-store"
             return resp
 
@@ -327,13 +338,13 @@ class DisplayTokenMiddleware:
                 # Cache Failure
                 cache.set(neg_key, "1", timeout=60)
                 resp = JsonResponse({"error": "Invalid or inactive display token"}, status=403)
-                if is_snapshot_path:
+                if is_display_client_path:
                     resp["Cache-Control"] = "no-store"
                 return resp
             except Exception:
                 logger.exception("DisplayTokenMiddleware failed while fetching screen")
                 resp = JsonResponse({"error": "Display token lookup failed"}, status=500)
-                if is_snapshot_path:
+                if is_display_client_path:
                     resp["Cache-Control"] = "no-store"
                 return resp
 
@@ -350,7 +361,7 @@ class DisplayTokenMiddleware:
         # لذلك نتجنب إنشاء/تعيين كوكي sd_device على snapshot.
         # ======================================================
         new_device_id: Optional[str] = None
-        if not is_snapshot_path:
+        if not is_display_client_path:
             device_id = (request.COOKIES.get("sd_device") or "").strip()
             if not device_id:
                 try:
@@ -422,7 +433,7 @@ class DisplayTokenMiddleware:
             pass
 
         response = self.get_response(request)
-        if (not is_snapshot_path) and new_device_id and hasattr(response, "set_cookie"):
+        if (not is_display_client_path) and new_device_id and hasattr(response, "set_cookie"):
             try:
                 # كوكي طويل المدى للجهاز (٥ سنوات تقريبًا)
                 response.set_cookie(

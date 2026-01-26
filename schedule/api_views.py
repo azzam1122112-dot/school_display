@@ -342,6 +342,18 @@ def _fallback_payload(message: str = "إعدادات المدرسة غير مه�
 
 def _extract_token(request, token_from_path: str | None) -> str | None:
     t = (token_from_path or "").strip()
+
+    # Fallback: some callers may embed token in the URL path while not passing it
+    # via query/header (or if the URL pattern changes). Parse it from the path.
+    if not t:
+        try:
+            p = (getattr(request, "path_info", "") or getattr(request, "path", "") or "").strip()
+            m = re.search(r"/api/display/(?:snapshot|today|live|status)/([^/]+)/?$", p, flags=re.IGNORECASE)
+            if m and m.group(1):
+                t = (m.group(1) or "").strip()
+        except Exception:
+            pass
+
     if not t:
         t = (request.headers.get("X-Display-Token") or "").strip()
     if not t:
@@ -356,6 +368,7 @@ def status(request, token: str | None = None):
     """Lightweight polling endpoint.
 
     GET /api/display/status/?token=...   (or X-Display-Token header)
+    GET /api/display/status/<token>/
 
     Behavior:
     - If we have a cached snapshot entry for this token, return 304 when If-None-Match matches.
@@ -365,6 +378,11 @@ def status(request, token: str | None = None):
     """
     token_value = _extract_token(request, token)
     if not token_value:
+        try:
+            p = (getattr(request, "path_info", "") or getattr(request, "path", "") or "").strip()
+            logger.warning("status: invalid_token path=%s", p)
+        except Exception:
+            pass
         return JsonResponse({"detail": "invalid_token"}, status=403)
 
     token_hash = _sha256(token_value)
