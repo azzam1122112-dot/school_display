@@ -66,6 +66,8 @@ from core.models import SubscriptionPlan, SupportTicket, TicketComment
 
 logger = logging.getLogger(__name__)
 
+from schedule.cache_utils import bump_schedule_revision_for_school_id, invalidate_display_snapshot_cache_for_school_id
+
 if TYPE_CHECKING:
     pass
 
@@ -1509,6 +1511,30 @@ def screen_create(request):
         form = DisplayScreenForm()
 
     return render(request, "dashboard/screen_form.html", {"form": form, "title": "إضافة شاشة"})
+
+
+@manager_required
+@require_POST
+def screens_refresh_now(request):
+    """Force all displays to fetch new data immediately.
+
+    Implementation: bump schedule_revision in DB + invalidate snapshot caches.
+    This guarantees the next /status poll will not return stale 304.
+    """
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    school_id = int(getattr(school, "id", 0) or 0)
+    new_rev = bump_schedule_revision_for_school_id(school_id)
+    invalidate_display_snapshot_cache_for_school_id(school_id)
+
+    if new_rev:
+        messages.success(request, f"تم تحديث الشاشات الآن (Revision={int(new_rev)}).")
+    else:
+        messages.success(request, "تم إرسال أمر تحديث الشاشات الآن.")
+
+    return redirect("dashboard:screen_list")
 
 
 @manager_required

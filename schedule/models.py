@@ -153,6 +153,12 @@ class SchoolSettings(models.Model):
         help_text="اختياري: اختر لوناً رئيسياً لشاشة العرض. اتركه فارغاً لاستخدام ألوان الثيم.",
     )
 
+    schedule_revision = models.PositiveIntegerField(
+        "إصدار الجدول",
+        default=1,
+        help_text="يزداد تلقائياً عند أي تعديل على الجدول لإجبار شاشات العرض على جلب بيانات جديدة فوراً.",
+    )
+
     class Meta:
         verbose_name = "إعداد المدرسة"
         verbose_name_plural = "إعدادات المدرسة"

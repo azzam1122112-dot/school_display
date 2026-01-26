@@ -390,6 +390,26 @@ def status(request, token: str | None = None):
 
     cached_entry = cache.get(cache_key)
     if isinstance(cached_entry, dict) and isinstance(cached_entry.get("etag"), str):
+        # ✅ Critical: if schedule revision changed, never return 304.
+        # Otherwise the client will keep using old JSON forever.
+        try:
+            current_school_id = None
+            cached_map = cache.get(f"display:token_map:{token_hash}")
+            if isinstance(cached_map, dict):
+                current_school_id = cached_map.get("school_id")
+            else:
+                try:
+                    current_school_id = int(cached_map) if cached_map else None
+                except Exception:
+                    current_school_id = None
+
+            current_rev = _get_schedule_revision_for_school_id(int(current_school_id)) if current_school_id else None
+            cached_rev = cached_entry.get("rev")
+            if current_rev is not None and cached_rev is not None and int(current_rev) != int(cached_rev):
+                return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+        except Exception:
+            pass
+
         inm = _parse_if_none_match(request.headers.get("If-None-Match"))
         etag = cached_entry.get("etag")
         if inm and etag and inm == etag:
@@ -431,6 +451,16 @@ def _get_settings_by_school_id(school_id: int) -> SchoolSettings | None:
         .filter(school_id=school_id)
         .first()
     )
+
+
+def _get_schedule_revision_for_school_id(school_id: int) -> int:
+    try:
+        return int(
+            SchoolSettings.objects.filter(school_id=int(school_id)).values_list("schedule_revision", flat=True).first()
+            or 0
+        )
+    except Exception:
+        return 0
 
 
 def _sha256(s: str) -> str:
@@ -793,7 +823,8 @@ def _is_missing_index(d: dict) -> bool:
 
 def _snapshot_cache_key(settings_obj: SchoolSettings) -> str:
     school_id = int(getattr(settings_obj, "school_id", None) or 0)
-    return f"snapshot:v4:school:{school_id}"
+    rev = int(getattr(settings_obj, "schedule_revision", 0) or 0)
+    return f"snapshot:v5:school:{school_id}:rev:{rev}"
 
 
 def _snapshot_cache_ttl_seconds() -> int:
@@ -837,6 +868,7 @@ def _is_active_window(day_snap: dict) -> bool:
 
 def _steady_snapshot_cache_key(settings_obj: SchoolSettings, day_snap: dict) -> str:
     school_id = int(getattr(settings_obj, "school_id", None) or 0)
+    rev = int(getattr(settings_obj, "schedule_revision", 0) or 0)
     # isolate by local date from snapshot meta to avoid cross-day bleed.
     date_str = None
     try:
@@ -845,7 +877,7 @@ def _steady_snapshot_cache_key(settings_obj: SchoolSettings, day_snap: dict) -> 
         date_str = None
     if not date_str:
         date_str = str(timezone.localdate())
-    return f"snapshot:v4:school:{school_id}:steady:{date_str}"
+    return f"snapshot:v5:school:{school_id}:rev:{rev}:steady:{date_str}"
 
 
 def get_cache_key(token_hash: str, school_id: int | None = None) -> str:
@@ -857,6 +889,10 @@ def get_cache_key(token_hash: str, school_id: int | None = None) -> str:
     if school_id:
         return f"display:snapshot:{int(school_id)}:{token_hash}"
     return f"display:snapshot:{token_hash}"
+
+
+def get_cache_key_rev(token_hash: str, school_id: int, schedule_revision: int) -> str:
+    return f"display:snapshot:{int(school_id)}:rev:{int(schedule_revision)}:{token_hash}"
 
 
 def compute_dynamic_ttl_seconds(day_snap: dict) -> int:
@@ -1210,6 +1246,27 @@ def snapshot(request, token: str | None = None):
 
         cached_entry = None if force_nocache else cache.get(cache_key)
         if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
+            # If schedule revision changed, do not allow cached 304/old payload.
+            try:
+                cached_map = cache.get(f"display:token_map:{token_hash}")
+                school_id_for_rev = None
+                if isinstance(cached_map, dict):
+                    school_id_for_rev = cached_map.get("school_id")
+                else:
+                    try:
+                        school_id_for_rev = int(cached_map) if cached_map else None
+                    except Exception:
+                        school_id_for_rev = None
+
+                if school_id_for_rev:
+                    current_rev = _get_schedule_revision_for_school_id(int(school_id_for_rev))
+                    cached_rev = cached_entry.get("rev")
+                    if cached_rev is not None and int(cached_rev) != int(current_rev):
+                        cached_entry = None
+            except Exception:
+                pass
+
+        if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
             _metrics_incr("metrics:snapshot_cache:token_hit")
             _metrics_log_maybe()
             inm = _parse_if_none_match(request.headers.get("If-None-Match"))
@@ -1257,7 +1314,8 @@ def snapshot(request, token: str | None = None):
         # 1) If we have school_id, try to fetch Snapshot directly from cache
         if cached_school_id and not force_nocache:
             # Bump cache version v1 -> v2 to invalidate old stuck "Off" states
-            snap_key = f"snapshot:v4:school:{cached_school_id}"
+            cached_rev = _get_schedule_revision_for_school_id(int(cached_school_id))
+            snap_key = f"snapshot:v5:school:{cached_school_id}:rev:{int(cached_rev)}"
             cached_snap = cache.get(snap_key)
             if isinstance(cached_snap, dict):
                 _metrics_incr("metrics:snapshot_cache:school_hit")
@@ -1267,8 +1325,9 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_snap)
                     etag = _etag_from_json_bytes(json_bytes)
                     token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
-                    tok_key = get_cache_key(token_hash, int(cached_school_id))
-                    cache.set(tok_key, {"snap": cached_snap, "etag": etag}, timeout=token_timeout)
+                    tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
+                    cache.set(tok_key, {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
+                    cache.set(get_cache_key(token_hash), {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
                 except Exception:
                     etag = None
 
@@ -1285,7 +1344,7 @@ def snapshot(request, token: str | None = None):
 
             # steady snapshot fallback (long TTL outside window/holidays)
             # Bump cache version v2 -> v3
-            steady_key = f"snapshot:v4:school:{int(cached_school_id)}:steady:{str(timezone.localdate())}"
+            steady_key = f"snapshot:v5:school:{int(cached_school_id)}:rev:{int(cached_rev)}:steady:{str(timezone.localdate())}"
             cached_steady = cache.get(steady_key)
             if isinstance(cached_steady, dict):
                 _metrics_incr("metrics:snapshot_cache:steady_hit")
@@ -1294,8 +1353,9 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_steady)
                     etag = _etag_from_json_bytes(json_bytes)
                     token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady)
-                    tok_key = get_cache_key(token_hash, int(cached_school_id))
-                    cache.set(tok_key, {"snap": cached_steady, "etag": etag}, timeout=token_timeout)
+                    tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
+                    cache.set(tok_key, {"snap": cached_steady, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
+                    cache.set(get_cache_key(token_hash), {"snap": cached_steady, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
                 except Exception:
                     etag = None
 
@@ -1371,9 +1431,18 @@ def snapshot(request, token: str | None = None):
 
         # 6) Phase 2: build snapshot once per school (stampede guard)
         school_id = int(getattr(settings_obj, "school_id", None) or 0)
-        tenant_cache_key = get_cache_key(token_hash, school_id)
+        rev = int(getattr(settings_obj, "schedule_revision", 0) or 0)
+        tenant_cache_key = get_cache_key_rev(token_hash, school_id, rev)
         if tenant_cache_key != cache_key:
             cached_entry2 = None if force_nocache else cache.get(tenant_cache_key)
+            if isinstance(cached_entry2, dict) and isinstance(cached_entry2.get("snap"), dict) and isinstance(cached_entry2.get("etag"), str):
+                try:
+                    cached_rev2 = cached_entry2.get("rev")
+                    if cached_rev2 is not None and int(cached_rev2) != int(rev):
+                        cached_entry2 = None
+                except Exception:
+                    pass
+
             if isinstance(cached_entry2, dict) and isinstance(cached_entry2.get("snap"), dict) and isinstance(cached_entry2.get("etag"), str):
                 _metrics_incr("metrics:snapshot_cache:token_hit")
                 _metrics_log_maybe()
@@ -1387,7 +1456,7 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
 
         snap_key = _snapshot_cache_key(settings_obj)
-        steady_key = f"snapshot:v4:school:{school_id}:steady:{str(timezone.localdate())}"
+        steady_key = f"snapshot:v5:school:{school_id}:rev:{rev}:steady:{str(timezone.localdate())}"
 
         if not force_nocache:
             cached_school = cache.get(snap_key)
@@ -1496,12 +1565,22 @@ def snapshot(request, token: str | None = None):
             active_window = _is_active_window(day_snap)
             token_timeout = compute_dynamic_ttl_seconds(day_snap)
 
+            # ✅ Always include schedule revision in meta so ETag changes even if today's JSON wouldn't.
+            try:
+                meta = day_snap.get("meta") if isinstance(day_snap, dict) else None
+                if not isinstance(meta, dict):
+                    meta = {}
+                    if isinstance(day_snap, dict):
+                        day_snap["meta"] = meta
+                meta["schedule_revision"] = rev
+            except Exception:
+                pass
+
             if active_window:
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
                 if not force_nocache:
                     try:
-                        # Version v4
-                        cache.set(f"snapshot:v4:school:{settings_obj.school_id}", snap, timeout=_active_window_cache_ttl_seconds())
+                        cache.set(_snapshot_cache_key(settings_obj), snap, timeout=_active_window_cache_ttl_seconds())
                     except Exception:
                         pass
             else:
@@ -1566,7 +1645,8 @@ def snapshot(request, token: str | None = None):
 
             if not force_nocache:
                 try:
-                    cache.set(tenant_cache_key, {"snap": snap, "etag": etag}, timeout=token_timeout)
+                    cache.set(tenant_cache_key, {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
+                    cache.set(get_cache_key(token_hash), {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
                 except Exception:
                     pass
 

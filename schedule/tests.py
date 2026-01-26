@@ -153,9 +153,14 @@ class DisplaySnapshotPhase2Tests(TestCase):
         self.assertIsInstance(body.get("excellence"), list)
         self.assertIsInstance(body.get("period_classes"), list)
 
-        # Ensure steady cache is written (school-scoped and date-scoped)
-        today = str(timezone.localdate())
-        steady_key = f"snapshot:v2:school:{bundle.school.id}:steady:{today}"
+        # Ensure steady cache is written (use the same key builder as production)
+        from schedule.api_views import _steady_snapshot_cache_key
+        if bundle.settings:
+            try:
+                bundle.settings.refresh_from_db()
+            except Exception:
+                pass
+        steady_key = _steady_snapshot_cache_key(bundle.settings, body)
         cached = cache.get(steady_key)
         self.assertIsInstance(cached, dict)
 

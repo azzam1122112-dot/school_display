@@ -89,6 +89,7 @@ urlpatterns = [
     # ==================
     path("screens/", views.screen_list, name="screen_list"),
     path("screens/new/", views.screen_create, name="screen_create"),
+    path("screens/refresh-now/", views.screens_refresh_now, name="screens_refresh_now"),
     path("screens/<int:pk>/unbind/", views.screen_unbind_device, name="screen_unbind_device"),
     path("screens/<int:pk>/delete/", views.screen_delete, name="screen_delete"),
     path("screens/request-addon/", views.request_screen_addon, name="request_screen_addon"),
