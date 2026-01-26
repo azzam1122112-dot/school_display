@@ -34,6 +34,25 @@ def _metrics_interval_seconds() -> int:
         v = 600
     return max(60, min(3600, v))
 
+
+def _status_log_interval_seconds() -> int:
+    # For large fleets, logging every status poll is too noisy.
+    # Default: log at most once per token per 5 minutes.
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_STATUS_LOG_INTERVAL_SEC", os.getenv("DISPLAY_STATUS_LOG_INTERVAL_SEC", "300")))
+    except Exception:
+        v = 300
+    return max(30, min(3600, v))
+
+
+def _should_log_status(token_hash: str) -> bool:
+    interval = _status_log_interval_seconds()
+    key = f"log:status_poll:{token_hash[:12]}:{interval}"
+    try:
+        return bool(cache.add(key, "1", timeout=interval))
+    except Exception:
+        return True
+
 def _metrics_incr(key: str) -> None:
     try:
         cache.incr(key)
@@ -428,14 +447,15 @@ def status(request, token: str | None = None):
             resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
-            logger.info(
-                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-                token_hash[:12],
-                school_id,
-                client_v,
-                current_rev,
-                200,
-            )
+            if _should_log_status(token_hash):
+                logger.info(
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                    token_hash[:12],
+                    school_id,
+                    client_v,
+                    current_rev,
+                    200,
+                )
             return resp
 
         if int(client_v) == int(current_rev):
@@ -443,14 +463,15 @@ def status(request, token: str | None = None):
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
             resp["X-Schedule-Revision"] = str(int(current_rev))
-            logger.info(
-                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-                token_hash[:12],
-                int(school_id or 0),
-                int(client_v),
-                int(current_rev),
-                304,
-            )
+            if _should_log_status(token_hash):
+                logger.info(
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                    token_hash[:12],
+                    int(school_id or 0),
+                    int(client_v),
+                    int(current_rev),
+                    304,
+                )
             return resp
 
         resp = JsonResponse(
@@ -460,14 +481,15 @@ def status(request, token: str | None = None):
         resp["Cache-Control"] = "no-store"
         resp["Vary"] = "Accept-Encoding"
         resp["X-Schedule-Revision"] = str(int(current_rev))
-        logger.info(
-            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-            token_hash[:12],
-            int(school_id or 0),
-            int(client_v),
-            int(current_rev),
-            200,
-        )
+        if _should_log_status(token_hash):
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                token_hash[:12],
+                int(school_id or 0),
+                int(client_v),
+                int(current_rev),
+                200,
+            )
         return resp
     cache_key = get_cache_key(token_hash)
 
@@ -500,36 +522,39 @@ def status(request, token: str | None = None):
             resp["ETag"] = f"\"{etag}\""
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
+            if _should_log_status(token_hash):
+                logger.info(
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                    token_hash[:12],
+                    current_school_id,
+                    None,
+                    current_rev,
+                    304,
+                )
+            return resp
+
+        resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+        if _should_log_status(token_hash):
             logger.info(
                 "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
                 token_hash[:12],
                 current_school_id,
                 None,
                 current_rev,
-                304,
+                200,
             )
-            return resp
-
-        resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
-        logger.info(
-            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-            token_hash[:12],
-            current_school_id,
-            None,
-            current_rev,
-            200,
-        )
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
-    logger.info(
-        "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
-        token_hash[:12],
-        school_id,
-        None,
-        None,
-        200,
-    )
+    if _should_log_status(token_hash):
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+            token_hash[:12],
+            school_id,
+            None,
+            None,
+            200,
+        )
     return resp
 
 
