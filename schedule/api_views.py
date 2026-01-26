@@ -314,7 +314,7 @@ def _fallback_payload(message: str = "إعدادات المدرسة غير مه�
     now = timezone.localtime()
     return {
         "now": now.isoformat(),
-        "meta": {"weekday": now.isoweekday()},
+        "meta": {"weekday": now.isoweekday(), "schedule_revision": 0},
         "settings": {
             "name": "",
             "logo_url": None,
@@ -370,9 +370,14 @@ def status(request, token: str | None = None):
     GET /api/display/status/?token=...   (or X-Display-Token header)
     GET /api/display/status/<token>/
 
-    Behavior:
-    - If we have a cached snapshot entry for this token, return 304 when If-None-Match matches.
-    - Otherwise return a small JSON telling the client to fetch snapshot.
+        Behavior (authoritative numeric revision mode):
+        - When client sends `v=<schedule_revision>`:
+                - return 304 ONLY if v == current schedule_revision
+                - else return 200 with {fetch_required: true, schedule_revision: current_rev}
+            This path intentionally ignores If-None-Match/ETag for status.
+
+        Backward compatibility:
+        - If `v` is missing, we keep legacy behavior (ETag-based) for older clients.
 
     This endpoint never builds snapshots and should stay cheap.
     """
@@ -386,6 +391,84 @@ def status(request, token: str | None = None):
         return JsonResponse({"detail": "invalid_token"}, status=403)
 
     token_hash = _sha256(token_value)
+
+    # --- Numeric revision mode (source of truth) ---
+    client_v_raw = (request.GET.get("v") or request.GET.get("rev") or "").strip()
+    client_v = None
+    try:
+        if client_v_raw != "":
+            client_v = int(client_v_raw)
+    except Exception:
+        client_v = None
+
+    # Resolve school_id cheaply (prefer cache map)
+    school_id = None
+    try:
+        cached_map = cache.get(f"display:token_map:{token_hash}")
+        if isinstance(cached_map, dict):
+            school_id = cached_map.get("school_id")
+        else:
+            try:
+                school_id = int(cached_map) if cached_map else None
+            except Exception:
+                school_id = None
+    except Exception:
+        school_id = None
+
+    if client_v is not None:
+        current_rev = None
+        try:
+            if school_id:
+                current_rev = _get_schedule_revision_for_school_id(int(school_id))
+        except Exception:
+            current_rev = None
+
+        # If we couldn't resolve school_id, we can't compare; force fetch.
+        if current_rev is None:
+            resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                token_hash[:12],
+                school_id,
+                client_v,
+                current_rev,
+                200,
+            )
+            return resp
+
+        if int(client_v) == int(current_rev):
+            resp = HttpResponseNotModified()
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            resp["X-Schedule-Revision"] = str(int(current_rev))
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                token_hash[:12],
+                int(school_id or 0),
+                int(client_v),
+                int(current_rev),
+                304,
+            )
+            return resp
+
+        resp = JsonResponse(
+            {"fetch_required": True, "schedule_revision": int(current_rev)},
+            json_dumps_params={"ensure_ascii": False},
+        )
+        resp["Cache-Control"] = "no-store"
+        resp["Vary"] = "Accept-Encoding"
+        resp["X-Schedule-Revision"] = str(int(current_rev))
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+            token_hash[:12],
+            int(school_id or 0),
+            int(client_v),
+            int(current_rev),
+            200,
+        )
+        return resp
     cache_key = get_cache_key(token_hash)
 
     cached_entry = cache.get(cache_key)
@@ -417,11 +500,37 @@ def status(request, token: str | None = None):
             resp["ETag"] = f"\"{etag}\""
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+                token_hash[:12],
+                current_school_id,
+                None,
+                current_rev,
+                304,
+            )
             return resp
 
-        return JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+        resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+            token_hash[:12],
+            current_school_id,
+            None,
+            current_rev,
+            200,
+        )
+        return resp
 
-    return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+    resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+    logger.info(
+        "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s resp=%s",
+        token_hash[:12],
+        school_id,
+        None,
+        None,
+        200,
+    )
+    return resp
 
 
 def _is_hex_sha256(token_value: str) -> bool:
@@ -1123,7 +1232,7 @@ def snapshot(request, token: str | None = None):
 
         app_rev = _app_revision()
 
-        def _finalize(resp, *, cache_status: str, device_bound: bool | None = None):
+        def _finalize(resp, *, cache_status: str, device_bound: bool | None = None, school_id: int | None = None, rev: int | None = None):
             if not resp.get("Cache-Control"):
                 resp["Cache-Control"] = "no-store"
             # Keep compression negotiation; never vary on Cookie.
@@ -1133,6 +1242,17 @@ def snapshot(request, token: str | None = None):
                 resp["X-Snapshot-Device-Bound"] = "1" if device_bound else "0"
             if app_rev:
                 resp["X-App-Revision"] = app_rev
+
+            try:
+                logger.info(
+                    "snapshot_resp school_id=%s rev=%s status=%s cache=%s",
+                    school_id,
+                    rev,
+                    int(getattr(resp, "status_code", 0) or 0),
+                    cache_status,
+                )
+            except Exception:
+                pass
             return resp
 
         token_value = _extract_token(request, token)
@@ -1142,7 +1262,7 @@ def snapshot(request, token: str | None = None):
                 json_dumps_params={"ensure_ascii": False},
                 status=403,
             )
-            return _finalize(resp, cache_status="ERROR", device_bound=False if is_snapshot_path else None)
+            return _finalize(resp, cache_status="ERROR", device_bound=False if is_snapshot_path else None, school_id=None, rev=None)
 
         token_hash = _sha256(token_value)
 
@@ -1169,14 +1289,14 @@ def snapshot(request, token: str | None = None):
 
             if not device_key:
                 resp = JsonResponse({"detail": "device_required"}, status=403)
-                return _finalize(resp, cache_status="ERROR", device_bound=False)
+                return _finalize(resp, cache_status="ERROR", device_bound=False, school_id=None, rev=None)
 
             device_hash = _sha256(device_key)
 
             # Rate limit: 1 req/sec per token+device with burst 3
             if not _snapshot_rate_limit_allow(token_hash, device_hash):
                 resp = JsonResponse({"detail": "rate_limited"}, status=429)
-                return _finalize(resp, cache_status="MISS", device_bound=True)
+                return _finalize(resp, cache_status="MISS", device_bound=True, school_id=None, rev=None)
 
             bind_key = f"bind:snapshot:{token_hash}"
 
@@ -1204,6 +1324,18 @@ def snapshot(request, token: str | None = None):
                         allow_multi = bool(dj_settings.DEBUG)
 
                     if not allow_multi:
+                        try:
+                            logger.warning(
+                                "device_binding_reject token_hash=%s screen_id=%s school_id=%s bound_device=%s got_device=%s allow_multi=%s",
+                                token_hash[:12],
+                                getattr(screen, "id", None),
+                                getattr(screen, "school_id", None),
+                                db_bound,
+                                device_key,
+                                allow_multi,
+                            )
+                        except Exception:
+                            pass
                         resp = JsonResponse(
                             {
                                 "detail": "screen_bound",
@@ -1211,7 +1343,7 @@ def snapshot(request, token: str | None = None):
                             },
                             status=403,
                         )
-                        return _finalize(resp, cache_status="ERROR", device_bound=True)
+                        return _finalize(resp, cache_status="ERROR", device_bound=True, school_id=getattr(screen, "school_id", None), rev=None)
 
                 # Keep cache binding in sync
                 try:
@@ -1246,6 +1378,7 @@ def snapshot(request, token: str | None = None):
 
         cached_entry = None if force_nocache else cache.get(cache_key)
         if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
+            school_id_for_log = None
             # If schedule revision changed, do not allow cached 304/old payload.
             try:
                 cached_map = cache.get(f"display:token_map:{token_hash}")
@@ -1257,6 +1390,8 @@ def snapshot(request, token: str | None = None):
                         school_id_for_rev = int(cached_map) if cached_map else None
                     except Exception:
                         school_id_for_rev = None
+
+                school_id_for_log = school_id_for_rev
 
                 if school_id_for_rev:
                     current_rev = _get_schedule_revision_for_school_id(int(school_id_for_rev))
@@ -1273,10 +1408,10 @@ def snapshot(request, token: str | None = None):
             if inm and inm == cached_entry.get("etag"):
                 resp = HttpResponseNotModified()
                 resp["ETag"] = f"\"{cached_entry['etag']}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id_for_log, rev=cached_entry.get("rev"))
             resp = JsonResponse(cached_entry["snap"], json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{cached_entry['etag']}\""
-            return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+            return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id_for_log, rev=cached_entry.get("rev"))
 
         _metrics_incr("metrics:snapshot_cache:token_miss")
         _metrics_log_maybe()
@@ -1335,12 +1470,12 @@ def snapshot(request, token: str | None = None):
                 if etag and inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
-                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
                 resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
                 if etag:
                     resp["ETag"] = f"\"{etag}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
             # steady snapshot fallback (long TTL outside window/holidays)
             # Bump cache version v2 -> v3
@@ -1363,12 +1498,12 @@ def snapshot(request, token: str | None = None):
                 if etag and inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
-                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
                 resp = JsonResponse(cached_steady, json_dumps_params={"ensure_ascii": False})
                 if etag:
                     resp["ETag"] = f"\"{etag}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
             _metrics_incr("metrics:snapshot_cache:school_miss")
             _metrics_incr("metrics:snapshot_cache:steady_miss")
@@ -1414,7 +1549,7 @@ def snapshot(request, token: str | None = None):
                     )
                 resp = JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
                 resp["Cache-Control"] = "no-store"
-                return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None, school_id=None, rev=None)
         
         # ✅ Cache Update: Store valid token mapping if not cached (24h)
         if token_value and settings_obj and len(token_value) > 10 and not cached_school_id:
@@ -1450,10 +1585,10 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == cached_entry2.get("etag"):
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{cached_entry2['etag']}\""
-                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_entry2["snap"], json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{cached_entry2['etag']}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         snap_key = _snapshot_cache_key(settings_obj)
         steady_key = f"snapshot:v5:school:{school_id}:rev:{rev}:steady:{str(timezone.localdate())}"
@@ -1467,7 +1602,7 @@ def snapshot(request, token: str | None = None):
                 etag = _etag_from_json_bytes(json_bytes)
                 token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
                 try:
-                    cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag}, timeout=token_timeout)
+                    cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
                 except Exception:
                     pass
 
@@ -1475,10 +1610,10 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
-                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{etag}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
             cached_steady2 = cache.get(steady_key)
             if isinstance(cached_steady2, dict):
@@ -1488,7 +1623,7 @@ def snapshot(request, token: str | None = None):
                 etag = _etag_from_json_bytes(json_bytes)
                 token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady2)
                 try:
-                    cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag}, timeout=token_timeout)
+                    cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
                 except Exception:
                     pass
 
@@ -1496,10 +1631,10 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
-                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                    return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{etag}\""
-                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         # Stampede lock: one build per school
         school_lock_key = f"lock:{snap_key}"
@@ -1519,7 +1654,7 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_school)
                     etag = _etag_from_json_bytes(json_bytes)
                     try:
-                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag}, timeout=_active_window_cache_ttl_seconds())
+                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=_active_window_cache_ttl_seconds())
                     except Exception:
                         pass
                     resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
@@ -1531,7 +1666,7 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_steady2)
                     etag = _etag_from_json_bytes(json_bytes)
                     try:
-                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag}, timeout=_steady_snapshot_cache_ttl_seconds(cached_steady2))
+                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=_steady_snapshot_cache_ttl_seconds(cached_steady2))
                     except Exception:
                         pass
                     resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
@@ -1551,12 +1686,12 @@ def snapshot(request, token: str | None = None):
             json_bytes = _stable_json_bytes(tmp)
             etag = _etag_from_json_bytes(json_bytes)
             try:
-                cache.set(tenant_cache_key, {"snap": tmp, "etag": etag}, timeout=5)
+                cache.set(tenant_cache_key, {"snap": tmp, "etag": etag, "rev": int(rev)}, timeout=5)
             except Exception:
                 pass
             resp = JsonResponse(tmp, json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{etag}\""
-            return _finalize(resp, cache_status="STALE", device_bound=True if is_snapshot_path else None)
+            return _finalize(resp, cache_status="STALE", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         try:
             t0 = time.monotonic()
@@ -1643,6 +1778,17 @@ def snapshot(request, token: str | None = None):
             json_bytes = _stable_json_bytes(snap)
             etag = _etag_from_json_bytes(json_bytes)
 
+            try:
+                logger.info(
+                    "snapshot_build school_id=%s rev=%s size_bytes=%s build_ms=%s",
+                    int(school_id),
+                    int(rev),
+                    int(len(json_bytes)),
+                    int(build_ms),
+                )
+            except Exception:
+                pass
+
             if not force_nocache:
                 try:
                     cache.set(tenant_cache_key, {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
@@ -1654,11 +1800,11 @@ def snapshot(request, token: str | None = None):
             if inm and inm == etag:
                 resp = HttpResponseNotModified()
                 resp["ETag"] = f"\"{etag}\""
-                return _finalize(resp, cache_status="MISS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None)
+                return _finalize(resp, cache_status="MISS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
             resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{etag}\""
-            return _finalize(resp, cache_status="BYPASS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None)
+            return _finalize(resp, cache_status="BYPASS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
         finally:
             if not force_nocache:
                 try:

@@ -24,6 +24,14 @@
       </div>
 
       <div class="flex items-center gap-4">
+                <form method="post" action="{% url 'dashboard:screens_refresh_now' %}" class="shrink-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/20 transition border border-white/10">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7l1 1M19 5a9 9 0 01-14 7l-1-1" /></svg>
+                        تحديث الشاشات الآن
+                    </button>
+                </form>
         <div class="rounded-2xl bg-white/5 p-4 backdrop-blur-sm border border-white/10">
           <p class="text-xs text-slate-400">إجمالي الحصص</p>
           <p class="text-2xl font-bold font-mono">{{ day.periods_count|default:"0" }}</p>

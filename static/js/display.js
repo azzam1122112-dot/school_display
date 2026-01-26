@@ -337,7 +337,25 @@
     refreshJitterFrac: 0, // jitter نسبي ثابت لكل شاشة لتفريق الحمل
     statusEverySec: 0, // adaptive polling interval for status-first mode
     status304Streak: 0, // consecutive status 304 streak
+    scheduleRevision: 0, // last known schedule_revision (numeric truth for /status?v=...)
   };
+
+  function revStorageKey() {
+    // Scope by token to avoid collisions when multiple screens are opened on the same browser.
+    const t = (getToken() || "").toString();
+    const safe = encodeURIComponent(t).slice(0, 80);
+    return "display_rev:" + safe;
+  }
+
+  (function initRevision() {
+    try {
+      const raw = localStorage.getItem(revStorageKey()) || "";
+      const n = parseInt(raw, 10);
+      rt.scheduleRevision = isNaN(n) ? 0 : Math.max(0, n);
+    } catch (e) {
+      rt.scheduleRevision = 0;
+    }
+  })();
 
   // Pick a stable jitter per page load: ~±5% (exclude 0)
   (function initRefreshJitter() {
@@ -1660,6 +1678,18 @@
     const settings = payload.settings || {};
     const meta = payload.meta || {};
 
+    // Persist schedule revision so /status?v=... remains authoritative.
+    try {
+      const rawRev = meta.schedule_revision ?? meta.scheduleRevision ?? meta.rev;
+      const n = parseInt(String(rawRev), 10);
+      if (!isNaN(n) && n >= 0) {
+        rt.scheduleRevision = n;
+        try {
+          localStorage.setItem(revStorageKey(), String(n));
+        } catch (e) {}
+      }
+    } catch (e) {}
+
     if (settings.school_type) {
       cfg.SCHOOL_TYPE = settings.school_type;
     }
@@ -2123,6 +2153,9 @@
     const deviceId = getOrCreateDeviceId();
     u.searchParams.set("dk", deviceId);
 
+    // Source of truth: numeric revision comparison.
+    u.searchParams.set("v", String(rt.scheduleRevision || 0));
+
     if (ctrlStatus) {
       try {
         ctrlStatus.abort();
@@ -2136,10 +2169,7 @@
       "X-Display-Device": deviceId,
     };
 
-    try {
-      const prev = localStorage.getItem(etagKey) || "";
-      if (prev) headers["If-None-Match"] = prev;
-    } catch (e) {}
+    // Intentionally do NOT send If-None-Match for /status.
 
     const fetchPromise = fetch(u.toString(), {
       method: "GET",
@@ -2149,12 +2179,6 @@
       signal: ctrlStatus ? ctrlStatus.signal : undefined,
     }).then(async (r) => {
       if (r.status === 304) {
-        const et = r.headers && r.headers.get ? (r.headers.get("ETag") || "") : "";
-        if (et) {
-          try {
-            localStorage.setItem(etagKey, et);
-          } catch (e) {}
-        }
         return { _notModified: true };
       }
 
@@ -2164,11 +2188,18 @@
       }
 
       const body = await r.json().catch(() => null);
-      if (body && typeof body === "object" && body.etag) {
-        try {
-          localStorage.setItem(etagKey, '"' + String(body.etag) + '"');
-        } catch (e) {}
+
+      // Keep local revision in sync if server provides it.
+      if (body && typeof body === "object" && typeof body.schedule_revision !== "undefined") {
+        const n = parseInt(String(body.schedule_revision), 10);
+        if (!isNaN(n) && n >= 0) {
+          rt.scheduleRevision = n;
+          try {
+            localStorage.setItem(revStorageKey(), String(n));
+          } catch (e) {}
+        }
       }
+
       return body || { fetch_required: true };
     });
 

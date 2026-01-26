@@ -1525,14 +1525,36 @@ def screens_refresh_now(request):
     if response:
         return response
 
+    import logging
+    from django.db import transaction
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from schedule.cache_utils import get_schedule_revision_for_school_id
+
+    logger = logging.getLogger(__name__)
+
     school_id = int(getattr(school, "id", 0) or 0)
-    new_rev = bump_schedule_revision_for_school_id(school_id)
-    invalidate_display_snapshot_cache_for_school_id(school_id)
+
+    with transaction.atomic():
+        old_rev = get_schedule_revision_for_school_id(school_id) or 0
+        new_rev = bump_schedule_revision_for_school_id(school_id) or 0
+        invalidate_display_snapshot_cache_for_school_id(school_id)
+
+    logger.info(
+        "screens_refresh_now school_id=%s old_rev=%s new_rev=%s",
+        school_id,
+        int(old_rev),
+        int(new_rev),
+    )
 
     if new_rev:
         messages.success(request, f"تم تحديث الشاشات الآن (Revision={int(new_rev)}).")
     else:
         messages.success(request, "تم إرسال أمر تحديث الشاشات الآن.")
+
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(next_url)
 
     return redirect("dashboard:screen_list")
 
