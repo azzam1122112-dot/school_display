@@ -507,7 +507,11 @@ class ExcellenceForm(forms.ModelForm):
 
 class StandbyForm(forms.ModelForm):
     class_name = forms.ModelChoiceField(queryset=SchoolClass.objects.none(), label="الفصل")
-    teacher_name = forms.ModelChoiceField(queryset=Teacher.objects.none(), label="اسم المعلم/ـة")
+    teacher_name = forms.CharField(
+        label="اسم المعلم/ـة",
+        max_length=100,
+        widget=forms.TextInput(attrs={"autocomplete": "off"}),
+    )
 
     class Meta:
         model = StandbyAssignment
@@ -523,19 +527,57 @@ class StandbyForm(forms.ModelForm):
             self.fields["class_name"].queryset = SchoolClass.objects.filter(
                 settings__school=school
             ).order_by("name")
-            self.fields["teacher_name"].queryset = Teacher.objects.filter(
-                school=school
-            ).order_by("name")
         else:
             self.fields["class_name"].queryset = SchoolClass.objects.none()
-            self.fields["teacher_name"].queryset = Teacher.objects.none()
+
+        # UI: enable datalist + disable browser autocomplete
+        try:
+            self.fields["teacher_name"].widget.attrs.setdefault("list", "teacher_suggestions")
+            self.fields["teacher_name"].widget.attrs.setdefault("autocomplete", "off")
+        except Exception:
+            pass
+
+    def clean_teacher_name(self):
+        name = (self.cleaned_data.get("teacher_name") or "").strip()
+        if not name:
+            return name
+
+        school = getattr(self, "_school", None)
+        if school is None:
+            return name
+
+        try:
+            # If editing an existing record, allow keeping the same value even if the teacher
+            # record was deleted later.
+            try:
+                current_val = (getattr(self.instance, "teacher_name", "") or "").strip()
+            except Exception:
+                current_val = ""
+            if current_val and current_val.lower() == name.lower():
+                return name
+
+            # Enforce selecting an existing teacher name to avoid typos.
+            # If there are no teachers configured yet, allow free text.
+            has_any = Teacher.objects.filter(school=school).exists()
+            if not has_any:
+                return name
+
+            exists = Teacher.objects.filter(school=school, name__iexact=name).exists()
+            if not exists:
+                raise ValidationError("اختر المعلم/ـة من القائمة أو تأكد من الاسم.")
+        except ValidationError:
+            raise
+        except Exception:
+            # If Teacher table is not available for some reason, accept the text.
+            return name
+
+        return name
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         class_obj = self.cleaned_data["class_name"]
-        teacher_obj = self.cleaned_data["teacher_name"]
         instance.class_name = class_obj.name
-        instance.teacher_name = teacher_obj.name
+        instance.teacher_name = (self.cleaned_data.get("teacher_name") or "").strip()
         if getattr(self, "_school", None) is not None:
             instance.school = self._school
         if commit:

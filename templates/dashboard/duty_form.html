@@ -78,8 +78,17 @@
 
                 <div class="space-y-2 md:col-span-2">
                     <label for="{{ form.teacher_name.id_for_label }}" class="block text-sm font-medium text-slate-700">{{ form.teacher_name.label }}</label>
-                    {{ form.teacher_name }}
-                    <datalist id="teacher_suggestions"></datalist>
+                    <div class="relative">
+                        {{ form.teacher_name }}
+                        <!-- Native datalist (works in many browsers) -->
+                        <datalist id="teacher_suggestions"></datalist>
+
+                        <!-- Fallback dropdown (for browsers where datalist is unreliable) -->
+                        <div id="teacher_suggestions_box"
+                             class="hidden absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+                            <div id="teacher_suggestions_items" class="max-h-64 overflow-auto"></div>
+                        </div>
+                    </div>
                     <p class="text-xs text-slate-500">ابدأ بالكتابة للبحث عن المعلم من بيانات المدرسة.</p>
                     {% if form.teacher_name.errors %}<div class="text-rose-600 text-sm">{{ form.teacher_name.errors }}</div>{% endif %}
                 </div>
@@ -159,6 +168,8 @@
     const inputId = "{{ form.teacher_name.id_for_label }}";
     const input = document.getElementById(inputId);
     const list = document.getElementById("teacher_suggestions");
+    const box = document.getElementById("teacher_suggestions_box");
+    const items = document.getElementById("teacher_suggestions_items");
     if (!input || !list) return;
 
     // Ensure attributes even if widget attrs change
@@ -181,6 +192,28 @@
             opt.value = name;
             list.appendChild(opt);
         });
+
+        // Also render clickable fallback list (helps on iOS/Safari)
+        if (!box || !items) return;
+        items.innerHTML = "";
+        const arr = (names || []).filter(Boolean);
+        if (!arr.length) {
+            box.classList.add("hidden");
+            return;
+        }
+        arr.forEach(function(name) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "w-full text-right px-4 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none";
+            btn.textContent = name;
+            btn.addEventListener("click", function() {
+                input.value = name;
+                box.classList.add("hidden");
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+            });
+            items.appendChild(btn);
+        });
+        box.classList.remove("hidden");
     }
 
     async function fetchNames(q) {
@@ -240,6 +273,22 @@
     input.addEventListener("input", scheduleFetch);
     input.addEventListener("focus", function() {
         if (!list.children.length) scheduleFetch();
+    });
+
+    // Hide fallback when clicking outside
+    document.addEventListener("click", function(ev) {
+        if (!box) return;
+        const target = ev.target;
+        if (target === input) return;
+        if (box.contains(target)) return;
+        box.classList.add("hidden");
+    });
+
+    // Hide fallback on Escape
+    input.addEventListener("keydown", function(ev) {
+        if (ev.key === "Escape" && box) {
+            box.classList.add("hidden");
+        }
     });
 })();
 </script>
