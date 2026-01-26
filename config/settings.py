@@ -192,8 +192,8 @@ INSTALLED_APPS = [
     "rest_framework",
 
     # Project apps
-    "core",
-    "schedule",
+    "core.apps.CoreConfig",
+    "schedule.apps.ScheduleConfig",
     "standby",
     "notices.apps.NoticesConfig",
     "website",

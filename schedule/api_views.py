@@ -106,11 +106,18 @@ def metrics(request):
     - Enabled when DEBUG=True OR DISPLAY_METRICS_ENABLED=1
     - Optional auth via DISPLAY_METRICS_KEY + X-Display-Metrics-Key header
     """
-    enabled = bool(getattr(dj_settings, "DEBUG", False)) or (os.getenv("DISPLAY_METRICS_ENABLED", "").strip() == "1")
-    if not enabled:
+    is_debug = bool(getattr(dj_settings, "DEBUG", False))
+    enabled_flag = (os.getenv("DISPLAY_METRICS_ENABLED", "").strip() == "1")
+
+    # Production: endpoint is OFF unless explicitly enabled.
+    # When enabled in production, a key is mandatory.
+    if (not is_debug) and (not enabled_flag):
         return JsonResponse({"detail": "not_found"}, status=404)
 
     required_key = os.getenv("DISPLAY_METRICS_KEY", "").strip()
+    if (not is_debug) and (not required_key):
+        return JsonResponse({"detail": "not_found"}, status=404)
+
     if required_key:
         provided = (request.headers.get("X-Display-Metrics-Key") or "").strip()
         if provided != required_key:
@@ -125,6 +132,14 @@ def metrics(request):
         "metrics:status:rev_cache_hit",
         "metrics:status:rev_db",
         "metrics:status:rev_none",
+
+        # Snapshot cache counters
+        "metrics:snapshot_cache:token_hit",
+        "metrics:snapshot_cache:token_miss",
+        "metrics:snapshot_cache:school_hit",
+        "metrics:snapshot_cache:school_miss",
+        "metrics:snapshot_cache:steady_hit",
+        "metrics:snapshot_cache:steady_miss",
     ]
 
     try:
