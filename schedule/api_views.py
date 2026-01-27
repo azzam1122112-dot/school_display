@@ -28,6 +28,62 @@ from schedule.cache_utils import get_cached_schedule_revision_for_school_id, set
 logger = logging.getLogger(__name__)
 
 
+def _steady_cache_log_enabled() -> bool:
+    try:
+        if bool(getattr(dj_settings, "DEBUG", False)):
+            return True
+    except Exception:
+        pass
+    return (os.getenv("DISPLAY_STEADY_CACHE_LOG", "").strip() == "1")
+
+
+def _steady_cache_key_for_school_rev(school_id: int, rev: int) -> str:
+    return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady:{str(timezone.localdate())}"
+
+
+def _log_steady_get(key: str, *, hit: bool, school_id: int | None, rev: int | None) -> None:
+    if not _steady_cache_log_enabled():
+        return
+    try:
+        # Throttle per key to avoid production log storms.
+        throttle = f"log:steady_get:{hashlib.sha1(key.encode('utf-8')).hexdigest()[:10]}"
+        if not bool(cache.add(throttle, "1", timeout=10)):
+            return
+    except Exception:
+        pass
+    try:
+        logger.info(
+            "steady_get key=%s hit=%s school_id=%s rev=%s",
+            key,
+            "1" if hit else "0",
+            school_id,
+            rev,
+        )
+    except Exception:
+        pass
+
+
+def _log_steady_set(key: str, *, ttl: int, school_id: int | None, rev: int | None) -> None:
+    if not _steady_cache_log_enabled():
+        return
+    try:
+        throttle = f"log:steady_set:{hashlib.sha1(key.encode('utf-8')).hexdigest()[:10]}"
+        if not bool(cache.add(throttle, "1", timeout=10)):
+            return
+    except Exception:
+        pass
+    try:
+        logger.info(
+            "steady_set key=%s ttl=%s school_id=%s rev=%s",
+            key,
+            int(ttl),
+            school_id,
+            rev,
+        )
+    except Exception:
+        pass
+
+
 def _metrics_interval_seconds() -> int:
     # Log cache hit/miss metrics at INFO at most once per N seconds.
     # Keep it conservative to avoid log noise in SaaS.
@@ -1748,8 +1804,9 @@ def snapshot(request, token: str | None = None):
 
             # steady snapshot fallback (long TTL outside window/holidays)
             # Bump cache version v2 -> v3
-            steady_key = f"snapshot:v5:school:{int(cached_school_id)}:rev:{int(cached_rev)}:steady:{str(timezone.localdate())}"
+            steady_key = _steady_cache_key_for_school_rev(int(cached_school_id), int(cached_rev))
             cached_steady = cache.get(steady_key)
+            _log_steady_get(steady_key, hit=isinstance(cached_steady, dict), school_id=int(cached_school_id), rev=int(cached_rev))
             if isinstance(cached_steady, dict):
                 _metrics_incr("metrics:snapshot_cache:steady_hit")
                 _metrics_log_maybe()
@@ -1864,7 +1921,8 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         snap_key = _snapshot_cache_key(settings_obj)
-        steady_key = f"snapshot:v5:school:{school_id}:rev:{rev}:steady:{str(timezone.localdate())}"
+        # IMPORTANT: steady cache must be checked before any build.
+        steady_key = _steady_snapshot_cache_key(settings_obj, {})
 
         if not force_nocache:
             cached_school = cache.get(snap_key)
@@ -1892,6 +1950,7 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
             cached_steady2 = cache.get(steady_key)
+            _log_steady_get(steady_key, hit=isinstance(cached_steady2, dict), school_id=school_id, rev=rev)
             if isinstance(cached_steady2, dict):
                 _metrics_incr("metrics:snapshot_cache:steady_hit")
                 _metrics_log_maybe()
@@ -1915,7 +1974,7 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         # Stampede lock: one build per school
-        school_lock_key = f"lock:{snap_key}"
+        school_lock_key = f"lock:snapshot:v5:school:{school_id}:rev:{rev}"
         have_lock = True
         if not force_nocache:
             try:
@@ -2063,7 +2122,10 @@ def snapshot(request, token: str | None = None):
 
                 if not force_nocache:
                     try:
-                        cache.set(_steady_snapshot_cache_key(settings_obj, day_snap), snap, timeout=_steady_snapshot_cache_ttl_seconds(snap))
+                        steady_write_key = _steady_snapshot_cache_key(settings_obj, day_snap)
+                        steady_ttl = _steady_snapshot_cache_ttl_seconds(snap)
+                        cache.set(steady_write_key, snap, timeout=steady_ttl)
+                        _log_steady_set(steady_write_key, ttl=int(steady_ttl), school_id=school_id, rev=rev)
                     except Exception:
                         pass
 
