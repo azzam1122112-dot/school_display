@@ -1176,14 +1176,10 @@ def _is_active_window(day_snap: dict) -> bool:
 def _steady_snapshot_cache_key(settings_obj: SchoolSettings, day_snap: dict) -> str:
     school_id = int(getattr(settings_obj, "school_id", None) or 0)
     rev = int(getattr(settings_obj, "schedule_revision", 0) or 0)
-    # isolate by local date from snapshot meta to avoid cross-day bleed.
-    date_str = None
-    try:
-        date_str = (day_snap.get("meta") or {}).get("date")
-    except Exception:
-        date_str = None
-    if not date_str:
-        date_str = str(timezone.localdate())
+    # IMPORTANT: Use the same date source as read paths (timezone.localdate).
+    # Previously we sometimes used day_snap['meta']['date'], which caused key mismatches
+    # and steady_hit staying at 0 even when we wrote steady snapshots.
+    date_str = str(timezone.localdate())
     return f"snapshot:v5:school:{school_id}:rev:{rev}:steady:{date_str}"
 
 
