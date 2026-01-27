@@ -6,6 +6,7 @@ import hashlib
 import logging
 import os
 import re
+import socket
 import time
 from datetime import time as dt_time
 from typing import Iterable, Optional
@@ -140,6 +141,11 @@ def metrics(request):
         "metrics:snapshot_cache:school_miss",
         "metrics:snapshot_cache:steady_hit",
         "metrics:snapshot_cache:steady_miss",
+
+        # Snapshot build metrics
+        "metrics:snapshot_cache:build_count",
+        "metrics:snapshot_cache:build_sum_ms",
+        "metrics:snapshot_cache:build_max_ms",
     ]
 
     try:
@@ -150,16 +156,75 @@ def metrics(request):
 
     out: dict[str, object] = {
         "server_time": int(time.time()),
+        "hostname": (socket.gethostname() or "").strip(),
+        "process_id": int(os.getpid()),
         "cache_backend": backend_name,
         "redis_url_configured": bool(os.getenv("REDIS_URL", "").strip()),
         "cache_key_prefix": os.getenv("CACHE_KEY_PREFIX", "school_display"),
     }
+
+    def _sanitize_error(msg: str) -> str:
+        # Avoid leaking connection strings or credentials in metrics output.
+        try:
+            s = (msg or "").strip()
+            if not s:
+                return ""
+            # Redact any redis/rediss URLs.
+            for scheme in ("redis://", "rediss://"):
+                if scheme in s:
+                    # Keep only scheme and a marker.
+                    s = s.replace(scheme, scheme + "***")
+            return s[:200]
+        except Exception:
+            return ""
+
+    # Optional: validate Redis connectivity (best-effort, no hard dependency).
+    # This helps distinguish "Redis configured" vs "Redis actually reachable".
+    try:
+        from django_redis import get_redis_connection  # type: ignore
+
+        t0 = time.monotonic()
+        conn = get_redis_connection("default")
+        ok = bool(conn.ping())
+        out["redis_ping_ok"] = ok
+        out["redis_ping_ms"] = int((time.monotonic() - t0) * 1000)
+    except Exception as e:
+        out["redis_ping_ok"] = False
+        out["redis_ping_error"] = e.__class__.__name__
+        out["redis_ping_error_detail"] = _sanitize_error(str(e))
+
+    # Optional: shared-cache probe.
+    # If you call metrics repeatedly and see different process_id values but the same probe_last,
+    # that's strong evidence the cache is shared across workers.
+    try:
+        probe = (request.GET.get("probe") or "").strip().lower() in {"1", "true", "yes"}
+        if not probe:
+            probe = (request.headers.get("X-Display-Metrics-Probe") or "").strip().lower() in {"1", "true", "yes"}
+        if probe:
+            probe_key = f"metrics:cache_probe:{os.getenv('CACHE_KEY_PREFIX', 'school_display')}"
+            prev = cache.get(probe_key)
+            out["cache_probe_last"] = prev
+            payload = {"pid": int(os.getpid()), "ts": int(time.time())}
+            cache.set(probe_key, payload, timeout=120)
+            out["cache_probe_written"] = payload
+    except Exception as e:
+        out["cache_probe_error"] = str(e)[:200]
+
     for k in keys:
         try:
             v = cache.get(k)
             out[k] = int(v) if v is not None else 0
         except Exception:
             out[k] = 0
+
+    # Derived metrics
+    try:
+        bc = int(out.get("metrics:snapshot_cache:build_count", 0) or 0)
+        bsum = int(out.get("metrics:snapshot_cache:build_sum_ms", 0) or 0)
+        out["metrics:snapshot_cache:build_avg_ms"] = int(bsum / bc) if bc > 0 else 0
+    except Exception:
+        out["metrics:snapshot_cache:build_avg_ms"] = 0
+
     return JsonResponse(out, json_dumps_params={"ensure_ascii": False})
 
 
@@ -1390,6 +1455,30 @@ def snapshot(request, token: str | None = None):
 
         app_rev = _app_revision()
 
+        def _apply_success_cache_headers(resp, snap: dict | None):
+            """Allow short edge caching (Cloudflare) while avoiding browser caching.
+
+            We only apply this to successful responses; errors keep no-store.
+            Edge TTL is clamped by DISPLAY_SNAPSHOT_EDGE_MAX_AGE and snapshot TTL.
+            """
+            try:
+                status = int(getattr(resp, "status_code", 0) or 0)
+                if status not in (200, 304):
+                    return resp
+                if not isinstance(snap, dict):
+                    return resp
+
+                edge_cap = _snapshot_edge_cache_max_age_seconds()
+                ttl = compute_dynamic_ttl_seconds(snap)
+                ttl = _clamp_active_ttl_by_remaining_seconds(snap, ttl)
+                edge_ttl = max(1, min(int(edge_cap), int(ttl)))
+
+                # Browser: effectively bypass (must revalidate). Edge: allow small cache.
+                resp["Cache-Control"] = f"public, max-age=0, must-revalidate, s-maxage={edge_ttl}"
+            except Exception:
+                pass
+            return resp
+
         def _finalize(resp, *, cache_status: str, device_bound: bool | None = None, school_id: int | None = None, rev: int | None = None):
             if not resp.get("Cache-Control"):
                 resp["Cache-Control"] = "no-store"
@@ -1566,9 +1655,11 @@ def snapshot(request, token: str | None = None):
             if inm and inm == cached_entry.get("etag"):
                 resp = HttpResponseNotModified()
                 resp["ETag"] = f"\"{cached_entry['etag']}\""
+                _apply_success_cache_headers(resp, cached_entry.get("snap"))
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id_for_log, rev=cached_entry.get("rev"))
             resp = JsonResponse(cached_entry["snap"], json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{cached_entry['etag']}\""
+            _apply_success_cache_headers(resp, cached_entry.get("snap"))
             return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id_for_log, rev=cached_entry.get("rev"))
 
         _metrics_incr("metrics:snapshot_cache:token_miss")
@@ -1621,9 +1712,11 @@ def snapshot(request, token: str | None = None):
                     if inm and inm == cached_entry_early.get("etag"):
                         resp = HttpResponseNotModified()
                         resp["ETag"] = f"\"{cached_entry_early['etag']}\""
+                        _apply_success_cache_headers(resp, cached_entry_early.get("snap"))
                         return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
                     resp = JsonResponse(cached_entry_early["snap"], json_dumps_params={"ensure_ascii": False})
                     resp["ETag"] = f"\"{cached_entry_early['etag']}\""
+                    _apply_success_cache_headers(resp, cached_entry_early.get("snap"))
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
             except Exception:
                 pass
@@ -1648,11 +1741,13 @@ def snapshot(request, token: str | None = None):
                 if etag and inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_snap)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
                 resp = JsonResponse(cached_snap, json_dumps_params={"ensure_ascii": False})
                 if etag:
                     resp["ETag"] = f"\"{etag}\""
+                _apply_success_cache_headers(resp, cached_snap)
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
             # steady snapshot fallback (long TTL outside window/holidays)
@@ -1676,11 +1771,13 @@ def snapshot(request, token: str | None = None):
                 if etag and inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_steady)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
                 resp = JsonResponse(cached_steady, json_dumps_params={"ensure_ascii": False})
                 if etag:
                     resp["ETag"] = f"\"{etag}\""
+                _apply_success_cache_headers(resp, cached_steady)
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=int(cached_school_id), rev=int(cached_rev))
 
             _metrics_incr("metrics:snapshot_cache:school_miss")
@@ -1763,9 +1860,11 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == cached_entry2.get("etag"):
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{cached_entry2['etag']}\""
+                    _apply_success_cache_headers(resp, cached_entry2.get("snap"))
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_entry2["snap"], json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{cached_entry2['etag']}\""
+                _apply_success_cache_headers(resp, cached_entry2.get("snap"))
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         snap_key = _snapshot_cache_key(settings_obj)
@@ -1789,9 +1888,11 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_school)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{etag}\""
+                _apply_success_cache_headers(resp, cached_school)
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
             cached_steady2 = cache.get(steady_key)
@@ -1810,9 +1911,11 @@ def snapshot(request, token: str | None = None):
                 if inm and inm == etag:
                     resp = HttpResponseNotModified()
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_steady2)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
                 resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
                 resp["ETag"] = f"\"{etag}\""
+                _apply_success_cache_headers(resp, cached_steady2)
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         # Stampede lock: one build per school
@@ -1841,6 +1944,7 @@ def snapshot(request, token: str | None = None):
                         pass
                     resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_school)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
 
                 cached_steady2 = cache.get(steady_key)
@@ -1855,6 +1959,7 @@ def snapshot(request, token: str | None = None):
                         pass
                     resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
                     resp["ETag"] = f"\"{etag}\""
+                    _apply_success_cache_headers(resp, cached_steady2)
                     return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None)
 
                 time.sleep(0.05)
@@ -1876,6 +1981,7 @@ def snapshot(request, token: str | None = None):
                 pass
             resp = JsonResponse(tmp, json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{etag}\""
+            _apply_success_cache_headers(resp, tmp)
             return _finalize(resp, cache_status="STALE", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         try:
@@ -1997,10 +2103,12 @@ def snapshot(request, token: str | None = None):
             if inm and inm == etag:
                 resp = HttpResponseNotModified()
                 resp["ETag"] = f"\"{etag}\""
+                _apply_success_cache_headers(resp, snap)
                 return _finalize(resp, cache_status="MISS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
             resp = JsonResponse(snap, json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{etag}\""
+            _apply_success_cache_headers(resp, snap)
             return _finalize(resp, cache_status="BYPASS" if force_nocache else "MISS", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
         finally:
             if not force_nocache:

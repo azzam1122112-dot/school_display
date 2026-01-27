@@ -45,3 +45,14 @@ class Command(BaseCommand):
         self.stdout.write(f"redis_url_configured={bool(os.getenv('REDIS_URL', '').strip())}")
         self.stdout.write(f"cache_backend={backend_name}")
         self.stdout.write(f"settings.CACHES['default']={default_cfg}")
+
+        # Best-effort connectivity check for django-redis.
+        try:
+            from django_redis import get_redis_connection  # type: ignore
+
+            conn = get_redis_connection("default")
+            ok = bool(conn.ping())
+            self.stdout.write(f"redis_ping_ok={ok}")
+        except Exception as e:
+            self.stdout.write(f"redis_ping_ok=False")
+            self.stdout.write(f"redis_ping_error={str(e)[:200]}")
