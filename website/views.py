@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from core.models import DisplayScreen
@@ -163,6 +164,7 @@ def _build_display_context(request, key: str | None) -> dict | None:
     return ctx
 
 
+@never_cache
 def home(request):
     """
     الصفحة الرئيسية للشاشة:
@@ -184,6 +186,7 @@ def display(request):
     return home(request)
 
 
+@never_cache
 @xframe_options_sameorigin
 def display_view(request, screen_key: str):
     """
@@ -200,6 +203,7 @@ def display_view(request, screen_key: str):
     return render(request, "website/display.html", ctx)
 
 
+@never_cache
 def short_display_redirect(request, short_code: str):
     """
     ✅ الرابط المختصر: /s/<short_code> أو /s/<short_code>/
