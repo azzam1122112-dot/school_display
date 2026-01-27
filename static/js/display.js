@@ -1899,25 +1899,29 @@
     progressRange = { start: null, end: null };
     hasActiveCountdown = false;
 
-    if (
-      typeof s.remaining_seconds === "number" &&
-      (stType === "period" || stType === "break" || stType === "before")
-    ) {
-      const serverRem = Math.max(0, Math.floor(s.remaining_seconds));
-      // If we just reached 0 locally, and the server returns an older cached snapshot for the same state,
-      // don't jump the countdown backwards (e.g., 00:00 -> 05:12). Wait until the state changes.
-      if (
-        prevCountdown !== null &&
-        prevCountdown <= 1 &&
-        nextCoreSig &&
-        nextCoreSig === prevCoreSig &&
-        serverRem > prevCountdown + 10
-      ) {
-        countdownSeconds = prevCountdown;
-      } else {
+    if (stType === "period" || stType === "break" || stType === "before") {
+      let localCalc = null;
+      // Prefer calculating remaining time from local clock to avoid cache processing delays
+      // which cause the timer to lag behind the header clock.
+      const targetHM = stType === "before" ? s.from : s.to;
+      if (targetHM) {
+        const tMs = hmToMs(targetHM, baseMs);
+        if (tMs) localCalc = Math.floor((tMs - baseMs) / 1000);
+      }
+
+      const serverRem =
+        typeof s.remaining_seconds === "number"
+          ? Math.max(0, Math.floor(s.remaining_seconds))
+          : null;
+
+      // Use local calculation if valid (sanity check: result is between -12h and +24h)
+      if (localCalc !== null && localCalc > -43200 && localCalc < 86400) {
+        countdownSeconds = Math.max(0, localCalc);
+      } else if (serverRem !== null) {
         countdownSeconds = serverRem;
       }
-      hasActiveCountdown = true;
+
+      if (countdownSeconds !== null) hasActiveCountdown = true;
     }
 
     // If the server says 0 (or we clamped to 0) and we haven't handled this core state yet,
