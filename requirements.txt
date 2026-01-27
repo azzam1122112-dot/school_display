@@ -12,6 +12,8 @@ cryptography==46.0.3
 dj-database-url==3.0.1
 Django==5.1.2
 django-cloudinary-storage==0.3.0
+django-redis
+
 djangorestframework==3.16.1
 google-api-core==2.28.1
 google-auth==2.42.0

@@ -77,7 +77,9 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 # Used by schedule.api_views.snapshot origin-only caching/ETag.
 # =========================
 try:
-    DISPLAY_SNAPSHOT_TTL = int(os.environ.get("DISPLAY_SNAPSHOT_TTL", str(DISPLAY_SNAPSHOT_CACHE_TTL)))
+    DISPLAY_SNAPSHOT_TTL = int(
+        os.environ.get("DISPLAY_SNAPSHOT_TTL", str(DISPLAY_SNAPSHOT_CACHE_TTL))
+    )
 except Exception:
     DISPLAY_SNAPSHOT_TTL = DISPLAY_SNAPSHOT_CACHE_TTL
 
@@ -107,7 +109,9 @@ DISPLAY_SNAPSHOT_STEADY_MAX_TTL = max(3600, min(86400, DISPLAY_SNAPSHOT_STEADY_M
 
 # Throttled cache metrics log interval (seconds)
 try:
-    DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = int(os.getenv("DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC", "600"))
+    DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = int(
+        os.getenv("DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC", "600")
+    )
 except Exception:
     DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = 600
 
@@ -140,8 +144,6 @@ DISPLAY_SNAPSHOT_EDGE_MAX_AGE = max(1, min(60, DISPLAY_SNAPSHOT_EDGE_MAX_AGE))
 # =========================
 # Hosts / CSRF
 # =========================
-# يسمح بإضافة hosts من env (مفيد عند تغيير الدومين أو إضافة subdomains)
-# ملاحظة: لا نخلي env يكتب فوق الافتراضي بالكامل حتى لا يتسبب بقطع الخدمة لو كانت القيمة ناقصة.
 _default_allowed_hosts = [
     "school-display.com",
     "www.school-display.com",
@@ -240,10 +242,16 @@ MIDDLEWARE = [
 
 
 # =========================
-# Templates
+# URLs / WSGI / ASGI
 # =========================
 ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
+
+# =========================
+# Templates
+# =========================
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -260,9 +268,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
 
 
 # =========================
@@ -289,25 +294,27 @@ if is_postgres and not DEBUG:
 
 
 # =========================
-# Cache (Redis if REDIS_URL exists)
+# Cache (Redis if REDIS_URL exists) - باستخدام django-redis ✅
 # =========================
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
 if REDIS_URL:
     # ✅ تحسينات مهمة:
+    # - backend الصحيح لـ django-redis
     # - timeouts قصيرة لمنع التعليق
     # - health_check
     # - retry_on_timeout
     # - KEY_PREFIX: لتفادي تعارض مفاتيح بين بيئات/خدمات
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
             "OPTIONS": {
-                "socket_connect_timeout": env_int("REDIS_CONNECT_TIMEOUT", "2"),
-                "socket_timeout": env_int("REDIS_SOCKET_TIMEOUT", "2"),
-                "retry_on_timeout": True,
-                "health_check_interval": env_int("REDIS_HEALTHCHECK_INTERVAL", "30"),
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "SOCKET_CONNECT_TIMEOUT": env_int("REDIS_CONNECT_TIMEOUT", "2"),
+                "SOCKET_TIMEOUT": env_int("REDIS_SOCKET_TIMEOUT", "2"),
+                "RETRY_ON_TIMEOUT": True,
+                "HEALTH_CHECK_INTERVAL": env_int("REDIS_HEALTHCHECK_INTERVAL", "30"),
             },
             "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "school_display"),
         }
@@ -502,6 +509,7 @@ LOGIN_REDIRECT_URL = "dashboard:index"
 LOGOUT_REDIRECT_URL = "dashboard:login"
 
 
+# =========================
+# Site base URL
+# =========================
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://school-display.com")
-
-
