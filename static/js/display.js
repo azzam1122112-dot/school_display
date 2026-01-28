@@ -187,12 +187,6 @@
       clearTimeout(pollTimer);
       pollTimer = null;
     }
-    if (hardReloadTimer) {
-      try {
-        clearTimeout(hardReloadTimer);
-      } catch (e) {}
-      hardReloadTimer = null;
-    }
     if (ctrl) {
       try {
         ctrl.abort();
@@ -347,110 +341,7 @@
     transitionUntilTs: 0, // while > Date.now(): force snapshot fetch to cross 00:00 boundaries
     transitionBackoffSec: 1.2, // bounded backoff during transition window
     pollStateLastLogTs: 0, // debug-only: last time we logged poll state
-    hardReloadEverySec: 0, // forced full-page reload interval (0 disables)
   };
-
-  // ===== Forced full-page reload (optional) =====
-  // Purpose: some TV browsers accumulate memory or get stuck; a periodic hard reload
-  // keeps the screen healthy and ensures HTML/JS assets are reloaded.
-  let hardReloadTimer = null;
-
-  function hardReloadStorageKey() {
-    const t = (getToken() || "").toString();
-    const safe = encodeURIComponent(t).slice(0, 80);
-    return "display_hard_reload_once_ts:" + safe;
-  }
-
-  function isHardReloadDisabledByQuery() {
-    try {
-      const qs = new URLSearchParams(window.location.search);
-      const v = (qs.get("page_reload") || qs.get("hard_reload") || "").trim().toLowerCase();
-      if (!v) return false;
-      return v === "0" || v === "false" || v === "no";
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function markForceInitialSnapshot() {
-    try {
-      sessionStorage.setItem(hardReloadStorageKey(), String(Date.now()));
-    } catch (e) {}
-  }
-
-  function consumeForceInitialSnapshotFlag(maxAgeMs) {
-    try {
-      const k = hardReloadStorageKey();
-      const raw = sessionStorage.getItem(k);
-      if (!raw) return false;
-      const ts = Number(raw) || 0;
-      sessionStorage.removeItem(k);
-      if (!ts) return false;
-      return (Date.now() - ts) <= (Number(maxAgeMs) || 0);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function hardReloadNow(reason) {
-    if (isBlocked) return;
-    // Guard against accidental rapid reload loops.
-    try {
-      const k = "display_hard_reload_last_ts";
-      const now = Date.now();
-      const prev = Number(sessionStorage.getItem(k) || 0);
-      if (prev && now - prev < 3000) return;
-      sessionStorage.setItem(k, String(now));
-    } catch (e) {}
-
-    // Ask next boot to fetch a fresh snapshot body ASAP.
-    markForceInitialSnapshot();
-
-    // Cache-bust the *page* URL so the browser re-requests HTML/JS.
-    try {
-      const u = new URL(window.location.href);
-      u.searchParams.set("_r", String(Date.now()));
-      // Use replace() so the back button doesn't cycle through reload entries.
-      window.location.replace(u.toString());
-      return;
-    } catch (e) {}
-
-    try {
-      window.location.reload();
-    } catch (e) {}
-  }
-
-  function scheduleHardReloadFromSettings(settings) {
-    if (isHardReloadDisabledByQuery()) {
-      rt.hardReloadEverySec = 0;
-      if (hardReloadTimer) {
-        try { clearTimeout(hardReloadTimer); } catch (e) {}
-        hardReloadTimer = null;
-      }
-      return;
-    }
-
-    const raw = settings && typeof settings.refresh_interval_sec !== "undefined" ? Number(settings.refresh_interval_sec) : 0;
-    if (!isFinite(raw) || raw <= 0) return;
-
-    // Keep it sane. Dashboard enforces >=15s; match that here.
-    const base = clamp(Math.round(raw), 15, 864000);
-    if (Math.abs((Number(rt.hardReloadEverySec) || 0) - base) < 0.001 && hardReloadTimer) return;
-
-    rt.hardReloadEverySec = base;
-    if (hardReloadTimer) {
-      try { clearTimeout(hardReloadTimer); } catch (e) {}
-      hardReloadTimer = null;
-    }
-
-    // Add small jitter (<= 3s) so many screens don't reload simultaneously.
-    const jitterMs = 250 + Math.floor(Math.random() * 2750); // 250..2999ms
-    hardReloadTimer = setTimeout(() => {
-      try {
-        hardReloadNow("interval");
-      } catch (e) {}
-    }, base * 1000 + jitterMs);
-  }
 
   function maybeLogPollState(activeWindow, nextPollSec) {
     if (!isDebug()) return;
@@ -2096,12 +1987,6 @@
       if (!rt.statusEverySec || rt.statusEverySec < 1) rt.statusEverySec = cfg.REFRESH_EVERY;
     }
 
-    // Force full-page reload using the configured refresh interval.
-    // This is separate from data polling (cfg.REFRESH_EVERY) and uses location.replace() with cache-busting.
-    try {
-      scheduleHardReloadFromSettings(settings);
-    } catch (e) {}
-
     if (typeof settings.standby_scroll_speed === "number" && settings.standby_scroll_speed > 0) {
       cfg.STANDBY_SPEED = normSpeed(settings.standby_scroll_speed, cfg.STANDBY_SPEED);
     }
@@ -2594,7 +2479,26 @@
       credentials: "omit",
       signal: ctrlStatus ? ctrlStatus.signal : undefined,
     }).then(async (r) => {
+      // Server clock sync: keep countdown/clock aligned even when we only poll /status.
+      try {
+        const h = r.headers.get("X-Server-Time-MS");
+        if (h) applyServerNowMs(h);
+      } catch (e) {}
+
       if (r.status === 304) {
+        // If server provides revision in headers, learn it even on 304.
+        try {
+          const revH = r.headers.get("X-Schedule-Revision");
+          if (revH) {
+            const n = parseInt(String(revH), 10);
+            if (!isNaN(n) && n >= 0) {
+              rt.scheduleRevision = n;
+              try {
+                localStorage.setItem(revStorageKey(), String(n));
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
         return { _notModified: true };
       }
 
@@ -2604,6 +2508,20 @@
       }
 
       const body = await r.json().catch(() => null);
+
+      // Prefer header revision if present (authoritative even if body is missing).
+      try {
+        const revH = r.headers.get("X-Schedule-Revision");
+        if (revH) {
+          const n = parseInt(String(revH), 10);
+          if (!isNaN(n) && n >= 0) {
+            rt.scheduleRevision = n;
+            try {
+              localStorage.setItem(revStorageKey(), String(n));
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
 
       // Keep local revision in sync if server provides it.
       if (body && typeof body === "object" && typeof body.schedule_revision !== "undefined") {
@@ -2666,8 +2584,7 @@
         // Critical: on first load, always fetch a full body.
         // If we send If-None-Match and get 304 while we have no payload in memory,
         // the UI can remain stuck on the loading state.
-        const forceFresh = consumeForceInitialSnapshotFlag(30000); // 30s
-        snap = await safeFetchSnapshot({ bypassEtag: true, transition: !!forceFresh, force: !!forceFresh });
+        snap = await safeFetchSnapshot({ bypassEtag: true });
       } else {
         const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
         if (inTrans) {

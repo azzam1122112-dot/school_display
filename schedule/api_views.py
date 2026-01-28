@@ -864,6 +864,10 @@ def status(request, token: str | None = None):
             resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
             # Throttle warnings to avoid log storms if token->school mapping is missing.
             if _should_log_status(token_hash, interval=_status_warn_log_interval_seconds()):
                 logger.warning(
@@ -883,6 +887,10 @@ def status(request, token: str | None = None):
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
             resp["X-Schedule-Revision"] = str(int(current_rev))
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
             _metrics_incr("metrics:status:resp_304")
             # Do NOT log 304s except sampling.
             if _should_log_status_304_sample(token_hash) and _should_log_status(token_hash):
@@ -906,6 +914,10 @@ def status(request, token: str | None = None):
         resp["Cache-Control"] = "no-store"
         resp["Vary"] = "Accept-Encoding"
         resp["X-Schedule-Revision"] = str(int(current_rev))
+        try:
+            resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+        except Exception:
+            pass
         _metrics_incr("metrics:status:resp_200")
         # Log 200 updates, but throttle to once per (school_id, rev) per interval.
         if _should_log_status_200_school_rev(school_id=int(school_id or 0), rev=int(current_rev)):
@@ -953,6 +965,10 @@ def status(request, token: str | None = None):
             resp["ETag"] = f"\"{etag}\""
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
             _metrics_incr("metrics:status:resp_304")
             if _should_log_status_304_sample(token_hash) and _should_log_status(token_hash):
                 logger.info(
@@ -967,6 +983,10 @@ def status(request, token: str | None = None):
             return resp
 
         resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+        try:
+            resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+        except Exception:
+            pass
         _metrics_incr("metrics:status:resp_200")
         try:
             sid = int(current_school_id or 0)
@@ -987,6 +1007,10 @@ def status(request, token: str | None = None):
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+    try:
+        resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+    except Exception:
+        pass
     _metrics_incr("metrics:status:resp_200")
     if _should_log_status(token_hash):
         logger.info(
