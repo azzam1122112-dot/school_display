@@ -43,6 +43,14 @@ def exists_dir(p: Path) -> bool:
         return False
 
 
+def env_int_clamped(name: str, default: int, min_v: int, max_v: int) -> int:
+    try:
+        v = int(os.getenv(name, str(default)).strip())
+    except Exception:
+        v = int(default)
+    return max(int(min_v), min(int(max_v), int(v)))
+
+
 # =========================
 # Base
 # =========================
@@ -139,6 +147,19 @@ except Exception:
     DISPLAY_SNAPSHOT_EDGE_MAX_AGE = 10
 
 DISPLAY_SNAPSHOT_EDGE_MAX_AGE = max(1, min(60, DISPLAY_SNAPSHOT_EDGE_MAX_AGE))
+
+
+# =========================
+# School-level snapshot cache (shared between tokens)
+# Tunable via ENV with safe clamps.
+# =========================
+SCHOOL_SNAPSHOT_TTL = env_int_clamped("SCHOOL_SNAPSHOT_TTL", 1200, 60, 3600)  # default 20 minutes
+SCHOOL_SNAPSHOT_LOCK_TTL = env_int_clamped("SCHOOL_SNAPSHOT_LOCK_TTL", 8, 3, 30)
+try:
+    SCHOOL_SNAPSHOT_WAIT_TIMEOUT = float(os.getenv("SCHOOL_SNAPSHOT_WAIT_TIMEOUT", "0.7"))
+except Exception:
+    SCHOOL_SNAPSHOT_WAIT_TIMEOUT = 0.7
+SCHOOL_SNAPSHOT_WAIT_TIMEOUT = max(0.1, min(2.0, SCHOOL_SNAPSHOT_WAIT_TIMEOUT))
 
 
 # =========================
@@ -298,6 +319,10 @@ if is_postgres and not DEBUG:
 # =========================
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
+# Default cache TTL as a safety net (seconds).
+# Per-key timeouts in the codebase can still override this.
+DEFAULT_CACHE_TIMEOUT = env_int("CACHE_DEFAULT_TIMEOUT", str(60 * 30))  # 30 minutes
+
 if REDIS_URL:
     # ✅ تحسينات مهمة:
     # - backend الصحيح لـ django-redis
@@ -309,6 +334,7 @@ if REDIS_URL:
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
+            "TIMEOUT": DEFAULT_CACHE_TIMEOUT,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "SOCKET_CONNECT_TIMEOUT": env_int("REDIS_CONNECT_TIMEOUT", "2"),
@@ -325,6 +351,7 @@ else:
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "school_display_cache",
+            "TIMEOUT": DEFAULT_CACHE_TIMEOUT,
         }
     }
 
