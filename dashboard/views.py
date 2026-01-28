@@ -66,7 +66,11 @@ from core.models import SubscriptionPlan, SupportTicket, TicketComment
 
 logger = logging.getLogger(__name__)
 
-from schedule.cache_utils import bump_schedule_revision_for_school_id, invalidate_display_snapshot_cache_for_school_id
+from schedule.cache_utils import (
+    bump_schedule_revision_for_school_id,
+    can_manual_refresh_school,
+    invalidate_display_snapshot_cache_for_school_id,
+)
 
 if TYPE_CHECKING:
     pass
@@ -1534,6 +1538,13 @@ def screens_refresh_now(request):
     logger = logging.getLogger(__name__)
 
     school_id = int(getattr(school, "id", 0) or 0)
+
+    if not can_manual_refresh_school(school_id, window_sec=5):
+        messages.info(request, "تم التحديث قبل لحظات — انتظر 5 ثواني ثم أعد المحاولة.")
+        next_url = (request.POST.get("next") or "").strip()
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            return redirect(next_url)
+        return redirect("dashboard:screen_list")
 
     with transaction.atomic():
         old_rev = get_schedule_revision_for_school_id(school_id) or 0

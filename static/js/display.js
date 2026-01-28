@@ -359,13 +359,13 @@
     }
   })();
 
-  // Pick a stable jitter per page load: ~±5% (exclude 0)
+  // Pick a stable jitter per page load: ~±15% (exclude 0)
   (function initRefreshJitter() {
     try {
-      const v = (Math.random() * 0.1) - 0.05; // -0.05..+0.05
-      rt.refreshJitterFrac = Math.abs(v) < 0.005 ? 0.02 : v;
+      const v = (Math.random() * 0.3) - 0.15; // -0.15..+0.15
+      rt.refreshJitterFrac = Math.abs(v) < 0.01 ? 0.12 : v;
     } catch (e) {
-      rt.refreshJitterFrac = 0.02;
+      rt.refreshJitterFrac = 0.12;
     }
   })();
 
@@ -2417,31 +2417,35 @@
         } else {
           const st = await safeFetchStatus();
           if (st && st._notModified) {
-          rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
+            rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
 
-          // Adaptive status interval:
-          // - During active window: keep it fast (<=10s) so settings updates propagate quickly.
-          // - Outside active window: allow it to slow down (cheap polling) to reduce load.
-          const base = Number(cfg.REFRESH_EVERY) || 10;
-          const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
-          const cap = isActiveWin ? 10 : 60;
+            // Backoff on 304 to reduce polling load when nothing changes.
+            // Tuned for large deployments (many screens): bounded, with stable jitter.
+            const base = Math.max(2, Number(cfg.REFRESH_EVERY) || 10);
+            const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
+            const minEvery = isActiveWin ? Math.min(10, Math.max(8, base)) : 30;
+            const maxEvery = isActiveWin ? 30 : 300;
 
-          if (rt.status304Streak >= 6) {
-            rt.statusEverySec = Math.min(cap, Math.max(base, (Number(rt.statusEverySec) || base) + 5));
-          } else {
-            rt.statusEverySec = Math.min(cap, base);
-          }
+            const backoffFactor = isActiveWin ? 1.7 : 2.0;
 
-          isFetching = false;
-          failStreak = 0;
-          scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
-          if (isDebug()) {
-            ensureDebugOverlay();
-            setDebugText(
-              "status 304 not-modified | every=" + String(rt.statusEverySec || cfg.REFRESH_EVERY) + "s | " + new Date().toLocaleTimeString()
-            );
-          }
-          return;
+            const streak = Math.max(1, Number(rt.status304Streak) || 1);
+            const pow = Math.pow(backoffFactor, Math.min(10, Math.max(0, streak - 1)));
+            const jitter = 1 + (Number(rt.refreshJitterFrac) || 0);
+            let nextEvery = (minEvery * pow) * jitter;
+            nextEvery = Math.min(maxEvery, Math.max(minEvery, nextEvery));
+            // Round to 0.1s to avoid noisy drift.
+            rt.statusEverySec = Math.round(nextEvery * 10) / 10;
+
+            isFetching = false;
+            failStreak = 0;
+            scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
+            if (isDebug()) {
+              ensureDebugOverlay();
+              setDebugText(
+                "status 304 not-modified | streak=" + String(streak) + " | every=" + String(rt.statusEverySec || cfg.REFRESH_EVERY) + "s | " + new Date().toLocaleTimeString()
+              );
+            }
+            return;
           }
 
           // Default behavior: fetch snapshot unless server says it's not required.

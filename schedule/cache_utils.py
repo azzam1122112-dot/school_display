@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import hashlib
 from datetime import timedelta
 
@@ -9,6 +10,9 @@ from django.utils import timezone
 
 from core.models import DisplayScreen
 from schedule.models import SchoolSettings
+
+
+logger = logging.getLogger(__name__)
 
 
 def _school_rev_cache_key(school_id: int) -> str:
@@ -70,6 +74,58 @@ def bump_schedule_revision_for_school_id(school_id: int) -> int | None:
 
     set_cached_schedule_revision_for_school_id(int(school_id), int(new_rev))
     return new_rev
+
+
+REV_BUMP_WINDOW_SEC = 2  # Collapse rapid edit waves into a single bump.
+
+
+def bump_schedule_revision_for_school_id_debounced(
+    *,
+    school_id: int,
+    window_sec: int = REV_BUMP_WINDOW_SEC,
+) -> bool:
+    """Debounced revision bump.
+
+    Returns True if a bump was performed, False if skipped due to debounce window.
+    """
+
+    school_id = int(school_id or 0)
+    if not school_id:
+        return False
+
+    lock_key = f"display:rev_bump_window:{school_id}"
+    try:
+        acquired = bool(cache.add(lock_key, "1", timeout=int(window_sec)))
+    except Exception:
+        logger.exception("rev_bump_window cache error school_id=%s", school_id)
+        # If cache is unavailable, prefer correctness over debouncing.
+        acquired = True
+
+    if not acquired:
+        return False
+
+    bump_schedule_revision_for_school_id(school_id)
+    return True
+
+
+def can_manual_refresh_school(school_id: int, *, window_sec: int = 5) -> bool:
+    """Allow one manual refresh per short window.
+
+    Returns True for the first refresh attempt within the window, False for repeats.
+    Uses cache.add so it is atomic on Redis.
+    """
+
+    school_id = int(school_id or 0)
+    if not school_id:
+        return False
+
+    key = f"display:manual_refresh_rl:{school_id}"
+    try:
+        return bool(cache.add(key, "1", timeout=int(window_sec)))
+    except Exception:
+        logger.exception("manual_refresh_rl cache error school_id=%s", school_id)
+        # If cache is unavailable, do not block the user.
+        return True
 
 
 def get_schedule_revision_for_school_id(school_id: int) -> int | None:

@@ -3,7 +3,11 @@ import logging
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from schedule.cache_utils import bump_schedule_revision_for_school_id, get_schedule_revision_for_school_id, invalidate_display_snapshot_cache_for_school_id
+from schedule.cache_utils import (
+    bump_schedule_revision_for_school_id_debounced,
+    get_schedule_revision_for_school_id,
+    invalidate_display_snapshot_cache_for_school_id,
+)
 from schedule.models import Break, ClassLesson, DaySchedule, Period, SchoolSettings
 
 logger = logging.getLogger(__name__)
@@ -30,7 +34,18 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
         return
 
     old_rev = get_schedule_revision_for_school_id(school_id) or 0
-    new_rev = bump_schedule_revision_for_school_id(school_id) or 0
+    did_bump = bump_schedule_revision_for_school_id_debounced(school_id=school_id)
+
+    if not did_bump:
+        logger.info(
+            "schedule_revision debounce skip school_id=%s reason=%s model=%s",
+            school_id,
+            reason,
+            model_label,
+        )
+        return
+
+    new_rev = get_schedule_revision_for_school_id(school_id) or 0
     invalidate_display_snapshot_cache_for_school_id(school_id)
 
     logger.info(
