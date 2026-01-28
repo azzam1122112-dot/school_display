@@ -508,6 +508,20 @@
     serverDayStartMs = _computeDayStartMs(serverLocalDateStr, serverTzOffsetMin);
   }
 
+  function _serverDayStartMsForBase(baseMs) {
+    const off = Number(serverTzOffsetMin);
+    if (!isFinite(off)) return null;
+    const b = Number(baseMs || nowMs());
+    if (!isFinite(b) || b <= 0) return null;
+    // Convert to "server local wall clock" by shifting with offset, then use UTC getters.
+    const wall = new Date(b + off * 60 * 1000);
+    const y = wall.getUTCFullYear();
+    const mo = wall.getUTCMonth();
+    const d = wall.getUTCDate();
+    // Day start in server timezone => UTC midnight minus offset.
+    return Date.UTC(y, mo, d, 0, 0, 0) - off * 60 * 1000;
+  }
+
   function serverWallNowDate() {
     // Shift by tz offset and interpret via UTC getters/formatting.
     const off = isFinite(Number(serverTzOffsetMin)) ? Number(serverTzOffsetMin) : 0;
@@ -534,11 +548,24 @@
     const h = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10);
     if (isNaN(h) || isNaN(m)) return null;
+
+    const b = Number(baseMs || nowMs());
     // Prefer server-derived day start to avoid relying on the device timezone.
-    if (serverDayStartMs && isFinite(serverDayStartMs)) {
-      return Number(serverDayStartMs) + (h * 60 + m) * 60 * 1000;
+    // We compute it from server tz offset + base time to stay correct across midnight
+    // even if we don't fetch a new snapshot yet.
+    const dayStart = _serverDayStartMsForBase(b) || (serverDayStartMs && isFinite(serverDayStartMs) ? Number(serverDayStartMs) : null);
+    if (dayStart && isFinite(dayStart)) {
+      let t = dayStart + (h * 60 + m) * 60 * 1000;
+      // Handle midnight rollover (e.g., base near 23:55 and target 00:05 should be next day).
+      const diff = t - b;
+      const dayMs = 24 * 60 * 60 * 1000;
+      if (diff < -18 * 60 * 60 * 1000) t += dayMs;
+      else if (diff > 18 * 60 * 60 * 1000) t -= dayMs;
+      return t;
     }
-    const d = new Date(baseMs || nowMs());
+
+    // Fallback: device timezone (last resort).
+    const d = new Date(b);
     return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime();
   }
 
@@ -1944,8 +1971,15 @@
       try {
         const offMin = _parseTzOffsetMinFromIso(payload.now);
         if (offMin !== null) {
-          const meta0 = payload.meta || {};
-          const dstr = meta0.date || meta0.local_date || meta0.day || null;
+          // Prefer YYYY-MM-DD from payload.now itself (most reliable across clients and schemas).
+          let dstr = null;
+          const s = String(payload.now || "").trim();
+          const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m && m[1]) dstr = m[1];
+          if (!dstr) {
+            const meta0 = payload.meta || {};
+            dstr = meta0.date || meta0.local_date || meta0.day || null;
+          }
           if (dstr) applyServerCalendar(String(dstr), offMin);
         }
       } catch (e) {}
