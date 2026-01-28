@@ -2560,6 +2560,14 @@
   let failStreak = 0;
   let isFetching = false;
 
+  function shouldPauseWhenHidden() {
+    // Many embedded/TV browsers misreport Page Visibility as hidden even while displayed.
+    // In those cases, pausing polling makes the screen appear "خامله" and prevents wake-up.
+    const ua = (navigator && navigator.userAgent) ? String(navigator.userAgent) : "";
+    const isTvUa = /SmartTV|NetCast|Web0S|webOS|Tizen|HbbTV|Viera|BRAVIA|Roku|MiTV|Android TV|AFTB|AFTS|CrKey/i.test(ua);
+    return !isTvUa;
+  }
+
   function scheduleNext(sec) {
     if (pollTimer) clearTimeout(pollTimer);
     pollTimer = setTimeout(refreshLoop, Math.max(0.2, sec) * 1000);
@@ -2569,7 +2577,9 @@
     if (isBlocked) return;
     if (isFetching) return; // Prevent overlapping loops
 
-    if (document.hidden) {
+    // Never skip the very first snapshot fetch because that can leave the UI blank.
+    // Also, only pause when hidden on browsers that reliably support it.
+    if (document.hidden && !!lastPayloadForFiltering && shouldPauseWhenHidden()) {
       scheduleNext(cfg.REFRESH_EVERY);
       return;
     }
