@@ -15,6 +15,62 @@ from schedule.models import SchoolSettings
 logger = logging.getLogger(__name__)
 
 
+def status_metrics_day_key() -> str:
+    try:
+        return timezone.localdate().strftime("%Y%m%d")
+    except Exception:
+        return "00000000"
+
+
+def status_metrics_key(*, day_key: str, name: str) -> str:
+    return f"display:metrics:status:{day_key}:{name}"
+
+
+def status_metrics_should_sample(*, token_hash: str, sample_every: int) -> bool:
+    """Deterministic sampling: roughly 1/sample_every of requests.
+
+    Using token_hash avoids per-process randomness skew and keeps it cheap.
+    """
+    try:
+        n = int(sample_every or 0)
+    except Exception:
+        n = 0
+    if n <= 1:
+        return True
+    try:
+        # Use last 16 bits of sha256 to sample.
+        return (int(str(token_hash)[-4:], 16) % int(n)) == 0
+    except Exception:
+        return False
+
+
+def status_metrics_bump(*, day_key: str, name: str, ttl_sec: int = 86400) -> None:
+    """Increment a daily counter in cache (best-effort).
+
+    Works without DB. Safe for production (never raises).
+    """
+    try:
+        ttl = int(ttl_sec or 0)
+    except Exception:
+        ttl = 86400
+    ttl = max(60, min(86400 * 14, ttl))
+
+    try:
+        k = status_metrics_key(day_key=str(day_key), name=str(name))
+        # Ensure it exists with TTL; some backends require key existence before incr.
+        try:
+            cache.add(k, 0, timeout=ttl)
+        except Exception:
+            pass
+        try:
+            cache.incr(k, 1)
+        except Exception:
+            v = cache.get(k) or 0
+            cache.set(k, int(v) + 1, timeout=ttl)
+    except Exception:
+        return
+
+
 def _school_rev_cache_key(school_id: int) -> str:
     return f"display:school_rev:{int(school_id)}"
 

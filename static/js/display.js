@@ -340,7 +340,29 @@
     scheduleRevision: 0, // last known schedule_revision (numeric truth for /status?v=...)
     transitionUntilTs: 0, // while > Date.now(): force snapshot fetch to cross 00:00 boundaries
     transitionBackoffSec: 1.2, // bounded backoff during transition window
+    pollStateLastLogTs: 0, // debug-only: last time we logged poll state
   };
+
+  function maybeLogPollState(activeWindow, nextPollSec) {
+    if (!isDebug()) return;
+    const now = Date.now();
+    const last = Number(rt.pollStateLastLogTs) || 0;
+    if (last && (now - last) < 10 * 60 * 1000) return; // 10 minutes
+    rt.pollStateLastLogTs = now;
+    try {
+      console.log(
+        "[display] poll-state",
+        {
+          activeWindow: !!activeWindow,
+          nextPollSec: Number(nextPollSec) || 0,
+          status304Streak: Number(rt.status304Streak) || 0,
+          statusEverySec: Number(rt.statusEverySec) || 0,
+          scheduleRevision: Number(rt.scheduleRevision) || 0,
+          at: new Date().toISOString(),
+        }
+      );
+    } catch (e) {}
+  }
 
   function revStorageKey() {
     // Scope by token to avoid collisions when multiple screens are opened on the same browser.
@@ -2423,8 +2445,8 @@
             // Tuned for large deployments (many screens): bounded, with stable jitter.
             const base = Math.max(2, Number(cfg.REFRESH_EVERY) || 10);
             const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
-            const minEvery = isActiveWin ? Math.min(10, Math.max(8, base)) : 30;
-            const maxEvery = isActiveWin ? 30 : 300;
+            const minEvery = isActiveWin ? Math.min(10, Math.max(8, base)) : 60;
+            const maxEvery = isActiveWin ? 45 : 300;
 
             const backoffFactor = isActiveWin ? 1.7 : 2.0;
 
@@ -2435,6 +2457,8 @@
             nextEvery = Math.min(maxEvery, Math.max(minEvery, nextEvery));
             // Round to 0.1s to avoid noisy drift.
             rt.statusEverySec = Math.round(nextEvery * 10) / 10;
+
+            maybeLogPollState(isActiveWin, rt.statusEverySec || cfg.REFRESH_EVERY);
 
             isFetching = false;
             failStreak = 0;

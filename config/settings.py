@@ -126,6 +126,29 @@ except Exception:
 DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC = max(60, min(3600, DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC))
 
 
+# =========================
+# Status polling log throttles (seconds)
+# Used by schedule.api_views.status to avoid log storms at scale.
+# =========================
+# General throttle (legacy + sampled 304 logs fallback)
+DISPLAY_STATUS_LOG_INTERVAL_SEC = env_int_clamped("DISPLAY_STATUS_LOG_INTERVAL_SEC", 300, 30, 3600)
+
+# Throttle for status 200 (revision changed): log at most once per (school_id, rev) per window.
+DISPLAY_STATUS_200_LOG_INTERVAL_SEC = env_int_clamped("DISPLAY_STATUS_200_LOG_INTERVAL_SEC", 120, 10, 3600)
+
+# Throttle for operational warnings (e.g., failed token->school resolve)
+DISPLAY_STATUS_WARN_LOG_INTERVAL_SEC = env_int_clamped("DISPLAY_STATUS_WARN_LOG_INTERVAL_SEC", 300, 30, 3600)
+
+
+# =========================
+# Status polling metrics (best-effort; cache-only)
+# Used to confirm /api/display/status is cache-only at scale.
+# =========================
+DISPLAY_STATUS_METRICS_ENABLED = env_bool("DISPLAY_STATUS_METRICS_ENABLED", "False")
+DISPLAY_STATUS_METRICS_SAMPLE_EVERY = env_int_clamped("DISPLAY_STATUS_METRICS_SAMPLE_EVERY", 50, 1, 1000)
+DISPLAY_STATUS_METRICS_KEY_TTL = env_int_clamped("DISPLAY_STATUS_METRICS_KEY_TTL", 86400, 60, 86400 * 14)
+
+
 # Build/revision identifier (optional; used for diagnostics headers)
 APP_REVISION = (
     os.getenv("APP_REVISION")

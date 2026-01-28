@@ -23,7 +23,13 @@ from django.views.decorators.http import require_GET, require_http_methods
 from core.models import School, DisplayScreen
 from schedule.models import SchoolSettings, ClassLesson, Period
 from schedule.time_engine import build_day_snapshot
-from schedule.cache_utils import get_cached_schedule_revision_for_school_id, set_cached_schedule_revision_for_school_id
+from schedule.cache_utils import (
+    get_cached_schedule_revision_for_school_id,
+    set_cached_schedule_revision_for_school_id,
+    status_metrics_bump,
+    status_metrics_day_key,
+    status_metrics_should_sample,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,13 +130,68 @@ def _status_log_interval_seconds() -> int:
     return max(30, min(3600, v))
 
 
-def _should_log_status(token_hash: str) -> bool:
-    interval = _status_log_interval_seconds()
+def _status_log_interval_200_seconds() -> int:
+    # Status 200 can spike during update waves; use a shorter dedicated window.
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_STATUS_200_LOG_INTERVAL_SEC", os.getenv("DISPLAY_STATUS_200_LOG_INTERVAL_SEC", "120")))
+    except Exception:
+        v = 120
+    return max(10, min(3600, v))
+
+
+def _status_warn_log_interval_seconds() -> int:
+    # Operational warnings should be visible but still throttled at fleet scale.
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_STATUS_WARN_LOG_INTERVAL_SEC", os.getenv("DISPLAY_STATUS_WARN_LOG_INTERVAL_SEC", "300")))
+    except Exception:
+        v = 300
+    return max(30, min(3600, v))
+
+
+def _should_log_status(token_hash: str, *, interval: int | None = None) -> bool:
+    interval = int(interval if interval is not None else _status_log_interval_seconds())
     key = f"log:status_poll:{token_hash[:12]}:{interval}"
     try:
         return bool(cache.add(key, "1", timeout=interval))
     except Exception:
         return True
+
+
+def _should_log_status_200_school_rev(*, school_id: int, rev: int) -> bool:
+    """Throttle noisy status=200 logs for large fleets.
+
+    We want at most one INFO log per (school_id, rev) per interval regardless
+    of how many screens poll.
+    """
+    interval = _status_log_interval_200_seconds()
+    if not school_id:
+        return True
+    try:
+        key = f"log:status_poll_200:{int(school_id)}:{int(rev)}:{int(interval)}"
+        return bool(cache.add(key, "1", timeout=interval))
+    except Exception:
+        return True
+
+
+def _get_school_revision_cache_only(school_id: int) -> tuple[int | None, str]:
+    """Return (revision, source) without any DB fallback.
+
+    This keeps /api/display/status cache-only. If revision cache is missing,
+    we return (None, "none") and let the client fetch snapshot.
+    """
+    if not school_id:
+        return None, "none"
+
+    _metrics_incr("metrics:status:cache_get")
+    try:
+        cached = get_cached_schedule_revision_for_school_id(int(school_id))
+    except Exception:
+        cached = None
+    if cached is not None:
+        _metrics_incr("metrics:status:rev_cache_hit")
+        return int(cached), "cache"
+    _metrics_incr("metrics:status:rev_none")
+    return None, "none"
 
 
 def _should_log_status_304_sample(token_hash: str) -> bool:
@@ -679,8 +740,65 @@ def status(request, token: str | None = None):
 
     This endpoint never builds snapshots and should stay cheap.
     """
+    # --- Optional lightweight metrics (sampled, cache-only) ---
+    def _metrics_enabled() -> bool:
+        try:
+            return bool(getattr(dj_settings, "DISPLAY_STATUS_METRICS_ENABLED", False))
+        except Exception:
+            return False
+
+    def _metrics_sample_every() -> int:
+        try:
+            return int(getattr(dj_settings, "DISPLAY_STATUS_METRICS_SAMPLE_EVERY", 50) or 50)
+        except Exception:
+            return 50
+
+    def _metrics_ttl() -> int:
+        try:
+            return int(getattr(dj_settings, "DISPLAY_STATUS_METRICS_KEY_TTL", 86400) or 86400)
+        except Exception:
+            return 86400
+
+    def _invalid_token_signature() -> str:
+        # Safe, non-PII signature used only for deterministic sampling.
+        # Prefer the provided token (even if invalid length), else mix in path + UA.
+        try:
+            p = (token or "").strip()
+        except Exception:
+            p = ""
+        try:
+            if not p:
+                p = (request.GET.get("token") or "").strip()
+        except Exception:
+            pass
+        try:
+            if not p:
+                p = (request.headers.get("X-Display-Token") or "").strip()
+        except Exception:
+            pass
+        try:
+            path = (getattr(request, "path_info", "") or getattr(request, "path", "") or "").strip()
+        except Exception:
+            path = ""
+        try:
+            ua = (request.headers.get("User-Agent") or "").strip()
+        except Exception:
+            ua = ""
+        return f"{p}|{path}|{ua}"
+
     token_value = _extract_token(request, token)
     if not token_value:
+        # Sampled metrics for invalid_token to avoid becoming a Redis surface for spam.
+        try:
+            if _metrics_enabled():
+                sig_hash = _sha256(_invalid_token_signature())
+                if status_metrics_should_sample(token_hash=sig_hash, sample_every=_metrics_sample_every()):
+                    day_key = status_metrics_day_key()
+                    ttl = _metrics_ttl()
+                    status_metrics_bump(day_key=str(day_key), name="invalid_token", ttl_sec=int(ttl))
+        except Exception:
+            pass
+
         try:
             p = (getattr(request, "path_info", "") or getattr(request, "path", "") or "").strip()
             logger.warning("status: invalid_token path=%s", p)
@@ -691,6 +809,19 @@ def status(request, token: str | None = None):
     _metrics_incr("metrics:status:requests")
 
     token_hash = _sha256(token_value)
+
+    # --- Optional lightweight metrics (sampled, cache-only) ---
+    metrics_day_key = None
+    metrics_ttl = None
+    if _metrics_enabled():
+        metrics_ttl = _metrics_ttl()
+        if status_metrics_should_sample(token_hash=token_hash, sample_every=_metrics_sample_every()):
+            metrics_day_key = status_metrics_day_key()
+
+    def _bump_metric(name: str) -> None:
+        if not metrics_day_key or not metrics_ttl:
+            return
+        status_metrics_bump(day_key=str(metrics_day_key), name=str(name), ttl_sec=int(metrics_ttl))
 
     # --- Numeric revision mode (source of truth) ---
     client_v_raw = (request.GET.get("v") or request.GET.get("rev") or "").strip()
@@ -717,26 +848,37 @@ def status(request, token: str | None = None):
         school_id = None
 
     if client_v is not None:
-        current_rev, rev_source = _get_school_revision_cached(int(school_id or 0))
+        current_rev, rev_source = _get_school_revision_cache_only(int(school_id or 0))
+
+        _bump_metric("total")
+
+        resolve_failed = not bool(school_id)
+        if resolve_failed:
+            _bump_metric("resolve_fail")
 
         # If we couldn't resolve school_id, we can't compare; force fetch.
         if current_rev is None:
+            if not resolve_failed:
+                _bump_metric("rev_miss")
+            _bump_metric("fetch_required")
             resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
-            # Always log errors
-            logger.warning(
-                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
-                token_hash[:12],
-                school_id,
-                client_v,
-                current_rev,
-                rev_source,
-                200,
-            )
+            # Throttle warnings to avoid log storms if token->school mapping is missing.
+            if _should_log_status(token_hash, interval=_status_warn_log_interval_seconds()):
+                logger.warning(
+                    "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+                    token_hash[:12],
+                    school_id,
+                    client_v,
+                    current_rev,
+                    rev_source,
+                    200,
+                )
             return resp
 
         if int(client_v) == int(current_rev):
+            _bump_metric("rev_hit")
             resp = HttpResponseNotModified()
             resp["Cache-Control"] = "no-store"
             resp["Vary"] = "Accept-Encoding"
@@ -755,6 +897,8 @@ def status(request, token: str | None = None):
                 )
             return resp
 
+        _bump_metric("rev_hit")
+        _bump_metric("fetch_required")
         resp = JsonResponse(
             {"fetch_required": True, "schedule_revision": int(current_rev)},
             json_dumps_params={"ensure_ascii": False},
@@ -763,16 +907,17 @@ def status(request, token: str | None = None):
         resp["Vary"] = "Accept-Encoding"
         resp["X-Schedule-Revision"] = str(int(current_rev))
         _metrics_incr("metrics:status:resp_200")
-        # Always log 200 updates (these are important events)
-        logger.info(
-            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
-            token_hash[:12],
-            int(school_id or 0),
-            int(client_v),
-            int(current_rev),
-            rev_source,
-            200,
-        )
+        # Log 200 updates, but throttle to once per (school_id, rev) per interval.
+        if _should_log_status_200_school_rev(school_id=int(school_id or 0), rev=int(current_rev)):
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+                token_hash[:12],
+                int(school_id or 0),
+                int(client_v),
+                int(current_rev),
+                rev_source,
+                200,
+            )
         return resp
     cache_key = get_cache_key(token_hash)
 
@@ -791,9 +936,12 @@ def status(request, token: str | None = None):
                 except Exception:
                     current_school_id = None
 
-            current_rev = _get_schedule_revision_for_school_id(int(current_school_id)) if current_school_id else None
+            # Cache-only: if revision cache is missing, force fetch_required.
+            current_rev = get_cached_schedule_revision_for_school_id(int(current_school_id)) if current_school_id else None
             cached_rev = cached_entry.get("rev")
-            if current_rev is not None and cached_rev is not None and int(current_rev) != int(cached_rev):
+            if current_rev is None:
+                return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+            if cached_rev is not None and int(current_rev) != int(cached_rev):
                 return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
         except Exception:
             pass
@@ -820,28 +968,36 @@ def status(request, token: str | None = None):
 
         resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
         _metrics_incr("metrics:status:resp_200")
-        logger.info(
-            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
-            token_hash[:12],
-            current_school_id,
-            None,
-            current_rev,
-            "legacy",
-            200,
-        )
+        try:
+            sid = int(current_school_id or 0)
+            revv = int(current_rev or 0)
+        except Exception:
+            sid = 0
+            revv = 0
+        if (sid and _should_log_status_200_school_rev(school_id=sid, rev=revv)) or (not sid and _should_log_status(token_hash)):
+            logger.info(
+                "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+                token_hash[:12],
+                current_school_id,
+                None,
+                current_rev,
+                "legacy",
+                200,
+            )
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
     _metrics_incr("metrics:status:resp_200")
-    logger.info(
-        "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
-        token_hash[:12],
-        school_id,
-        None,
-        None,
-        "none",
-        200,
-    )
+    if _should_log_status(token_hash):
+        logger.info(
+            "status_poll token_hash=%s school_id=%s client_v=%s current_rev=%s rev_source=%s resp=%s",
+            token_hash[:12],
+            school_id,
+            None,
+            None,
+            "none",
+            200,
+        )
     return resp
 
 
