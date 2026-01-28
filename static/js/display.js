@@ -447,6 +447,9 @@
 
   // ===== Time helpers =====
   let serverOffsetMs = 0;
+  let serverTzOffsetMin = null;
+  let serverLocalDateStr = null; // YYYY-MM-DD
+  let serverDayStartMs = null; // epoch ms for server local day start
   function nowMs() {
     return Date.now() + serverOffsetMs;
   }
@@ -464,6 +467,59 @@
     }
   }
 
+  function _parseTzOffsetMinFromIso(iso) {
+    const s = (iso || "").toString().trim();
+    if (!s) return null;
+    // Match trailing timezone: Z or ±HH:MM
+    const m = s.match(/(Z|[+-]\d{2}:?\d{2})\s*$/i);
+    if (!m || !m[1]) return null;
+    const z = m[1].toUpperCase();
+    if (z === "Z") return 0;
+    const mm = z.match(/^([+-])(\d{2}):?(\d{2})$/);
+    if (!mm) return null;
+    const sign = mm[1] === "-" ? -1 : 1;
+    const hh = parseInt(mm[2], 10);
+    const mn = parseInt(mm[3], 10);
+    if (!isFinite(hh) || !isFinite(mn)) return null;
+    return sign * (hh * 60 + mn);
+  }
+
+  function _computeDayStartMs(localDateStr, tzOffsetMin) {
+    const ds = (localDateStr || "").toString().trim();
+    if (!ds) return null;
+    const m = ds.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    const d = parseInt(m[3], 10);
+    if (!isFinite(y) || !isFinite(mo) || !isFinite(d)) return null;
+    const off = Number(tzOffsetMin);
+    if (!isFinite(off)) return null;
+    // Day start in server timezone => UTC midnight minus offset.
+    return Date.UTC(y, mo - 1, d, 0, 0, 0) - off * 60 * 1000;
+  }
+
+  function applyServerCalendar(localDateStr, tzOffsetMin) {
+    if (!localDateStr) return;
+    const off = Number(tzOffsetMin);
+    if (!isFinite(off)) return;
+    serverLocalDateStr = String(localDateStr);
+    serverTzOffsetMin = off;
+    serverDayStartMs = _computeDayStartMs(serverLocalDateStr, serverTzOffsetMin);
+  }
+
+  function serverWallNowDate() {
+    // Shift by tz offset and interpret via UTC getters/formatting.
+    const off = isFinite(Number(serverTzOffsetMin)) ? Number(serverTzOffsetMin) : 0;
+    return new Date(nowMs() + off * 60 * 1000);
+  }
+
+  function fmtTimeRange(fromHM, toHM) {
+    // Bidi-safe: isolate as LTR so times don't visually flip in RTL UI.
+    // U+2066 LRI ... U+2069 PDI
+    return "\u2066" + toTimeStr(fromHM) + " → " + toTimeStr(toHM) + "\u2069";
+  }
+
   function toTimeStr(t) {
     if (!t) return "--:--";
     const parts = String(t).split(":");
@@ -478,6 +534,10 @@
     const h = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10);
     if (isNaN(h) || isNaN(m)) return null;
+    // Prefer server-derived day start to avoid relying on the device timezone.
+    if (serverDayStartMs && isFinite(serverDayStartMs)) {
+      return Number(serverDayStartMs) + (h * 60 + m) * 60 * 1000;
+    }
     const d = new Date(baseMs || nowMs());
     return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime();
   }
@@ -734,17 +794,17 @@
   // ===== Clock / Date =====
   let cachedDateInfo = null;
   function tickClock(dateInfo) {
-    const now = new Date(nowMs());
+    const wall = serverWallNowDate();
     if (dom.clock) {
       setTextIfChanged(
         dom.clock,
-        fmt2(now.getHours()) + ":" + fmt2(now.getMinutes()) + ":" + fmt2(now.getSeconds())
+        fmt2(wall.getUTCHours()) + ":" + fmt2(wall.getUTCMinutes()) + ":" + fmt2(wall.getUTCSeconds())
       );
     }
     if (dateInfo) cachedDateInfo = dateInfo;
 
     try {
-      const arWeek = new Intl.DateTimeFormat("ar-SA", { weekday: "long" }).format(now);
+      const arWeek = new Intl.DateTimeFormat("ar-SA", { weekday: "long", timeZone: "UTC" }).format(wall);
       if (cachedDateInfo && (dom.dateG || dom.dateH)) {
         const g = cachedDateInfo.gregorian || {};
         const h = cachedDateInfo.hijri || {};
@@ -753,11 +813,11 @@
             dom.dateG,
             arWeek +
               " ، " +
-              (g.day || now.getDate()) +
+              (g.day || wall.getUTCDate()) +
               " " +
               (g.month_name || g.month || "") +
               " " +
-              (g.year || now.getFullYear()) +
+              (g.year || wall.getUTCFullYear()) +
               "م"
           );
         }
@@ -777,9 +837,13 @@
         return;
       }
       if (dom.dateG)
-        setTextIfChanged(dom.dateG, arWeek + " ، " + now.getDate() + " / " + (now.getMonth() + 1) + " / " + now.getFullYear() + "م");
+        setTextIfChanged(dom.dateG, arWeek + " ، " + wall.getUTCDate() + " / " + (wall.getUTCMonth() + 1) + " / " + wall.getUTCFullYear() + "م");
     } catch (e) {
-      if (dom.dateG) setTextIfChanged(dom.dateG, now.toLocaleDateString("ar-SA"));
+      try {
+        if (dom.dateG) setTextIfChanged(dom.dateG, new Intl.DateTimeFormat("ar-SA", { timeZone: "UTC" }).format(wall));
+      } catch (e2) {
+        if (dom.dateG) setTextIfChanged(dom.dateG, new Date(nowMs()).toLocaleDateString("ar-SA"));
+      }
     }
   }
 
@@ -832,7 +896,7 @@
         title = "جاري الانتقال";
       }
 
-      const range = toTimeStr(fromHM) + " → " + toTimeStr(toHM);
+      const range = fmtTimeRange(fromHM, toHM);
 
       // Update headline immediately.
       setTextIfChanged(dom.heroTitle, title);
@@ -1069,7 +1133,7 @@
     const cur = currentObj || {};
     const cls = safeText(cur["class"] || cur.class_name || cur.classroom || "");
     const subj = stType === "period" ? formatPeriodTitle(cur) : safeText(cur.label || stateObj.label || "");
-    const range = toTimeStr(cur.from || stateObj.from) + " → " + toTimeStr(cur.to || stateObj.to);
+    const range = fmtTimeRange(cur.from || stateObj.from, cur.to || stateObj.to);
 
     const sig = cls + "||" + subj + "||" + range + "||" + stType;
     if (sig === last.currentSig) return;
@@ -1862,6 +1926,16 @@
     if (payload.now) {
       const serverMs = new Date(payload.now).getTime();
       if (!isNaN(serverMs)) applyServerNowMs(serverMs);
+
+      // Learn server timezone offset + local date (stable even when payload is cached).
+      try {
+        const offMin = _parseTzOffsetMinFromIso(payload.now);
+        if (offMin !== null) {
+          const meta0 = payload.meta || {};
+          const dstr = meta0.date || meta0.local_date || meta0.day || null;
+          if (dstr) applyServerCalendar(String(dstr), offMin);
+        }
+      } catch (e) {}
     }
 
     const baseMs = nowMs();
@@ -1981,7 +2055,7 @@
     }
 
     let title = safeText(s.label || "لوحة العرض المدرسية");
-    let range = (s.from || s.to) ? (toTimeStr(s.from) + " → " + toTimeStr(s.to)) : "--:-- → --:--";
+    let range = (s.from || s.to) ? fmtTimeRange(s.from, s.to) : fmtTimeRange(null, null);
     let badge = "حالة اليوم";
 
     if (stType === "period") {
