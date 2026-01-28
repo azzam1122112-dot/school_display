@@ -1730,6 +1730,11 @@ def snapshot(request, token: str | None = None):
         # We only honor nocache while developing locally (DEBUG=True).
         force_nocache = bool(dj_settings.DEBUG) and (request.GET.get("nocache") or "").strip().lower() in {"1", "true", "yes"}
 
+        # Production-safe transition refresh: used at countdown==0.
+        # Unlike nocache, this is allowed in production but is guarded by device binding + per-device rate limit.
+        transition_requested = (request.GET.get("transition") or "").strip().lower() in {"1", "true", "yes"}
+        transition_allowed = False
+
         # Diagnostics (off by default): enable extra cache logs to validate cache hit/miss behavior.
         cache_debug = (os.getenv("DISPLAY_SNAPSHOT_CACHE_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"})
 
@@ -1776,6 +1781,14 @@ def snapshot(request, token: str | None = None):
             # Keep compression negotiation; never vary on Cookie.
             resp["Vary"] = "Accept-Encoding"
             resp["X-Snapshot-Cache"] = cache_status
+            if transition_allowed:
+                resp["X-Snapshot-Transition"] = "1"
+            # Always include a server clock hint (milliseconds since epoch).
+            # This is intentionally in headers so it does not invalidate ETags or cached bodies.
+            try:
+                resp["X-Server-Time-MS"] = str(int(time.time() * 1000))
+            except Exception:
+                pass
             if device_bound is not None:
                 resp["X-Snapshot-Device-Bound"] = "1" if device_bound else "0"
             if app_rev:
@@ -1860,6 +1873,16 @@ def snapshot(request, token: str | None = None):
 
             device_hash = _sha256(device_key)
 
+            # Enable transition refresh only for bound devices, and rate-limit it.
+            if transition_requested:
+                try:
+                    # Allow at most ~1 transition-bypass every ~12s per token+device.
+                    # This keeps it safe even if the client retries.
+                    tr_key = f"rl:snapshot_transition:{token_hash[:12]}:{device_hash[:12]}"
+                    transition_allowed = bool(cache.add(tr_key, "1", timeout=12))
+                except Exception:
+                    transition_allowed = True
+
             # Rate limit: 1 req/sec per token+device with burst 3
             if not _snapshot_rate_limit_allow(token_hash, device_hash):
                 resp = JsonResponse({"detail": "rate_limited"}, status=429)
@@ -1943,7 +1966,9 @@ def snapshot(request, token: str | None = None):
         # Phase 2: token cache (tenant-safe when school_id known)
         cache_key = get_cache_key(token_hash)
 
-        cached_entry = None if force_nocache else cache.get(cache_key)
+        # During transition refreshes we must bypass token-level cache reads,
+        # otherwise the client can keep seeing an old cached payload across a boundary.
+        cached_entry = None if (force_nocache or transition_allowed) else cache.get(cache_key)
         if isinstance(cached_entry, dict) and isinstance(cached_entry.get("snap"), dict) and isinstance(cached_entry.get("etag"), str):
             school_id_for_log = None
             # If schedule revision changed, do not allow cached 304/old payload.
@@ -1999,7 +2024,10 @@ def snapshot(request, token: str | None = None):
                 try:
                     rev_fast = _get_schedule_revision_for_school_id(int(school_id_fast))
                     day_key_fast = get_day_key() if get_day_key is not None else timezone.localdate().strftime("%Y%m%d")
-                    school_snap_key_fast = display_keys.snapshot(int(school_id_fast), int(rev_fast), str(day_key_fast))
+                    if transition_allowed and hasattr(display_keys, "snapshot_transition"):
+                        school_snap_key_fast = display_keys.snapshot_transition(int(school_id_fast), int(rev_fast), str(day_key_fast))
+                    else:
+                        school_snap_key_fast = display_keys.snapshot(int(school_id_fast), int(rev_fast), str(day_key_fast))
                 except Exception:
                     school_snap_key_fast = None
 
@@ -2592,21 +2620,33 @@ def snapshot(request, token: str | None = None):
                     sid = int(school_id_fast) if school_id_fast else int(school_id)
                     r = int(rev_fast) if rev_fast is not None else int(rev)
                     dk = str(day_key_fast) if day_key_fast else timezone.localdate().strftime("%Y%m%d")
-                    k = school_snap_key_fast or display_keys.snapshot(sid, r, dk)
                     blob = json.dumps(snap, ensure_ascii=False)
-                    cache.set(k, blob, timeout=SCHOOL_SNAPSHOT_TTL)
+
+                    # Always write the normal per-school key used by regular polling.
+                    k_normal = display_keys.snapshot(sid, r, dk)
+                    cache.set(k_normal, blob, timeout=SCHOOL_SNAPSHOT_TTL)
+
+                    # If this was a transition refresh, also write a short-lived transition key.
+                    # This avoids returning an old long-TTL snapshot during the boundary window.
+                    k_transition = None
+                    if transition_allowed and hasattr(display_keys, "snapshot_transition"):
+                        try:
+                            k_transition = display_keys.snapshot_transition(sid, r, dk)
+                            cache.set(k_transition, blob, timeout=min(30, int(SCHOOL_SNAPSHOT_TTL)))
+                        except Exception:
+                            k_transition = None
 
                     # Round-trip probe: verify cache.get can immediately read what we wrote.
                     if cache_debug:
                         try:
-                            probe = cache.get(k)
+                            probe = cache.get(k_normal)
                             ok = bool(probe)
                         except Exception:
                             ok = False
                         try:
                             logger.info(
                                 "school_snapshot_probe key=%s ok=%s backend=%s",
-                                k,
+                                k_normal,
                                 1 if ok else 0,
                                 getattr(cache, "__class__", type(cache)).__name__,
                             )
@@ -2621,9 +2661,15 @@ def snapshot(request, token: str | None = None):
                         pass
 
                     try:
-                        logger.info("school_snapshot_set key=%s bytes=%s ttl=%s", k, len(blob.encode("utf-8")), SCHOOL_SNAPSHOT_TTL)
+                        logger.info("school_snapshot_set key=%s bytes=%s ttl=%s", k_normal, len(blob.encode("utf-8")), SCHOOL_SNAPSHOT_TTL)
                     except Exception:
                         pass
+
+                    if k_transition:
+                        try:
+                            logger.info("school_snapshot_set_transition key=%s bytes=%s ttl=%s", k_transition, len(blob.encode("utf-8")), min(30, int(SCHOOL_SNAPSHOT_TTL)))
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 

@@ -451,6 +451,19 @@
     return Date.now() + serverOffsetMs;
   }
 
+  function applyServerNowMs(serverNowMs) {
+    const n = Number(serverNowMs);
+    if (!isFinite(n) || n <= 0) return;
+    const measured = n - Date.now();
+    // Smooth small jitter; snap on large drift corrections.
+    const delta = measured - serverOffsetMs;
+    if (Math.abs(delta) > 30000) {
+      serverOffsetMs = measured;
+    } else {
+      serverOffsetMs = Math.round(serverOffsetMs * 0.8 + measured * 0.2);
+    }
+  }
+
   function toTimeStr(t) {
     if (!t) return "--:--";
     const parts = String(t).split(":");
@@ -855,7 +868,7 @@
 
   function onCountdownZero() {
     if (isBlocked) return;
-    const now = Date.now();
+    const now = nowMs();
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
 
@@ -868,7 +881,7 @@
     // Time-based transitions (period/break) don't bump schedule_revision, so /status may stay 304.
     // Enter a short window where we fetch snapshots directly until the UI advances.
     try {
-      rt.transitionUntilTs = Date.now() + 15000; // 15s max
+      rt.transitionUntilTs = nowMs() + 15000; // 15s max
       rt.transitionBackoffSec = 1.2;
     } catch (e) {}
 
@@ -924,6 +937,7 @@
         force: true,
         bypassEtag: true,
         bypassServerCache: true,
+        transition: true,
         reason: reason || "manual",
       });
 
@@ -977,7 +991,7 @@
           // One quick retry (server might still be computing the transition)
           setTimeout(() => {
             try {
-              safeFetchSnapshot({ force: true, bypassEtag: true, bypassServerCache: true, reason: "countdown_zero_retry" })
+              safeFetchSnapshot({ force: true, bypassEtag: true, bypassServerCache: true, transition: true, reason: "countdown_zero_retry" })
                 .then((snap2) => {
                   if (!snap2 || (snap2 && snap2._notModified)) return;
                   try {
@@ -995,7 +1009,7 @@
                       st2 + "||" + safeText(s2.label || "") + "||" + safeText(s2.from || "") + "||" + safeText(s2.to || "");
                     const rem2 = typeof s2.remaining_seconds === "number" ? Math.max(0, Math.floor(s2.remaining_seconds)) : null;
                     if ((st2 === "period" || st2 === "break" || st2 === "before") && rem2 === 0 && core2 === coreSig) {
-                      const now2 = Date.now();
+                      const now2 = nowMs();
                       // Reduced timeout to 3s to ensure screen updates immediately if stuck at 00:00
                       if (now2 - reloadFallbackTs > 3000) {
                         reloadFallbackTs = now2;
@@ -1019,7 +1033,7 @@
     } finally {
       forceRefreshInProgress = false;
       try {
-        const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+        const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
         if (inTrans) {
           scheduleNext(Number(rt.transitionBackoffSec) || 1.2);
         } else {
@@ -1843,9 +1857,11 @@
 
     lastPayloadForFiltering = payload;
 
+    // Legacy/back-compat: if server includes `payload.now`, keep it as a fallback sync source.
+    // Prefer X-Server-Time-MS header (handled in safeFetchSnapshot) because payload bodies may be cached.
     if (payload.now) {
       const serverMs = new Date(payload.now).getTime();
-      if (!isNaN(serverMs)) serverOffsetMs = serverMs - Date.now();
+      if (!isNaN(serverMs)) applyServerNowMs(serverMs);
     }
 
     const baseMs = nowMs();
@@ -2153,6 +2169,15 @@
     const deviceId = getOrCreateDeviceId();
     u.searchParams.set("dk", deviceId);
 
+    // Production-safe transition refresh: used at countdown==0 to force a fresh snapshot build
+    // without requiring `?nocache=1` (which is intentionally blocked in production).
+    // Server-side is expected to apply stampede protection (shared lock/wait).
+    if (opts.transition) {
+      try {
+        u.searchParams.set("transition", "1");
+      } catch (e) {}
+    }
+
     // IMPORTANT (Production): never add cache-busting params to snapshot requests.
     // Allow it only in explicit debug mode (?debug=1).
     if (isDebug()) {
@@ -2210,6 +2235,12 @@
       credentials: "omit",
       signal: ctrl ? ctrl.signal : undefined,
     }).then(async (r) => {
+      // Server clock sync: works even when response body is cached or 304.
+      try {
+        const h = r.headers.get("X-Server-Time-MS");
+        if (h) applyServerNowMs(h);
+      } catch (e) {}
+
       if (r.status === 304) return { _notModified: true };
 
       if (r.status === 429) {
@@ -2432,7 +2463,7 @@
         // the UI can remain stuck on the loading state.
         snap = await safeFetchSnapshot({ bypassEtag: true });
       } else {
-        const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+        const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
         if (inTrans) {
           // Cross boundary reliably: revision may not change, so don't rely on /status.
           snap = await safeFetchSnapshot({ bypassEtag: true });
@@ -2501,7 +2532,7 @@
       // Stronger backoff on 429 to avoid bursts.
       isFetching = false;
       failStreak = 0;
-      const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+      const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
       let wait;
       if (inTrans) {
         const base = Number(rt.transitionBackoffSec) || 1.2;
@@ -2619,7 +2650,7 @@
     }
 
     {
-      const inTrans = Date.now() < (Number(rt.transitionUntilTs) || 0);
+      const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
       scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : cfg.REFRESH_EVERY);
     }
   }

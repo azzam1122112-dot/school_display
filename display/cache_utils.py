@@ -28,6 +28,10 @@ class CacheKeys:
     def snapshot(self, school_id: int, rev: int, day_key: str) -> str:
         return f"display:snap:v5:school:{int(school_id)}:rev:{int(rev)}:day:{day_key}"
 
+    # short-lived snapshot used only during time-based transitions (countdown==0)
+    def snapshot_transition(self, school_id: int, rev: int, day_key: str) -> str:
+        return f"display:snap:v5:school:{int(school_id)}:rev:{int(rev)}:day:{day_key}:transition"
+
     # stale snapshot per school+day (rev-agnostic)
     def school_snapshot_stale(self, school_id: int, day_key: str) -> str:
         return f"display:school_snapshot:stale:school:{int(school_id)}:day:{day_key}"
