@@ -1126,6 +1126,18 @@ def standby_import(request):
             StandbyAssignment.objects.bulk_create(new_items, batch_size=500)
             count = len(new_items)
 
+            # bulk_create does NOT emit post_save signals, so bump the display revision manually
+            # to ensure screens pick up standby changes immediately.
+            try:
+                from schedule.cache_utils import bump_schedule_revision_for_school_id, invalidate_display_snapshot_cache_for_school_id
+
+                school_id = int(getattr(school, "id", 0) or 0)
+                if school_id:
+                    bump_schedule_revision_for_school_id(school_id)
+                    invalidate_display_snapshot_cache_for_school_id(school_id)
+            except Exception:
+                pass
+
         if skipped:
             messages.warning(request, f"تم استيراد {count} سجل، وتجاوز {skipped} صف بسبب بيانات غير صحيحة.")
         else:

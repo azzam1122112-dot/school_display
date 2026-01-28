@@ -2293,6 +2293,13 @@
     const deviceId = getOrCreateDeviceId();
     u.searchParams.set("dk", deviceId);
 
+    // Versioned cache key: ensure CDNs (or misconfigured cache rules) do not keep serving
+    // an older snapshot across revisions. This is NOT a random cache-buster; it changes only
+    // when the school's revision changes.
+    try {
+      u.searchParams.set("rev", String(rt.scheduleRevision || 0));
+    } catch (e) {}
+
     // Production-safe transition refresh: used at countdown==0 to force a fresh snapshot build
     // without requiring `?nocache=1` (which is intentionally blocked in production).
     // Server-side is expected to apply stampede protection (shared lock/wait).
@@ -2490,6 +2497,13 @@
 
     // Source of truth: numeric revision comparison.
     u.searchParams.set("v", String(rt.scheduleRevision || 0));
+
+    // Defensive: /status must never be cached.
+    // If a CDN cache rule accidentally includes /api/display/status/*, this guarantees each poll
+    // is unique and reaches origin.
+    try {
+      u.searchParams.set("_ts", String(Date.now()));
+    } catch (e) {}
 
     if (ctrlStatus) {
       try {
