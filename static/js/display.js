@@ -883,17 +883,27 @@
       if (isBefore) stType = "before";
 
       let badge = "حالة اليوم";
-      let title = "جاري الانتقال";
+      let title = "";
+
+      // Always prefer showing what's next (reduces the feeling of being "stuck" on transitions).
+      let nextTitle = "";
+      try {
+        if ((kind || "").toLowerCase() === "period") nextTitle = formatPeriodTitle(nextP);
+        else if ((kind || "").toLowerCase() === "break") nextTitle = safeText(nextP.label || "استراحة");
+        else nextTitle = safeText(nextP.label || "");
+      } catch (e) {
+        nextTitle = safeText(nextP.label || "");
+      }
 
       if (stType === "period") {
         badge = "درس";
-        title = formatPeriodTitle(nextP);
+        title = nextTitle || formatPeriodTitle(nextP);
       } else if (stType === "break") {
         badge = "استراحة";
-        title = safeText(nextP.label || "استراحة");
+        title = nextTitle || safeText(nextP.label || "استراحة");
       } else if (stType === "before") {
         badge = "انتظار";
-        title = "جاري الانتقال";
+        title = nextTitle || "انتظار";
       }
 
       const range = fmtTimeRange(fromHM, toHM);
@@ -917,6 +927,9 @@
         rt.activePeriodIndex = getPeriodIndex(nextP) || rt.activePeriodIndex;
         rt.activeFromHM = fromHM;
       } else if (stType === "break") {
+        rt.activeFromHM = fromHM;
+      } else if (stType === "before") {
+        // If we're waiting for a known next block, keep runtime aligned with its start.
         rt.activeFromHM = fromHM;
       }
 
@@ -2064,6 +2077,9 @@
     } else if (stType === "break") {
       badge = "استراحة";
       title = safeText(s.label || "استراحة");
+    } else if (stType === "before") {
+      badge = "انتظار";
+      title = safeText(s.label || "انتظار");
     } else if (stType === "off") {
       badge = "عطلة";
       title = safeText(s.label || "يوم إجازة");

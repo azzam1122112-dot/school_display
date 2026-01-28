@@ -41,6 +41,8 @@ img,svg,video,canvas{max-width:100%;height:auto;display:block;}
 .num-font{
   font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
   font-variant-numeric:tabular-nums;
+  direction:ltr;
+  unicode-bidi:isolate;
 }
 .mask-gradient-x{
   -webkit-mask-image:linear-gradient(to left,transparent,black 10%,black 90%,transparent);
