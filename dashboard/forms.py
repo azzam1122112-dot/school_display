@@ -268,6 +268,13 @@ class PeriodForm(forms.ModelForm):
         if self.errors:
             self.instance._skip_cross_validation = True
 
+        # When the row is valid, the inline formset performs cross-validation
+        # against the submitted periods + breaks. Skipping model-level DB overlap
+        # checks prevents false failures against still-old rows during save.
+        if not getattr(self, "_is_blank_row", False) and not getattr(self, "_is_marked_delete", False):
+            if not self.errors:
+                self.instance._skip_cross_validation = True
+
         return cleaned
 
 
@@ -315,6 +322,12 @@ class BreakForm(forms.ModelForm):
 
         if self.errors:
             self.instance._skip_cross_validation = True
+
+        # Same rationale as PeriodForm.clean(): the dashboard validates overlaps
+        # using the POSTed rows, so skip DB overlap checks during batch save.
+        if not getattr(self, "_is_blank_row", False) and not getattr(self, "_is_marked_delete", False):
+            if not self.errors:
+                self.instance._skip_cross_validation = True
 
         return cleaned
 

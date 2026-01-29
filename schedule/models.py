@@ -390,6 +390,14 @@ class Period(models.Model):
         if not self.day_id:
             return
 
+        # When saving multiple periods/breaks in one request (inline formsets),
+        # model-level DB overlap checks can falsely fail because other rows are
+        # still persisted with their old times until the formset finishes saving.
+        # The dashboard formset already performs full cross-validation using the
+        # submitted values, so allow opting out of DB overlap checks.
+        if getattr(self, "_skip_cross_validation", False):
+            return
+
         # تداخل مع حصص أخرى
         qs = Period.objects.filter(day_id=self.day_id).exclude(pk=self.pk)
         for p in qs:
@@ -444,6 +452,11 @@ class Break(models.Model):
             raise ValidationError({"starts_at": [f"البداية يجب أن تكون قبل النهاية ({_fmt(self.starts_at)} < {_fmt(end_t)})"]})
 
         if not self.day_id:
+            return
+
+        # See Period.clean(): allow the dashboard batch editor to rely on its
+        # own POST-based overlap validation without being blocked by stale DB.
+        if getattr(self, "_skip_cross_validation", False):
             return
 
         # تداخل مع فسح أخرى
