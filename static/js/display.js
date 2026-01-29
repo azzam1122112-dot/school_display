@@ -95,7 +95,9 @@
   // ===== DOM =====
   const dom = {};
   function bindDom() {
-    dom.fitRoot = document.getElementById("fitRoot");
+    // Prefer scaling the stage (if present) so fixed-position UI (e.g. fullscreen button)
+    // remains truly fixed to the viewport.
+    dom.fitRoot = document.getElementById("fitStage") || document.getElementById("fitRoot");
 
     dom.schoolLogo = $("schoolLogo");
     dom.schoolLogoFallback = $("schoolLogoFallback");
@@ -227,6 +229,21 @@
     return clamp(m, 0.7, 1);
   }
 
+  function getFitMaxScale() {
+    // Allow scaling UP on large TVs (e.g., 4K) to keep UI readable.
+    // Can be overridden via ?fitMax=1.6
+    let mx = 2;
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const raw = (qs.get("fitMax") || qs.get("maxScale") || "").trim();
+      if (raw) {
+        const v = parseFloat(raw);
+        if (isFinite(v)) mx = v;
+      }
+    } catch (e) {}
+    return clamp(mx, 1, 3);
+  }
+
   let fitT = null;
   function scheduleFit(ms) {
     if (fitT) clearTimeout(fitT);
@@ -268,9 +285,10 @@
       return;
     }
 
-    // Only scale DOWN to guarantee all cards are visible.
-    let s = Math.min(1, effectiveW / reqW, effectiveH / reqH);
-    s = clamp(s, 0.35, 1);
+    // Scale up or down (contain). Default allows scaling UP for large TVs.
+    const maxScale = getFitMaxScale();
+    let s = Math.min(effectiveW / reqW, effectiveH / reqH);
+    s = clamp(s, 0.35, maxScale);
 
     // Center content if we scaled down.
     const tx = Math.max(0, (availW - reqW * s) / 2);
@@ -2871,11 +2889,28 @@
     dom.fsBtn.addEventListener(
       "click",
       () => {
-        if (!isFullscreen()) requestFullscreenCompat(document.documentElement).catch(() => {});
-        else exitFullscreenCompat().catch(() => {});
+        if (!isFullscreen()) {
+          requestFullscreenCompat(document.documentElement)
+            .then(() => {
+              // Fullscreen changes viewport metrics asynchronously on some TVs
+              scheduleFit(80);
+            })
+            .catch(() => {});
+        } else {
+          exitFullscreenCompat()
+            .then(() => scheduleFit(80))
+            .catch(() => {});
+        }
       },
       { passive: true }
     );
+
+    // Re-fit whenever the fullscreen state changes (some browsers won't fire resize reliably).
+    const onFsChange = () => scheduleFit(80);
+    document.addEventListener("fullscreenchange", onFsChange, { passive: true });
+    document.addEventListener("webkitfullscreenchange", onFsChange, { passive: true });
+    document.addEventListener("mozfullscreenchange", onFsChange, { passive: true });
+    document.addEventListener("MSFullscreenChange", onFsChange, { passive: true });
   }
 
   // ===== Resize: فقط إعادة القياس =====

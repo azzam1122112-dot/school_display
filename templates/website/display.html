@@ -34,10 +34,21 @@
 
         /* Auto-fit wrapper: JS scales this to ensure all cards fit */
         #fitRoot {
+            position: fixed;
+            inset: 0;
             width: 100vw;
             height: calc(var(--vh, 1vh) * 100);
+            overflow: hidden;
+        }
+
+        /* Stage: a stable design canvas that we scale to fit any viewport */
+        #fitStage {
+            width: var(--design-w, 1920px);
+            height: var(--design-h, 1080px);
             transform-origin: top left;
             will-change: transform;
+            display: flex;
+            flex-direction: column;
         }
 
     /* Mesh Gradient Background */
@@ -179,8 +190,11 @@
     </div>
   </div>
 
-    <!-- Auto-fit root: everything inside is scaled to fit the TV viewport -->
-    <div id="fitRoot" class="h-full w-full flex flex-col">
+        <!-- Auto-fit root: viewport container (NOT transformed) -->
+        <div id="fitRoot" class="h-full w-full">
+
+    <!-- Auto-fit stage: transformed/scaled to fit the viewport -->
+    <div id="fitStage" class="">
 
   <!-- Header -->
   <header class="flex-none p-5 pb-0">
@@ -421,13 +435,15 @@
     </aside>
   </main>
 
-  <button id="fsBtn" class="fs-btn opacity-50 hover:opacity-100 transition-opacity" type="button" aria-label="Fullscreen" title="ملء الشاشة">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-    </svg>
-  </button>
+        </div>
 
     </div>
+
+    <button id="fsBtn" class="fs-btn opacity-50 hover:opacity-100 transition-opacity" type="button" aria-label="Fullscreen" title="ملء الشاشة">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+    </button>
 
   <noscript>
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black text-white p-10 text-center text-xl">
