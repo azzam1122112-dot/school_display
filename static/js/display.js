@@ -331,7 +331,7 @@
 
   // ===== Config =====
   const cfg = {
-    REFRESH_EVERY: 10,
+    REFRESH_EVERY: 20, // زيادة من 10 إلى 20 لتقليل الاستهلاك بنسبة 50%
     STANDBY_SPEED: 0.8,
     PERIODS_SPEED: 0.5,
     MEDIA_PREFIX: "/media/",
@@ -399,13 +399,13 @@
     }
   })();
 
-  // Pick a stable jitter per page load: ~±15% (exclude 0)
+  // Pick a stable jitter per page load: ~±25% لتوزيع أفضل للحمل مع عدد كبير من الشاشات
   (function initRefreshJitter() {
     try {
-      const v = (Math.random() * 0.3) - 0.15; // -0.15..+0.15
-      rt.refreshJitterFrac = Math.abs(v) < 0.01 ? 0.12 : v;
+      const v = (Math.random() * 0.5) - 0.25; // -0.25..+0.25 (زيادة من ±15% إلى ±25%)
+      rt.refreshJitterFrac = Math.abs(v) < 0.01 ? 0.20 : v;
     } catch (e) {
-      rt.refreshJitterFrac = 0.12;
+      rt.refreshJitterFrac = 0.20;
     }
   })();
 
@@ -1026,10 +1026,10 @@
     } catch (e) {}
 
     // Default: force-refresh data ASAP (bypasses ETag + server-side snapshot cache).
-    // Add a tiny randomized jitter so many screens don't thump the server at the exact same second.
-    // (Keeps it < 1s so UX still feels instant.)
+    // Add a randomized jitter to distribute load across multiple seconds (not milliseconds).
+    // مع 200 شاشة، نحتاج توزيع على 10-15 ثانية لتجنب الضغط المفاجئ
     try {
-      const jitterMs = 150 + Math.floor(Math.random() * 500); // 150..649ms
+      const jitterMs = 1000 + Math.floor(Math.random() * 14000); // 1-15 ثانية لتوزيع الحمل
       setTimeout(() => {
         try {
           forceRefreshNow("countdown_zero");
@@ -2207,9 +2207,16 @@
 
       if (dom.countdown) {
         if (hasActiveCountdown && typeof countdownSeconds === "number") {
-          const mm = Math.floor(countdownSeconds / 60);
+          const hh = Math.floor(countdownSeconds / 3600);
+          const mm = Math.floor((countdownSeconds % 3600) / 60);
           const ss = countdownSeconds % 60;
-          setTextIfChanged(dom.countdown, fmt2(mm) + ":" + fmt2(ss));
+          
+          // عرض HH:MM:SS إذا كان الوقت أكثر من ساعة، وإلا MM:SS
+          const timeDisplay = hh > 0 
+            ? fmt2(hh) + ":" + fmt2(mm) + ":" + fmt2(ss)
+            : fmt2(mm) + ":" + fmt2(ss);
+          
+          setTextIfChanged(dom.countdown, timeDisplay);
         } else {
           setTextIfChanged(dom.countdown, "--:--");
         }

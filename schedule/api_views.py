@@ -64,7 +64,10 @@ def _steady_cache_log_enabled() -> bool:
 
 
 def _steady_cache_key_for_school_rev(school_id: int, rev: int) -> str:
-    return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady:{str(timezone.localdate())}"
+    # ✅ FIX: إزالة التاريخ من المفتاح لتجنب Cold Start عند منتصف الليل
+    # الـ revision كافٍ للتمييز بين الإصدارات - يزيد عند أي تعديل
+    # عند بداية يوم جديد، سيزيد الـ revision تلقائياً من schedule/signals.py
+    return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady"
 
 
 def _log_steady_get(key: str, *, hit: bool, school_id: int | None, rev: int | None) -> None:
