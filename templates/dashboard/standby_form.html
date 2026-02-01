@@ -162,20 +162,20 @@
 
                 <!-- حقل اسم المعلم/ـة -->
                 <div class="space-y-2">
-                    <label for="{{ form.teacher_name.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
-                        {{ form.teacher_name.label }}
-                        {% if form.teacher_name.field.required %}
+                    <label for="{{ form.teacher.id_for_label }}" class="text-sm font-medium text-slate-700 flex items-center">
+                        {{ form.teacher.label }}
+                        {% if form.teacher.field.required %}
                             <span class="text-red-500 mr-1">*</span>
                         {% endif %}
                         <span class="mr-2 text-xs text-slate-500 font-normal">(اختر من القائمة)</span>
                     </label>
-                    {{ form.teacher_name }}
-                    {% if form.teacher_name.help_text %}
-                        <p class="text-xs text-slate-500">{{ form.teacher_name.help_text }}</p>
+                    {{ form.teacher }}
+                    {% if form.teacher.help_text %}
+                        <p class="text-xs text-slate-500">{{ form.teacher.help_text }}</p>
                     {% endif %}
-                    {% if form.teacher_name.errors %}
+                    {% if form.teacher.errors %}
                         <div class="text-red-600 text-sm space-y-1">
-                            {% for error in form.teacher_name.errors %}
+                            {% for error in form.teacher.errors %}
                                 <p class="flex items-center space-x-1 space-x-reverse">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePreview() {
         const period = document.getElementById('{{ form.period_index.id_for_label }}').value;
         const classSelect = document.getElementById('{{ form.class_name.id_for_label }}');
-        const teacherSelect = document.getElementById('{{ form.teacher_name.id_for_label }}');
+        const teacherSelect = document.getElementById('{{ form.teacher.id_for_label }}');
         
         // عرض النص المختار من القائمة
         const className = classSelect.selectedOptions[0]?.text || '-';
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // إضافة أحداث التغيير للحقول
     document.getElementById('{{ form.period_index.id_for_label }}').addEventListener('input', updatePreview);
     document.getElementById('{{ form.class_name.id_for_label }}').addEventListener('change', updatePreview);
-    document.getElementById('{{ form.teacher_name.id_for_label }}').addEventListener('change', updatePreview);
+    document.getElementById('{{ form.teacher.id_for_label }}').addEventListener('change', updatePreview);
     
     // التحديث الأولي
     updatePreview();
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // تأكيد الحذف - فقط في حالة التعديل
 {% if form.instance.pk %}
 function confirmDelete() {
-    const teacherName = document.getElementById('{{ form.teacher_name.id_for_label }}').value;
+    const teacherName = document.getElementById('{{ form.teacher.id_for_label }}').value;
     if (confirm(`هل أنت متأكد من أنك تريد حذف حصة الانتظار هذه؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
         // إنشاء نموذج حذف مخفي
         const form = document.createElement('form');
