@@ -257,7 +257,7 @@
     // allow disabling via ?fit=0 for troubleshooting
     if (isFitDisabled()) {
       try {
-        dom.fitRoot.style.transform = "scale(1)";
+        dom.fitRoot.style.transform = "translate(-50%, -50%) scale(1)";
       } catch (e) {}
       return;
     }
@@ -283,8 +283,9 @@
     const maxScale = getFitMaxScale();
     scale = clamp(scale, 0.5, maxScale);
 
-    // Apply transform with center origin (already set in CSS)
-    dom.fitRoot.style.transform = `scale(${scale.toFixed(4)})`;
+    // ✅ FIX: تطبيق scale مع translate لضمان ملء الشاشة بالكامل
+    // translate(-50%, -50%) موجود في CSS، نضيف scale بعده
+    dom.fitRoot.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
 
     try {
       const body = document.body || document.documentElement;
@@ -556,7 +557,12 @@
     const m = parseInt(parts[1], 10);
     if (isNaN(h) || isNaN(m)) return null;
 
-    const b = Number(baseMs || nowMs());
+    // ✅ FIX: استخدام nowMs() مباشرة بدلاً من baseMs القديم
+    // baseMs يتم حسابه مرة واحدة عند بداية معالجة البيانات، لكن serverOffsetMs
+    // قد يتم تحديثه أثناء المعالجة، مما يسبب استخدام offset قديم
+    // nowMs() تعطي دائماً الوقت الصحيح المتزامن مع السيرفر
+    const b = nowMs();
+    
     // Prefer server-derived day start to avoid relying on the device timezone.
     // We compute it from server tz offset + base time to stay correct across midnight
     // even if we don't fetch a new snapshot yet.
@@ -579,14 +585,16 @@
   function isEnded(endHM, baseMs) {
     const end = hmToMs(endHM, baseMs);
     if (!end) return false;
-    return (baseMs || nowMs()) >= end;
+    // ✅ FIX: استخدام nowMs() دائماً للحصول على الوقت الصحيح المتزامن
+    return nowMs() >= end;
   }
 
   function isNowBetween(startHM, endHM, baseMs) {
     const s = hmToMs(startHM, baseMs);
     const e = hmToMs(endHM, baseMs);
     if (!s || !e) return false;
-    const n = baseMs || nowMs();
+    // ✅ FIX: استخدام nowMs() دائماً للحصول على الوقت الصحيح المتزامن
+    const n = nowMs();
     return n >= s && n < e;
   }
 
@@ -2086,7 +2094,9 @@
       const targetHM = stType === "before" ? s.from : s.to;
       if (targetHM) {
         const tMs = hmToMs(targetHM, baseMs);
-        if (tMs) localCalc = Math.floor((tMs - baseMs) / 1000);
+        // ✅ FIX: استخدام nowMs() بدلاً من baseMs القديم لحساب الوقت المتبقي
+        // baseMs يُحسب في بداية المعالجة وقد يكون قديماً بعد تحديث serverOffsetMs
+        if (tMs) localCalc = Math.floor((tMs - nowMs()) / 1000);
       }
 
       const serverRem =
