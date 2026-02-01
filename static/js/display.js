@@ -198,13 +198,11 @@
 
   // ===== Viewport var =====
   function setVhVar() {
-    try {
-      const vh = (window.innerHeight || 0) * 0.01;
-      if (vh > 0) root.style.setProperty("--vh", vh + "px");
-    } catch (e) {}
+    // Not needed anymore - using native 100vh
+    return;
   }
 
-  // ===== Auto-fit (scale down to avoid scroll on any TV/browser) =====
+  // ===== Professional Auto-fit for TV displays =====
   function isFitDisabled() {
     try {
       const qs = new URLSearchParams(window.location.search);
@@ -259,47 +257,37 @@
     // allow disabling via ?fit=0 for troubleshooting
     if (isFitDisabled()) {
       try {
-        dom.fitRoot.style.transform = "";
+        dom.fitRoot.style.transform = "scale(1)";
       } catch (e) {}
       return;
     }
 
-    const availW = Number(window.innerWidth || 0) || 0;
-    const availH = Number(window.innerHeight || 0) || 0;
-    if (availW <= 0 || availH <= 0) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    if (viewportWidth <= 0 || viewportHeight <= 0) return;
 
-    const margin = getFitMargin();
-    const effectiveW = availW * margin;
-    const effectiveH = availH * margin;
+    // Design canvas dimensions (what we designed for)
+    const designWidth = 1920;
+    const designHeight = 1080;
 
-    // Measure at scale=1
-    const prev = dom.fitRoot.style.transform;
-    dom.fitRoot.style.transform = "";
-
-    // scrollHeight/scrollWidth capture overflow even when body has overflow:hidden
-    const reqW = Math.max(dom.fitRoot.clientWidth || 0, dom.fitRoot.scrollWidth || 0);
-    const reqH = Math.max(dom.fitRoot.clientHeight || 0, dom.fitRoot.scrollHeight || 0);
-
-    if (reqW <= 0 || reqH <= 0) {
-      dom.fitRoot.style.transform = prev;
-      return;
-    }
-
-    // Scale up or down (contain). Default allows scaling UP for large TVs.
+    // Calculate scale to fit viewport (contain, maintaining aspect ratio)
+    const scaleX = viewportWidth / designWidth;
+    const scaleY = viewportHeight / designHeight;
+    
+    // Use the smaller scale to ensure everything fits
+    let scale = Math.min(scaleX, scaleY);
+    
+    // Allow scaling UP for large TVs, but cap at reasonable maximum
     const maxScale = getFitMaxScale();
-    let s = Math.min(effectiveW / reqW, effectiveH / reqH);
-    s = clamp(s, 0.35, maxScale);
+    scale = clamp(scale, 0.5, maxScale);
 
-    // Center content if we scaled down.
-    const tx = Math.max(0, (availW - reqW * s) / 2);
-    const ty = Math.max(0, (availH - reqH * s) / 2);
-
-    dom.fitRoot.style.transform =
-      "translate(" + tx.toFixed(2) + "px, " + ty.toFixed(2) + "px) scale(" + s.toFixed(4) + ")";
+    // Apply transform with center origin (already set in CSS)
+    dom.fitRoot.style.transform = `scale(${scale.toFixed(4)})`;
 
     try {
       const body = document.body || document.documentElement;
-      body.dataset.uiScale = s.toFixed(4);
+      body.dataset.uiScale = scale.toFixed(4);
     } catch (e) {}
   }
 
@@ -1029,7 +1017,19 @@
     // Add a randomized jitter to distribute load across multiple seconds (not milliseconds).
     // مع 200 شاشة، نحتاج توزيع على 10-15 ثانية لتجنب الضغط المفاجئ
     try {
-      const jitterMs = 1000 + Math.floor(Math.random() * 14000); // 1-15 ثانية لتوزيع الحمل
+      // Base random jitter: 1-15 seconds
+      const baseJitter = 1000 + Math.floor(Math.random() * 14000);
+      
+      // School-based deterministic jitter: adds 0-29 seconds based on school ID
+      // This ensures schools spread their requests even more during simultaneous events
+      let schoolJitter = 0;
+      try {
+        const schoolId = parseInt(cfg.SERVER_TOKEN.split(':')[0]) || 0;
+        schoolJitter = (schoolId % 30) * 1000; // 0-29 seconds
+      } catch (e) {}
+      
+      const totalJitter = baseJitter + schoolJitter; // 1-44 seconds total distribution
+      
       setTimeout(() => {
         try {
           forceRefreshNow("countdown_zero");
@@ -1038,7 +1038,7 @@
             scheduleNext(0.2);
           } catch (e2) {}
         }
-      }, jitterMs);
+      }, totalJitter);
     } catch (e) {
       try {
         scheduleNext(0.2);
@@ -2487,7 +2487,11 @@
       return r.json();
     });
 
-    inflight = withTimeout(fetchPromise, 9000, () => {
+    // Dynamic timeout: 15s for first load, 9s for subsequent refreshes
+    // First load may need more time for cache building
+    const timeoutMs = lastPayloadForFiltering ? 9000 : 15000;
+    
+    inflight = withTimeout(fetchPromise, timeoutMs, () => {
       if (ctrl) {
         try {
           ctrl.abort();
@@ -2759,12 +2763,20 @@
     if (!snap) {
       isFetching = false;
       failStreak += 1;
-      // INITIAL LOAD FAST RETRY:
-      // If we haven't successfully loaded data yet, retry quickly (e.g. 2s) 
-      // instead of the long backoff. This helps with cold starts.
+      // INITIAL LOAD FAST RETRY WITH EXPONENTIAL BACKOFF:
+      // If we haven't successfully loaded data yet, retry with exponential backoff
+      // to avoid overwhelming the server. This helps with cold starts while preventing
+      // thundering herd when multiple screens fail simultaneously.
       let backoff;
       if (!lastPayloadForFiltering) {
-          backoff = 2;
+          // Exponential backoff: 2s → 3s → 4.5s → 6.7s → 10s → 15s → 22.5s → 30s (max)
+          const maxRetries = 8;
+          const retryCount = Math.min(failStreak, maxRetries);
+          const baseBackoff = Math.min(30, 2 * Math.pow(1.5, retryCount));
+          
+          // Add ±25% jitter to distribute load across time
+          const jitterFactor = 0.75 + Math.random() * 0.5; // 0.75 to 1.25
+          backoff = baseBackoff * jitterFactor;
       } else {
           backoff = Math.min(60, cfg.REFRESH_EVERY + failStreak * 5);
       }

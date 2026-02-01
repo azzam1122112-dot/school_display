@@ -112,7 +112,17 @@ def build_day_snapshot(settings, now=None):
         breaks_m = _get_manager(day, "breaks", "break_set")
 
         if periods_m:
-            for p in periods_m.select_related("subject", "teacher", "school_class").all():
+            # Query optimization: select_related + only specific fields to reduce data transfer
+            for p in periods_m.select_related("subject", "teacher", "school_class").only(
+                # Period fields
+                "index", "starts_at", "ends_at",
+                # Related fields (subject)
+                "subject__id", "subject__name",
+                # Related fields (teacher)
+                "teacher__id", "teacher__name",
+                # Related fields (school_class)
+                "school_class__id", "school_class__name"
+            ).all():
                 # تجاهل أي صف بدون وقت صحيح
                 if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
                     continue

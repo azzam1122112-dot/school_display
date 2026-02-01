@@ -3,7 +3,7 @@
 <html lang="ar" dir="rtl" class="h-full">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="color-scheme" content="dark">
   <title>{% if school_name %}{{ school_name }} — {% endif %}لوحة العرض الذكية</title>
@@ -19,36 +19,69 @@
     /* 2026 Base Styles - Dynamic Theme Integration */
     /* We piggyback on app.css variables which change based on [data-theme] */
     
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      margin: 0;
+      padding: 0;
+    }
+    
     body {
       font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
-      overflow: hidden; /* Prevent full page scroll */
-      background-color: var(--bg-deep, #020617); /* Fallback to Slate 950 */
+      background-color: var(--bg-deep, #020617);
       color: #f8fafc;
     }
 
-        /* Robust viewport sizing (avoids mobile/TV UI bars issues) */
+        /* Enhanced viewport sizing for TV displays */
         body.display-board {
             width: 100vw;
-            height: calc(var(--vh, 1vh) * 100);
+            height: 100vh;
+            min-height: 100vh;
+            max-height: 100vh;
         }
 
-        /* Auto-fit wrapper: JS scales this to ensure all cards fit */
+        /* Optimized auto-fit wrapper for TV screens */
         #fitRoot {
             position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: calc(var(--vh, 1vh) * 100);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Stage: a stable design canvas that we scale to fit any viewport */
+        /* Design canvas optimized for full screen display */
         #fitStage {
-            width: var(--design-w, 1920px);
-            height: var(--design-h, 1080px);
-            transform-origin: top left;
+            width: 1920px;
+            height: 1080px;
+            transform-origin: center center;
             will-change: transform;
             display: flex;
             flex-direction: column;
+            position: relative;
+            /* Anti-aliasing for crisp text on TV */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        
+        /* Ensure crisp scaling on all displays */
+        #fitStage * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
     /* Mesh Gradient Background */

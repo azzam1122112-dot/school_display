@@ -20,6 +20,11 @@ from django.http import JsonResponse, HttpResponseNotModified
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
+try:
+    from django_redis import get_redis_connection
+except ImportError:
+    get_redis_connection = None
+
 from core.models import School, DisplayScreen
 from schedule.models import SchoolSettings, ClassLesson, Period
 from schedule.time_engine import build_day_snapshot
@@ -68,6 +73,46 @@ def _steady_cache_key_for_school_rev(school_id: int, rev: int) -> str:
     # الـ revision كافٍ للتمييز بين الإصدارات - يزيد عند أي تعديل
     # عند بداية يوم جديد، سيزيد الـ revision تلقائياً من schedule/signals.py
     return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady"
+
+
+def _get_stale_snapshot_fallback(school_id: int) -> dict | None:
+    """
+    ✅ Stale-While-Revalidate: محاولة إيجاد أي snapshot قديم للمدرسة
+    عند cache miss، نعرض البيانات القديمة بدلاً من شاشة فارغة
+    """
+    # التأكد من توفر django_redis
+    if get_redis_connection is None:
+        return None
+    
+    try:
+        # البحث عن أي نسخة قديمة من snapshot لنفس المدرسة (أي revision)
+        # نستخدم pattern matching للبحث في الكاش
+        redis_client = get_redis_connection("default")
+        
+        # البحث عن مفاتيح تطابق المدرسة
+        pattern = f"school_display:snapshot:v5:school:{int(school_id)}:rev:*:steady"
+        keys = redis_client.keys(pattern)
+        
+        if keys:
+            # استخدام أول مفتاح متوفر (يمكن تحسينه باختيار الأحدث)
+            stale_key = keys[0].decode('utf-8') if isinstance(keys[0], bytes) else keys[0]
+            # إزالة الـ prefix إن وجد
+            if stale_key.startswith("school_display:"):
+                stale_key = stale_key[len("school_display:"):]
+            
+            stale_snap = cache.get(stale_key)
+            if isinstance(stale_snap, dict):
+                # إضافة تحذير للبيانات القديمة
+                if "meta" not in stale_snap:
+                    stale_snap["meta"] = {}
+                stale_snap["meta"]["is_stale"] = True
+                stale_snap["meta"]["stale_warning"] = "يتم تحديث البيانات..."
+                return stale_snap
+    except Exception as e:
+        # فشل البحث عن snapshot قديم - لا مشكلة
+        logger.debug(f"Stale snapshot lookup failed for school {school_id}: {e}")
+    
+    return None
 
 
 def _log_steady_get(key: str, *, hit: bool, school_id: int | None, rev: int | None) -> None:
@@ -2486,6 +2531,22 @@ def snapshot(request, token: str | None = None):
 
         if not have_lock:
             # Another worker is building this school's snapshot.
+            # ✅ IMPROVED: محاولة عرض snapshot قديم بدلاً من الانتظار أو شاشة فارغة
+            
+            # أولاً: محاولة الحصول على snapshot قديم من أي revision
+            stale_snap = _get_stale_snapshot_fallback(school_id)
+            if stale_snap:
+                _metrics_incr("metrics:snapshot_cache:stale_fallback")
+                _metrics_log_maybe()
+                json_bytes = _stable_json_bytes(stale_snap)
+                etag = _etag_from_json_bytes(json_bytes)
+                resp = JsonResponse(stale_snap, json_dumps_params={"ensure_ascii": False})
+                resp["ETag"] = f"\"{etag}\""
+                resp["X-Cache-Status"] = "STALE-FALLBACK"
+                _apply_success_cache_headers(resp, stale_snap)
+                return _finalize(resp, cache_status="STALE", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
+            
+            # ثانياً: الانتظار قليلاً لعل البناء ينتهي
             deadline = time.monotonic() + 0.5
             while time.monotonic() < deadline:
                 cached_school = cache.get(snap_key)

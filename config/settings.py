@@ -352,7 +352,10 @@ if REDIS_URL:
     # - timeouts قصيرة لمنع التعليق
     # - health_check
     # - retry_on_timeout
+    # - connection pooling للحد من استنزاف connections
     # - KEY_PREFIX: لتفادي تعارض مفاتيح بين بيئات/خدمات
+    import socket
+    
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -364,6 +367,17 @@ if REDIS_URL:
                 "SOCKET_TIMEOUT": env_int("REDIS_SOCKET_TIMEOUT", "2"),
                 "RETRY_ON_TIMEOUT": True,
                 "HEALTH_CHECK_INTERVAL": env_int("REDIS_HEALTHCHECK_INTERVAL", "30"),
+                # Connection pooling configuration
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": env_int("REDIS_MAX_CONNECTIONS", "50"),
+                    "retry_on_timeout": True,
+                    "socket_keepalive": True,
+                    "socket_keepalive_options": {
+                        socket.TCP_KEEPIDLE: 60,
+                        socket.TCP_KEEPINTVL: 10,
+                        socket.TCP_KEEPCNT: 3,
+                    }
+                }
             },
             "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "school_display"),
         }
