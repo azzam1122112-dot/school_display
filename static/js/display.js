@@ -479,6 +479,15 @@
     }
   } catch (e) {}
   
+  // ✅ CLOCK DRIFT DETECTION: مراقبة تغيرات التوقيت المحلي
+  let lastLocalTime = Date.now();
+  let lastCheckTime = Date.now();
+  let clockDriftDetected = false;
+  
+  // ✅ THROTTLING: منع الطلبات الزائدة على السيرفر
+  let lastReSyncTime = 0;
+  const RE_SYNC_COOLDOWN = 5000; // 5 ثوانٍ بين كل re-sync
+  
   let serverTzOffsetMin = null;
   let serverLocalDateStr = null; // YYYY-MM-DD
   let serverDayStartMs = null; // epoch ms for server local day start
@@ -503,6 +512,64 @@
     try {
       localStorage.setItem("serverOffsetMs", String(serverOffsetMs));
     } catch (e) {}
+    
+    // ✅ تحديث آخر وقت معروف للمراقبة
+    lastLocalTime = Date.now();
+    lastCheckTime = Date.now();
+    clockDriftDetected = false;
+  }
+
+  // ✅ CLOCK DRIFT DETECTION: كشف تغييرات التوقيت المحلي الفجائية
+  // ⚠️ IMPORTANT: هذه الدالة لا ترسل أي request، فقط تكشف التغيير
+  function detectClockDrift() {
+    const now = Date.now();
+    const expectedElapsed = now - lastCheckTime;
+    
+    // إذا مر أقل من 100ms، تجاهل (قريب جداً)
+    if (expectedElapsed < 100) return false;
+    
+    // إذا مر أكثر من 3 ثواني، قد يكون tab sleep - تحقق بحذر
+    if (expectedElapsed > 3000) {
+      lastCheckTime = now;
+      lastLocalTime = now;
+      return true; // نطلب re-sync لأننا كنا inactive
+    }
+    
+    // حساب الفرق بين الوقت الفعلي والمتوقع
+    const actualElapsed = now - lastLocalTime;
+    const drift = Math.abs(actualElapsed - expectedElapsed);
+    
+    // إذا كان الفرق أكثر من ثانية واحدة = تغيير في الوقت المحلي
+    if (drift > 1000) {
+      lastCheckTime = now;
+      lastLocalTime = now;
+      clockDriftDetected = true;
+      return true;
+    }
+    
+    lastCheckTime = now;
+    lastLocalTime = now;
+    return false;
+  }
+
+  // ✅ THROTTLED RE-SYNC: طلب re-sync مع حماية من الطلبات الزائدة
+  // ⚠️ COST PROTECTION: لا يرسل أكثر من request واحد كل 5 ثوانٍ
+  function requestReSyncIfNeeded() {
+    const now = Date.now();
+    const timeSinceLastSync = now - lastReSyncTime;
+    
+    // ✅ COOLDOWN: إذا كان آخر re-sync قبل أقل من 5 ثوانٍ، تجاهل
+    if (timeSinceLastSync < RE_SYNC_COOLDOWN) {
+      if (isDebug()) setDebugText(`Re-sync cooldown: ${(RE_SYNC_COOLDOWN - timeSinceLastSync) / 1000}s remaining`);
+      return;
+    }
+    
+    // ✅ UPDATE: نسجل وقت آخر re-sync
+    lastReSyncTime = now;
+    
+    // ✅ SEND: الآن فقط نرسل الطلب
+    if (isDebug()) setDebugText("Clock drift detected - re-syncing...");
+    safeFetchStatus(true).catch(() => {});
   }
 
   function _parseTzOffsetMinFromIso(iso) {
@@ -1845,6 +1912,14 @@
 
       const img = document.createElement("img");
       img.alt = name;
+      // ✅ تحسين performance: lazy loading للصور
+      img.loading = "lazy";
+      // ✅ تحسين security: منع CORS issues
+      img.crossOrigin = "anonymous";
+      // ✅ منع layout shift أثناء تحميل الصورة
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
       img.src =
         src ||
         "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='28'%3E%F0%9F%8F%86%3C/text%3E%3C/svg%3E";
@@ -2273,6 +2348,13 @@
   function startTicker() {
     if (tickerId) return;
     tickerId = setInterval(() => {
+      // ✅ CLOCK DRIFT DETECTION: فحص تغييرات التوقيت كل ثانية
+      // ⚠️ ZERO COST: هذا الفحص محلي بالكامل، لا يرسل أي request
+      if (detectClockDrift()) {
+        // ✅ THROTTLED RE-SYNC: طلب واحد فقط كل 5 ثوانٍ
+        requestReSyncIfNeeded();
+      }
+      
       tickClock();
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
@@ -3033,6 +3115,11 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+      // ✅ عند العودة للصفحة، نتحقق من تزامن الوقت
+      // ⚠️ THROTTLED: محمي بـ cooldown لمنع الطلبات الزائدة
+      detectClockDrift(); // reset counters
+      requestReSyncIfNeeded(); // throttled request
+      
       if (periodsScroller) periodsScroller.recalc();
       if (standbyScroller) standbyScroller.recalc();
       if (dutyScroller) dutyScroller.recalc();
@@ -3040,6 +3127,13 @@
       scheduleNext(0.25);
     }
   });
+
+  // ✅ CLOCK SYNC: عند focus على النافذة، نتحقق من التزامن
+  // ⚠️ THROTTLED: محمي بـ cooldown لمنع الطلبات الزائدة
+  window.addEventListener("focus", () => {
+    detectClockDrift();
+    requestReSyncIfNeeded(); // throttled request
+  }, { passive: true });
 
   // ===== Global errors =====
   window.addEventListener("error", (ev) => {
