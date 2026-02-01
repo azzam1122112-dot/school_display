@@ -257,7 +257,7 @@
     // allow disabling via ?fit=0 for troubleshooting
     if (isFitDisabled()) {
       try {
-        dom.fitRoot.style.transform = "translate(-50%, -50%) scale(1)";
+        dom.fitRoot.style.transform = "scale(1)";
       } catch (e) {}
       return;
     }
@@ -275,17 +275,17 @@
     const scaleX = viewportWidth / designWidth;
     const scaleY = viewportHeight / designHeight;
     
-    // Use the LARGER scale to fill the screen (cover mode)
-    // This ensures no empty spaces but may crop edges on non-16:9 screens
+    // ✅ AIRPORT STYLE: Use LARGER scale to fill screen edge-to-edge
+    // Content may be cropped on edges (like airport displays) but screen is always 100% filled
     let scale = Math.max(scaleX, scaleY);
     
     // Allow scaling UP for large TVs, but cap at reasonable maximum
     const maxScale = getFitMaxScale();
     scale = clamp(scale, 0.5, maxScale);
 
-    // ✅ FIX: تطبيق scale مع translate لضمان ملء الشاشة بالكامل
-    // translate(-50%, -50%) موجود في CSS، نضيف scale بعده
-    dom.fitRoot.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
+    // ✅ FIX: Scale from top-left corner to fill screen completely (no centering)
+    // transform-origin: top left in CSS ensures content starts from corner
+    dom.fitRoot.style.transform = `scale(${scale.toFixed(4)})`;
 
     try {
       const body = document.body || document.documentElement;

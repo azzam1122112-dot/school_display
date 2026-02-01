@@ -58,22 +58,20 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            /* ✅ FIX: استخدام block بدلاً من flex لتجنب المساحات الفارغة */
             display: block;
             background: var(--bg-deep, #020617);
         }
 
-        /* Design canvas optimized for full screen display */
+        /* Design canvas optimized for full screen display - Airport Style */
         #fitStage {
             width: 1920px;
             height: 1080px;
-            /* ✅ FIX: موضع مطلق في المنتصف - سيتم تطبيق scale من JS */
+            /* ✅ FIX: ملء كامل من الحافة للحافة (مثل شاشات المطارات) */
+            /* البداية من الزاوية العليا اليسرى بدلاً من التوسيط */
             position: absolute;
-            top: 50%;
-            left: 50%;
-            /* translate(-50%, -50%) للتوسيط + scale() من JS */
-            transform: translate(-50%, -50%);
-            transform-origin: center center;
+            top: 0;
+            left: 0;
+            transform-origin: top left;
             will-change: transform;
             display: flex;
             flex-direction: column;
