@@ -138,8 +138,6 @@
     dom.sbCount = $("sbCount");
     dom.standbyTrack = $("standbyTrack");
 
-    dom.fsBtn = $("fsBtn");
-
     // Blocking overlay
     dom.blocker = $("blocker");
     dom.blockerTitle = $("blockerTitle");
@@ -819,15 +817,17 @@
     if (!x) return false;
 
     // ✅ FIX: إخفاء حصص الانتظار التي مضى وقتها
-    // عندما تبدأ الحصة 3 → حصة الانتظار للحصة 2 تختفي
+    // حصة الانتظار للحصة X تظهر طوال الحصة X وتختفي عند بداية الحصة X+1
+    // مثال: حصة انتظار للحصة 2 تظهر أثناء الحصة 2، وتختفي عند بداية الحصة 3
     
     // 1) فلترة بالأرقام (الأفضل) - نبحث في جميع الحقول الممكنة
     const idx = getPeriodIndex(x);
     
     if (idx && rt.activePeriodIndex) {
-      // نعرض فقط الحصص التي بعد الحصة الحالية (> وليس >=)
-      // مثال: إذا الحصة الحالية = 2، نعرض فقط 3 وما فوق
-      const keep = idx > rt.activePeriodIndex;
+      // نعرض الحصص التي >= الحصة الحالية (أي الحصة الحالية والحصص القادمة)
+      // مثال: إذا الحصة الحالية = 2، نعرض حصة انتظار 2، 3، 4...
+      // عند بداية الحصة 3، حصة انتظار الحصة 2 ستختفي
+      const keep = idx >= rt.activePeriodIndex;
       return keep;
     }
 
@@ -3037,64 +3037,7 @@
     }
   }
 
-  // ===== Fullscreen compat =====
-  function requestFullscreenCompat(el) {
-    if (!el) return Promise.reject();
-    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (!fn) return Promise.reject();
-    try {
-      const res = fn.call(el);
-      return res && typeof res.then === "function" ? res : Promise.resolve();
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  }
 
-  function exitFullscreenCompat() {
-    const d = document;
-    const fn = d.exitFullscreen || d.webkitExitFullscreen || d.mozCancelFullScreen || d.msExitFullscreen;
-    if (!fn) return Promise.reject();
-    try {
-      const res = fn.call(d);
-      return res && typeof res.then === "function" ? res : Promise.resolve();
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  }
-
-  function isFullscreen() {
-    const d = document;
-    return !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement);
-  }
-
-  function bindFullscreen() {
-    if (!dom.fsBtn) return;
-    dom.fsBtn.addEventListener(
-      "click",
-      () => {
-        if (!isFullscreen()) {
-          requestFullscreenCompat(document.documentElement)
-            .then(() => {
-              // Fullscreen changes viewport metrics asynchronously on some TVs
-              scheduleFit(80);
-            })
-            .catch(() => {});
-        } else {
-          exitFullscreenCompat()
-            .then(() => scheduleFit(80))
-            .catch(() => {});
-        }
-      },
-      { passive: true }
-    );
-
-    // Re-fit whenever the fullscreen state changes (some browsers won't fire resize reliably).
-    const onFsChange = () => scheduleFit(80);
-    document.addEventListener("fullscreenchange", onFsChange, { passive: true });
-    document.addEventListener("webkitfullscreenchange", onFsChange, { passive: true });
-    document.addEventListener("mozfullscreenchange", onFsChange, { passive: true });
-    document.addEventListener("MSFullscreenChange", onFsChange, { passive: true });
-  }
 
   // ===== Resize: فقط إعادة القياس =====
   let resizeT = null;
@@ -3201,7 +3144,6 @@
     ensureDebugOverlay();
     tickClock();
     startTicker();
-    bindFullscreen();
 
     // init scrollers (مستقلين)
     // For low-end TVs: cap FPS to reduce paint cost.

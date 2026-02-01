@@ -8,10 +8,21 @@ class StandbyAssignmentForm(forms.ModelForm):
     class_name = forms.ModelChoiceField(
         queryset=SchoolClass.objects.none(),
         label="الفصل",
+        empty_label="— اختر الفصل —",
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'data-placeholder': 'اختر الفصل'
+        })
     )
     teacher_name = forms.ModelChoiceField(
         queryset=Teacher.objects.none(),
-        label="اسم المعلم/ـة",
+        label="المعلم/ـة",
+        empty_label="— اختر المعلم/ـة —",
+        help_text="اختر المعلم/ـة من القائمة",
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'data-placeholder': 'اختر المعلم/ـة'
+        })
     )
 
     class Meta:
@@ -23,7 +34,9 @@ class StandbyAssignmentForm(forms.ModelForm):
             "notes": "ملاحظة",
         }
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
+            "date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "period_index": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": "3"}),
         }
 
     def __init__(self, *args, **kwargs):

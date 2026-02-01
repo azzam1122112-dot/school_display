@@ -603,29 +603,65 @@ class StandbyForm(forms.ModelForm):
 # ========================
 
 class DutyAssignmentForm(forms.ModelForm):
+    teacher = forms.ModelChoiceField(
+        queryset=Teacher.objects.none(),
+        label="اسم المعلم/ـة",
+        empty_label="— اختر المعلم/ـة —",
+        help_text="اختر المعلم/ـة من القائمة",
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'data-placeholder': 'اختر المعلم/ـة'
+        }),
+        required=False  # لأن teacher_name في Model هو CharField
+    )
+    
     def __init__(self, *args, **kwargs):
         self._school = kwargs.pop("school", None)
         super().__init__(*args, **kwargs)
 
-        # دعم UI: datalist + تعطيل autocomplete الافتراضي للمتصفح
-        if "teacher_name" in self.fields:
-            self.fields["teacher_name"].widget.attrs.setdefault("list", "teacher_suggestions")
-            self.fields["teacher_name"].widget.attrs.setdefault("autocomplete", "off")
+        # تحميل المعلمين الخاصين بالمدرسة
+        if self._school:
+            self.fields["teacher"].queryset = Teacher.objects.filter(
+                school=self._school
+            ).order_by("name")
+        else:
+            self.fields["teacher"].queryset = Teacher.objects.none()
+        
+        # إذا كان هناك قيمة موجودة في teacher_name، نحاول إيجاد المعلم
+        if self.instance and self.instance.pk and self.instance.teacher_name:
+            try:
+                teacher = Teacher.objects.get(
+                    school=self._school,
+                    name=self.instance.teacher_name
+                )
+                self.initial['teacher'] = teacher
+            except (Teacher.DoesNotExist, Teacher.MultipleObjectsReturned):
+                pass
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # نحوّل Teacher object إلى اسم نصي
+        teacher = self.cleaned_data.get('teacher')
+        if teacher:
+            instance.teacher_name = teacher.name
+        if commit:
+            instance.save()
+        return instance
 
     class Meta:
         model = DutyAssignment
         fields = [
             "date",
-            "teacher_name",
+            "teacher",  # نستخدم teacher بدلاً من teacher_name في Form
             "duty_type",
             "location",
             "priority",
             "is_active",
         ]
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
-            "teacher_name": forms.TextInput(attrs={"maxlength": 100}),
-            "location": forms.TextInput(attrs={"maxlength": 120}),
+            "date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "location": forms.TextInput(attrs={"maxlength": 120, "class": "form-control"}),
+            "priority": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
 
