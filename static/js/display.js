@@ -467,10 +467,22 @@
   }
 
   // ===== Time helpers =====
+  // ✅ FIX: حفظ واستعادة serverOffset من localStorage لتجنب القفزة عند التحديث
   let serverOffsetMs = 0;
+  try {
+    const saved = localStorage.getItem("serverOffsetMs");
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (isFinite(parsed)) {
+        serverOffsetMs = parsed;
+      }
+    }
+  } catch (e) {}
+  
   let serverTzOffsetMin = null;
   let serverLocalDateStr = null; // YYYY-MM-DD
   let serverDayStartMs = null; // epoch ms for server local day start
+  
   function nowMs() {
     return Date.now() + serverOffsetMs;
   }
@@ -486,6 +498,11 @@
     } else {
       serverOffsetMs = Math.round(serverOffsetMs * 0.8 + measured * 0.2);
     }
+    
+    // ✅ FIX: حفظ القيمة الجديدة في localStorage
+    try {
+      localStorage.setItem("serverOffsetMs", String(serverOffsetMs));
+    } catch (e) {}
   }
 
   function _parseTzOffsetMinFromIso(iso) {
@@ -2141,14 +2158,14 @@
 
     if (stType === "period" || stType === "break" || stType === "before") {
       let localCalc = null;
-      // Prefer calculating remaining time from local clock to avoid cache processing delays
-      // which cause the timer to lag behind the header clock.
+      // ✅ FIX: استخدام nowMs() المباشر لضمان التزامن الدقيق مع الساعة المعروضة
+      // نحسب الوقت لحظياً لتجنب أي تأخير في المعالجة
+      const currentMs = nowMs();
       const targetHM = stType === "before" ? s.from : s.to;
       if (targetHM) {
-        const tMs = hmToMs(targetHM, baseMs);
-        // ✅ FIX: استخدام nowMs() بدلاً من baseMs القديم لحساب الوقت المتبقي
-        // baseMs يُحسب في بداية المعالجة وقد يكون قديماً بعد تحديث serverOffsetMs
-        if (tMs) localCalc = Math.floor((tMs - nowMs()) / 1000);
+        const tMs = hmToMs(targetHM, currentMs);
+        // الحساب: وقت الهدف - الوقت الحالي = الوقت المتبقي
+        if (tMs) localCalc = Math.floor((tMs - currentMs) / 1000);
       }
 
       const serverRem =
@@ -3100,6 +3117,22 @@
     dutyScroller = dom.dutyTrack ? createScroller(dom.dutyTrack, () => cfg.PERIODS_SPEED, scrollerOpts) : null;
 
     renderAlert("جاري التحميل…", "يتم الآن جلب البيانات من الخادم.");
+    
+    // ✅ FIX: جلب التوقيت من السيرفر فوراً عند التحميل لتقليل القفزة
+    // نستدعي /status أو /snapshot مباشرة للحصول على X-Server-Time-MS
+    (async function syncTimeOnBoot() {
+      try {
+        // إذا لم يكن لدينا offset محفوظ، نجلبه فوراً
+        const savedOffset = localStorage.getItem("serverOffsetMs");
+        if (!savedOffset || savedOffset === "0") {
+          // استدعاء سريع للحصول على التوقيت
+          await safeFetchStatus();
+        }
+      } catch (e) {
+        // ignore - سيتم المحاولة مرة أخرى في refreshLoop
+      }
+    })();
+    
     scheduleNext(0.2);
   });
 })();
