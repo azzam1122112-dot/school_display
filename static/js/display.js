@@ -271,12 +271,13 @@
     const designWidth = 1920;
     const designHeight = 1080;
 
-    // Calculate scale to fit viewport (contain, maintaining aspect ratio)
+    // Calculate scale to COVER viewport (fill screen completely)
     const scaleX = viewportWidth / designWidth;
     const scaleY = viewportHeight / designHeight;
     
-    // Use the smaller scale to ensure everything fits
-    let scale = Math.min(scaleX, scaleY);
+    // Use the LARGER scale to fill the screen (cover mode)
+    // This ensures no empty spaces but may crop edges on non-16:9 screens
+    let scale = Math.max(scaleX, scaleY);
     
     // Allow scaling UP for large TVs, but cap at reasonable maximum
     const maxScale = getFitMaxScale();
@@ -948,8 +949,10 @@
 
       // Update countdown/progress.
       let rem;
-      if (isBefore) rem = Math.max(0, Math.floor((startMs - n) / 1000));
-      else rem = Math.max(0, Math.floor((endMs - n) / 1000));
+      // استخدام nowMs() للحصول على الوقت المتزامن مع السيرفر
+      const nowMsValue = nowMs();
+      if (isBefore) rem = Math.max(0, Math.floor((startMs - nowMsValue) / 1000));
+      else rem = Math.max(0, Math.floor((endMs - nowMsValue) / 1000));
 
       countdownSeconds = rem;
       hasActiveCountdown = true;

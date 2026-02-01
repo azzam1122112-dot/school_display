@@ -78,6 +78,13 @@
             text-rendering: optimizeLegibility;
         }
         
+        /* Force full screen coverage - no letterboxing */
+        @media screen {
+            #fitRoot {
+                background: var(--bg-deep, #020617);
+            }
+        }
+        
         /* Ensure crisp scaling on all displays */
         #fitStage * {
             -webkit-font-smoothing: antialiased;

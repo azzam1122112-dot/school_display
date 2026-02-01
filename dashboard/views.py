@@ -1015,19 +1015,36 @@ def standby_list(request):
     if response:
         return response
 
-    qs = StandbyAssignment.objects.filter(school=school).order_by("-date", "period_index", "-id")
+    # فلتر التاريخ (مثل صفحة الإشراف والمناوبة)
+    selected_date = timezone.localdate()
+    date_str = request.GET.get("date", "").strip()
+    if date_str:
+        try:
+            selected_date = timezone.datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = timezone.localdate()
 
-    today = timezone.localdate()
-    today_count = StandbyAssignment.objects.filter(school=school, date=today).count()
-    teachers_count = StandbyAssignment.objects.filter(school=school).values("teacher_name").distinct().count()
-    classes_count = StandbyAssignment.objects.filter(school=school).values("class_name").distinct().count()
+    # تصفية حسب التاريخ المحدد
+    qs = StandbyAssignment.objects.filter(
+        school=school,
+        date=selected_date
+    ).order_by("period_index", "-id")
+
+    # إحصائيات
+    total_count = qs.count()
+    teachers_count = qs.values("teacher_name").distinct().count()
 
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
 
     return render(
         request,
         "dashboard/standby_list.html",
-        {"page": page, "today_count": today_count, "teachers_count": teachers_count, "classes_count": classes_count},
+        {
+            "page": page,
+            "selected_date": selected_date,
+            "total_count": total_count,
+            "teachers_count": teachers_count,
+        },
     )
 
 
