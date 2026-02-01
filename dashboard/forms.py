@@ -519,11 +519,17 @@ class ExcellenceForm(forms.ModelForm):
 # ========================
 
 class StandbyForm(forms.ModelForm):
-    class_name = forms.ModelChoiceField(queryset=SchoolClass.objects.none(), label="الفصل")
+    class_name = forms.ModelChoiceField(
+        queryset=SchoolClass.objects.none(),
+        label="الفصل",
+        required=True,
+        empty_label="— اختر الفصل —"
+    )
     # ✅ تحويل teacher_name من CharField إلى ModelChoiceField (dropdown)
     teacher = forms.ModelChoiceField(
         queryset=Teacher.objects.none(),
         label="اسم المعلم/ـة",
+        required=True,
         empty_label="— اختر المعلم/ـة —",
         help_text="اختر المعلم/ـة من القائمة",
         widget=forms.Select(attrs={
@@ -534,7 +540,8 @@ class StandbyForm(forms.ModelForm):
 
     class Meta:
         model = StandbyAssignment
-        fields = ["date", "period_index", "class_name", "teacher_name", "notes"]
+        # ✅ استبعاد teacher_name من fields لأننا نستخدم حقل مخصص "teacher"
+        fields = ["date", "period_index", "class_name", "notes"]
         widgets = {"date": forms.DateInput(attrs={"type": "date"})}
 
     def __init__(self, *args, **kwargs):
