@@ -38,6 +38,9 @@
       font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
       background-color: var(--bg-deep, #020617);
       color: #f8fafc;
+      /* ✅ FIX: حجم خط أساسي أكبر لتحسين القراءة على التلفاز */
+      font-size: 18px; /* زيادة من 16px الافتراضي */
+      line-height: 1.5;
     }
 
         /* Enhanced viewport sizing for TV displays */
@@ -168,14 +171,33 @@
 
         /* Responsive typography safeguards for TVs / small viewports */
         #clock {
-            font-size: clamp(2.2rem, 4.8vw, 3.25rem);
+            font-size: clamp(2.5rem, 5vw, 3.75rem); /* زيادة من 2.2rem */
             line-height: 1;
+            font-weight: 700;
         }
         #heroTitle {
-            font-size: clamp(2.1rem, 4.6vw, 3.75rem);
-            line-height: 1.05;
+            font-size: clamp(2.5rem, 5vw, 4rem); /* زيادة من 2.1rem */
+            line-height: 1.1;
             overflow-wrap: anywhere;
             word-break: break-word;
+            font-weight: 800;
+        }
+        
+        /* ✅ FIX: زيادة حجم النصوص الأساسية للوضوح */
+        .glass-panel {
+            font-size: 1.1rem; /* 110% من الحجم الأساسي */
+        }
+        
+        /* تكبير عناوين البطاقات */
+        h2, h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+        
+        /* تكبير النصوص داخل القوائم */
+        .slot-item {
+            font-size: 1.15rem;
+            line-height: 1.4;
         }
 
         /* Slot item styling (applies to actual items created by display.js) */

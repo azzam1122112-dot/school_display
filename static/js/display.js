@@ -290,6 +290,19 @@
     try {
       const body = document.body || document.documentElement;
       body.dataset.uiScale = scale.toFixed(4);
+      
+      // ✅ FIX: تكبير الخطوط تلقائياً للشاشات الكبيرة
+      // إذا كان scale أكبر من 1 (شاشات 4K, 8K, إلخ)
+      // نزيد حجم الخط الأساسي لتحسين القراءة
+      if (scale > 1) {
+        // مثال: scale = 2 (4K) → font-size = 125%
+        // مثال: scale = 1.5 (2K) → font-size = 112.5%
+        const fontScale = 1 + (scale - 1) * 0.5; // نصف الزيادة
+        body.style.fontSize = `${(fontScale * 100).toFixed(1)}%`;
+      } else {
+        // للشاشات الصغيرة، نبقي الحجم الافتراضي أو نزيده قليلاً
+        body.style.fontSize = '100%';
+      }
     } catch (e) {}
   }
 
@@ -616,9 +629,37 @@
       periodObj.order;
 
     if (raw === null || raw === undefined || raw === "") return null;
+    
+    // محاولة تحويل لرقم مباشرة
     const n = parseInt(String(raw), 10);
-    if (isNaN(n) || n <= 0) return null;
-    return n;
+    if (isFinite(n) && n > 0) return n;
+    
+    // ✅ FIX: استخراج الرقم من النص العربي (مثل "الحصة الثانية" → 2)
+    const rawStr = String(raw).trim();
+    const arabicMap = {
+      "الأولى": 1, "الاولى": 1, "أولى": 1, "اولى": 1,
+      "الثانية": 2, "ثانية": 2,
+      "الثالثة": 3, "ثالثة": 3,
+      "الرابعة": 4, "رابعة": 4,
+      "الخامسة": 5, "خامسة": 5,
+      "السادسة": 6, "سادسة": 6,
+      "السابعة": 7, "سابعة": 7,
+      "الثامنة": 8, "ثامنة": 8,
+      "التاسعة": 9, "تاسعة": 9,
+      "العاشرة": 10, "عاشرة": 10,
+      "الحادية عشرة": 11, "حادية عشرة": 11,
+      "الثانية عشرة": 12, "ثانية عشرة": 12,
+      "الثالثة عشرة": 13, "ثالثة عشرة": 13,
+      "الرابعة عشرة": 14, "رابعة عشرة": 14,
+      "الخامسة عشرة": 15, "خامسة عشرة": 15,
+    };
+    
+    // البحث عن الرقم في النص
+    for (const [key, value] of Object.entries(arabicMap)) {
+      if (rawStr.includes(key)) return value;
+    }
+    
+    return null;
   }
 
   function arabicOrdinalFeminine(n) {
@@ -693,19 +734,30 @@
   function shouldKeepStandbyItem(x, baseMs) {
     if (!x) return false;
 
-    // 1) فلترة بالأرقام (الأفضل)
+    // ✅ FIX: إخفاء حصص الانتظار التي مضى وقتها
+    // عندما تبدأ الحصة 3 → حصة الانتظار للحصة 2 تختفي
+    
+    // 1) فلترة بالأرقام (الأفضل) - نبحث في جميع الحقول الممكنة
     const idx = getPeriodIndex(x);
-    if (rt.activePeriodIndex && idx) return idx >= rt.activePeriodIndex;
+    
+    if (idx && rt.activePeriodIndex) {
+      // نعرض فقط الحصص التي بعد الحصة الحالية (> وليس >=)
+      // مثال: إذا الحصة الحالية = 2، نعرض فقط 3 وما فوق
+      const keep = idx > rt.activePeriodIndex;
+      return keep;
+    }
 
-    // 2) fallback بالوقت إذا ما فيه رقم
+    // 2) fallback بالوقت إذا ما فيه رقم (نادر لكن للتوافقية)
     const from = x.from || x.start || x.starts_at;
     if (rt.activeFromHM && from) {
       const a = hmToMs(rt.activeFromHM, baseMs);
       const b = hmToMs(from, baseMs);
-      if (a && b) return b >= a;
+      // نعرض فقط الحصص التي وقتها في المستقبل (> وليس >=)
+      if (a && b) return b > a;
     }
 
-    // إذا ما نقدر نحدد… نخليه
+    // 3) إذا ما نقدر نحدد بالرقم أو الوقت، نعرضه
+    // (هذا احتياطي فقط - لا يجب الوصول له في الظروف العادية)
     return true;
   }
 
