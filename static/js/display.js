@@ -1985,7 +1985,8 @@
       img.style.objectFit = "cover";
       img.src =
         src ||
-        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='28'%3E%F0%9F%8F%86%3C/text%3E%3C/svg%3E";
+        // ✨ أيقونة فاخرة للتميز - Excellence Badge 2026
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='goldGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23ffd700;stop-opacity:1'/%3E%3Cstop offset='50%25' style='stop-color:%23ffed4e;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%23f59e0b;stop-opacity:1'/%3E%3C/linearGradient%3E%3ClinearGradient id='bgGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%230f172a;stop-opacity:1'/%3E%3C/linearGradient%3E%3CradialGradient id='glowGrad'%3E%3Cstop offset='0%25' style='stop-color:%23fbbf24;stop-opacity:0.3'/%3E%3Cstop offset='100%25' style='stop-color:%23fbbf24;stop-opacity:0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23bgGrad)'/%3E%3Ccircle cx='100' cy='100' r='80' fill='url(%23glowGrad)'/%3E%3Cpath d='M100,30 L110,70 L150,70 L120,95 L130,135 L100,110 L70,135 L80,95 L50,70 L90,70 Z' fill='url(%23goldGrad)' stroke='%23f59e0b' stroke-width='2'/%3E%3Ccircle cx='100' cy='100' r='15' fill='%23fbbf24'/%3E%3Ctext x='100' y='108' text-anchor='middle' font-size='16' font-weight='bold' fill='%23fff'%3E%E2%98%85%3C/text%3E%3C/svg%3E";
 
       const meta = document.createElement("div");
       meta.className = "honor-meta";

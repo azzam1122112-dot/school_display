@@ -176,7 +176,9 @@
             background: rgba(15, 23, 42, 0.75);
         }
         body[data-lite="1"] .glass-panel::before,
-        body[data-lite="1"] .glass-panel.rounded-3xl::after {
+        body[data-lite="1"] .glass-panel.rounded-3xl::after,
+        body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1::before,
+        body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1 > .relative.z-10::after {
             display: none;
         }
         body[data-lite="1"] .slot-item {
@@ -184,11 +186,38 @@
             -webkit-backdrop-filter: none;
         }
         body[data-lite="1"] .animate-pulse-slow { animation: none; }
-        body[data-lite="1"] #heroTitle { animation: none; }
+        body[data-lite="1"] #heroTitle { 
+            animation: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+            background: linear-gradient(135deg, #ffffff, #e0e7ff) !important;
+        }
         body[data-lite="1"] #clock { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
         body[data-lite="1"] .progress-track,
         body[data-lite="1"] .progress-bar {
             filter: none;
+        }
+        body[data-lite="1"] #countdown {
+            filter: none;
+            background: white !important;
+            -webkit-text-fill-color: white !important;
+        }
+        body[data-lite="1"] #badgeKind {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            text-shadow: none;
+        }
+        body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1 > div:first-child {
+            animation: none;
+            opacity: 0.3;
+        }
+        body[data-lite="1"] #exCard::before {
+            display: none;
+        }
+        body[data-lite="1"] .honor-wrap img {
+            animation: none;
+            transition: none;
+        }
+        body[data-lite="1"] .honor-wrap img:hover {
+            transform: none;
         }
         
         /* ✅ احترام تفضيلات المستخدم لتقليل الحركة */
@@ -203,6 +232,12 @@
             #heroTitle { animation: none; }
             .w-2.h-2.rounded-full { animation: none; }
             .slot-item { transition: none; }
+            main .glass-panel.rounded-3xl.flex-1 > div:first-child { animation: none; }
+            #exCard::before { display: none; }
+            .honor-wrap img { 
+                animation: none !important; 
+                transition: none !important; 
+            }
         }
 
         /* ✅ تعطيل hover effects على الأجهزة اللمسية */
@@ -212,6 +247,14 @@
                 border-color: rgba(255, 255, 255, 0.05);
                 transform: none;
                 box-shadow: none;
+            }
+            .honor-wrap img:hover {
+                transform: none;
+                box-shadow: 
+                    0 8px 32px rgba(0, 0, 0, 0.4),
+                    0 0 0 3px rgba(245, 158, 11, 0.2),
+                    inset 0 0 20px rgba(251, 191, 36, 0.1);
+                border-color: rgba(251, 191, 36, 0.3);
             }
         }
 
@@ -363,9 +406,43 @@
             border-radius: 1.5rem;
             object-fit: cover;
             object-position: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.2);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 0 0 3px rgba(245, 158, 11, 0.2),
+                inset 0 0 20px rgba(251, 191, 36, 0.1);
+            border: 3px solid rgba(251, 191, 36, 0.3);
+            background: linear-gradient(
+                135deg,
+                rgba(15, 23, 42, 0.8),
+                rgba(30, 41, 59, 0.9)
+            );
+            transition: all 0.3s ease;
+        }
+
+        /* ✨ تأثير hover على صورة لوحة الشرف */
+        .honor-wrap img:hover {
+            transform: scale(1.03);
+            box-shadow: 
+                0 12px 48px rgba(0, 0, 0, 0.5),
+                0 0 0 3px rgba(245, 158, 11, 0.4),
+                inset 0 0 30px rgba(251, 191, 36, 0.15);
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+
+        /* 🌟 تأثير لامع للصور الافتراضية */
+        @keyframes excellenceGlow {
+            0%, 100% {
+                box-shadow: 
+                    0 8px 32px rgba(0, 0, 0, 0.4),
+                    0 0 0 3px rgba(245, 158, 11, 0.2),
+                    inset 0 0 20px rgba(251, 191, 36, 0.1);
+            }
+            50% {
+                box-shadow: 
+                    0 8px 32px rgba(245, 158, 11, 0.3),
+                    0 0 0 3px rgba(245, 158, 11, 0.4),
+                    inset 0 0 30px rgba(251, 191, 36, 0.2);
+            }
         }
 
         .honor-meta {
@@ -453,43 +530,177 @@
             );
         }
 
-        /* 🎯 Hero Card - الكرت الرئيسي الفاخر */
+        /* ========================================
+           🎯 HERO CARD 2026 - الكرت الرئيسي الفخم
+           ======================================== */
+        
         main .glass-panel.rounded-3xl.flex-1 {
+            background: 
+                linear-gradient(
+                    135deg,
+                    rgba(15, 23, 42, 0.85) 0%,
+                    rgba(30, 41, 59, 0.8) 30%,
+                    rgba(51, 65, 85, 0.85) 60%,
+                    rgba(30, 41, 59, 0.8) 100%
+                ),
+                radial-gradient(
+                    circle at 20% 30%,
+                    rgba(99, 102, 241, 0.15) 0%,
+                    transparent 50%
+                ),
+                radial-gradient(
+                    circle at 80% 70%,
+                    rgba(139, 92, 246, 0.12) 0%,
+                    transparent 50%
+                );
+            box-shadow: 
+                0 25px 80px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(99, 102, 241, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 0 60px rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ✨ Animated Background Mesh */
+        main .glass-panel.rounded-3xl.flex-1 > div:first-child {
+            background: 
+                radial-gradient(
+                    circle at 20% 30%,
+                    rgba(99, 102, 241, 0.2) 0%,
+                    transparent 40%
+                ),
+                radial-gradient(
+                    circle at 80% 70%,
+                    rgba(168, 85, 247, 0.15) 0%,
+                    transparent 40%
+                ),
+                linear-gradient(
+                    135deg,
+                    rgba(99, 102, 241, 0.05),
+                    transparent 50%,
+                    rgba(139, 92, 246, 0.05)
+                );
+            animation: heroGradientShift 8s ease-in-out infinite;
+        }
+
+        @keyframes heroGradientShift {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+
+        /* 🎨 Hero Title - اسم الحصة بتصميم 2026 */
+        #heroTitle {
+            font-size: clamp(2.5rem, 5vw, 4rem) !important;
             background: linear-gradient(
                 135deg,
-                rgba(15, 23, 42, 0.8) 0%,
-                rgba(30, 41, 59, 0.75) 40%,
-                rgba(51, 65, 85, 0.8) 100%
-            );
-            box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.15),
-                0 0 0 1px rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+                #ffffff 0%,
+                var(--accent-sub, #c7d2fe) 25%,
+                var(--accent-main, #818cf8) 50%,
+                var(--accent-sub, #c7d2fe) 75%,
+                #ffffff 100%
+            ) !important;
+            background-size: 200% 200% !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            animation: heroTitleGradient 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.6))
+                    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+            letter-spacing: 0.02em;
+            line-height: 1.1 !important;
+            font-weight: 900 !important;
         }
 
-        /* 🎯 Hero Title - عنوان فاخر مع تأثير لامع */
-        #heroTitle {
-            filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.4));
-            animation: shimmer 3s ease-in-out infinite;
+        @keyframes heroTitleGradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
-        @keyframes shimmer {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.85; }
-        }
-
-        /* 🏆 Badge Styling - شارات فاخرة */
+        /* 🏆 Badge Styling - شارة فاخرة 2026 */
         #badgeKind {
             background: linear-gradient(
                 135deg,
-                rgba(255, 255, 255, 0.15),
-                rgba(255, 255, 255, 0.05)
+                rgba(99, 102, 241, 0.3),
+                rgba(139, 92, 246, 0.2),
+                rgba(99, 102, 241, 0.3)
             );
             box-shadow: 
-                0 2px 8px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+                0 4px 16px rgba(99, 102, 241, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            color: rgb(224, 231, 255) !important;
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+            font-weight: 800 !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        /* ⏱️ Progress Circle Container - العداد الزمني الفاخر */
+        .relative.w-24.h-24 {
+            filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.5));
+        }
+
+        /* 🔵 Circle Progress - دائرة التقدم */
+        #circleProgress {
+            stroke: url(#heroProgressGradient) !important;
+            filter: drop-shadow(0 0 12px var(--accent-main, #818cf8));
+            stroke-width: 10 !important;
+        }
+
+        /* ⏲️ Countdown Timer - العداد التنازلي */
+        #countdown {
+            font-size: clamp(1.5rem, 2vw, 2rem) !important;
+            background: linear-gradient(
+                135deg,
+                #ffffff,
+                var(--accent-sub, #c7d2fe),
+                var(--accent-main, #818cf8)
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.8));
+            font-weight: 900 !important;
+            letter-spacing: 0.1em;
+        }
+
+        /* 📊 Hero Range Time */
+        #heroRange {
+            font-size: clamp(0.9rem, 1.2vw, 1.1rem) !important;
+            color: rgba(203, 213, 225, 0.9) !important;
+            font-weight: 600 !important;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 💫 Current Schedule List */
+        #currentScheduleList {
+            font-size: clamp(1.1rem, 1.5vw, 1.3rem) !important;
+            color: rgba(226, 232, 240, 0.95) !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            line-height: 1.6 !important;
+        }
+
+        /* 🎯 Activity Label Enhancement */
+        main .glass-panel.rounded-3xl.flex-1 .text-xs.font-bold.uppercase {
+            font-weight: 800;
+            letter-spacing: 0.15em;
+        }
+
+        /* 🔆 Enhanced Glow for Active Dot in Hero Card */
+        main .glass-panel.rounded-3xl.flex-1 .w-2.h-2.rounded-full.bg-emerald-500 {
+            box-shadow: 
+                0 0 8px rgba(16, 185, 129, 0.6),
+                0 0 16px rgba(16, 185, 129, 0.4),
+                0 0 24px rgba(16, 185, 129, 0.2);
+        }
+
+        /* 🎨 Hero Card Inner Content Responsive Padding */
+        main .glass-panel.rounded-3xl.flex-1 > .relative.z-10 {
+            padding: clamp(1.5rem, 3vw, 2.5rem) !important;
+            gap: clamp(1rem, 2vw, 1.5rem) !important;
         }
 
         /* 📊 Count Badges - badges عدد الحصص */
@@ -555,17 +766,46 @@
             }
         }
 
-        /* 📦 Excellence & Duty Cards - تحسين طفيف */
+        /* 🏆 Excellence Card - كرت لوحة الشرف الفاخر */
         #exCard {
             background: linear-gradient(
                 135deg,
-                rgba(245, 158, 11, 0.05) 0%,
-                rgba(15, 23, 42, 0.7) 50%
+                rgba(245, 158, 11, 0.08) 0%,
+                rgba(251, 191, 36, 0.05) 25%,
+                rgba(15, 23, 42, 0.75) 50%,
+                rgba(30, 41, 59, 0.7) 100%
             );
-            border: 1px solid rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.3);
             box-shadow: 
-                0 15px 50px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                0 20px 60px rgba(245, 158, 11, 0.2),
+                0 0 0 1px rgba(251, 191, 36, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 0 40px rgba(251, 191, 36, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ✨ Animated Golden Shimmer على كرت لوحة الشرف */
+        #exCard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(251, 191, 36, 0.15),
+                transparent
+            );
+            animation: shimmerExcellence 3s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmerExcellence {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
 
         #dutyCard {
@@ -601,6 +841,52 @@
                 transparent 100%
             );
             opacity: 0.5;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* ✨ Hero Card Special Decorations */
+        main .glass-panel.rounded-3xl.flex-1::after {
+            background: linear-gradient(
+                135deg,
+                rgba(99, 102, 241, 0.2) 0%,
+                transparent 30%,
+                transparent 70%,
+                rgba(168, 85, 247, 0.15) 100%
+            );
+            opacity: 0.6;
+        }
+
+        /* 💫 Corner Accents for Hero Card */
+        main .glass-panel.rounded-3xl.flex-1::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(
+                circle at top right,
+                rgba(99, 102, 241, 0.2) 0%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 🌟 Bottom Left Corner Accent */
+        main .glass-panel.rounded-3xl.flex-1 > .relative.z-10::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(
+                circle at bottom left,
+                rgba(168, 85, 247, 0.15) 0%,
+                transparent 70%
+            );
             pointer-events: none;
             z-index: -1;
         }
@@ -722,15 +1008,26 @@
         
         <!-- Hero Card -->
         <div class="glass-panel rounded-3xl flex-1 flex flex-col relative overflow-hidden group">
-            <!-- Background Image/Gradient specific for Hero -->
+            <!-- Animated Background Mesh -->
             <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-50"></div>
+            
+            <!-- SVG Gradients Definition -->
+            <svg width="0" height="0" style="position: absolute;">
+                <defs>
+                    <linearGradient id="heroProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:rgb(99, 102, 241);stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:rgb(139, 92, 246);stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:rgb(168, 85, 247);stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+            </svg>
             
             <div class="relative z-10 flex-1 p-8 flex flex-col gap-6">
                 <!-- Top Row: Badge & Progress -->
                 <div class="flex flex-wrap justify-between items-start gap-6">
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <span id="badgeKind" class="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold uppercase tracking-wider backdrop-blur-md" style="color: var(--accent-sub, #a5b4fc);">--</span>
+                    <div class="space-y-4 flex-1">
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <span id="badgeKind" class="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-xs font-bold uppercase tracking-wider backdrop-blur-md" style="color: var(--accent-sub, #a5b4fc);">--</span>
                             <span id="heroRange" class="text-slate-400 num-font text-sm tracking-wide">--:--</span>
                         </div>
                         
@@ -739,25 +1036,29 @@
                         </h2>
                     </div>
 
-                    <!-- Progress Circle -->
-                    <div class="relative w-24 h-24 md:w-32 md:h-32 flex-none">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                    <!-- Luxury Progress Circle -->
+                    <div class="relative flex-none" style="width: clamp(96px, 10vw, 140px); height: clamp(96px, 10vw, 140px);">
+                        <svg class="w-full h-full" viewBox="0 0 120 120">
+                            <!-- Background Glow -->
+                            <circle cx="60" cy="60" r="54" class="stroke-slate-800/50" stroke-width="12" fill="none" opacity="0.3"></circle>
                             <!-- Background Track -->
-                            <circle cx="60" cy="60" r="54" class="stroke-slate-800" stroke-width="8" fill="none"></circle>
-                            <!-- Active Progress -->
-                            <circle id="circleProgress" cx="60" cy="60" r="54" class="stroke-blue-500 transition-all duration-1000 ease-linear" stroke-width="8" stroke-linecap="round" fill="none" stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
+                            <circle cx="60" cy="60" r="54" class="progress-track"></circle>
+                            <!-- Active Progress with Gradient -->
+                            <circle id="circleProgress" cx="60" cy="60" r="54" class="progress-bar" stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="countdown" class="text-2xl font-mono font-bold text-white tabular-nums">--:--</span>
-                            <span class="text-[10px] text-slate-400 uppercase tracking-wider">المتبقي</span>
+                            <span id="countdown" class="text-3xl font-mono font-bold text-white tabular-nums">--:--</span>
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1" style="color: var(--accent-sub, #93c5fd);">المتبقي</span>
                         </div>
+                        <!-- Decorative Ring -->
+                        <div class="absolute inset-0 rounded-full border border-white/10" style="padding: -8px;"></div>
                     </div>
                 </div>
 
                 <!-- Current Activity List -->
                 <div class="mt-auto">
-                    <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <div class="w-1 h-w-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div class="text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2" style="color: var(--accent-sub, #93c5fd);">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
                         النشاط الحالي
                     </div>
                     <div id="currentScheduleList" class="flex flex-wrap gap-2 text-xl text-slate-200">
