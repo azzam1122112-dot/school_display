@@ -119,16 +119,46 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Glass Effect Utility */
+    /* Glass Effect Utility - Enhanced Luxury Design */
     .glass-panel {
-      background: var(--glass-surface, rgba(15, 23, 42, 0.6));
+      background: linear-gradient(
+        135deg, 
+        rgba(15, 23, 42, 0.7) 0%, 
+        rgba(30, 41, 59, 0.6) 50%, 
+        rgba(15, 23, 42, 0.7) 100%
+      );
       /* ✅ تقليل blur من 24px إلى 16px لتوافق أفضل مع الشاشات القديمة */
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
       /* ✅ تحسين compositing layer */
       transform: translateZ(0);
+      position: relative;
+    }
+    
+    /* ✅ إضافة لمعة فاخرة على الحواف */
+    .glass-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.15),
+        transparent 30%,
+        transparent 70%,
+        rgba(255, 255, 255, 0.1)
+      );
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0.6;
     }
 
         /* Old TVs / low-end mode: reduce GPU-heavy effects */
@@ -141,15 +171,25 @@
         body[data-lite="1"] .glass-panel {
             backdrop-filter: none;
             -webkit-backdrop-filter: none;
-            box-shadow: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
             /* Keep it glassy (transparent) but avoid expensive blur on TVs */
-            background: rgba(15, 23, 42, 0.62);
+            background: rgba(15, 23, 42, 0.75);
+        }
+        body[data-lite="1"] .glass-panel::before,
+        body[data-lite="1"] .glass-panel.rounded-3xl::after {
+            display: none;
         }
         body[data-lite="1"] .slot-item {
             backdrop-filter: none;
             -webkit-backdrop-filter: none;
         }
         body[data-lite="1"] .animate-pulse-slow { animation: none; }
+        body[data-lite="1"] #heroTitle { animation: none; }
+        body[data-lite="1"] #clock { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
+        body[data-lite="1"] .progress-track,
+        body[data-lite="1"] .progress-bar {
+            filter: none;
+        }
         
         /* ✅ احترام تفضيلات المستخدم لتقليل الحركة */
         @media (prefers-reduced-motion: reduce) {
@@ -160,20 +200,44 @@
             }
             .bg-mesh { filter: none; opacity: 0.3; }
             .animate-pulse-slow { animation: none; }
+            #heroTitle { animation: none; }
+            .w-2.h-2.rounded-full { animation: none; }
+            .slot-item { transition: none; }
+        }
+
+        /* ✅ تعطيل hover effects على الأجهزة اللمسية */
+        @media (hover: none) {
+            .slot-item:hover {
+                background: rgba(255, 255, 255, 0.03);
+                border-color: rgba(255, 255, 255, 0.05);
+                transform: none;
+                box-shadow: none;
+            }
         }
 
         @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-            .glass-panel { backdrop-filter: none; -webkit-backdrop-filter: none; }
-            .slot-item { backdrop-filter: none; -webkit-backdrop-filter: none; }
+            .glass-panel { 
+                backdrop-filter: none; 
+                -webkit-backdrop-filter: none;
+                background: rgba(15, 23, 42, 0.85);
+            }
+            .glass-panel::before {
+                display: none;
+            }
+            .slot-item { 
+                backdrop-filter: none; 
+                -webkit-backdrop-filter: none; 
+            }
         }
 
-    /* Progress Circle - مُحسّن للأداء */
+    /* Progress Circle - مُحسّن للأداء + تصميم فاخر */
     .progress-track { 
-      stroke: rgba(255, 255, 255, 0.1); 
+      stroke: rgba(255, 255, 255, 0.08); 
       stroke-width: 8; 
       fill: none;
       /* ✅ تحسين rendering performance */
       vector-effect: non-scaling-stroke;
+      filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.3));
     }
     .progress-bar { 
       stroke: var(--accent-main, #60a5fa); 
@@ -186,6 +250,7 @@
       /* ✅ استخدام GPU acceleration */
       will-change: stroke-dashoffset;
       vector-effect: non-scaling-stroke;
+      filter: drop-shadow(0 0 8px var(--accent-main, rgba(96, 165, 250, 0.5)));
     }
 
     /* Animations - مُحسّن للأداء */
@@ -328,6 +393,228 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 0.75rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ========================================
+           ✨ LUXURY ENHANCEMENTS - تحسينات فاخرة
+           ======================================== */
+
+        /* 🎨 Header Card - تحسين كرت الهيدر */
+        header .glass-panel {
+            background: linear-gradient(
+                135deg,
+                rgba(15, 23, 42, 0.75) 0%,
+                rgba(30, 41, 59, 0.7) 50%,
+                rgba(51, 65, 85, 0.75) 100%
+            );
+            box-shadow: 
+                0 10px 40px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        /* 🏫 School Logo - إطار فاخر للشعار */
+        #schoolLogo {
+            transition: transform 0.3s ease;
+        }
+
+        /* ⏰ Clock Styling - تحسين عرض الساعة */
+        #clock {
+            text-shadow: 
+                0 0 20px rgba(96, 165, 250, 0.4),
+                0 2px 4px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(
+                135deg,
+                var(--accent-main, #60a5fa),
+                var(--accent-sub, #93c5fd)
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 🚨 Alert Card - تصميم فاخر للتنبيهات */
+        #alertContainer {
+            background: linear-gradient(
+                135deg,
+                rgba(220, 38, 38, 0.15) 0%,
+                rgba(15, 23, 42, 0.7) 50%
+            );
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 
+                0 10px 40px rgba(220, 38, 38, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        #alertContainer::before {
+            background: linear-gradient(
+                135deg,
+                rgba(239, 68, 68, 0.3),
+                transparent 40%
+            );
+        }
+
+        /* 🎯 Hero Card - الكرت الرئيسي الفاخر */
+        main .glass-panel.rounded-3xl.flex-1 {
+            background: linear-gradient(
+                135deg,
+                rgba(15, 23, 42, 0.8) 0%,
+                rgba(30, 41, 59, 0.75) 40%,
+                rgba(51, 65, 85, 0.8) 100%
+            );
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                0 0 0 1px rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* 🎯 Hero Title - عنوان فاخر مع تأثير لامع */
+        #heroTitle {
+            filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.4));
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+
+        /* 🏆 Badge Styling - شارات فاخرة */
+        #badgeKind {
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 0.15),
+                rgba(255, 255, 255, 0.05)
+            );
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 📊 Count Badges - badges عدد الحصص */
+        #pcCount, #sbCount {
+            font-size: clamp(1rem, 1.8vw, 1.4rem);
+            padding: 0.5rem 0.9rem;
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        /* ✅ Period Classes Card - حصص جارية */
+        #pcCount {
+            background: linear-gradient(
+                135deg,
+                rgba(16, 185, 129, 0.3),
+                rgba(5, 150, 105, 0.2)
+            );
+            border-color: rgba(16, 185, 129, 0.5);
+            color: rgb(110, 231, 183);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        /* 🕐 Standby Classes Card - حصص الانتظار */
+        #sbCount {
+            background: linear-gradient(
+                135deg,
+                rgba(249, 115, 22, 0.3),
+                rgba(234, 88, 12, 0.2)
+            );
+            border-color: rgba(249, 115, 22, 0.5);
+            color: rgb(254, 215, 170);
+            text-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+
+        /* 📋 Side Cards Headers - تحسين رؤوس الكروت الجانبية */
+        aside .glass-panel > div:first-child {
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 0.08) 0%,
+                rgba(255, 255, 255, 0.03) 100%
+            );
+            backdrop-filter: blur(8px);
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* 🟢 Active Pulse - نبضة التفعيل */
+        .w-2.h-2.rounded-full.bg-emerald-500,
+        .w-2.h-2.rounded-full.bg-orange-500 {
+            animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        /* 📦 Excellence & Duty Cards - تحسين طفيف */
+        #exCard {
+            background: linear-gradient(
+                135deg,
+                rgba(245, 158, 11, 0.05) 0%,
+                rgba(15, 23, 42, 0.7) 50%
+            );
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            box-shadow: 
+                0 15px 50px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        #dutyCard {
+            box-shadow: 
+                0 15px 50px rgba(99, 102, 241, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* 🎨 Slot Items - تحسين العناصر داخل القوائم */
+        .slot-item {
+            transition: all 0.2s ease;
+        }
+
+        .slot-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(-2px);
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* 🌟 Decorative Gradient Accent */
+        .glass-panel.rounded-3xl::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            background: linear-gradient(
+                135deg,
+                transparent 0%,
+                rgba(99, 102, 241, 0.1) 50%,
+                transparent 100%
+            );
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* ✨ School Name Glow */
+        #schoolName {
+            text-shadow: 
+                0 2px 10px rgba(255, 255, 255, 0.2),
+                0 0 30px rgba(99, 102, 241, 0.15);
+        }
+
+        /* 📅 Date Styling */
+        #dateGregorian, #dateHijri {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
   </style>
 </head>
