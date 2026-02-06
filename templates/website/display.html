@@ -117,14 +117,14 @@
     /* Glass Effect Utility - Clean Luxury Design */
     .glass-panel {
       /* Flat dark background with slight transparency for glass feel */
-      background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(15, 23, 42, 0.85); /* Increased opacity for better contrast */
+      backdrop-filter: blur(12px); /* Reduced from 20px for better TV performance */
+      -webkit-backdrop-filter: blur(12px);
       /* Thin crisp border */
       border: 1px solid rgba(255, 255, 255, 0.1);
       /* Soft large shadow for depth */
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-      transform: translateZ(0);
+      transform: translateZ(0); /* Hardware acceleration */
       position: relative;
     }
     
@@ -332,11 +332,12 @@
             padding: 1rem 1.25rem; /* زيادة من 0.75rem 1rem */
             font-size: clamp(1.4rem, 2.4vw, 2rem); /* تكبير إضافي: 1.3→1.4rem, 1.85→2rem */
             line-height: 1.6; /* تباعد أكبر بين السطور للوضوح */
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(30, 41, 59, 0.6); /* Slightly more opaque background */
             border-radius: 0.75rem;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            /* ✅ تقليل blur من 5px إلى 3px لتحسين أداء التمرير */
-            backdrop-filter: blur(3px);
+            /* ✅ إزالة blur تماماً لتحسين أداء التمرير (Scrolling Performance) */
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
             /* ✅ تحسين rendering على الشاشات القديمة */
             transform: translateZ(0);
             contain: layout style paint;
