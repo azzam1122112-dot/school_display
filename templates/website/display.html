@@ -730,6 +730,84 @@
         #dateGregorian, #dateHijri {
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
+
+        /* ========================================
+           DYNAMIC THEME ENFORCEMENT AND FIXES
+           Ensures selected school theme applies to all cards
+           ======================================== */
+
+        /* 1. Hero Card and Gradients */
+        /* Override hardcoded indigo/purple mesh */
+        .glass-panel.group .absolute.inset-0.bg-gradient-to-br {
+            background: linear-gradient(135deg, var(--mesh1, rgba(99,102,241,0.1)), transparent, var(--mesh2, rgba(99,102,241,0.05))) !important;
+            opacity: 0.8 !important;
+        }
+
+        /* Hero Progress Circle and SVG Gradient */
+        #circleProgress {
+            stroke: var(--accent-main) !important;
+            filter: drop-shadow(0 0 8px var(--mesh1));
+        }
+        #heroProgressGradient stop:nth-child(1) { stop-color: var(--accent-main); }
+        #heroProgressGradient stop:nth-child(2) { stop-color: var(--accent-sub); }
+        #heroProgressGradient stop:nth-child(3) { stop-color: var(--accent-main); }
+
+        /* Hero Active Dot and Label */
+        main .glass-panel.rounded-3xl.flex-1 .w-2.h-2.rounded-full.bg-emerald-500 {
+            background-color: var(--accent-main) !important;
+            box-shadow: 0 0 10px var(--mesh1) !important;
+        }
+        main .glass-panel.rounded-3xl.flex-1 .text-xs.font-bold.uppercase {
+            color: var(--accent-sub) !important;
+        }
+
+        /* 2. Duty Card (was hardcoded indigo) */
+        #dutyCard {
+            border-color: var(--mesh1) !important;
+        }
+        #dutyCard > div.relative.w-80 {
+            background: linear-gradient(to bottom, var(--mesh2), transparent) !important;
+            border-right-color: rgba(255,255,255,0.05);
+        }
+        #dutyCard .text-indigo-300 { color: var(--accent-sub) !important; }
+
+        /* Duty Icon Container */
+        #dutyCard .w-16.h-16 {
+            border-color: var(--accent-sub) !important;
+            box-shadow: 0 0 15px var(--mesh1) !important;
+        }
+        #dutyCard .w-16.h-16 > div {
+            background: var(--mesh1) !important;
+            color: var(--accent-sub) !important;
+        }
+        /* Duty Inner Gradients override */
+        #dutyCard .bg-gradient-to-br.from-indigo-500 {
+            background: linear-gradient(135deg, var(--accent-main), var(--accent-sub)) !important;
+        }
+
+        /* 3. Excellence Card (was hardcoded amber) */
+        #exCard {
+            border-color: var(--mesh1) !important;
+        }
+        #exCard > div:first-child {
+            background: linear-gradient(to bottom, var(--mesh2), transparent) !important;
+        }
+        /* Excellence Icon Container */
+        #exCard .w-12.h-12 {
+            background: linear-gradient(135deg, var(--accent-main), var(--accent-sub)) !important;
+            box-shadow: 0 0 15px var(--mesh1) !important;
+            color: white !important;
+        }
+        #exIndex { color: var(--accent-main) !important; }
+
+        /* 4. Side Cards Headers (period/standby) */
+        #pcCount, #sbCount {
+            border-color: var(--mesh2) !important;
+        }
+        aside .glass-panel > div:first-child .bg-white\/5,
+        aside .glass-panel > div:first-child {
+            background: linear-gradient(to right, var(--mesh2), transparent) !important;
+        }
   </style>
 </head>
 
