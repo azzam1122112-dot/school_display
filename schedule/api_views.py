@@ -413,6 +413,75 @@ def metrics(request):
     return JsonResponse(out, json_dumps_params={"ensure_ascii": False})
 
 
+@require_http_methods(["GET"])
+def ws_metrics(request):
+    """
+    GET /api/display/ws-metrics/
+    
+    Returns WebSocket metrics for monitoring/dashboards.
+    
+    Response:
+    {
+        "connections_active": 1234,
+        "connections_total": 5678,
+        "connections_failed": 12,
+        "broadcasts_sent": 8901,
+        "broadcasts_failed": 3,
+        "broadcast_latency_avg_ms": 0.5,
+        "health": "ok|warning|critical"
+    }
+    """
+    try:
+        from display.ws_metrics import ws_metrics as metrics_tracker
+        
+        metrics = metrics_tracker.get_snapshot()
+        
+        # Calculate derived metrics
+        active = metrics.get("connections_active", 0)
+        failed = metrics.get("connections_failed", 0)
+        total = max(1, metrics.get("connections_total", 1))  # Avoid division by zero
+        
+        broadcasts_sent = metrics.get("broadcasts_sent", 0)
+        broadcasts_failed = metrics.get("broadcasts_failed", 0)
+        
+        avg_latency = 0.0
+        if metrics.get("broadcast_latency_count", 0) > 0:
+            avg_latency = (
+                metrics.get("broadcast_latency_sum", 0) / 
+                metrics["broadcast_latency_count"]
+            )
+        
+        # Health status
+        health = "ok"
+        if active == 0 and total > 10:
+            health = "warning"  # No connections but had connections before
+        elif failed / total > 0.1:  # > 10% connection failure rate
+            health = "critical"
+        elif broadcasts_failed / max(1, broadcasts_sent + broadcasts_failed) > 0.05:  # > 5% broadcast failures
+            health = "warning"
+        elif avg_latency > 100:  # Broadcast latency > 100ms
+            health = "warning"
+        
+        return JsonResponse({
+            "connections_active": active,
+            "connections_total": total,
+            "connections_failed": failed,
+            "broadcasts_sent": broadcasts_sent,
+            "broadcasts_failed": broadcasts_failed,
+            "broadcast_latency_avg_ms": round(avg_latency, 2),
+            "health": health,
+        })
+    except ImportError:
+        # ws_metrics not available (channels not installed/configured)
+        return JsonResponse({
+            "error": "WebSocket metrics not available",
+            "detail": "Channels not configured or DISPLAY_WS_ENABLED=false"
+        }, status=503)
+    except Exception as e:
+        logger.exception(f"ws_metrics error: {e}")
+        return JsonResponse({"error": "Internal error"}, status=500)
+
+
 def _metrics_add(key: str, delta: int) -> None:
     try:
         cache.incr(key, int(delta))
@@ -1960,80 +2029,48 @@ def snapshot(request, token: str | None = None):
                 resp = JsonResponse({"detail": "rate_limited"}, status=429)
                 return _finalize(resp, cache_status="MISS", device_bound=True, school_id=None, rev=None)
 
-            bind_key = f"bind:snapshot:{token_hash}"
-
-            # Prefer DB binding if this token belongs to a DisplayScreen.
-            # This keeps "unbind" actions in the dashboard effective.
-            screen = None
+            # Device binding (atomic, DRY helper shared with WebSocket)
             try:
-                screen = DisplayScreen.objects.only("id", "bound_device_id", "bound_at").filter(token=token_value).first()
-            except Exception:
-                screen = None
-
-            db_bound = (getattr(screen, "bound_device_id", "") or "").strip() if screen else ""
-            if db_bound:
-                if db_bound != device_key:
-                    # Allow multiple devices/tabs to view the same token when explicitly enabled.
-                    # This prevents confusing 403s when an admin opens the display in another tab.
-                    allow_multi = False
-                    try:
-                        allow_multi = bool(
-                            getattr(dj_settings, "DISPLAY_ALLOW_MULTI_DEVICE", False)
-                            or (os.getenv("DISPLAY_ALLOW_MULTI_DEVICE", "") or "").strip().lower() in {"1", "true", "yes"}
-                            or bool(dj_settings.DEBUG)
-                        )
-                    except Exception:
-                        allow_multi = bool(dj_settings.DEBUG)
-
-                    if not allow_multi:
-                        try:
-                            logger.warning(
-                                "device_binding_reject token_hash=%s screen_id=%s school_id=%s bound_device=%s got_device=%s allow_multi=%s",
-                                token_hash[:12],
-                                getattr(screen, "id", None),
-                                getattr(screen, "school_id", None),
-                                db_bound,
-                                device_key,
-                                allow_multi,
-                            )
-                        except Exception:
-                            pass
-                        resp = JsonResponse(
-                            {
-                                "detail": "screen_bound",
-                                "message": "هذه الشاشة مرتبطة بجهاز آخر",
-                            },
-                            status=403,
-                        )
-                        return _finalize(resp, cache_status="ERROR", device_bound=True, school_id=getattr(screen, "school_id", None), rev=None)
-
-                # Keep cache binding in sync
-                try:
-                    cache.set(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds())
-                except Exception:
-                    pass
-            else:
-                # If DB says unbound, delete any stale cache binding and bind to this device.
-                existing = cache.get(bind_key)
-                if existing and str(existing) != device_key:
-                    try:
-                        cache.delete(bind_key)
-                    except Exception:
-                        pass
-
-                try:
-                    cache.set(bind_key, device_key, timeout=_snapshot_bind_ttl_seconds())
-                except Exception:
-                    pass
-
-                # Persist binding in DB when possible (so dashboard can unbind it).
-                if screen:
-                    try:
-                        screen.bound_device_id = device_key
-                        screen.bound_at = timezone.now()
-                        screen.save(update_fields=["bound_device_id", "bound_at"])
-                    except Exception:
-                        pass
+                from display.services import (
+                    ScreenBoundError,
+                    ScreenNotFoundError,
+                    bind_device_atomic,
+                )
+                
+                screen = bind_device_atomic(
+                    token=token_value,
+                    device_id=device_key
+                )
+                # Successfully bound (or already bound to this device)
+            except ScreenNotFoundError:
+                resp = JsonResponse(
+                    {
+                        "detail": "token_invalid",
+                        "message": "رمز الدخول غير صحيح أو غير نشط",
+                    },
+                    status=403,
+                )
+                return _finalize(resp, cache_status="ERROR", device_bound=False, school_id=None, rev=None)
+            except ScreenBoundError as e:
+                # Screen already bound to different device
+                logger.warning(
+                    "device_binding_reject token_hash=%s device=%s reason=%s",
+                    token_hash[:12],
+                    device_key[:8],
+                    str(e)
+                )
+                resp = JsonResponse(
+                    {
+                        "detail": "screen_bound",
+                        "message": str(e),
+                    },
+                    status=403,
+                )
+                return _finalize(resp, cache_status="ERROR", device_bound=True, school_id=None, rev=None)
+            except Exception as e:
+                logger.exception(f"Device binding error token_hash={token_hash[:12]}: {e}")
+                resp = JsonResponse({"detail": "internal_error"}, status=500)
+                return _finalize(resp, cache_status="ERROR", device_bound=False, school_id=None, rev=None)
 
         # Phase 2: token cache (tenant-safe when school_id known)
         cache_key = get_cache_key(token_hash)
@@ -2617,6 +2654,11 @@ def snapshot(request, token: str | None = None):
                     if isinstance(day_snap, dict):
                         day_snap["meta"] = meta
                 meta["schedule_revision"] = rev
+                
+                # Phase 2: WebSocket feature flag (Dark Launch)
+                # Clients will only attempt WS if this flag is True
+                ws_enabled = getattr(dj_settings, "DISPLAY_WS_ENABLED", False)
+                meta["ws_enabled"] = bool(ws_enabled)
             except Exception:
                 pass
 

@@ -81,6 +81,18 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 
 
 # =========================
+# Feature Flags: Realtime WebSocket Push
+# =========================
+# Phase 0-1: False (infrastructure only)
+# Phase 2-3: Gradual rollout (per-school flag TBD)
+DISPLAY_WS_ENABLED = env_bool("DISPLAY_WS_ENABLED", "False")
+
+# Allow multiple devices per screen token (HTTP + WS must respect this)
+DISPLAY_ALLOW_MULTI_DEVICE = env_bool("DISPLAY_ALLOW_MULTI_DEVICE", "False")
+
+
+
+# =========================
 # Origin snapshot TTL (seconds)
 # Used by schedule.api_views.snapshot origin-only caching/ETag.
 # =========================
@@ -223,6 +235,9 @@ else:
 # Apps
 # =========================
 INSTALLED_APPS = [
+    # ASGI server for WebSocket support (must be first)
+    "daphne",
+    
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -236,6 +251,9 @@ INSTALLED_APPS = [
 
     # REST
     "rest_framework",
+
+    # WebSocket support
+    "channels",
 
     # Project apps
     "core.apps.CoreConfig",
@@ -391,6 +409,43 @@ else:
             "TIMEOUT": DEFAULT_CACHE_TIMEOUT,
         }
     }
+
+
+# =========================
+# Channels Layer (WebSocket)
+# =========================
+if REDIS_URL:
+    # Production-ready configuration for 500+ schools (1500+ screens)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+                # Capacity: max messages per channel before blocking
+                # 1500 screens × ~1 msg/screen during burst = 1500 capacity
+                "capacity": env_int("WS_CHANNEL_CAPACITY", "2000"),
+                # Expiry: messages auto-delete after N seconds (prevents memory leak)
+                "expiry": env_int("WS_MESSAGE_EXPIRY", "60"),
+                # Symmetric encryption: optional, adds ~1ms latency but secures Redis traffic
+                # "symmetric_encryption_keys": [SECRET_KEY[:32]],  # Uncomment for encryption
+            },
+        },
+    }
+else:
+    # محليًا: in-memory channel layer (للاختبار فقط)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        },
+    }
+
+# ASGI application for Channels
+ASGI_APPLICATION = "config.asgi.application"
+
+# WebSocket configuration (for 500+ schools scale)
+WS_MAX_CONNECTIONS_PER_INSTANCE = env_int("WS_MAX_CONNECTIONS", "2000")
+WS_PING_INTERVAL_SECONDS = env_int("WS_PING_INTERVAL", "30")
+WS_METRICS_LOG_INTERVAL = env_int("WS_METRICS_LOG_INTERVAL", "300")  # 5 minutes
 
 
 # =========================

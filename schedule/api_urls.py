@@ -25,4 +25,7 @@ urlpatterns = [
 
     # Debug / load-test metrics
     path("metrics/", api_views.metrics, name="metrics"),
+    
+    # WebSocket monitoring (for ops team)
+    path("ws-metrics/", api_views.ws_metrics, name="ws_metrics"),
 ]

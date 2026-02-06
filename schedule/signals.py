@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -11,6 +12,45 @@ from schedule.cache_utils import (
 from schedule.models import Break, ClassLesson, DaySchedule, Period, SchoolSettings
 
 logger = logging.getLogger(__name__)
+
+
+def _broadcast_invalidate_ws(school_id: int, revision: int) -> None:
+    """
+    Broadcast invalidate message to WebSocket clients (async via channel layer).
+    
+    Called from transaction.on_commit() to ensure DB commit before notification.
+    Only runs if DISPLAY_WS_ENABLED=True.
+    """
+    from django.conf import settings
+    if not getattr(settings, "DISPLAY_WS_ENABLED", False):
+        return
+    
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+        
+        channel_layer = get_channel_layer()
+        if not channel_layer:
+            return
+        
+        group_name = f"school:{school_id}"
+        
+        # Broadcast to all clients in school group
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "broadcast_invalidate",  # maps to DisplayConsumer.broadcast_invalidate
+                "school_id": school_id,
+                "revision": revision,
+            }
+        )
+        
+        logger.info(
+            f"WS broadcast sent: group={group_name} revision={revision}"
+        )
+    except Exception as e:
+        # Never crash signals due to WS errors
+        logger.exception(f"WS broadcast failed school_id={school_id}: {e}")
 
 
 def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> None:
@@ -56,6 +96,9 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
         reason,
         model_label,
     )
+    
+    # Broadcast to WebSocket clients (after transaction commits)
+    transaction.on_commit(lambda: _broadcast_invalidate_ws(school_id, new_rev))
 
 @receiver(post_save, sender=SchoolSettings)
 def clear_display_cache_on_settings_change(sender, instance, **kwargs):

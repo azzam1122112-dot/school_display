@@ -240,6 +240,35 @@
     return clamp(mx, 1, 3);
   }
 
+  function getFitMode() {
+    // ✅ الحل 2: Parameter يدوي للتحكم في وضع الملء
+    // ?fitMode=contain → show all content (للشاشات غير القياسية)
+    // ?fitMode=cover → fill screen (الوضع الافتراضي)
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const v = (qs.get("fitMode") || "").trim().toLowerCase();
+      if (v === "contain") return "contain";
+      if (v === "cover") return "cover";
+    } catch (e) {}
+    return "cover"; // الافتراضي - لا يتغير السلوك الحالي
+  }
+
+  function getAspectThreshold() {
+    // ✅ الحل 3: threshold للكشف التلقائي عن الشاشات غير القياسية
+    // ?aspectThreshold=0.2 → أكثر تساهلاً
+    // الافتراضي: 0.15 (15% فرق)
+    let threshold = 0.15;
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const raw = (qs.get("aspectThreshold") || "").trim();
+      if (raw) {
+        const v = parseFloat(raw);
+        if (isFinite(v) && v > 0) threshold = v;
+      }
+    } catch (e) {}
+    return clamp(threshold, 0.05, 0.5);
+  }
+
   let fitT = null;
   function scheduleFit(ms) {
     if (fitT) clearTimeout(fitT);
@@ -269,13 +298,36 @@
     const designWidth = 1920;
     const designHeight = 1080;
 
-    // Calculate scale to COVER viewport (fill screen completely)
+    // Calculate scale ratios
     const scaleX = viewportWidth / designWidth;
     const scaleY = viewportHeight / designHeight;
     
-    // ✅ AIRPORT STYLE: Use LARGER scale to fill screen edge-to-edge
-    // Content may be cropped on edges (like airport displays) but screen is always 100% filled
-    let scale = Math.max(scaleX, scaleY);
+    // ✅ الحل 2 + 3: تحديد وضع الملء (cover أو contain)
+    let fitMode = getFitMode(); // من الـ URL parameter
+    
+    // ✅ الحل 3: كشف تلقائي للشاشات غير القياسية
+    if (fitMode === "cover") { // فقط إذا لم يحدد المستخدم contain يدوياً
+      const aspectRatio = viewportWidth / viewportHeight;
+      const designAspectRatio = designWidth / designHeight; // 1.778 (16:9)
+      const aspectDiff = Math.abs(aspectRatio - designAspectRatio);
+      const threshold = getAspectThreshold();
+      
+      if (aspectDiff > threshold) {
+        // شاشة بنسبة مختلفة كثيراً عن 16:9 (مثل IQTouch)
+        fitMode = "contain";
+        console.log(`[Auto-fit] Non-standard aspect ratio detected (${aspectRatio.toFixed(3)} vs ${designAspectRatio.toFixed(3)}), switching to contain mode`);
+      }
+    }
+    
+    // تطبيق الوضع المناسب
+    let scale;
+    if (fitMode === "contain") {
+      // CONTAIN: إظهار كل المحتوى (قد تظهر حواف سوداء)
+      scale = Math.min(scaleX, scaleY);
+    } else {
+      // COVER: ملء الشاشة بالكامل (قد يتم قص الحواف)
+      scale = Math.max(scaleX, scaleY);
+    }
     
     // Allow scaling UP for large TVs, but cap at reasonable maximum
     const maxScale = getFitMaxScale();
@@ -288,6 +340,7 @@
     try {
       const body = document.body || document.documentElement;
       body.dataset.uiScale = scale.toFixed(4);
+      body.dataset.fitMode = fitMode; // للـ debugging
       
       // ✅ FIX: تكبير الخطوط تلقائياً للشاشات الكبيرة
       // إذا كان scale أكبر من 1 (شاشات 4K, 8K, إلخ)
@@ -360,7 +413,17 @@
     transitionUntilTs: 0, // while > Date.now(): force snapshot fetch to cross 00:00 boundaries
     transitionBackoffSec: 1.2, // bounded backoff during transition window
     pollStateLastLogTs: 0, // debug-only: last time we logged poll state
+    
+    // WebSocket state (Phase 2: Dark Launch)
+    ws: null, // WebSocket instance
+    wsRetryCount: 0, // consecutive connection failures
+    wsReconnectTimer: null, // reconnect timer ID
+    pendingRev: null, // revision received from WS but not yet fetched
+    wsEnabled: false, // feature flag from server (TBD: read from snapshot meta)
+    wsPingInterval: null, // keepalive ping timer
+    wsMaxRetries: 10, // max reconnection attempts before giving up
   };
+
 
   function maybeLogPollState(activeWindow, nextPollSec) {
     if (!isDebug()) return;
@@ -2985,6 +3048,37 @@
       renderStandby(snap.standby || []);
       renderPeriodClasses(snap.period_classes || []);
 
+      // Phase 2: Initialize WebSocket (feature flag from server)
+      try {
+        const wsEnabledFromServer = !!(snap && snap.meta && snap.meta.ws_enabled);
+        if (wsEnabledFromServer && !rt.wsEnabled) {
+          // Feature enabled by server, init WS
+          rt.wsEnabled = true;
+          if (isDebug()) console.log("[WS] feature enabled by server, initializing");
+          initWebSocket();
+        } else if (!wsEnabledFromServer && rt.wsEnabled) {
+          // Feature disabled by server, close WS
+          rt.wsEnabled = false;
+          if (rt.ws) {
+            if (isDebug()) console.log("[WS] feature disabled by server, closing");
+            try {
+              rt.ws.close();
+            } catch (e) {}
+            rt.ws = null;
+          }
+          if (rt.wsPingInterval) {
+            clearInterval(rt.wsPingInterval);
+            rt.wsPingInterval = null;
+          }
+          if (rt.wsReconnectTimer) {
+            clearTimeout(rt.wsReconnectTimer);
+            rt.wsReconnectTimer = null;
+          }
+        }
+      } catch (e) {
+        if (isDebug()) console.warn("[WS] feature flag check error:", e);
+      }
+
       // If we crossed into a new block with a fresh countdown, exit transition window.
       try {
         const sOk = (snap && snap.state) || {};
@@ -3034,6 +3128,175 @@
     {
       const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
       scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : cfg.REFRESH_EVERY);
+    }
+  }
+
+
+
+  // ===== WebSocket: Realtime Push Invalidate (Phase 2: Dark Launch) =====
+  
+  function getDeviceId() {
+    // Use same device ID as HTTP requests (localStorage: display_device_id)
+    try {
+      let dk = localStorage.getItem("display_device_id");
+      if (!dk) {
+        dk = "web_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("display_device_id", dk);
+      }
+      return dk;
+    } catch (e) {
+      return "web_" + Math.random().toString(36).substring(2);
+    }
+  }
+
+  function initWebSocket() {
+    // Only attempt WS if feature enabled (from server meta or flag)
+    if (!rt.wsEnabled) {
+      if (isDebug()) console.log("[WS] disabled by feature flag");
+      return;
+    }
+    
+    // Don't reconnect if max retries exceeded
+    if (rt.wsRetryCount >= rt.wsMaxRetries) {
+      if (isDebug()) console.log("[WS] max retries exceeded, giving up");
+      return;
+    }
+    
+    // Close existing connection if any
+    if (rt.ws) {
+      try {
+        rt.ws.close();
+      } catch (e) {}
+      rt.ws = null;
+    }
+    
+    // Clear any reconnect timer
+    if (rt.wsReconnectTimer) {
+      clearTimeout(rt.wsReconnectTimer);
+      rt.wsReconnectTimer = null;
+    }
+    
+    const token = getToken();
+    const deviceId = getDeviceId();
+    
+    if (!token || !deviceId) {
+      if (isDebug()) console.log("[WS] missing token or device ID");
+      return;
+    }
+    
+    // Build WebSocket URL
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host;
+    const wsUrl = `${proto}//${host}/ws/display/?token=${encodeURIComponent(token)}&dk=${encodeURIComponent(deviceId)}`;
+    
+    try {
+      if (isDebug()) console.log(`[WS] connecting to ${wsUrl.substring(0, 80)}...`);
+      
+      rt.ws = new WebSocket(wsUrl);
+      
+      rt.ws.onopen = function() {
+        rt.wsRetryCount = 0; // reset on successful connection
+        if (isDebug()) console.log("[WS] connected");
+        
+        // Start keepalive ping (every 30s)
+        if (rt.wsPingInterval) clearInterval(rt.wsPingInterval);
+        rt.wsPingInterval = setInterval(() => {
+          if (rt.ws && rt.ws.readyState === WebSocket.OPEN) {
+            try {
+              rt.ws.send(JSON.stringify({ type: "ping" }));
+            } catch (e) {
+              if (isDebug()) console.warn("[WS] ping failed:", e);
+            }
+          }
+        }, 30000);
+      };
+      
+      rt.ws.onmessage = function(event) {
+        try {
+          const msg = JSON.parse(event.data);
+          
+          if (msg.type === "pong") {
+            // Keepalive response
+            return;
+          }
+          
+          if (msg.type === "invalidate") {
+            const newRev = parseInt(msg.revision, 10);
+            if (isNaN(newRev)) return;
+            
+            if (isDebug()) console.log(`[WS] invalidate received: revision ${newRev}`);
+            
+            // Store pending revision
+            rt.pendingRev = newRev;
+            
+            // If not currently fetching, trigger immediate refresh
+            if (!isFetching) {
+              if (isDebug()) console.log("[WS] triggering immediate refresh");
+              rt.status304Streak = 0; // reset backoff
+              rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+              scheduleNext(0.5); // slight delay to avoid storm if multiple messages arrive
+            } else {
+              if (isDebug()) console.log("[WS] fetch in progress, will pick up pendingRev on next cycle");
+            }
+          }
+        } catch (e) {
+          if (isDebug()) console.warn("[WS] message parse error:", e);
+        }
+      };
+      
+      rt.ws.onerror = function(err) {
+        if (isDebug()) console.warn("[WS] error:", err);
+      };
+      
+      rt.ws.onclose = function(event) {
+        // Clear ping interval
+        if (rt.wsPingInterval) {
+          clearInterval(rt.wsPingInterval);
+          rt.wsPingInterval = null;
+        }
+        
+        const code = event.code;
+        const reason = event.reason || "";
+        
+        if (isDebug()) console.log(`[WS] closed: code=${code} reason=${reason}`);
+        
+        // Don't reconnect on auth failures (4400, 4403, 4408)
+        if (code === 4400 || code === 4403 || code === 4408) {
+          if (isDebug()) console.log("[WS] auth failure, not reconnecting");
+          rt.wsEnabled = false; // disable WS
+          return;
+        }
+        
+        // Exponential backoff: 1s → 2s → 4s → 8s → 16s → 32s → 60s (max)
+        rt.wsRetryCount++;
+        const baseDelay = Math.min(60, Math.pow(2, Math.min(5, rt.wsRetryCount - 1)));
+        const jitter = 0.5 + Math.random(); // 0.5x to 1.5x jitter
+        const delay = baseDelay * jitter;
+        
+        if (rt.wsRetryCount >= rt.wsMaxRetries) {
+          if (isDebug()) console.log(`[WS] max retries (${rt.wsMaxRetries}) exceeded, giving up`);
+          return;
+        }
+        
+        if (isDebug()) console.log(`[WS] reconnecting in ${delay.toFixed(1)}s (attempt ${rt.wsRetryCount})`);
+        
+        rt.wsReconnectTimer = setTimeout(() => {
+          initWebSocket();
+        }, delay * 1000);
+      };
+      
+    } catch (e) {
+      if (isDebug()) console.error("[WS] init error:", e);
+      rt.wsRetryCount++;
+      
+      // Retry with backoff
+      if (rt.wsRetryCount < rt.wsMaxRetries) {
+        const delay = Math.min(60, Math.pow(2, rt.wsRetryCount - 1));
+        if (isDebug()) console.log(`[WS] retrying in ${delay}s`);
+        rt.wsReconnectTimer = setTimeout(() => {
+          initWebSocket();
+        }, delay * 1000);
+      }
     }
   }
 
