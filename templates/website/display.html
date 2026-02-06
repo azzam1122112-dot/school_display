@@ -148,17 +148,29 @@
             filter: none;
         }
         body[data-lite="1"] .glass-panel {
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-            box-shadow: none;
-            background: #1e293b;
-            border-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+            background: #1e293b !important;
+            border-color: rgba(255, 255, 255, 0.05) !important;
         }
         body[data-lite="1"] .glass-panel::before,
         body[data-lite="1"] .glass-panel.rounded-3xl::after,
         body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1::before,
-        body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1 > .relative.z-10::after {
-            display: none;
+        body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1 > .relative.z-10::after,
+        body[data-lite="1"] aside .glass-panel:nth-child(1)::before,
+        body[data-lite="1"] aside .glass-panel:nth-child(2)::before {
+            display: none !important;
+        }
+        /* تعطيل glow effects على الشاشات القديمة */
+        body[data-lite="1"] .w-2.h-2.rounded-full.bg-emerald-500,
+        body[data-lite="1"] .w-2.h-2.rounded-full.bg-orange-500 {
+            animation: pulse-simple 2s infinite !important;
+            box-shadow: none !important;
+        }
+        @keyframes pulse-simple {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         body[data-lite="1"] .slot-item {
             backdrop-filter: none;
@@ -582,39 +594,150 @@
             box-shadow: none;
         }
 
-        /* ✅ Period Classes Card - Solid Emerald Tint */
+        /* ✅ Period Classes Card - Enhanced Glass Effect with Emerald Tint */
+        aside .glass-panel:nth-child(1) {
+            /* Enhanced glass background */
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid rgba(16, 185, 129, 0.2) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px rgba(16, 185, 129, 0.1) inset,
+                        0 4px 12px rgba(16, 185, 129, 0.15) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Decorative gradient overlay for Period Classes */
+        aside .glass-panel:nth-child(1)::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at 70% 20%, 
+                rgba(16, 185, 129, 0.12),
+                transparent 60%
+            ),
+            linear-gradient(
+                135deg,
+                rgba(16, 185, 129, 0.08) 0%,
+                transparent 40%,
+                rgba(5, 150, 105, 0.06) 100%
+            );
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Content above overlay */
+        aside .glass-panel:nth-child(1) > * {
+            position: relative;
+            z-index: 1;
+        }
+
         #pcCount {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: #34d399; /* Emerald-400 */
-            text-shadow: none;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34d399;
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
         }
 
-        /* 🕐 Standby Classes Card - Solid Orange Tint */
+        /* 🕐 Standby Classes Card - Enhanced Glass Effect with Orange Tint */
+        aside .glass-panel:nth-child(2) {
+            /* Enhanced glass background */
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid rgba(249, 115, 22, 0.2) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px rgba(249, 115, 22, 0.1) inset,
+                        0 4px 12px rgba(249, 115, 22, 0.15) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Decorative gradient overlay for Standby */
+        aside .glass-panel:nth-child(2)::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at 30% 20%, 
+                rgba(249, 115, 22, 0.12),
+                transparent 60%
+            ),
+            linear-gradient(
+                135deg,
+                rgba(249, 115, 22, 0.08) 0%,
+                transparent 40%,
+                rgba(234, 88, 12, 0.06) 100%
+            );
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Content above overlay */
+        aside .glass-panel:nth-child(2) > * {
+            position: relative;
+            z-index: 1;
+        }
+
         #sbCount {
-            background: rgba(249, 115, 22, 0.15);
-            border: 1px solid rgba(249, 115, 22, 0.3);
-            color: #fb923c; /* Orange-400 */
-            text-shadow: none;
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid rgba(249, 115, 22, 0.4);
+            color: #fb923c;
+            text-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.2);
         }
 
-        /* 📋 Side Cards Headers - Clean Dark */
+        /* 📋 Side Cards Headers - Enhanced Glass Headers */
         aside .glass-panel > div:first-child {
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            backdrop-filter: none;
-            box-shadow: none;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
-        /* 🟢 Active Pulse - Simple Fade */
-        .w-2.h-2.rounded-full.bg-emerald-500,
+        /* 🟢 Active Pulse - Enhanced Glow */
+        .w-2.h-2.rounded-full.bg-emerald-500 {
+            animation: pulse-glow-emerald 2s infinite;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6),
+                        0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        
         .w-2.h-2.rounded-full.bg-orange-500 {
-            animation: pulse-simple 2s infinite;
+            animation: pulse-glow-orange 2s infinite;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.6),
+                        0 0 20px rgba(249, 115, 22, 0.3);
         }
 
-        @keyframes pulse-simple {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes pulse-glow-emerald {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.6),
+                            0 0 20px rgba(16, 185, 129, 0.3);
+            }
+            50% { 
+                opacity: 0.6;
+                box-shadow: 0 0 15px rgba(16, 185, 129, 0.8),
+                            0 0 30px rgba(16, 185, 129, 0.4);
+            }
+        }
+        
+        @keyframes pulse-glow-orange {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 10px rgba(249, 115, 22, 0.6),
+                            0 0 20px rgba(249, 115, 22, 0.3);
+            }
+            50% { 
+                opacity: 0.6;
+                box-shadow: 0 0 15px rgba(249, 115, 22, 0.8),
+                            0 0 30px rgba(249, 115, 22, 0.4);
+            }
         }
 
         /* 🏆 Excellence Card - Clean Gold Accent */
