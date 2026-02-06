@@ -851,8 +851,12 @@
     if (n) return n;
 
     const st = payload.state || {};
+    const stCur = st && typeof st === "object" ? st.current || null : null;
+    const stNext = st && typeof st === "object" ? st.next || null : null;
     const n2 =
       getPeriodIndex(st) ||
+      getPeriodIndex(stCur) ||
+      getPeriodIndex(stNext) ||
       (st && typeof st.current_period_index !== "undefined" ? parseInt(st.current_period_index, 10) : NaN) ||
       (st && typeof st.period_index !== "undefined" ? parseInt(st.period_index, 10) : NaN);
 
@@ -2273,8 +2277,20 @@
 
     const s = payload.state || {};
     const stType = safeText(s.type || "");
-    const current = payload.current_period || null;
-    const nextP = payload.next_period || null;
+    const stateCurrent = s && typeof s === "object" ? s.current || null : null;
+    const stateNext = s && typeof s === "object" ? s.next || null : null;
+    const current = payload.current_period || stateCurrent || null;
+    const nextP = payload.next_period || stateNext || null;
+    const stateFrom =
+      s.from ||
+      (current && (current.from || current.starts_at)) ||
+      null;
+    const stateTo =
+      s.to ||
+      (current && (current.to || current.ends_at)) ||
+      null;
+    const nextFrom = (nextP && (nextP.from || nextP.starts_at)) || null;
+    const nextTo = (nextP && (nextP.to || nextP.ends_at)) || null;
 
     // Snapshot responses are server-cached for a few seconds; keep countdown monotonic for the same state.
     const prevCountdown = hasActiveCountdown && typeof countdownSeconds === "number" ? countdownSeconds : null;
@@ -2287,8 +2303,8 @@
     rt.activePeriodIndex = getPeriodIndex(current) || getPeriodIndex(nextP) || getCurrentPeriodIdxFromPayload(payload) || null;
     rt.activeFromHM =
       (stType === "period"
-        ? (s.from || (current && current.from))
-        : ((nextP && nextP.from) || s.from)) || null;
+        ? stateFrom
+        : (nextFrom || stateFrom)) || null;
     rt.dayOver = computeDayOver(payload, baseMs);
 
     countdownSeconds = null;
@@ -2300,7 +2316,7 @@
       // ✅ FIX: استخدام nowMs() المباشر لضمان التزامن الدقيق مع الساعة المعروضة
       // نحسب الوقت لحظياً لتجنب أي تأخير في المعالجة
       const currentMs = nowMs();
-      const targetHM = stType === "before" ? s.from : s.to;
+      const targetHM = stType === "before" ? stateFrom : stateTo;
       if (targetHM) {
         const tMs = hmToMs(targetHM, currentMs);
         // الحساب: وقت الهدف - الوقت الحالي = الوقت المتبقي
@@ -2331,9 +2347,9 @@
       }
     }
 
-    if ((stType === "period" || stType === "break") && s.from && s.to) {
-      const start = hmToMs(s.from, baseMs);
-      const end = hmToMs(s.to, baseMs);
+    if ((stType === "period" || stType === "break") && stateFrom && stateTo) {
+      const start = hmToMs(stateFrom, baseMs);
+      const end = hmToMs(stateTo, baseMs);
       if (start && end && end > start) {
         progressRange.start = start;
         progressRange.end = end;
@@ -2341,7 +2357,7 @@
     }
 
     let title = safeText(s.label || "لوحة العرض المدرسية");
-    let range = (s.from || s.to) ? fmtTimeRange(s.from, s.to) : fmtTimeRange(null, null);
+    let range = (stateFrom || stateTo) ? fmtTimeRange(stateFrom, stateTo) : fmtTimeRange(null, null);
     let badge = "حالة اليوم";
 
     if (stType === "period") {
@@ -2366,9 +2382,9 @@
       "||" +
       range +
       "||" +
-      safeText(s.from) +
+      safeText(stateFrom) +
       "||" +
-      safeText(s.to) +
+      safeText(stateTo) +
       "||" +
       safeText(s.remaining_seconds);
 
@@ -2381,10 +2397,10 @@
 
     if (dom.nextLabel) {
       const nextSig =
-        nextP && (nextP.from || nextP.to || nextP.label || nextP.index || nextP.period_index)
-          ? safeText(nextP.from) +
+        nextP && (nextFrom || nextTo || nextP.label || nextP.index || nextP.period_index)
+          ? safeText(nextFrom) +
             "||" +
-            safeText(nextP.to) +
+            safeText(nextTo) +
             "||" +
             safeText(nextP.label) +
             "||" +
@@ -2397,7 +2413,7 @@
           setTextIfChanged(dom.nextLabel, "—");
         } else {
           const nextTitle = formatPeriodTitle(nextP);
-          const from = toTimeStr(nextP.from);
+          const from = toTimeStr(nextFrom);
           setTextIfChanged(dom.nextLabel, from !== "--:--" ? nextTitle + " (" + from + ")" : nextTitle);
         }
       }
