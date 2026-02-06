@@ -102,11 +102,20 @@
       position: fixed;
       inset: 0;
       z-index: -1;
-      /* Solid modern dark background (Luxury Matte) */
-      background-color: #0f172a; 
-      background-image: none;
+      /* Deep dark base */
+      background-color: #020617; 
+      /* 
+         ✅ Dynamic Theme Background
+         Uses the user-selected accent color to tint the top of the screen subtly.
+         Falls back to Slate-900 if no color is set.
+      */
+      background-image: radial-gradient(
+        circle at 50% 0%, 
+        var(--accent-main, #1e293b) 0%, 
+        transparent 75%
+      );
       filter: none;
-      opacity: 1;
+      opacity: 0.8; /* Subtle tint */
       transform: translateZ(0);
     }
 
@@ -116,9 +125,9 @@
 
     /* Glass Effect Utility - Clean Luxury Design */
     .glass-panel {
-      /* Flat dark background with slight transparency for glass feel */
-      background: rgba(15, 23, 42, 0.85); /* Increased opacity for better contrast */
-      backdrop-filter: blur(12px); /* Reduced from 20px for better TV performance */
+      /* ✅ Translucent background to let the theme color show through */
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px);
       /* Thin crisp border */
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -457,9 +466,9 @@
            ======================================== */
         
         main .glass-panel.rounded-3xl.flex-1 {
-            /* Deep, solid, professional dark slate */
-            background: #1e293b; 
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            /* Translucent dark background to show theme color */
+            background: rgba(30, 41, 59, 0.4); 
+            border: 1px solid rgba(255, 255, 255, 0.08); /* White border */
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             position: relative;
             overflow: hidden;
@@ -473,6 +482,13 @@
         /* 🎨 Hero Title - Solid High Contrast */
         #heroTitle {
             font-size: clamp(2.5rem, 5vw, 4rem) !important;
+            /* 
+               Use theme color (accent-main) but ensure high contrast.
+               Since standard accents might be dark, we fallback to White if needed,
+               but user wants theme reflected. Let's use white TEXT but maybe a glow or tiny accent.
+               Wait, user said "reflect on screen AND background of cards".
+               If background is tinted, white text is best contrast. 
+            */
             color: #ffffff !important;
             background: none !important;
             -webkit-text-fill-color: #ffffff !important;
@@ -485,15 +501,17 @@
 
         /* 🏆 Badge Styling - Solid Accent Pill */
         #badgeKind {
-            background: rgba(99, 102, 241, 0.2);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            color: #e0e7ff !important;
+            /* Use theme accent for badge background */
+            background: var(--accent-main, rgba(99, 102, 241, 0.5));
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #ffffff !important; /* White text on accent background */
             box-shadow: none;
             text-shadow: none;
             font-weight: 700 !important;
             padding: 0.5rem 1.25rem !important;
             font-size: 0.85rem !important;
             border-radius: 99px;
+            opacity: 0.9;
         }
 
         /* ⏱️ Progress Circle Container */
@@ -512,7 +530,7 @@
         #countdown {
             font-size: clamp(1.5rem, 2vw, 2rem) !important;
             color: #ffffff !important;
-            background: none !important;
+            background: transparent !important; /* Force transparent background */
             -webkit-text-fill-color: #ffffff !important;
             filter: none;
             font-weight: 700 !important;
@@ -599,8 +617,8 @@
 
         /* 🏆 Excellence Card - Clean Gold Accent */
         #exCard {
-            /* Flat dark background, no gradients */
-            background: #1e293b; 
+            /* Translucent background to show theme color */
+            background: rgba(30, 41, 59, 0.4); 
             border: 1px solid rgba(245, 158, 11, 0.3); /* Amber border */
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             position: relative;
@@ -609,7 +627,7 @@
 
         /* Override side panel gradient in Ex Card */
         #exCard > div:first-child {
-            background: rgba(245, 158, 11, 0.1) !important; /* Flat amber tint */
+            background: rgba(245, 158, 11, 0.15) !important; /* Flat amber tint */
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -638,8 +656,8 @@
 
         /* 🛡️ Duty Card - Clean Indigo Accent */
         #dutyCard {
-            /* Flat dark background */
-            background: #1e293b;
+            /* Translucent background */
+            background: rgba(30, 41, 59, 0.4);
             border: 1px solid rgba(99, 102, 241, 0.3); /* Indigo border */
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             position: relative;
@@ -647,7 +665,7 @@
 
         /* Override side panel gradient in Duty Card */
         #dutyCard > div.relative.w-80 {
-            background: rgba(99, 102, 241, 0.1) !important; /* Flat indigo tint */
+            background: rgba(99, 102, 241, 0.15) !important; /* Flat indigo tint */
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
         
@@ -839,7 +857,7 @@
                             <span id="heroRange" class="text-slate-400 num-font text-sm tracking-wide">--:--</span>
                         </div>
                         
-                        <h2 id="heroTitle" class="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-[var(--accent-sub,#e0e7ff)] to-[var(--accent-main,#818cf8)] leading-tight py-1">
+                        <h2 id="heroTitle" class="text-5xl md:text-6xl font-black text-white leading-tight py-1">
                             جاري التحميل...
                         </h2>
                     </div>
@@ -855,7 +873,8 @@
                             <circle id="circleProgress" cx="60" cy="60" r="54" class="progress-bar" stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="countdown" class="text-3xl font-mono font-bold text-white tabular-nums">--:--</span>
+                            <!-- Removed conflict prone classes -->
+                            <span id="countdown" class="text-3xl font-mono font-bold text-white tabular-nums z-10">--:--</span>
                             <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1" style="color: var(--accent-sub, #93c5fd);">المتبقي</span>
                         </div>
                         <!-- Decorative Ring -->
