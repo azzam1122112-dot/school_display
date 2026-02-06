@@ -4,37 +4,45 @@
 {% block title %}إعدادات المدرسة{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto pb-12 animate-fade-in-up">
+<div class="max-w-5xl mx-auto pb-12 animate-fade-in-up px-4 md:px-0">
     <!-- Header -->
-    <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 mb-2">
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight mb-2">
                 إعدادات المدرسة
             </h1>
-            <p class="text-slate-500 font-medium">تخصيص العرض والتحكم في الخيارات العامة</p>
+            <p class="text-slate-500 font-medium text-lg">تخصيص هوية العرض، الأمان، وخيارات النظام</p>
+        </div>
+        <div class="hidden md:block">
+            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 font-bold text-sm border border-indigo-100">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                </span>
+                لوحة التحكم النشطة
+            </span>
         </div>
     </div>
 
-    <!-- Security Card (Enhanced) -->
-    <div class="group relative bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-white overflow-hidden mb-8 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1">
-        <div class="absolute top-0 right-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-        <div class="p-8">
+    <!-- Security Card (Premium Redesign) -->
+    <div class="group relative bg-white rounded-3xl p-1 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 mb-8">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="relative bg-white rounded-[1.3rem] p-6 md:p-8 h-full">
             <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div class="flex items-center gap-5 w-full md:w-auto">
-                    <div class="w-14 h-14 shrink-0 rounded-2xl bg-indigo-50 flex items-center justify-center shadow-inner shadow-indigo-100/50 text-indigo-600">
-                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <div class="flex items-start gap-5 w-full md:w-auto">
+                    <div class="w-16 h-16 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-600 flex items-center justify-center shadow-sm border border-indigo-200/50 group-hover:scale-110 transition-transform duration-300">
+                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800">الأمان والحماية</h2>
-                        <p class="text-slate-500 mt-1 text-sm md:text-base">تحديث كلمة مرور الحساب وتعزيز الأمان بشكل دوري</p>
+                        <h2 class="text-xl font-bold text-slate-900 mb-1">الأمان والحماية</h2>
+                        <p class="text-slate-500 text-sm md:text-base leading-relaxed max-w-md">قم بتحديث كلمة المرور بشكل دوري لضمان حماية النظام من الوصول غير المصرح به.</p>
                     </div>
                 </div>
                 <a href="{% url 'dashboard:change_password' %}?next={% url 'dashboard:settings' %}" 
-                   class="w-full md:w-auto relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-indigo-600 rounded-xl group-hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-lg shadow-indigo-500/30">
-                    <span class="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
-                    <span class="relative flex items-center gap-2">
+                   class="w-full md:w-auto relative inline-flex items-center justify-center px-8 py-4 overflow-hidden font-bold text-white transition-all duration-300 bg-slate-900 rounded-xl hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 shadow-lg shadow-slate-900/20 group-hover:shadow-indigo-500/20">
+                    <span class="relative flex items-center gap-3">
                         <span>تغيير كلمة المرور</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                     </span>
                 </a>
             </div>
@@ -42,23 +50,30 @@
     </div>
 
     <!-- Main Settings Form -->
-    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-white overflow-hidden">
+    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
+        <!-- Decorative subtle pattern -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-50 to-transparent pointer-events-none opacity-50"></div>
+
         <!-- Card Header -->
-        <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-3">
-                <span class="w-2 h-8 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500"></span>
+        <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+            <h3 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </span>
                 إعدادات العرض والنظام
             </h3>
-            <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">الأعدادات العامة</span>
+            <span class="hidden sm:inline-block text-xs font-bold px-4 py-1.5 rounded-full bg-slate-50 text-slate-500 border border-slate-200">الإعدادات العامة</span>
         </div>
 
-        <form method="post" enctype="multipart/form-data" id="settingsForm" class="p-8" novalidate>
+        <form method="post" enctype="multipart/form-data" id="settingsForm" class="relative p-8" novalidate>
             {% csrf_token %}
             
             {% if form.non_field_errors %}
-                <div class="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 animate-pulse">
-                    <svg class="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <div class="space-y-1 text-red-700 text-sm font-medium">
+                <div class="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-4 shadow-sm animate-pulse">
+                    <div class="p-2 bg-rose-100 rounded-full text-rose-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div class="space-y-1 text-rose-800 text-sm font-bold pt-1">
                         {% for error in form.non_field_errors %}
                             <p>{{ error }}</p>
                         {% endfor %}
@@ -67,150 +82,181 @@
             {% endif %}
 
             <!-- Grid Layout -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-12">
                 
                 <!-- Section 1: Basic Fields -->
-                <div class="col-span-1 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="col-span-1 lg:col-span-2">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                      {% for field in form %}
                         {% if field.name != 'theme' and field.name != 'featured_panel' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
-                            <div class="group">
-                                <label class="block text-sm font-bold text-slate-700 mb-2 transition-colors group-focus-within:text-indigo-600">
-                                    {{ field.label }}
-                                    {% if field.field.required %}<span class="text-rose-500">*</span>{% endif %}
+                            <div class="group relative">
+                                <label class="text-sm font-bold text-slate-600 mb-2 transition-colors group-focus-within:text-indigo-600 flex items-center justify-between">
+                                    <span>{{ field.label }}</span>
+                                    {% if field.field.required %}<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>{% endif %}
                                 </label>
-                                <div class="relative">
+                                <div class="relative transition-all duration-300 group-focus-within:-translate-y-0.5">
                                     {% if field.field.widget.input_type == 'select' %}
                                         <div class="relative">
                                             {{ field }}
-                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-slate-500">
+                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-4 text-slate-500">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                             </div>
                                         </div>
                                     {% else %}
                                         {{ field }}
                                     {% endif %}
+                                    <!-- Effect Border -->
+                                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300"></div>
                                 </div>
                                 {% if field.help_text %}
-                                    <p class="mt-2 text-xs text-slate-400 group-focus-within:text-indigo-400 transition-colors">{{ field.help_text }}</p>
+                                    <p class="mt-2 text-xs text-slate-400 group-focus-within:text-indigo-400 transition-colors pl-1">{{ field.help_text }}</p>
                                 {% endif %}
                                 {% if field.errors %}
-                                    <div class="mt-2 text-sm text-rose-600 font-medium">
+                                    <div class="mt-2 text-sm text-rose-600 font-bold bg-rose-50 px-3 py-1 rounded-lg inline-block">
                                         {% for error in field.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
                         {% endif %}
                     {% endfor %}
+                    </div>
                 </div>
 
-                <div class="col-span-1 lg:col-span-2 my-2 border-t border-slate-100"></div>
+                <div class="col-span-1 lg:col-span-2 border-t border-slate-100/80"></div>
 
-                <!-- Section 2: Display & Theme -->
-                 <div class="space-y-8">
-                    <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                         <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                         </div>
-                        ألوان وثيم العرض
+                <!-- Section 2: Display & Theme (Redesigned) -->
+                 <div class="col-span-1 lg:col-span-2 space-y-8">
+                    <h4 class="text-lg font-bold text-slate-800 flex items-center gap-3 mb-6">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 shadow-sm border border-purple-100">
+                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                        </span>
+                        تخصيص المظهر
                     </h4>
 
-                    <div class="bg-white rounded-2xl p-6 border border-slate-100/60 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-start justify-between gap-6 mb-4">
-                            <div>
-                                <h5 class="text-sm font-extrabold text-slate-800">الكرت المميز في شاشة العرض</h5>
-                                <p class="text-xs text-slate-500 mt-1">يتم تطبيقه على جميع شاشات المدرسة.</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Featured Card Selector -->
+                        <div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 transition-colors shadow-sm group">
+                            <label class="text-sm font-bold text-slate-700 mb-4 flex items-center justify-between">
+                                <span>الكرت المميز في شاشة العرض</span>
+                                <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded uppercase">Featured</span>
+                            </label>
+                            
+                            <div class="relative">
+                                {{ form.featured_panel }}
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-4 text-slate-500 group-focus-within:text-indigo-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </div>
                             </div>
-                        </div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">اختر محتوى الكرت</label>
-                        <div class="relative">
-                            {{ form.featured_panel }}
-                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-slate-500">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </div>
-                        </div>
-                        {% if form.featured_panel.help_text %}
-                            <p class="mt-2 text-xs text-slate-400">{{ form.featured_panel.help_text }}</p>
-                        {% endif %}
-                        {% if form.featured_panel.errors %}
-                            <div class="mt-2 text-sm text-rose-600 font-medium">
-                                {% for error in form.featured_panel.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                     <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100/60 shadow-sm transition-shadow hover:shadow-md">
-                        <label class="block text-sm font-semibold text-slate-700 mb-4">اختر لون الثيم المناسب</label>
-                        <div class="hidden">
-                            {{ form.display_accent_color }}
+                            <p class="text-xs text-slate-400 mt-3 font-medium">اختر المحتوى الذي سيظهر في المساحة الكبيرة على الشاشة.</p>
                         </div>
                         
-                         {% with value=form.theme.value|default:"indigo" %}
-                         <div id="displayThemePalette" class="flex flex-wrap gap-4">
-                            <!-- Theme Buttons -->
-                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="indigo" data-hex="#6366F1" style="background: linear-gradient(135deg, #6366F1, #818CF8);" title="نيلي">
-                                <span class="sr-only">نيلي</span>
-                            </button>
-                            <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="emerald" data-hex="#22C55E" style="background: linear-gradient(135deg, #22C55E, #4ADE80);" title="أخضر">
-                                <span class="sr-only">أخضر</span>
-                            </button>
-                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="rose" data-hex="#EC4899" style="background: linear-gradient(135deg, #EC4899, #F472B6);" title="وردي">
-                                <span class="sr-only">وردي</span>
-                            </button>
-                            <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="cyan" data-hex="#06B6D4" style="background: linear-gradient(135deg, #06B6D4, #22D3EE);" title="سماوي">
-                                <span class="sr-only">سماوي</span>
-                            </button>
-                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="amber" data-hex="#EAB308" style="background: linear-gradient(135deg, #EAB308, #FBBF24);" title="أصفر">
-                                <span class="sr-only">أصفر</span>
-                            </button>
-                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="orange" data-hex="#F97316" style="background: linear-gradient(135deg, #F97316, #FB923C);" title="برتقالي">
-                                <span class="sr-only">برتقالي</span>
-                            </button>
-                             <button type="button" class="group relative w-12 h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg"
-                                    data-theme="violet" data-hex="#A855F7" style="background: linear-gradient(135deg, #A855F7, #C084FC);" title="بنفسجي">
-                                <span class="sr-only">بنفسجي</span>
-                            </button>
-                         </div>
-                         
-                         <div class="hidden">
-                            <input type="radio" name="theme" value="indigo" {% if value == "indigo" or value == "default" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="emerald" {% if value == "emerald" or value == "boys" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="rose" {% if value == "rose" or value == "girls" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="cyan" {% if value == "cyan" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="amber" {% if value == "amber" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="orange" {% if value == "orange" %}checked{% endif %}>
-                            <input type="radio" name="theme" value="violet" {% if value == "violet" %}checked{% endif %}>
+                        <!-- Theme Colors Selector (Visual) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+                            
+                            <label class="block text-sm font-bold text-slate-700 mb-5 relative z-10">اختر لون الثيم المناسب</label>
+                            
+                            <div class="hidden">
+                                {{ form.display_accent_color }}
+                            </div>
+                            
+                            {% with value=form.theme.value|default:"indigo" %}
+                            <div id="displayThemePalette" class="flex flex-wrap gap-3 relative z-10">
+                                {% comment "Theme options definitions" %} {% endcomment %}
+                                <!-- Indigo -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="indigo" data-hex="#6366F1" style="background: #e0e7ff; color: #4338ca;" title="نيلي - Indigo">
+                                        <div class="w-8 h-8 rounded-full bg-[#6366F1] shadow-lg shadow-indigo-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-indigo-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                                
+                                <!-- Emerald -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="emerald" data-hex="#22C55E" style="background: #dcfce7; color: #15803d;" title="أخضر - Emerald">
+                                        <div class="w-8 h-8 rounded-full bg-[#22C55E] shadow-lg shadow-emerald-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-emerald-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                                
+                                <!-- Rose -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="rose" data-hex="#EC4899" style="background: #fce7f3; color: #be185d;" title="وردي - Rose">
+                                        <div class="w-8 h-8 rounded-full bg-[#EC4899] shadow-lg shadow-rose-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-rose-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                                
+                                <!-- Cyan -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="cyan" data-hex="#06B6D4" style="background: #cffafe; color: #0e7490;" title="سماوي - Cyan">
+                                        <div class="w-8 h-8 rounded-full bg-[#06B6D4] shadow-lg shadow-cyan-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-cyan-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                                
+                                <!-- Amber -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="amber" data-hex="#EAB308" style="background: #fef3c7; color: #b45309;" title="أصفر - Amber">
+                                        <div class="w-8 h-8 rounded-full bg-[#EAB308] shadow-lg shadow-amber-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-amber-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                                
+                                <!-- Orange -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="orange" data-hex="#F97316" style="background: #ffedd5; color: #c2410c;" title="برتقالي - Orange">
+                                        <div class="w-8 h-8 rounded-full bg-[#F97316] shadow-lg shadow-orange-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-orange-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+
+                                <!-- Violet -->
+                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                        data-theme="violet" data-hex="#A855F7" style="background: #f3e8ff; color: #7e22ce;" title="بنفسجي - Violet">
+                                        <div class="w-8 h-8 rounded-full bg-[#A855F7] shadow-lg shadow-violet-500/40"></div>
+                                        <div class="absolute inset-0 rounded-2xl ring-2 ring-violet-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
+                                </button>
+                            </div>
+                            
+                            <div class="hidden">
+                                <input type="radio" name="theme" value="indigo" {% if value == "indigo" or value == "default" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="emerald" {% if value == "emerald" or value == "boys" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="rose" {% if value == "rose" or value == "girls" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="cyan" {% if value == "cyan" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="amber" {% if value == "amber" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="orange" {% if value == "orange" %}checked{% endif %}>
+                                <input type="radio" name="theme" value="violet" {% if value == "violet" %}checked{% endif %}>
+                            </div>
+                            {% endwith %}
+                            
+                            <p id="themeLabel" class="text-xs font-bold text-slate-400 mt-4 text-left transition-colors">اللون الحالي: <span class="text-slate-800">--</span></p>
                         </div>
-                        {% endwith %}
                      </div>
                  </div>
 
                 <!-- Section 3: Timings & Speeds -->
-                 <div class="space-y-8">
-                     <h4 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                         <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                         </div>
+                 <div class="col-span-1 lg:col-span-2 space-y-8">
+                     <h4 class="text-lg font-bold text-slate-800 flex items-center gap-3">
+                         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-sm border border-teal-100">
+                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                         </span>
                         فترات التحديث والسرعة
                     </h4>
 
                     <!-- Refresh Interval -->
-                    <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:border-emerald-300 transition-colors shadow-sm">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.refresh_interval_sec.label }}</label>
-                        <div class="flex items-center gap-3">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-emerald-300 transition-all shadow-sm group">
+                        <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.refresh_interval_sec.label }}</label>
+                        <div class="flex items-center gap-4">
                             <div class="relative flex-1">
                                 {{ form.refresh_interval_sec }}
-                                <div class="absolute inset-y-0 left-0 flex items-center px-4 bg-slate-50 border-r border-slate-200 rounded-l-xl text-slate-500 text-sm font-medium">ثانية</div>
+                                <div class="absolute inset-y-0 left-0 flex items-center px-4 bg-slate-50 border-r border-slate-200 rounded-l-xl text-slate-500 text-sm font-bold group-focus-within:border-emerald-200 group-focus-within:bg-emerald-50 group-focus-within:text-emerald-700 transition-colors">ثانية</div>
                             </div>
+                            <!-- Helper visual -->
+                             <div class="hidden md:flex flex-col items-center justify-center px-4">
+                                <span class="text-[10px] uppercase text-slate-400 font-bold mb-1">سرعة التحديث</span>
+                                <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                     <div class="h-full bg-emerald-400 rounded-full w-1/3"></div>
+                                </div>
+                             </div>
                         </div>
-                        <div class="mt-3 flex items-center justify-between text-xs">
-                             <span class="text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-lg">القيمة الافتراضية: 20 ثانية</span>
-                             <span class="text-slate-400">المدى المسموح: 20 - 50</span>
+                        <div class="mt-4 flex flex-wrap items-center justify-between text-xs gap-2">
+                             <span class="text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">القيمة الافتراضية: 20 ثانية</span>
+                             <span class="text-slate-400 font-medium">المدى المسموح: 20 - 50</span>
                         </div>
                         <div id="refreshWarn" class="hidden mt-3 text-xs font-bold text-rose-600 bg-rose-50 px-3 py-2.5 rounded-xl border border-rose-100 animate-pulse">
                             <div class="flex items-center gap-2">
@@ -224,27 +270,27 @@
                     </div>
 
                     <!-- Scroll Speeds Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <!-- Standby Speed -->
-                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
-                             <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.standby_scroll_speed.label }}</label>
+                        <div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
+                             <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.standby_scroll_speed.label }}</label>
                              <div class="relative">
                                 {{ form.standby_scroll_speed }}
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">×</span>
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold bg-slate-100/50 px-2 rounded">1x</span>
                              </div>
-                             <p class="mt-2 text-xs text-slate-400">كلما زادت القيمة زادت السرعة (0.5 - 1.2)</p>
-                             <div id="standbyWarn" class="hidden mt-1 text-xs text-rose-600 font-bold">القيمة لا تقل عن 0.5</div>
+                             <p class="mt-3 text-xs text-slate-400 font-medium leading-relaxed">سرعة تحرك شريط الانتظار. القيم الأعلى تعني حركة أسرع.</p>
+                             <div id="standbyWarn" class="hidden mt-2 text-xs text-rose-600 font-bold bg-rose-50 p-2 rounded-lg">القيمة لا تقل عن 0.5</div>
                         </div>
 
                         <!-- Periods Speed -->
-                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
-                             <label class="block text-sm font-bold text-slate-700 mb-2">{{ form.periods_scroll_speed.label }}</label>
+                        <div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
+                             <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.periods_scroll_speed.label }}</label>
                              <div class="relative">
                                 {{ form.periods_scroll_speed }}
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">×</span>
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold bg-slate-100/50 px-2 rounded">1x</span>
                              </div>
-                             <p class="mt-2 text-xs text-slate-400">كلما زادت القيمة زادت السرعة (0.5 - 1.0)</p>
-                             <div id="periodsWarn" class="hidden mt-1 text-xs text-rose-600 font-bold">القيمة لا تقل عن 0.5</div>
+                             <p class="mt-3 text-xs text-slate-400 font-medium leading-relaxed">سرعة تحرك شريط الحصص الجارية. يفضل أن تكون القيمة منخفضة للقراءة.</p>
+                             <div id="periodsWarn" class="hidden mt-2 text-xs text-rose-600 font-bold bg-rose-50 p-2 rounded-lg">القيمة لا تقل عن 0.5</div>
                         </div>
                     </div>
                  </div>
@@ -391,12 +437,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update Buttons UI
         document.querySelectorAll('#displayThemePalette button').forEach(btn => {
+            const listIndicator = btn.querySelector('[data-selected]');
             if(btn.dataset.theme === themeName) {
-                btn.classList.add('ring-4', 'ring-indigo-100', 'scale-110', 'z-10');
-                btn.classList.remove('scale-100');
+                // Show selection ring
+                if(listIndicator) listIndicator.setAttribute('data-selected', 'true');
+                
+                // Update Label
+                const labelEl = document.getElementById('themeLabel');
+                const title = btn.getAttribute('title') || themeName;
+                if(labelEl) labelEl.innerHTML = `اللون المختار: <span class="text-slate-800">${title}</span>`;
+                
+                // Active Styling
+                btn.style.transform = "scale(1.1)";
             } else {
-                btn.classList.remove('ring-4', 'ring-indigo-100', 'scale-110', 'z-10');
-                btn.classList.add('scale-100');
+                if(listIndicator) listIndicator.setAttribute('data-selected', 'false');
+                btn.style.transform = "scale(1)";
             }
         });
 
