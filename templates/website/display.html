@@ -159,7 +159,9 @@
         body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1::before,
         body[data-lite="1"] main .glass-panel.rounded-3xl.flex-1 > .relative.z-10::after,
         body[data-lite="1"] aside .glass-panel:nth-child(1)::before,
-        body[data-lite="1"] aside .glass-panel:nth-child(2)::before {
+        body[data-lite="1"] aside .glass-panel:nth-child(2)::before,
+        body[data-lite="1"] #exCard::before,
+        body[data-lite="1"] #dutyCard::before {
             display: none !important;
         }
         /* تعطيل glow effects على الشاشات القديمة */
@@ -167,6 +169,7 @@
         body[data-lite="1"] .w-2.h-2.rounded-full.bg-orange-500 {
             animation: pulse-simple 2s infinite !important;
             box-shadow: none !important;
+            background-color: currentColor !important;
         }
         @keyframes pulse-simple {
             0%, 100% { opacity: 1; }
@@ -594,35 +597,35 @@
             box-shadow: none;
         }
 
-        /* ✅ Period Classes Card - Enhanced Glass Effect with Emerald Tint */
+        /* ✅ Period Classes Card - Dynamic Theme Color */
         aside .glass-panel:nth-child(1) {
             /* Enhanced glass background */
             background: rgba(15, 23, 42, 0.75) !important;
             backdrop-filter: blur(16px) !important;
             -webkit-backdrop-filter: blur(16px) !important;
-            border: 1px solid rgba(16, 185, 129, 0.2) !important;
+            border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-                        0 0 0 1px rgba(16, 185, 129, 0.1) inset,
-                        0 4px 12px rgba(16, 185, 129, 0.15) !important;
+                        0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
+                        0 4px 12px var(--mesh1, rgba(99,102,241,0.15)) !important;
             position: relative;
             overflow: hidden;
         }
         
-        /* Decorative gradient overlay for Period Classes */
+        /* Decorative gradient overlay - Uses theme color */
         aside .glass-panel:nth-child(1)::before {
             content: '';
             position: absolute;
             inset: 0;
             background: radial-gradient(
                 circle at 70% 20%, 
-                rgba(16, 185, 129, 0.12),
+                var(--mesh1, rgba(99,102,241,0.12)),
                 transparent 60%
             ),
             linear-gradient(
                 135deg,
-                rgba(16, 185, 129, 0.08) 0%,
+                var(--mesh1, rgba(99,102,241,0.08)) 0%,
                 transparent 40%,
-                rgba(5, 150, 105, 0.06) 100%
+                var(--mesh2, rgba(99,102,241,0.06)) 100%
             );
             opacity: 0.8;
             pointer-events: none;
@@ -636,42 +639,42 @@
         }
 
         #pcCount {
-            background: rgba(16, 185, 129, 0.2);
-            border: 1px solid rgba(16, 185, 129, 0.4);
-            color: #34d399;
-            text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
-            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+            background: var(--mesh1, rgba(99,102,241,0.2));
+            border: 1px solid var(--accent-sub, rgba(99,102,241,0.4));
+            color: var(--accent-sub, #a5b4fc);
+            text-shadow: 0 0 8px var(--mesh1, rgba(99,102,241,0.3));
+            box-shadow: 0 0 12px var(--mesh1, rgba(99,102,241,0.2));
         }
 
-        /* 🕐 Standby Classes Card - Enhanced Glass Effect with Orange Tint */
+        /* 🕐 Standby Classes Card - Dynamic Theme Color */
         aside .glass-panel:nth-child(2) {
             /* Enhanced glass background */
             background: rgba(15, 23, 42, 0.75) !important;
             backdrop-filter: blur(16px) !important;
             -webkit-backdrop-filter: blur(16px) !important;
-            border: 1px solid rgba(249, 115, 22, 0.2) !important;
+            border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-                        0 0 0 1px rgba(249, 115, 22, 0.1) inset,
-                        0 4px 12px rgba(249, 115, 22, 0.15) !important;
+                        0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
+                        0 4px 12px var(--mesh1, rgba(99,102,241,0.15)) !important;
             position: relative;
             overflow: hidden;
         }
         
-        /* Decorative gradient overlay for Standby */
+        /* Decorative gradient overlay - Uses theme color */
         aside .glass-panel:nth-child(2)::before {
             content: '';
             position: absolute;
             inset: 0;
             background: radial-gradient(
                 circle at 30% 20%, 
-                rgba(249, 115, 22, 0.12),
+                var(--mesh1, rgba(99,102,241,0.12)),
                 transparent 60%
             ),
             linear-gradient(
                 135deg,
-                rgba(249, 115, 22, 0.08) 0%,
+                var(--mesh1, rgba(99,102,241,0.08)) 0%,
                 transparent 40%,
-                rgba(234, 88, 12, 0.06) 100%
+                var(--mesh2, rgba(99,102,241,0.06)) 100%
             );
             opacity: 0.8;
             pointer-events: none;
@@ -685,11 +688,11 @@
         }
 
         #sbCount {
-            background: rgba(249, 115, 22, 0.2);
-            border: 1px solid rgba(249, 115, 22, 0.4);
-            color: #fb923c;
-            text-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
-            box-shadow: 0 0 12px rgba(249, 115, 22, 0.2);
+            background: var(--mesh1, rgba(99,102,241,0.2));
+            border: 1px solid var(--accent-sub, rgba(99,102,241,0.4));
+            color: var(--accent-sub, #a5b4fc);
+            text-shadow: 0 0 8px var(--mesh1, rgba(99,102,241,0.3));
+            box-shadow: 0 0 12px var(--mesh1, rgba(99,102,241,0.2));
         }
 
         /* 📋 Side Cards Headers - Enhanced Glass Headers */
@@ -700,123 +703,206 @@
             -webkit-backdrop-filter: blur(8px);
             box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
         }
-
-        /* 🟢 Active Pulse - Enhanced Glow */
-        .w-2.h-2.rounded-full.bg-emerald-500 {
-            animation: pulse-glow-emerald 2s infinite;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6),
-                        0 0 20px rgba(16, 185, 129, 0.3);
+        
+        /* Override header text colors to use theme */
+        aside .glass-panel > div:first-child h3,
+        aside .glass-panel > div:first-child .text-orange-200 {
+            color: rgba(255, 255, 255, 0.95) !important;
         }
         
+        /* Override hardcoded shadow colors in HTML to use theme */
+        aside .glass-panel .shadow-\[0_0_10px_rgba\(16\,185\,129\,0\.5\)\],
+        aside .glass-panel .shadow-\[0_0_10px_rgba\(249\,115\,22\,0\.5\)\] {
+            box-shadow: 0 0 10px var(--mesh1, rgba(99,102,241,0.5)) !important;
+        }
+        
+        /* Override hardcoded badge background colors to use theme */
+        aside .glass-panel .bg-emerald-500\/20,
+        aside .glass-panel .bg-orange-500\/20 {
+            background: var(--mesh1, rgba(99,102,241,0.2)) !important;
+        }
+        
+        /* Override hardcoded badge border colors to use theme */
+        aside .glass-panel .border-emerald-500\/30,
+        aside .glass-panel .border-orange-500\/30 {
+            border-color: var(--accent-sub, rgba(99,102,241,0.4)) !important;
+        }
+        
+        /* Override hardcoded badge text colors to use theme */
+        aside .glass-panel .text-emerald-400,
+        aside .glass-panel .text-orange-400 {
+            color: var(--accent-sub, #a5b4fc) !important;
+        }
+
+        /* 🟢 Active Pulse - Dynamic Theme Glow */
+        .w-2.h-2.rounded-full.bg-emerald-500,
         .w-2.h-2.rounded-full.bg-orange-500 {
-            animation: pulse-glow-orange 2s infinite;
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.6),
-                        0 0 20px rgba(249, 115, 22, 0.3);
+            background-color: var(--accent-main, #6366f1) !important;
+            animation: pulse-glow-theme 2s infinite;
+            box-shadow: 0 0 10px var(--mesh1, rgba(99,102,241,0.6)),
+                        0 0 20px var(--mesh2, rgba(99,102,241,0.3));
         }
 
-        @keyframes pulse-glow-emerald {
+        @keyframes pulse-glow-theme {
             0%, 100% { 
                 opacity: 1;
-                box-shadow: 0 0 10px rgba(16, 185, 129, 0.6),
-                            0 0 20px rgba(16, 185, 129, 0.3);
+                box-shadow: 0 0 10px var(--mesh1, rgba(99,102,241,0.6)),
+                            0 0 20px var(--mesh2, rgba(99,102,241,0.3));
             }
             50% { 
                 opacity: 0.6;
-                box-shadow: 0 0 15px rgba(16, 185, 129, 0.8),
-                            0 0 30px rgba(16, 185, 129, 0.4);
-            }
-        }
-        
-        @keyframes pulse-glow-orange {
-            0%, 100% { 
-                opacity: 1;
-                box-shadow: 0 0 10px rgba(249, 115, 22, 0.6),
-                            0 0 20px rgba(249, 115, 22, 0.3);
-            }
-            50% { 
-                opacity: 0.6;
-                box-shadow: 0 0 15px rgba(249, 115, 22, 0.8),
-                            0 0 30px rgba(249, 115, 22, 0.4);
+                box-shadow: 0 0 15px var(--accent-main, rgba(99,102,241,0.8)),
+                            0 0 30px var(--mesh1, rgba(99,102,241,0.4));
             }
         }
 
-        /* 🏆 Excellence Card - Clean Gold Accent */
+        /* 🏆 Excellence Card - Dynamic Theme Color */
         #exCard {
-            /* Translucent background to show theme color */
-            background: rgba(30, 41, 59, 0.4); 
-            border: 1px solid rgba(245, 158, 11, 0.3); /* Amber border */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            /* Translucent background with theme color */
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid var(--mesh1, rgba(99,102,241,0.3)) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
+                        0 4px 12px var(--mesh1, rgba(99,102,241,0.15)) !important;
             position: relative;
             overflow: hidden;
         }
 
-        /* Override side panel gradient in Ex Card */
+        /* Override side panel with theme color */
         #exCard > div:first-child {
-            background: rgba(245, 158, 11, 0.15) !important; /* Flat amber tint */
+            background: linear-gradient(to bottom, var(--mesh1, rgba(99,102,241,0.15)), transparent) !important;
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        /* Override inner gold circle gradient */
+        /* Override inner icon with theme gradient */
         #exCard > div:first-child > div:first-child {
-            background: rgba(245, 158, 11, 0.2) !important;
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            color: #fbbf24;
-            box-shadow: none !important;
+            background: linear-gradient(135deg, var(--accent-main, #6366f1), var(--accent-sub, #a5b4fc)) !important;
+            border: 1px solid var(--accent-sub, rgba(99,102,241,0.5));
+            color: white !important;
+            box-shadow: 0 0 15px var(--mesh1, rgba(99,102,241,0.3)) !important;
         }
 
-        /* ❌ Remove all shimmer/glows from ExCard */
-        #exCard::before,
-        #exCard .absolute {
-            display: none !important;
+        /* Excellence Card gradient overlay - Uses theme color */
+        #exCard::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at 50% 30%, 
+                var(--mesh1, rgba(99,102,241,0.12)),
+                transparent 60%
+            );
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 0;
         }
-        /* Restore the wrapper for content (it might be absolute, so be careful not to hide content) */
+        /* Restore the wrapper for content */
         #exSlot {
             display: flex !important;
             position: relative !important;
+            z-index: 1;
         }
-        #exSlot::before, #exSlot > .absolute {
-            display: none !important; /* Hide background effects only */
-        }
-
-
-        /* 🛡️ Duty Card - Clean Indigo Accent */
-        #dutyCard {
-            /* Translucent background */
-            background: rgba(30, 41, 59, 0.4);
-            border: 1px solid rgba(99, 102, 241, 0.3); /* Indigo border */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        /* Override side panel gradient in Duty Card */
-        #dutyCard > div.relative.w-80 {
-            background: rgba(99, 102, 241, 0.15) !important; /* Flat indigo tint */
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        #exSlot > .absolute:first-child {
+            display: none !important; /* Hide only the decorative gradient */
         }
         
-        /* Override inner icon gradient */
+        #exIndex {
+            color: var(--accent-main, #6366f1) !important;
+        }
+        
+        /* Override any hardcoded amber/yellow colors in Excellence Card */
+        #exCard .text-yellow-400,
+        #exCard .text-amber-400,
+        #exCard .bg-amber-500,
+        #exCard .from-yellow-400,
+        #exCard .to-amber-600 {
+            color: var(--accent-main, #6366f1) !important;
+        }
+        
+        #exCard .bg-gradient-to-br {
+            background: linear-gradient(135deg, var(--accent-main, #6366f1), var(--accent-sub, #a5b4fc)) !important;
+        }
+
+
+        /* 🛡️ Duty Card - Dynamic Theme Color with Glass Effect */
+        #dutyCard {
+            /* Enhanced glass background */
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
+                        0 4px 12px var(--mesh1, rgba(99,102,241,0.15)) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Decorative gradient overlay - Uses theme color */
+        #dutyCard::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at 80% 30%, 
+                var(--mesh1, rgba(99,102,241,0.12)),
+                transparent 60%
+            ),
+            linear-gradient(
+                135deg,
+                var(--mesh1, rgba(99,102,241,0.08)) 0%,
+                transparent 40%,
+                var(--mesh2, rgba(99,102,241,0.06)) 100%
+            );
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Override side panel with theme gradient */
+        #dutyCard > div.relative.w-80 {
+            background: linear-gradient(to bottom, var(--mesh1, rgba(99,102,241,0.15)), transparent) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Override inner icon with theme gradient */
         #dutyCard .w-16.h-16 {
-            background: none !important;
-            box-shadow: none !important;
-            border: 1px solid rgba(99, 102, 241, 0.5);
+            border: 1px solid var(--accent-sub, rgba(99,102,241,0.5));
+            box-shadow: 0 0 15px var(--mesh1, rgba(99,102,241,0.3)) !important;
             border-radius: 1rem;
-            padding: 4px;
+            padding: 1px;
         }
         #dutyCard .w-16.h-16 > div {
-            background: rgba(99, 102, 241, 0.2) !important;
+            background: linear-gradient(135deg, var(--accent-main, #6366f1), var(--accent-sub, #a5b4fc)) !important;
+            color: white !important;
         }
 
-        /* ❌ Remove all decorative meshes and glows from Duty Card */
-        #dutyCard > div.absolute, /* The background mesh */
-        #dutyCard .blur-\[60px\], /* The glow blob */
-        #dutyCard .bg-gradient-to-t, /* Bottom gradient fade */
-        #dutyCard .bg-gradient-to-r { /* General gradients */
-            display: none !important;
+        /* Duty Card inner gradient (keep from original) */
+        #dutyCard .bg-gradient-to-br.from-indigo-500 {
+            background: linear-gradient(135deg, var(--accent-main), var(--accent-sub)) !important;
         }
         
-        /* Ensure content remains visible */
+        /* Override any hardcoded indigo colors in Duty Card */
+        #dutyCard .text-indigo-300,
+        #dutyCard .text-indigo-400,
+        #dutyCard .border-indigo-500,
+        #dutyCard .from-indigo-500,
+        #dutyCard .to-purple-600 {
+            color: var(--accent-sub, #a5b4fc) !important;
+        }
+        
+        #dutyCard .bg-gradient-to-br,
+        #dutyCard .from-indigo-500 {
+            background: linear-gradient(135deg, var(--accent-main, #6366f1), var(--accent-sub, #a5b4fc)) !important;
+        }
+        
+        /* Content above overlay */
         #dutySlot {
-            z-index: 20;
+            z-index: 1;
             position: relative;
         }
 
