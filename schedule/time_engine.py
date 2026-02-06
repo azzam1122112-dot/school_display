@@ -54,6 +54,11 @@ def build_day_snapshot(settings, now=None):
 
     # ✅ FIX: map python weekday -> DB weekday
     weekday = _normalize_weekday_for_db(today.weekday())
+    
+    # ✅ Test mode override: للسوبر أدمن لتشغيل الشاشة في أيام الإجازة
+    test_override = getattr(settings, "test_mode_weekday_override", None)
+    if test_override is not None and 1 <= test_override <= 7:
+        weekday = test_override
 
     # theme mapping (لو عندك "default")
     raw_theme = (getattr(settings, "theme", None) or "indigo").strip().lower()

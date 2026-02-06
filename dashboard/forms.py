@@ -83,6 +83,7 @@ class SchoolSettingsForm(forms.ModelForm):
             "standby_scroll_speed",
             "periods_scroll_speed",
             "display_accent_color",
+            "test_mode_weekday_override",
         ]
         widgets = {
             "featured_panel": forms.Select(),
@@ -102,9 +103,13 @@ class SchoolSettingsForm(forms.ModelForm):
                     "title": "اختر لون شاشة العرض",
                 }
             ),
+            
+            "test_mode_weekday_override": forms.Select(),
         }
 
     def __init__(self, *args, **kwargs):
+        # استخراج المستخدم إذا تم تمريره (من الـ view)
+        self.request_user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         # تأكيد attrs حتى لو تغيّرت الـ widgets أو تم override من مكان آخر
@@ -127,6 +132,21 @@ class SchoolSettingsForm(forms.ModelForm):
             self.fields["display_accent_color"].help_text = (
                 "اختياري: اختر لونًا رئيسياً لشاشة العرض. اتركه فارغًا لاستخدام ألوان الثيم."
             )
+        
+        # ✅ وضع الاختبار: للسوبر أدمن فقط
+        if "test_mode_weekday_override" in self.fields:
+            # إذا لم يكن سوبر أدمن، أخفِ الحقل
+            if self.request_user and not self.request_user.is_superuser:
+                del self.fields["test_mode_weekday_override"]
+            else:
+                self.fields["test_mode_weekday_override"].help_text = (
+                    "<strong style='color: #d97706;'>⚠️ للسوبر أدمن فقط:</strong> "
+                    "لتشغيل الشاشة في يوم إجازة للاختبار، حدد اليوم المراد محاكاته "
+                    "(مثلاً: لو اليوم خميس وتريد اختبار جدول الأحد، اختر 'الأحد'). "
+                    "<br><strong>لا تنسَ إلغاء التفعيل بعد الاختبار!</strong>"
+                )
+                self.fields["test_mode_weekday_override"].label = "🧪 وضع الاختبار: محاكاة يوم"
+                self.fields["test_mode_weekday_override"].required = False
 
     # =========================
     # ✅ Server-side validation

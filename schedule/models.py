@@ -159,6 +159,19 @@ class SchoolSettings(models.Model):
         help_text="يزداد تلقائياً عند أي تعديل على الجدول لإجبار شاشات العرض على جلب بيانات جديدة فوراً.",
     )
 
+    test_mode_weekday_override = models.PositiveSmallIntegerField(
+        "وضع الاختبار: محاكاة يوم",
+        choices=WEEKDAYS,
+        blank=True,
+        null=True,
+        help_text=(
+            "للسوبر أدمن فقط: لتشغيل الشاشة في يوم إجازة للاختبار، "
+            "حدد رقم اليوم المراد محاكاته (مثلاً: الأحد). "
+            "سيعرض النظام جدول ذلك اليوم حتى في أيام الإجازة. "
+            "اتركه فارغاً لإلغاء المحاكاة."
+        ),
+    )
+
     class Meta:
         verbose_name = "إعداد المدرسة"
         verbose_name_plural = "إعدادات المدرسة"

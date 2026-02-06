@@ -604,14 +604,14 @@ def school_settings(request):
         preview_url = None
 
     if request.method == "POST":
-        form = SchoolSettingsForm(request.POST, request.FILES, instance=obj)
+        form = SchoolSettingsForm(request.POST, request.FILES, instance=obj, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "تم حفظ إعدادات المدرسة.")
             return redirect("dashboard:settings")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
     else:
-        form = SchoolSettingsForm(instance=obj)
+        form = SchoolSettingsForm(instance=obj, user=request.user)
 
     return render(request, "dashboard/settings.html", {"form": form, "display_preview_url": preview_url})
 

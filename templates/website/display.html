@@ -235,21 +235,27 @@
             font-size: 1.1rem; /* 110% من الحجم الأساسي */
         }
         
-        /* تكبير عناوين البطاقات */
+        /* ✅ تكبير عناوين البطاقات - responsive لجميع أحجام الشاشات */
         h2, h3 {
-            font-size: 1.4rem;
+            font-size: clamp(1.5rem, 2.5vw, 2rem); /* زيادة من 1.4rem ثابت */
             font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: 0.02em; /* مسافات صغيرة بين الحروف */
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* ظل خفيف للوضوح */
         }
         
-        /* تكبير النصوص داخل القوائم */
-        .slot-item {
-            font-size: 1.15rem;
-            line-height: 1.4;
+        /* ✅ تكبير العداد (عدد الحصص) */
+        #pcCount, #sbCount {
+            font-size: clamp(1rem, 1.8vw, 1.4rem);
+            padding: 0.4rem 0.8rem;
         }
 
-        /* Slot item styling (applies to actual items created by display.js) */
+        /* ✅ Slot item styling (applies to actual items created by display.js) */
+        /* تكبير كبير للنصوص داخل بطاقات الحصص - للوضوح على الشاشات الكبيرة */
         .slot-item {
-            padding: 0.75rem 1rem;
+            padding: 1rem 1.25rem; /* زيادة من 0.75rem 1rem */
+            font-size: clamp(1.3rem, 2.2vw, 1.85rem); /* زيادة كبيرة من 1.15rem */
+            line-height: 1.6; /* تباعد أكبر بين السطور للوضوح */
             background: rgba(255, 255, 255, 0.03);
             border-radius: 0.75rem;
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -258,10 +264,19 @@
             /* ✅ تحسين rendering على الشاشات القديمة */
             transform: translateZ(0);
             contain: layout style paint;
+            /* تحسين تباين الألوان */
+            color: rgba(255, 255, 255, 0.95);
         }
         .slot-item:nth-child(even) {
             background: rgba(255, 255, 255, 0.06);
             border-color: rgba(255, 255, 255, 0.08);
+        }
+        
+        /* ✅ تكبير أسماء المعلمين والصفوف داخل الكروت */
+        .slot-item .teacher-name,
+        .slot-item .class-name {
+            font-weight: 600;
+            font-size: 1.05em; /* نسبي من حجم .slot-item */
         }
   </style>
 </head>
