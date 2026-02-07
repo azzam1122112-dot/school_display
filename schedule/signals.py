@@ -141,6 +141,47 @@ def clear_display_cache_on_class_lesson_change(sender, instance, **kwargs):
 
 
 # -----------------------------
+# Core entities that affect snapshot rendering
+# -----------------------------
+
+try:
+    from schedule.models import SchoolClass
+
+    @receiver(post_save, sender=SchoolClass)
+    @receiver(post_delete, sender=SchoolClass)
+    def clear_display_cache_on_school_class_change(sender, instance, **kwargs):
+        settings_obj = getattr(instance, "settings", None)
+        school_id = int(getattr(settings_obj, "school_id", 0) or 0)
+        _bump_and_invalidate(school_id=school_id, reason=sender.__name__, model_label="schedule.SchoolClass")
+except Exception:
+    SchoolClass = None
+
+
+try:
+    from schedule.models import Subject
+
+    @receiver(post_save, sender=Subject)
+    @receiver(post_delete, sender=Subject)
+    def clear_display_cache_on_subject_change(sender, instance, **kwargs):
+        school_id = int(getattr(instance, "school_id", 0) or 0)
+        _bump_and_invalidate(school_id=school_id, reason=sender.__name__, model_label="schedule.Subject")
+except Exception:
+    Subject = None
+
+
+try:
+    from schedule.models import Teacher
+
+    @receiver(post_save, sender=Teacher)
+    @receiver(post_delete, sender=Teacher)
+    def clear_display_cache_on_teacher_change(sender, instance, **kwargs):
+        school_id = int(getattr(instance, "school_id", 0) or 0)
+        _bump_and_invalidate(school_id=school_id, reason=sender.__name__, model_label="schedule.Teacher")
+except Exception:
+    Teacher = None
+
+
+# -----------------------------
 # Additional snapshot sources
 # -----------------------------
 
