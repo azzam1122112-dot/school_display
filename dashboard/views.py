@@ -124,6 +124,20 @@ def _safe_reverse(name: str, *, kwargs: dict | None = None, fallback: str | None
         return "#"
 
 
+def _invalidate_display_cache(school):
+    """
+    Helper: Bump schedule revision & invalidate display cache after any data change.
+    Call this after saving/deleting lessons, announcements, excellence, standby, etc.
+    """
+    try:
+        school_id = getattr(school, 'id', None)
+        if school_id:
+            bump_schedule_revision_for_school_id(school_id)
+            invalidate_display_snapshot_cache_for_school_id(school_id)
+    except Exception:
+        pass
+
+
 # ======================
 # Model loader (حل ImportError نهائياً)
 # ======================
@@ -607,6 +621,16 @@ def school_settings(request):
         form = SchoolSettingsForm(request.POST, request.FILES, instance=obj, user=request.user)
         if form.is_valid():
             form.save()
+            
+            # ✅ Invalidate display cache so TV updates immediately
+            try:
+                school_id = getattr(obj.school, 'id', None) or getattr(school, 'id', None)
+                if school_id:
+                    bump_schedule_revision_for_school_id(school_id)
+                    invalidate_display_snapshot_cache_for_school_id(school_id)
+            except Exception:
+                pass
+            
             messages.success(request, "تم حفظ إعدادات المدرسة.")
             return redirect("dashboard:settings")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -725,6 +749,16 @@ def day_edit(request, weekday: int):
             form.save()
             p_formset.save()
             b_formset.save()
+            
+            # ✅ Invalidate display cache
+            try:
+                school_id = getattr(school, 'id', None)
+                if school_id:
+                    bump_schedule_revision_for_school_id(school_id)
+                    invalidate_display_snapshot_cache_for_school_id(school_id)
+            except Exception:
+                pass
+            
             messages.success(request, "تم حفظ جدول اليوم بنجاح.")
             return redirect("dashboard:days_list")
 
@@ -827,6 +861,15 @@ def day_autofill(request, weekday: int):
 
             cursor += gap
 
+        # ✅ Invalidate display cache
+        try:
+            school_id = getattr(school, 'id', None)
+            if school_id:
+                bump_schedule_revision_for_school_id(school_id)
+                invalidate_display_snapshot_cache_for_school_id(school_id)
+        except Exception:
+            pass
+
         messages.success(request, "تمت التعبئة التلقائية للجدول.")
         return redirect("dashboard:day_edit", weekday=weekday)
 
@@ -858,6 +901,15 @@ def day_toggle(request, weekday: int):
     day, _ = DaySchedule.objects.get_or_create(settings=settings_obj, weekday=weekday)
     day.is_active = not bool(getattr(day, "is_active", True))
     day.save(update_fields=["is_active"])
+
+    # ✅ Invalidate display cache
+    try:
+        school_id = getattr(school, 'id', None)
+        if school_id:
+            bump_schedule_revision_for_school_id(school_id)
+            invalidate_display_snapshot_cache_for_school_id(school_id)
+    except Exception:
+        pass
 
     status = "تفعيل" if day.is_active else "تعطيل"
     messages.success(request, f"تم {status} يوم {WEEKDAY_MAP.get(weekday, str(weekday))}.")
@@ -910,6 +962,7 @@ def ann_edit(request, pk: int):
         form = AnnouncementForm(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تم تحديث التنبيه.")
             return redirect("dashboard:ann_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -927,6 +980,7 @@ def ann_delete(request, pk: int):
         return response
     obj = get_object_or_404(Announcement, pk=pk, school=school)
     obj.delete()
+    _invalidate_display_cache(school)
     messages.success(request, "تم حذف التنبيه.")
     return redirect("dashboard:ann_list")
 
@@ -967,6 +1021,7 @@ def exc_create(request):
             exc = form.save(commit=False)
             exc.school = school
             exc.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تم إضافة بطاقة التميز.")
             return redirect("dashboard:exc_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -986,6 +1041,7 @@ def exc_edit(request, pk: int):
         form = ExcellenceForm(request.POST, request.FILES, instance=obj)
         if form.is_valid():
             form.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تم تحديث بطاقة التميز.")
             return redirect("dashboard:exc_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -1003,6 +1059,7 @@ def exc_delete(request, pk: int):
         return response
     obj = get_object_or_404(Excellence, pk=pk, school=school)
     obj.delete()
+    _invalidate_display_cache(school)
     messages.success(request, "تم حذف البطاقة.")
     return redirect("dashboard:exc_list")
 
@@ -1064,6 +1121,7 @@ def standby_create(request):
             standby = form.save(commit=False)
             standby.school = school
             standby.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تم إضافة تكليف الانتظار.")
             return redirect("dashboard:standby_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -1082,6 +1140,7 @@ def standby_delete(request, pk: int):
         return response
     obj = get_object_or_404(StandbyAssignment, pk=pk, school=school)
     obj.delete()
+    _invalidate_display_cache(school)
     messages.success(request, "تم الحذف.")
     return redirect("dashboard:standby_list")
 
@@ -1793,6 +1852,7 @@ def lesson_create(request):
             lesson = form.save(commit=False)
             lesson.settings = settings_obj
             lesson.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تمت إضافة الحصة بنجاح.")
             return redirect("dashboard:lessons_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -1828,6 +1888,7 @@ def lesson_edit(request, pk: int):
     if request.method == "POST":
         if form.is_valid():
             form.save()
+            _invalidate_display_cache(school)
             messages.success(request, "تم تعديل الحصة بنجاح.")
             return redirect("dashboard:lessons_list")
         messages.error(request, "الرجاء تصحيح الأخطاء.")
@@ -1852,6 +1913,7 @@ def lesson_delete(request, pk: int):
 
     obj = get_object_or_404(ClassLesson, pk=pk, settings=settings_obj)
     obj.delete()
+    _invalidate_display_cache(school)
     messages.success(request, "تم حذف الحصة.")
     return redirect("dashboard:lessons_list")
 
