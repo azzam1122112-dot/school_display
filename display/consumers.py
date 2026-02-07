@@ -235,3 +235,22 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             ws_metrics.broadcast_failed()
             logger.exception(f"WS broadcast send failed: {e}")
 
+
+    async def broadcast_reload(self, event):
+        """Ask the client to reload the page (hard refresh behavior).
+
+        This is used for per-screen maintenance or when a TV browser gets stuck.
+        """
+        school_id = event.get("school_id")
+        if self.screen and school_id and int(school_id) != int(self.screen.school_id):
+            return
+
+        start_time = time.time()
+        try:
+            await self.send(text_data=json.dumps({"type": "reload"}))
+            latency_ms = (time.time() - start_time) * 1000
+            ws_metrics.broadcast_sent(latency_ms)
+        except Exception as e:
+            ws_metrics.broadcast_failed()
+            logger.exception(f"WS reload send failed: {e}")
+

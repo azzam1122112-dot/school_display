@@ -965,6 +965,19 @@ def status(request, token: str | None = None):
     except Exception:
         force_refresh = False
 
+    # Token-scoped manual reload: force a full page reload on the client.
+    reload_key = f"display:force_reload:{token_hash}"
+    force_reload = False
+    try:
+        force_reload = bool(cache.get(reload_key))
+        if force_reload:
+            try:
+                cache.delete(reload_key)
+            except Exception:
+                pass
+    except Exception:
+        force_reload = False
+
     # --- Optional lightweight metrics (sampled, cache-only) ---
     metrics_day_key = None
     metrics_ttl = None
@@ -1056,6 +1069,25 @@ def status(request, token: str | None = None):
             return resp
 
         # If a manual force-refresh was requested, always require a fetch.
+        if force_reload:
+            _bump_metric("fetch_required")
+            resp = JsonResponse(
+                {"fetch_required": True, "schedule_revision": int(current_rev or 0), "reload": True},
+                json_dumps_params={"ensure_ascii": False},
+            )
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Schedule-Revision"] = str(int(current_rev or 0))
+            except Exception:
+                pass
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
+            _metrics_incr("metrics:status:resp_200")
+            return resp
+
         if force_refresh:
             _bump_metric("fetch_required")
             resp = JsonResponse(

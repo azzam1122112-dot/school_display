@@ -68,7 +68,6 @@ logger = logging.getLogger(__name__)
 
 from schedule.cache_utils import (
     bump_schedule_revision_for_school_id,
-    can_manual_refresh_school,
     invalidate_display_snapshot_cache_for_school_id,
 )
 
@@ -1610,97 +1609,6 @@ def screen_create(request):
 
 @manager_required
 @require_POST
-def screens_refresh_now(request):
-    """Force all displays to fetch new data immediately.
-
-    Implementation: bump schedule_revision in DB + invalidate snapshot caches.
-    This guarantees the next /status poll will not return stale 304.
-    """
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
-
-    import logging
-    from django.db import transaction
-    from django.utils.http import url_has_allowed_host_and_scheme
-
-    from schedule.cache_utils import get_schedule_revision_for_school_id
-
-    logger = logging.getLogger(__name__)
-
-    school_id = int(getattr(school, "id", 0) or 0)
-
-    if not can_manual_refresh_school(school_id, window_sec=5):
-        messages.info(request, "تم التحديث قبل لحظات — انتظر 5 ثواني ثم أعد المحاولة.")
-        next_url = (request.POST.get("next") or "").strip()
-        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-            return redirect(next_url)
-        return redirect("dashboard:screen_list")
-
-    def _broadcast_invalidate_ws(*, school_id: int, revision: int) -> None:
-        """Best-effort WS push so TVs refresh immediately.
-
-        No-op unless DISPLAY_WS_ENABLED=True and channel layer is configured.
-        """
-        try:
-            from django.conf import settings
-
-            if not getattr(settings, "DISPLAY_WS_ENABLED", False):
-                return
-        except Exception:
-            return
-
-        try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-
-            channel_layer = get_channel_layer()
-            if not channel_layer:
-                return
-
-            async_to_sync(channel_layer.group_send)(
-                f"school:{int(school_id)}",
-                {
-                    "type": "broadcast_invalidate",
-                    "school_id": int(school_id),
-                    "revision": int(revision or 0),
-                },
-            )
-        except Exception:
-            # Never crash manual refresh due to WS issues.
-            return
-
-    with transaction.atomic():
-        old_rev = get_schedule_revision_for_school_id(school_id) or 0
-        new_rev = bump_schedule_revision_for_school_id(school_id) or 0
-        invalidate_display_snapshot_cache_for_school_id(school_id)
-        # If websockets are enabled and TVs are connected, push an immediate invalidate.
-        try:
-            transaction.on_commit(lambda: _broadcast_invalidate_ws(school_id=school_id, revision=int(new_rev or 0)))
-        except Exception:
-            pass
-
-    logger.info(
-        "screens_refresh_now school_id=%s old_rev=%s new_rev=%s",
-        school_id,
-        int(old_rev),
-        int(new_rev),
-    )
-
-    if new_rev:
-        messages.success(request, f"تم تحديث الشاشات الآن (Revision={int(new_rev)}).")
-    else:
-        messages.success(request, "تم إرسال أمر تحديث الشاشات الآن.")
-
-    next_url = (request.POST.get("next") or "").strip()
-    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-        return redirect(next_url)
-
-    return redirect("dashboard:screen_list")
-
-
-@manager_required
-@require_POST
 def screen_refresh_now(request, pk: int):
     """Force a single screen to fetch new data.
 
@@ -1790,6 +1698,101 @@ def screen_refresh_now(request, pk: int):
     )
 
     messages.success(request, f"تم إرسال أمر تحديث لهذه الشاشة ({obj.name}).")
+
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(next_url)
+
+    return redirect("dashboard:screen_list")
+
+
+@manager_required
+@require_POST
+def screen_reload_now(request, pk: int):
+    """Force a single screen to reload the page (equivalent to pressing F5).
+
+    Works in two modes:
+    1) Polling fallback: sets a short-lived cache flag that /api/display/status checks and the client
+       interprets as a full reload.
+    2) WebSocket fast path: if enabled + connected, pushes an immediate reload message.
+    """
+    DisplayScreen = DisplayScreenModel()
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    import hashlib
+    import logging
+
+    from django.core.cache import cache
+    from django.db import transaction
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    logger = logging.getLogger(__name__)
+
+    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
+
+    token_value = (
+        (getattr(obj, "token", None) or getattr(obj, "api_token", None) or "").strip()
+    )
+    if not token_value:
+        messages.error(request, "تعذر إعادة تحميل الشاشة: لا يوجد token صالح.")
+        return redirect("dashboard:screen_list")
+
+    token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
+
+    # Polling fallback: force /status to return reload=true
+    try:
+        cache.set(f"display:force_reload:{token_hash}", "1", timeout=120)
+    except Exception:
+        pass
+
+    school_id = int(getattr(school, "id", 0) or 0)
+
+    def _broadcast_reload_token_ws(*, token_hash: str) -> None:
+        try:
+            from django.conf import settings
+
+            if not getattr(settings, "DISPLAY_WS_ENABLED", False):
+                return
+        except Exception:
+            return
+
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+
+            channel_layer = get_channel_layer()
+            if not channel_layer:
+                return
+
+            group = f"token:{str(token_hash)[:16]}"
+            async_to_sync(channel_layer.group_send)(
+                group,
+                {
+                    "type": "broadcast_reload",
+                    "school_id": int(school_id),
+                },
+            )
+        except Exception:
+            return
+
+    # Best-effort immediate push
+    try:
+        transaction.on_commit(lambda: _broadcast_reload_token_ws(token_hash=token_hash))
+    except Exception:
+        try:
+            _broadcast_reload_token_ws(token_hash=token_hash)
+        except Exception:
+            pass
+
+    logger.info(
+        "screen_reload_now school_id=%s screen_id=%s",
+        int(school_id),
+        int(getattr(obj, "id", 0) or 0),
+    )
+
+    messages.success(request, f"تم إرسال أمر إعادة تحميل لهذه الشاشة ({obj.name}).")
 
     next_url = (request.POST.get("next") or "").strip()
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):

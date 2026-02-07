@@ -18,16 +18,6 @@
     </div>
     
     <div class="flex items-center gap-3">
-        <form method="post" action="{% url 'dashboard:screens_refresh_now' %}">
-          {% csrf_token %}
-          <button type="submit"
-                                    class="inline-flex items-center justify-center px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm hover:shadow-md gap-2"
-                  title="يجبر جميع الشاشات على جلب بيانات جديدة فوراً">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7M19 5a9 9 0 01-14 7"/></svg>
-              <span>تحديث الشاشات الآن</span>
-          </button>
-        </form>
-
         {% if can_create_screen %}
         <a href="{% url 'dashboard:screen_create' %}"
            class="group relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-blue-600 rounded-2xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5">
@@ -239,14 +229,14 @@
                         </div>
                      {% endif %}
 
-                            <form method="post" action="{% url 'dashboard:screen_refresh_now' screen.pk %}" class="shrink-0">
+                            <form method="post" action="{% url 'dashboard:screen_reload_now' screen.pk %}" class="shrink-0">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                 <button type="submit"
                                           class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition shadow-sm active:scale-95"
-                                          title="يجبر هذه الشاشة فقط على جلب بيانات جديدة">
+                                          title="تحديث الشاشة (إعادة تحميل كاملة مثل F5)">
                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7M19 5a9 9 0 01-14 7"/></svg>
-                                      <span>تحديث</span>
+                                      <span>تحديث الشاشة</span>
                                 </button>
                             </form>
 

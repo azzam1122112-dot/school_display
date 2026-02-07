@@ -3003,6 +3003,32 @@
           snap = await safeFetchSnapshot({ bypassEtag: true });
         } else {
           const st = await safeFetchStatus();
+          // Server can request a full reload (dashboard per-screen reload).
+          if (st && st.reload === true) {
+            isFetching = false;
+            try {
+              if (isDebug()) {
+                ensureDebugOverlay();
+                setDebugText("reload requested | " + new Date().toLocaleTimeString());
+              }
+            } catch (e) {}
+            try {
+              setTimeout(() => {
+                try {
+                  window.location.reload();
+                } catch (e) {
+                  window.location.href = window.location.href;
+                }
+              }, 200);
+            } catch (e) {
+              try {
+                window.location.reload();
+              } catch (e2) {
+                window.location.href = window.location.href;
+              }
+            }
+            return;
+          }
           if (st && st._notModified) {
             rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
 
@@ -3314,6 +3340,26 @@
           
           if (msg.type === "pong") {
             // Keepalive response
+            return;
+          }
+
+          if (msg.type === "reload") {
+            if (isDebug()) console.log("[WS] reload received");
+            try {
+              setTimeout(() => {
+                try {
+                  window.location.reload();
+                } catch (e) {
+                  window.location.href = window.location.href;
+                }
+              }, 200);
+            } catch (e) {
+              try {
+                window.location.reload();
+              } catch (e2) {
+                window.location.href = window.location.href;
+              }
+            }
             return;
           }
           
