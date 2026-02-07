@@ -102,9 +102,10 @@ body.display-board{
   --slot-pad:11px;
   --slot-gap:9px;
   --slot-radius:16px;
-  --slot-chip:clamp(11px, 0.78vw, 16px);
-  --slot-sub:clamp(13px, 0.95vw, 20px);
-  --slot-meta:clamp(12px, 0.82vw, 18px);
+  /*Increased font sizes for TV legibility*/
+  --slot-chip:clamp(14px, 1.2vw, 24px);
+  --slot-sub:clamp(16px, 1.5vw, 28px);
+  --slot-meta:clamp(14px, 1.1vw, 22px);
 
   background-color:var(--bg-deep);
   color:#f8fafc;
@@ -838,18 +839,18 @@ body.display-board .board-right{
 
 /* ===== Make lists denser + usable on TV ===== */
 body.display-board .slot-item{
-  padding: 10px;            /* كان كبير */
-  gap: 8px;
+  padding: 12px;            /* زيادة للمساحة */
+  gap: 10px;
 }
 
 body.display-board .slot-teacher{
   font-size: var(--slot-sub);
-  line-height: 1.15;
+  line-height: 1.25;
 }
 
 body.display-board .slot-class,
 body.display-board .slot-subject{
-  padding: .22rem .55rem;
+  padding: .3rem .6rem;
 }
 
 /* ===== Give honor board minimum height ===== */
