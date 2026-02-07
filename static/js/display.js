@@ -1979,34 +1979,62 @@
 
       const img = document.createElement("img");
       img.alt = name;
-      // ✅ تحسين performance: lazy loading للصور
       img.loading = "lazy";
-      // ✅ تحسين security: منع CORS issues
       img.crossOrigin = "anonymous";
-      // ✅ منع layout shift أثناء تحميل الصورة
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-      img.src =
-        src ||
-        // ✨ أيقونة مسطحة نظيفة للتميز - Clean Excellence Badge 2026
-        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%231e293b'/%3E%3Cpath d='M100,50 L115,85 L155,85 L125,110 L135,150 L100,125 L65,150 L75,110 L45,85 L85,85 Z' fill='%23fbbf24'/%3E%3Ccircle cx='100' cy='100' r='10' fill='%23fff'/%3E%3C/svg%3E";
+      img.className = "w-full h-full object-cover rounded-2xl border-2 border-amber-500/20 shadow-2xl transition-transform duration-700 hover:scale-105";
+      
+      const fallbackSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%231e293b'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2.5' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g1)'/%3E%3Cpath d='M100,40 L120,80 L165,85 L130,115 L140,160 L100,135 L60,160 L70,115 L35,85 L80,80 Z' fill='%23fbbf24' filter='url(%23glow)'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%23fff' opacity='0.9'/%3E%3C/svg%3E";
+      
+      img.src = src || fallbackSvg;
+
+      // Wrap image container for glow effect
+      const imgContainer = document.createElement("div");
+      imgContainer.className = "relative shrink-0 w-[clamp(120px,8vw,180px)] h-[clamp(120px,8vw,180px)] rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.15)] group-hover:shadow-[0_0_50px_rgba(245,158,11,0.3)] transition-shadow duration-500";
+      
+      // Golden border accent
+      const borderAccent = document.createElement("div");
+      borderAccent.className = "absolute inset-0 rounded-2xl border border-amber-500/30 rotate-3 z-0";
+      imgContainer.appendChild(borderAccent);
+      imgContainer.appendChild(img);
+
 
       const meta = document.createElement("div");
-      meta.className = "honor-meta";
+      meta.className = "honor-meta flex flex-col justify-center min-w-0 flex-1 pl-4";
+
+      // Badge/Label above name
+      const badgeRow = document.createElement("div");
+      badgeRow.className = "flex items-center gap-2 mb-2";
+      const badge = document.createElement("span");
+      badge.className = "px-3 py-1 rounded-full text-[0.65em] font-bold tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 border border-amber-500/30 shadow-sm flex items-center gap-1";
+      badge.innerHTML = "<span>⭐</span> لوحة التميز";
+      badgeRow.appendChild(badge);
+      meta.appendChild(badgeRow);
 
       const nm = document.createElement("div");
-      nm.className = "honor-name";
+      nm.className = "honor-name font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-200 drop-shadow-sm mb-2";
+      // Applying dynamic font size class via app.css logic, but ensured here just in case
+      nm.style.fontSize = "clamp(2rem, 3.5vw, 4rem)";
+      nm.style.lineHeight = "1.1";
       nm.textContent = name;
 
       const rs = document.createElement("div");
-      rs.className = "honor-reason";
-      rs.textContent = reason || "—";
+      rs.className = "honor-reason relative px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-indigo-100/90 text-[clamp(1rem,1.4vw,1.6rem)] leading-relaxed shadow-inner overflow-hidden min-h-[3.5em] flex items-center";
+      
+      // Decorative quote mark
+      const quote = document.createElement("div");
+      quote.className = "absolute top-1 right-2 text-4xl text-white/5 font-serif leading-none select-none";
+      quote.textContent = "“";
+      rs.appendChild(quote);
+      
+      const rsText = document.createElement("span");
+      rsText.className = "relative z-10 w-full line-clamp-2";
+      rsText.textContent = reason || "تميز وإبداع مستمر";
+      rs.appendChild(rsText);
 
       meta.appendChild(nm);
       meta.appendChild(rs);
 
-      wrap.appendChild(img);
+      wrap.appendChild(imgContainer);
       wrap.appendChild(meta);
 
       dom.exSlot.appendChild(wrap);
@@ -2079,68 +2107,104 @@
     const dutyType = safeText(it.duty_type || "");
     const dutyLabel = safeText(it.duty_label || (dutyType === "supervision" ? "إشراف" : "مناوبة"));
     const location = safeText(it.location || "");
+    const isSup = dutyType === "supervision";
 
-    // Luxury container
+    // Luxury container - Deep Glass Theme
     const row = document.createElement("div");
     row.className =
-      "duty-item relative flex items-center justify-between gap-5 px-6 py-4 rounded-2xl " +
-      "bg-gradient-to-l from-white/5 to-white/[0.02] border border-white/10 " +
-      "shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md overflow-hidden group";
+      "duty-item relative flex items-center justify-between gap-4 px-6 py-4 rounded-xl " +
+      "border border-white/10 backdrop-blur-md transition-all duration-300 " +
+      "hover:border-white/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] " +
+      "bg-gradient-to-r from-[#0f172a]/60 to-[#1e293b]/60 group overflow-hidden shadow-lg";
 
-    // Glow effect via pseudo-element manually
-    const glow = document.createElement("div");
-    glow.className = "absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100";
-    row.appendChild(glow);
+    // 1. Accent line on the right (RTL start)
+    const accent = document.createElement("div");
+    accent.className = "absolute right-0 top-0 bottom-0 w-[5px] " + 
+        (isSup 
+          ? "bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(16,185,129,0.6)]" 
+          : "bg-gradient-to-b from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(245,158,11,0.6)]");
+    row.appendChild(accent);
 
-    const left = document.createElement("div");
-    left.className = "flex items-center gap-5 min-w-0 z-10";
+    // 2. Info Section (Avatar + Name)
+    const infoSection = document.createElement("div");
+    infoSection.className = "flex items-center gap-5 min-w-0 z-10 pr-3";
 
-    // Premium Avatar
+    // Avatar
     const avatar = document.createElement("div");
     avatar.className =
-      "w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 " +
-      "border border-white/10 shadow-inner flex items-center justify-center " +
-      "text-indigo-200 text-lg font-black shrink-0";
-    avatar.textContent = teacher ? teacher.slice(0, 1) : "—";
+      "relative w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] shrink-0 " +
+      "border border-white/10 " + 
+      (isSup 
+        ? "bg-gradient-to-br from-emerald-500/20 to-emerald-900/30 ring-1 ring-emerald-500/30" 
+        : "bg-gradient-to-br from-amber-500/20 to-amber-900/30 ring-1 ring-amber-500/30");
+    
+    const avatarInner = document.createElement("span");
+    avatarInner.textContent = teacher ? teacher.slice(0, 1) : "—";
+    avatarInner.className = "drop-shadow-md opacity-90";
+    avatar.appendChild(avatarInner);
 
+    // Meta (Name + Loc)
     const meta = document.createElement("div");
-    meta.className = "min-w-0 flex flex-col justify-center";
+    meta.className = "min-w-0 flex flex-col justify-center gap-1.5";
 
     const nm = document.createElement("div");
-    // Added flex to align name and location side-by-side
-    nm.className = "duty-name text-xl font-bold text-white truncate drop-shadow-sm flex items-center";
+    nm.className = "duty-name text-white font-bold leading-none truncate flex items-center gap-3"; 
     
     const nameSpan = document.createElement("span");
-    nameSpan.className = "truncate";
     nameSpan.textContent = teacher || "—";
     nm.appendChild(nameSpan);
 
-    // Only show location if present
     if (location) {
       const locSpan = document.createElement("span");
-      // Smaller font, muted color, distinct background
-      locSpan.className = "mr-3 text-[0.6em] opacity-90 font-normal bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-400/20 text-indigo-100/90 whitespace-nowrap flex items-center gap-1";
-      locSpan.textContent = "📍 " + location;
+      // Modern Glass Pill
+      locSpan.className = 
+        "flex items-center gap-1.5 px-3 py-1 rounded-md text-[0.55em] font-bold tracking-wider " +
+        "bg-white/5 border border-white/10 text-indigo-100/90 shadow-sm whitespace-nowrap";
+      
+      const pin = document.createElement("span");
+      pin.textContent = "📍";
+      pin.className = "text-[1em] opacity-80";
+      
+      const txt = document.createElement("span");
+      txt.textContent = location;
+
+      locSpan.appendChild(pin);
+      locSpan.appendChild(txt);
       nm.appendChild(locSpan);
     }
 
     meta.appendChild(nm);
-    // Removed the 'sub' div entirely as location is now inline
-    
-    left.appendChild(avatar);
-    left.appendChild(meta);
+    infoSection.appendChild(avatar);
+    infoSection.appendChild(meta);
 
-    // Badge
+    // 3. Badge (Left Side)
     const badge = document.createElement("div");
-    const isSup = dutyType === "supervision";
-    badge.className =
-      "duty-role relative z-10 shrink-0 px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg " +
-      (isSup
-        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-        : "bg-amber-500/20 text-amber-200 border-amber-500/30");
-    badge.textContent = dutyLabel;
+    badge.className = "relative z-10 shrink-0";
+    
+    // Glow effect behind badge
+    const badgeGlow = document.createElement("div");
+    badgeGlow.className = "absolute inset-0 blur-xl opacity-40 " + (isSup ? "bg-emerald-500" : "bg-amber-500");
+    badge.appendChild(badgeGlow);
 
-    row.appendChild(left);
+    const badgeInner = document.createElement("div");
+    badgeInner.className =
+      "relative duty-role px-4 py-2 rounded-lg text-sm font-black tracking-wide border shadow-2xl flex items-center gap-2 " +
+      (isSup
+        ? "bg-[#064e3b]/40 text-emerald-200 border-emerald-500/30"
+        : "bg-[#78350f]/40 text-amber-200 border-amber-500/30");
+    
+    const badgeIcon = document.createElement("span");
+    badgeIcon.textContent = isSup ? "🛡️" : "⭐"; 
+    badgeIcon.className = "opacity-90 grayscale-[0.2]"; 
+    
+    const badgeText = document.createElement("span");
+    badgeText.textContent = dutyLabel;
+    
+    badgeInner.appendChild(badgeIcon);
+    badgeInner.appendChild(badgeText);
+    badge.appendChild(badgeInner);
+
+    row.appendChild(infoSection);
     row.appendChild(badge);
     return row;
   }
