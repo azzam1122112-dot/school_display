@@ -1107,6 +1107,7 @@
     try {
       if (!lastPayloadForFiltering) return false;
       const snap = lastPayloadForFiltering;
+      const prevActiveIdx = rt && rt.activePeriodIndex ? Number(rt.activePeriodIndex) : null;
       const nextP = snap.next_period || null;
       if (!nextP || typeof nextP !== "object") return false;
 
@@ -1174,11 +1175,21 @@
         rt.activePeriodIndex = getPeriodIndex(nextP) || rt.activePeriodIndex;
         rt.activeFromHM = fromHM;
       } else if (stType === "break") {
+        // If we just finished a period and entered a break, standby for the finished period must disappear.
+        // We don't always have the next period index during breaks, so we advance optimistically.
+        if (prevActiveIdx && isFinite(prevActiveIdx) && prevActiveIdx > 0) {
+          rt.activePeriodIndex = prevActiveIdx + 1;
+        }
         rt.activeFromHM = fromHM;
       } else if (stType === "before") {
         // If we're waiting for a known next block, keep runtime aligned with its start.
         rt.activeFromHM = fromHM;
       }
+
+      // Immediately re-filter standby list (removes ended standby without waiting for server cache/ETag).
+      try {
+        renderStandby((snap && snap.standby) || []);
+      } catch (e) {}
 
       // Prevent duplicate 00:00 handling for the just-applied optimistic state.
       lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(fromHM || "") + "||" + safeText(toHM || "");
@@ -1706,7 +1717,7 @@
   }
 
   // ===== Slot builder =====
-  function buildSlotItem({ clsName, subj, teacher, badgeText, badgeKind }) {
+  function buildSlotItem({ clsName, subj, teacher, badgeText, badgeKind, showChip }) {
     const item = document.createElement("div");
     item.className = "slot-item";
 
@@ -1727,12 +1738,15 @@
     badges.appendChild(cls);
     badges.appendChild(subject);
 
-    const chip = document.createElement("span");
-    chip.className = "chip num-font " + (badgeKind === "warn" ? "chip-warn" : "chip-ok");
-    chip.textContent = safeText(badgeText || "حصة");
-
     top.appendChild(badges);
-    top.appendChild(chip);
+
+    const chipEnabled = showChip !== false;
+    if (chipEnabled) {
+      const chip = document.createElement("span");
+      chip.className = "chip num-font " + (badgeKind === "warn" ? "chip-warn" : "chip-ok");
+      chip.textContent = safeText(badgeText || "حصة");
+      top.appendChild(chip);
+    }
 
     const teacherRow = document.createElement("div");
     teacherRow.className = "slot-teacher";
@@ -1823,6 +1837,7 @@
             teacher: x.teacher_name || x.teacher || "",
             badgeText: formatPeriodTitle(x),
             badgeKind: "ok",
+            showChip: false,
           })
         );
       });
@@ -1875,6 +1890,7 @@
             teacher: x.teacher_name || x.teacher || x.teacher_full_name || "—",
             badgeText: formatPeriodTitle(x),
             badgeKind: "warn",
+            showChip: true,
           })
         );
       });
