@@ -2001,35 +2001,15 @@
       const meta = document.createElement("div");
       meta.className = "honor-meta flex flex-col justify-center min-w-0 flex-1 pl-4";
 
-      // Badge/Label above name
-      const badgeRow = document.createElement("div");
-      badgeRow.className = "flex items-center gap-2 mb-2";
-      const badge = document.createElement("span");
-      badge.className = "px-3 py-1 rounded-full text-[0.65em] font-bold tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 border border-amber-500/30 shadow-sm flex items-center gap-1";
-      badge.innerHTML = "<span>⭐</span> لوحة التميز";
-      badgeRow.appendChild(badge);
-      meta.appendChild(badgeRow);
-
       const nm = document.createElement("div");
-      nm.className = "honor-name font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-200 drop-shadow-sm mb-2";
-      // Applying dynamic font size class via app.css logic, but ensured here just in case
-      nm.style.fontSize = "clamp(2rem, 3.5vw, 4rem)";
-      nm.style.lineHeight = "1.1";
+      // Clean, professional: no colored background/gradient behind the name
+      nm.className = "honor-name mb-2";
       nm.textContent = name;
 
       const rs = document.createElement("div");
-      rs.className = "honor-reason relative px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-indigo-100/90 text-[clamp(1rem,1.4vw,1.6rem)] leading-relaxed shadow-inner overflow-hidden min-h-[3.5em] flex items-center";
-      
-      // Decorative quote mark
-      const quote = document.createElement("div");
-      quote.className = "absolute top-1 right-2 text-4xl text-white/5 font-serif leading-none select-none";
-      quote.textContent = "“";
-      rs.appendChild(quote);
-      
-      const rsText = document.createElement("span");
-      rsText.className = "relative z-10 w-full line-clamp-2";
-      rsText.textContent = reason || "تميز وإبداع مستمر";
-      rs.appendChild(rsText);
+      // Minimal glass box (CSS-driven) for a cleaner, more professional look
+      rs.className = "honor-reason";
+      rs.textContent = reason || "—";
 
       meta.appendChild(nm);
       meta.appendChild(rs);

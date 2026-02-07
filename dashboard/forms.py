@@ -512,6 +512,8 @@ class ExcellenceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if "teacher_name" in self.fields:
+            self.fields["teacher_name"].label = "اسم المتميز/ة"
         if "photo" in self.fields and hasattr(self.fields["photo"].widget, "attrs"):
             self.fields["photo"].widget.attrs.setdefault("accept", "image/*")
 
