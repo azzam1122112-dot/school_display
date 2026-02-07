@@ -2944,6 +2944,17 @@
   let isFetching = false;
 
   function shouldPauseWhenHidden() {
+    // Override switches (useful for TVs/embedded browsers that misreport visibility):
+    // - ?nopause=1  -> never pause polling
+    // - ?pause=1    -> always allow pausing when hidden
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const noPause = (qs.get("nopause") || "").trim();
+      if (noPause === "1" || noPause.toLowerCase() === "true" || noPause.toLowerCase() === "yes") return false;
+      const forcePause = (qs.get("pause") || "").trim();
+      if (forcePause === "1" || forcePause.toLowerCase() === "true" || forcePause.toLowerCase() === "yes") return true;
+    } catch (e) {}
+
     // Many embedded/TV browsers misreport Page Visibility as hidden even while displayed.
     // In those cases, pausing polling makes the screen appear "خامله" and prevents wake-up.
     const ua = (navigator && navigator.userAgent) ? String(navigator.userAgent) : "";
