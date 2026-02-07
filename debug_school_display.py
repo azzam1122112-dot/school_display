@@ -32,7 +32,7 @@ for school in schools:
     # 3. جدول اليوم الحالي
     from datetime import datetime
     today = datetime.now()
-    weekday = (today.weekday() + 1) % 7  # Sunday=0
+    weekday = today.weekday() + 1  # DB: Monday=1 .. Sunday=7
     day_schedule = DaySchedule.objects.filter(settings=settings, weekday=weekday).first()
     if not day_schedule:
         print(f"❌ لا يوجد جدول ليوم اليوم ({day_schedule.get_weekday_display() if day_schedule else weekday}) للمدرسة '{school.name}'.")

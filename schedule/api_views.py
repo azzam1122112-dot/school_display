@@ -1737,7 +1737,7 @@ def build_steady_snapshot(
         "now": now.isoformat(),
         "meta": {
             "date": str(now.date()),
-            "weekday": ((now.date().weekday() + 1) % 7),
+            "weekday": (now.date().weekday() + 1),
             "is_school_day": steady_state != "NO_SCHEDULE_TODAY",
             "is_active_window": False,
             "active_window": None,
@@ -1865,9 +1865,9 @@ def _build_final_snapshot(
                 meta = snap.get("meta") or {}
                 weekday_raw = meta.get("weekday")
                 try:
-                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
                 except Exception:
-                    weekday = (timezone.localdate().weekday() + 1) % 7
+                    weekday = timezone.localdate().weekday() + 1
                 period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
                 if period_index:
                     snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
@@ -1881,9 +1881,9 @@ def _build_final_snapshot(
             meta = snap.get("meta") or {}
             weekday_raw = meta.get("weekday")
             try:
-                weekday = int(weekday_raw) if weekday_raw not in (None, "") else ((timezone.localdate().weekday() + 1) % 7)
+                weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
             except Exception:
-                weekday = (timezone.localdate().weekday() + 1) % 7
+                weekday = timezone.localdate().weekday() + 1
 
             curp = snap.get("current_period")
             if isinstance(curp, dict) and _is_missing_index(curp):

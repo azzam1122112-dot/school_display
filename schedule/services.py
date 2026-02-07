@@ -45,19 +45,33 @@ def _weekday_sunday_based(py_weekday: int) -> int:
     return (py_weekday + 1) % 7
 
 
+def _weekday_db_monday_based(py_weekday: int) -> int:
+    """Python: Monday=0..Sunday=6 -> DB: Monday=1..Sunday=7."""
+    return py_weekday + 1
+
+
 def compute_today_state(settings_obj: SchoolSettings) -> dict:
     now = timezone.localtime()
     today_zero = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    weekday_sunday0 = _weekday_sunday_based(now.weekday())
+    weekday_db = _weekday_db_monday_based(now.weekday())
+    weekday_legacy = _weekday_sunday_based(now.weekday())
     try:
         day = (
             DaySchedule.objects.select_related("settings")
             .prefetch_related("periods", "breaks")
-            .get(settings=settings_obj, weekday=weekday_sunday0)
+            .get(settings=settings_obj, weekday=weekday_db)
         )
     except DaySchedule.DoesNotExist:
-        return {"state": State(type="before").__dict__, "day": None}
+        # Backward compatibility for older data (Sunday=0..Saturday=6)
+        try:
+            day = (
+                DaySchedule.objects.select_related("settings")
+                .prefetch_related("periods", "breaks")
+                .get(settings=settings_obj, weekday=weekday_legacy)
+            )
+        except DaySchedule.DoesNotExist:
+            return {"state": State(type="before").__dict__, "day": None}
 
     if not day.is_active:
         return {"state": State(type="off").__dict__, "day": None}
@@ -265,15 +279,35 @@ def compute_today_state(settings_obj: SchoolSettings) -> dict:
 
 def get_current_lessons(settings: SchoolSettings) -> dict:
     now = timezone.localtime()
-    weekday = _weekday_sunday_based(now.weekday())
+
+    weekday_db = _weekday_db_monday_based(now.weekday())
+    weekday_legacy = _weekday_sunday_based(now.weekday())
 
     try:
         day = DaySchedule.objects.get(
             settings=settings,
-            weekday=weekday,
+            weekday=weekday_db,
             is_active=True,
         )
     except DaySchedule.DoesNotExist:
+        # Backward compatibility for older data (Sunday=0..Saturday=6)
+        try:
+            day = DaySchedule.objects.get(
+                settings=settings,
+                weekday=weekday_legacy,
+                is_active=True,
+            )
+            weekday_db = weekday_legacy
+        except DaySchedule.DoesNotExist:
+            return {
+                "period": None,
+                "lessons": [],
+            }
+
+    weekday = weekday_db
+
+    # continue with resolved weekday
+    if not day:
         return {
             "period": None,
             "lessons": [],

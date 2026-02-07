@@ -52,8 +52,11 @@ def build_day_snapshot(settings, now=None):
     now = timezone.localtime(now, tz)
     today = now.date()
 
-    # ✅ FIX: map python weekday -> DB weekday
-    weekday = _normalize_weekday_for_db(today.weekday())
+    py_weekday = today.weekday()
+    # DB: Monday=1 .. Sunday=7
+    weekday = _normalize_weekday_for_db(py_weekday)
+    # Legacy deployments (old dashboard) used: Sunday=0 .. Saturday=6
+    weekday_legacy = (py_weekday + 1) % 7
     
     # ✅ Test mode override: للسوبر أدمن لتشغيل الشاشة في أيام الإجازة
     test_override = getattr(settings, "test_mode_weekday_override", None)
@@ -86,6 +89,13 @@ def build_day_snapshot(settings, now=None):
         # Let's assume there is only one DaySchedule per SchoolSettings per Weekday.
         # But we must be careful if the user *switched* it recently.
         days = list(day_qs.filter(weekday=weekday, is_active=True))
+
+        # Backward compatibility: if schedules were saved with legacy weekday indexing.
+        if not days and weekday_legacy != weekday:
+            legacy_days = list(day_qs.filter(weekday=weekday_legacy, is_active=True))
+            if legacy_days:
+                days = legacy_days
+                weekday = weekday_legacy
 
     if not days:
         # Optimization: Strict stop on holidays (reduced to 15m to allow updates/wake-up)

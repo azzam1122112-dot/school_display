@@ -78,18 +78,18 @@ if TYPE_CHECKING:
 UserModel = get_user_model()
 
 WEEKDAY_MAP = {
-    0: "الأحد",
     1: "الاثنين",
     2: "الثلاثاء",
     3: "الأربعاء",
     4: "الخميس",
     5: "الجمعة",
     6: "السبت",
+    7: "الأحد",
 }
 
-# أيام الدراسة الافتراضية
+# أيام الدراسة الافتراضية (الأحد → الخميس)
 SCHOOL_WEEK = [
-    (0, "الأحد"),
+    (7, "الأحد"),
     (1, "الاثنين"),
     (2, "الثلاثاء"),
     (3, "الأربعاء"),
@@ -644,7 +644,7 @@ def days_list(request):
             DaySchedule.objects.create(
                 settings=settings_obj,
                 weekday=w,
-                periods_count=7 if w in (0, 1) else 6,
+                periods_count=7 if w in (7, 1) else 6,
                 is_active=True,
             )
 
@@ -694,6 +694,9 @@ def days_list(request):
 @manager_required
 @transaction.atomic
 def day_edit(request, weekday: int):
+    # Backward compatibility: older dashboards used Sunday=0
+    if weekday == 0:
+        weekday = 7
     if weekday not in SCHOOL_WEEKDAY_IDS:
         messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
         return redirect("dashboard:days_list")
