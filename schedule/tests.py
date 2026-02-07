@@ -5,6 +5,20 @@ from django.utils import timezone
 
 from core.tests_utils import make_active_school_with_screen
 
+
+def _assert_snapshot_cache_control(resp) -> None:
+    cc = (resp.get("Cache-Control") or "").strip().lower()
+    # Successful snapshot responses intentionally allow small edge caching while
+    # forcing browsers to revalidate.
+    # Examples: "public, max-age=0, must-revalidate, s-maxage=10"
+    if resp.status_code in (200, 304):
+        assert "max-age=0" in cc, cc
+        assert "must-revalidate" in cc, cc
+        assert "s-maxage" in cc, cc
+        return
+    # Errors should remain no-store.
+    assert cc == "no-store", cc
+
 class DisplayApiAliasesTests(TestCase):
     def test_snapshot_head_ok_with_query_device_key(self):
         bundle = make_active_school_with_screen(max_screens=3)
@@ -56,7 +70,7 @@ class DisplayApiAliasesTests(TestCase):
         )
         self.assertEqual(r.status_code, 200)
 
-        self.assertEqual(r.get("Cache-Control"), "no-store")
+        _assert_snapshot_cache_control(r)
         self.assertTrue(r.get("ETag"))
 
         vary = (r.get("Vary") or "")
@@ -73,7 +87,7 @@ class DisplayApiAliasesTests(TestCase):
         )
         self.assertEqual(r.status_code, 200)
 
-        self.assertEqual(r.get("Cache-Control"), "no-store")
+        _assert_snapshot_cache_control(r)
         self.assertTrue(r.get("ETag"))
         vary = (r.get("Vary") or "")
         self.assertNotIn("Cookie", vary)
@@ -93,7 +107,7 @@ class DisplayApiAliasesTests(TestCase):
         r2 = self.client.get(url, **{"HTTP_IF_NONE_MATCH": etag, "HTTP_X_DISPLAY_DEVICE": "devA"})
         self.assertEqual(r2.status_code, 304)
         self.assertEqual(r2.get("ETag"), etag)
-        self.assertEqual(r2.get("Cache-Control"), "no-store")
+        _assert_snapshot_cache_control(r2)
 
     def test_snapshot_rate_limit(self):
         bundle = make_active_school_with_screen(max_screens=3)

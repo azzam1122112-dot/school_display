@@ -39,6 +39,27 @@ from schedule.cache_utils import (
 logger = logging.getLogger(__name__)
 
 
+def _cache_is_shared() -> bool:
+    """Best-effort check whether the configured cache is shared across processes.
+
+    In production we expect Redis (django-redis). If Redis isn't configured and
+    LocMemCache is used, relying on cache-only revision comparisons can cause
+    some devices (e.g., TVs) to never detect updates if they hit a different
+    worker/process.
+    """
+    try:
+        if str(getattr(dj_settings, "REDIS_URL", "") or "").strip():
+            return True
+    except Exception:
+        pass
+    try:
+        default_cache = dj_settings.CACHES.get("default", {})
+        backend = str(default_cache.get("BACKEND", "") or "").lower()
+        return "django_redis" in backend or "rediscache" in backend
+    except Exception:
+        return False
+
+
 def _log_cache_env(logger: logging.Logger) -> None:
     try:
         default_cache = dj_settings.CACHES.get("default", {})
@@ -255,11 +276,14 @@ def _get_school_revision_cached(school_id: int) -> tuple[int | None, str]:
     if not school_id:
         return None, "none"
 
-    _metrics_incr("metrics:status:cache_get")
-    cached = get_cached_schedule_revision_for_school_id(int(school_id))
-    if cached is not None:
-        _metrics_incr("metrics:status:rev_cache_hit")
-        return int(cached), "cache"
+    # If cache is not shared (e.g. LocMemCache), do not trust cached values.
+    # Always refresh from DB to ensure all workers see updates.
+    if _cache_is_shared():
+        _metrics_incr("metrics:status:cache_get")
+        cached = get_cached_schedule_revision_for_school_id(int(school_id))
+        if cached is not None:
+            _metrics_incr("metrics:status:rev_cache_hit")
+            return int(cached), "cache"
 
     try:
         _metrics_incr("metrics:status:rev_db")
@@ -964,8 +988,27 @@ def status(request, token: str | None = None):
     except Exception:
         school_id = None
 
+    # If cache is not shared (LocMem / missing Redis), fall back to DB so different
+    # workers/processes don't disagree and leave some devices stuck.
+    if (not school_id) and (not _cache_is_shared()):
+        try:
+            qs = DisplayScreen.objects.filter(is_active=True)
+            # Prefer exact token match; short_code is not expected here (token length check in _extract_token).
+            scr = qs.filter(token__iexact=token_value).only("school_id").first()
+            if scr and getattr(scr, "school_id", None):
+                school_id = int(scr.school_id)
+                try:
+                    cache.set(f"display:token_map:{token_hash}", {"school_id": int(school_id)}, timeout=60 * 60)
+                except Exception:
+                    pass
+        except Exception:
+            school_id = school_id
+
     if client_v is not None:
-        current_rev, rev_source = _get_school_revision_cache_only(int(school_id or 0))
+        if _cache_is_shared():
+            current_rev, rev_source = _get_school_revision_cache_only(int(school_id or 0))
+        else:
+            current_rev, rev_source = _get_school_revision_cached(int(school_id or 0))
 
         _bump_metric("total")
 

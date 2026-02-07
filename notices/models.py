@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -36,6 +36,37 @@ def _excellence_upload_to(instance: "Excellence", filename: str) -> str:
     ext = (ext or "").lower()[:10]  # تنظيف بسيط للاسم
     now = datetime.now()
     return f"excellence/{now:%Y}/{now:%m}/{uuid.uuid4().hex}{ext or '.jpg'}"
+
+
+_EXCELLENCE_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _validate_excellence_photo_extension(value: Any) -> None:
+    """
+    يتحقق من امتداد الملف للصور المرفوعة لبطاقة التميز.
+
+    ملاحظة توافقية:
+    بعض السجلات القديمة قد تحتوي اسم ملف بدون امتداد (كما في التخزين سابقًا)،
+    وعند تعديل السجل بدون رفع صورة جديدة يعيد Django تمرير الملف الحالي عبر
+    Validators مما يسبب خطأ "امتداد الملف \"\"". لذلك نسمح بالامتداد الفارغ.
+    """
+    if not value:
+        return
+
+    name = (getattr(value, "name", "") or "").strip()
+    _, ext = os.path.splitext(name)
+    ext = (ext or "").lower()
+
+    # ✅ توافق: اسم ملف بدون امتداد
+    if ext == "":
+        return
+
+    if ext not in _EXCELLENCE_ALLOWED_EXTS:
+        raise ValidationError(
+            f"امتداد الملف \"{ext.lstrip('.')}\" غير مسموح به. "
+            f"الامتدادات المسموح بها هي: {', '.join([e.lstrip('.') for e in sorted(_EXCELLENCE_ALLOWED_EXTS)])}.",
+            code="invalid_extension",
+        )
 
 
 # ===========================
@@ -222,11 +253,7 @@ class Excellence(models.Model):
         upload_to=_excellence_upload_to,
         blank=True,
         null=True,
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["jpg", "jpeg", "png", "webp"]
-            )
-        ],
+        validators=[_validate_excellence_photo_extension],
         help_text="الصيغ المدعومة: JPG / JPEG / PNG / WEBP.",
     )
 
