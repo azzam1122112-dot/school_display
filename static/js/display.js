@@ -2083,7 +2083,7 @@
     // Luxury container
     const row = document.createElement("div");
     row.className =
-      "relative flex items-center justify-between gap-5 px-6 py-4 rounded-2xl " +
+      "duty-item relative flex items-center justify-between gap-5 px-6 py-4 rounded-2xl " +
       "bg-gradient-to-l from-white/5 to-white/[0.02] border border-white/10 " +
       "shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md overflow-hidden group";
 
@@ -2107,11 +2107,11 @@
     meta.className = "min-w-0 flex flex-col justify-center";
 
     const nm = document.createElement("div");
-    nm.className = "text-xl font-bold text-white truncate drop-shadow-sm";
+    nm.className = "duty-name text-xl font-bold text-white truncate drop-shadow-sm";
     nm.textContent = teacher || "—";
 
     const sub = document.createElement("div");
-    sub.className = "flex items-center gap-2 text-sm text-indigo-200/70 truncate mt-0.5";
+    sub.className = "flex items-center gap-2 text-indigo-200/70 truncate mt-0.5";
     // Location icon
     const locIcon = document.createElement("span");
     locIcon.textContent = "📍";
@@ -2132,7 +2132,7 @@
     const badge = document.createElement("div");
     const isSup = dutyType === "supervision";
     badge.className =
-      "relative z-10 shrink-0 px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg " +
+      "duty-role relative z-10 shrink-0 px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg " +
       (isSup
         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
         : "bg-amber-500/20 text-amber-200 border-amber-500/30");
