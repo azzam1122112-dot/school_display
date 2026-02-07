@@ -2107,24 +2107,26 @@
     meta.className = "min-w-0 flex flex-col justify-center";
 
     const nm = document.createElement("div");
-    nm.className = "duty-name text-xl font-bold text-white truncate drop-shadow-sm";
-    nm.textContent = teacher || "—";
+    // Added flex to align name and location side-by-side
+    nm.className = "duty-name text-xl font-bold text-white truncate drop-shadow-sm flex items-center";
+    
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "truncate";
+    nameSpan.textContent = teacher || "—";
+    nm.appendChild(nameSpan);
 
-    const sub = document.createElement("div");
-    sub.className = "flex items-center gap-2 text-indigo-200/70 truncate mt-0.5";
-    // Location icon
-    const locIcon = document.createElement("span");
-    locIcon.textContent = "📍";
-    locIcon.className = "opacity-60 grayscale";
-    
-    const locText = document.createElement("span");
-    locText.textContent = location || "غير محدد";
-    
-    sub.appendChild(locIcon);
-    sub.appendChild(locText);
+    // Only show location if present
+    if (location) {
+      const locSpan = document.createElement("span");
+      // Smaller font, muted color, distinct background
+      locSpan.className = "mr-3 text-[0.6em] opacity-90 font-normal bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-400/20 text-indigo-100/90 whitespace-nowrap flex items-center gap-1";
+      locSpan.textContent = "📍 " + location;
+      nm.appendChild(locSpan);
+    }
 
     meta.appendChild(nm);
-    meta.appendChild(sub);
+    // Removed the 'sub' div entirely as location is now inline
+    
     left.appendChild(avatar);
     left.appendChild(meta);
 

@@ -714,17 +714,20 @@ body.display-board .slot-class{
 body.display-board .slot-subject{
   display:inline-flex;
   align-items:center;
-  padding:.28rem .65rem;
+  padding:.28rem .75rem;
   border-radius:999px;
-  background:rgba(14,165,233,.14);
-  border:1px solid rgba(14,165,233,.28);
-  color:#fff;
+  background:linear-gradient(135deg, rgba(14,165,233,.25), rgba(14,165,233,.1));
+  border:1px solid rgba(14,165,233,.4);
+  color:#e0f2fe;
   font-weight:900;
   font-size:var(--slot-chip);
   white-space:nowrap;
   max-width:100%;
   overflow:hidden;
   text-overflow:ellipsis;
+  box-shadow:0 0 12px rgba(14,165,233,.15);
+  text-shadow:0 0 8px rgba(14,165,233,.4);
+  backdrop-filter:blur(4px);
 }
 body.display-board .slot-teacher{
   display:flex;
@@ -763,9 +766,23 @@ body.display-board .chip{
   font-size:var(--chip);
   font-weight:900;
   white-space:nowrap;
+  backdrop-filter:blur(4px);
+  box-shadow:0 2px 5px rgba(0,0,0,0.2);
 }
-body.display-board .chip-ok{color:var(--accent-ok);background:rgba(34,197,94,.16);border-color:rgba(34,197,94,.30);}
-body.display-board .chip-warn{color:var(--accent-warn);background:rgba(251,113,133,.16);border-color:rgba(251,113,133,.30);}
+body.display-board .chip-ok{
+  color:#86efac;
+  background:linear-gradient(135deg, rgba(34,197,94,.25), rgba(34,197,94,.08));
+  border-color:rgba(34,197,94,.5);
+  box-shadow:0 0 15px rgba(34,197,94,.2);
+  text-shadow:0 0 12px rgba(34,197,94,.4);
+}
+body.display-board .chip-warn{
+  color:#fda4af;
+  background:linear-gradient(135deg, rgba(244,63,94,.25), rgba(244,63,94,.08));
+  border-color:rgba(244,63,94,.5);
+  box-shadow:0 0 15px rgba(244,63,94,.2);
+  text-shadow:0 0 12px rgba(244,63,94,.4);
+}
 body.display-board .chip-muted{opacity:.75;}
 
 /* Fullscreen button */
