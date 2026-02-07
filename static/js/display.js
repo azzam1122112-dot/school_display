@@ -419,6 +419,7 @@
     wsRetryCount: 0, // consecutive connection failures
     wsReconnectTimer: null, // reconnect timer ID
     pendingRev: null, // revision received from WS but not yet fetched
+    forceFetchSnapshot: false, // set true to bypass /status once and fetch snapshot immediately
     wsEnabled: false, // feature flag from server (TBD: read from snapshot meta)
     wsPingInterval: null, // keepalive ping timer
     wsMaxRetries: 10, // max reconnection attempts before giving up
@@ -2994,6 +2995,12 @@
         if (inTrans) {
           // Cross boundary reliably: revision may not change, so don't rely on /status.
           snap = await safeFetchSnapshot({ bypassEtag: true });
+        } else if (rt.forceFetchSnapshot) {
+          // WS invalidate (or manual force-refresh) should fetch snapshot even if revision didn't bump.
+          rt.forceFetchSnapshot = false;
+          rt.status304Streak = 0;
+          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+          snap = await safeFetchSnapshot({ bypassEtag: true });
         } else {
           const st = await safeFetchStatus();
           if (st && st._notModified) {
@@ -3318,6 +3325,9 @@
             
             // Store pending revision
             rt.pendingRev = newRev;
+
+            // Force a snapshot fetch (do not rely on /status revision compare)
+            rt.forceFetchSnapshot = true;
             
             // If not currently fetching, trigger immediate refresh
             if (!isFetching) {

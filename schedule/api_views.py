@@ -951,6 +951,20 @@ def status(request, token: str | None = None):
 
     token_hash = _sha256(token_value)
 
+    # Token-scoped manual refresh: if set, force fetch_required regardless of revision.
+    # Used by dashboard "refresh single screen".
+    force_key = f"display:force_refresh:{token_hash}"
+    force_refresh = False
+    try:
+        force_refresh = bool(cache.get(force_key))
+        if force_refresh:
+            try:
+                cache.delete(force_key)
+            except Exception:
+                pass
+    except Exception:
+        force_refresh = False
+
     # --- Optional lightweight metrics (sampled, cache-only) ---
     metrics_day_key = None
     metrics_ttl = None
@@ -1039,6 +1053,26 @@ def status(request, token: str | None = None):
                     rev_source,
                     200,
                 )
+            return resp
+
+        # If a manual force-refresh was requested, always require a fetch.
+        if force_refresh:
+            _bump_metric("fetch_required")
+            resp = JsonResponse(
+                {"fetch_required": True, "schedule_revision": int(current_rev or 0)},
+                json_dumps_params={"ensure_ascii": False},
+            )
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Schedule-Revision"] = str(int(current_rev or 0))
+            except Exception:
+                pass
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
+            _metrics_incr("metrics:status:resp_200")
             return resp
 
         if int(client_v) == int(current_rev):

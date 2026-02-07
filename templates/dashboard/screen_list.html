@@ -239,6 +239,17 @@
                         </div>
                      {% endif %}
 
+                            <form method="post" action="{% url 'dashboard:screen_refresh_now' screen.pk %}" class="shrink-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit"
+                                          class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition shadow-sm active:scale-95"
+                                          title="يجبر هذه الشاشة فقط على جلب بيانات جديدة">
+                                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7M19 5a9 9 0 01-14 7"/></svg>
+                                      <span>تحديث</span>
+                                </button>
+                            </form>
+
                      <form method="post" action="{% url 'dashboard:screen_delete' screen.pk %}" onsubmit="return confirm('هل أنت متأكد من حذف الشاشة؟ سيتوقف الرابط عن العمل.');">
                         {% csrf_token %}
                         <button type="submit" class="text-xs font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-lg transition-all flex items-center gap-2 grayscale hover:grayscale-0 opacity-60 hover:opacity-100">

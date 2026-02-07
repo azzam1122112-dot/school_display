@@ -35,8 +35,10 @@ services:
         WORKERS=1
       fi
 
-      # Run as WSGI to avoid Django async StreamingHttpResponse warnings (static files via WhiteNoise).
-      gunicorn config.wsgi:application \
+      # Run as ASGI to support WebSockets (/ws/display/) for realtime screen refresh.
+      # Gunicorn + UvicornWorker supports both HTTP and WebSocket.
+      gunicorn config.asgi:application \
+        -k uvicorn.workers.UvicornWorker \
         --bind 0.0.0.0:$PORT \
         --workers=$WORKERS \
         --timeout=120 \
@@ -68,6 +70,9 @@ services:
 
       - key: DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC
         value: "600"
+
+      - key: DISPLAY_WS_ENABLED
+        value: "True"
 
       - key: ALLOWED_HOSTS
         value: "school-display-p8ec.onrender.com,.onrender.com"

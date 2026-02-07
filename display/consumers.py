@@ -19,6 +19,7 @@ Security:
 """
 
 import json
+import hashlib
 import logging
 import time
 from urllib.parse import parse_qs
@@ -53,6 +54,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.screen = None
         self.school_group_name = None
+        self.token_group_name = None
         self.device_id = None
     
     async def connect(self):
@@ -106,12 +108,26 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         
         # Server-derived group (tenant isolation)
         self.school_group_name = f"school:{self.screen.school_id}"
+
+        # Token-scoped group (for single-screen refresh). Keep it short and safe.
+        try:
+            token_hash = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+            self.token_group_name = f"token:{token_hash[:16]}"
+        except Exception:
+            self.token_group_name = None
         
         # Join school group
         await self.channel_layer.group_add(
             self.school_group_name,
             self.channel_name
         )
+
+        # Join token group (best-effort)
+        if self.token_group_name:
+            try:
+                await self.channel_layer.group_add(self.token_group_name, self.channel_name)
+            except Exception:
+                self.token_group_name = None
         
         # Accept connection
         await self.accept()
@@ -141,6 +157,12 @@ class DisplayConsumer(AsyncWebsocketConsumer):
                 f"WS disconnected: screen {self.screen.id if self.screen else '?'} "
                 f"code {close_code} group {self.school_group_name}"
             )
+
+        if self.token_group_name:
+            try:
+                await self.channel_layer.group_discard(self.token_group_name, self.channel_name)
+            except Exception:
+                pass
     
     async def receive(self, text_data=None, bytes_data=None):
         """
