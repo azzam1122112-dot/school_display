@@ -10,7 +10,7 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-slate-800 mb-2">قسم التميّز</h1>
-                <p class="text-slate-600">إدارة بطاقات التميّز للمعلمين المتميزين وعرضها على شاشات العرض</p>
+                <p class="text-slate-600">إدارة بطاقات التميّز للمعلمين / الطلاب المتميزين وعرضها على شاشات العرض</p>
             </div>
             <a href="{% url 'dashboard:exc_create' %}" 
                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2 space-x-reverse">
@@ -256,7 +256,7 @@ function confirmDelete(form) {
     const teacherName = form.closest('.bg-white').querySelector('h3').textContent;
     const reason = form.closest('.bg-white').querySelector('p').textContent;
     
-    if (confirm(`هل أنت متأكد من أنك تريد حذف بطاقة التميّز للمعلم:\n\n"${teacherName}"\n${reason}\n\nهذا الإجراء لا يمكن التراجع عنه.`)) {
+    if (confirm(`هل أنت متأكد من أنك تريد حذف بطاقة التميّز :\n\n"${teacherName}"\n${reason}\n\nهذا الإجراء لا يمكن التراجع عنه.`)) {
         return true;
     }
     return false;
