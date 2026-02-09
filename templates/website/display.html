@@ -1060,6 +1060,41 @@
     </div>
   </div>
 
+        <!-- Fullscreen Toggle Button -->
+        <button id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة"
+            style="
+                position: fixed;
+                bottom: 12px;
+                left: 12px;
+                z-index: 9999;
+                width: 36px;
+                height: 36px;
+                border: none;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.4);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: opacity 0.3s, background 0.3s;
+                opacity: 0.3;
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+            "
+            onmouseenter="this.style.opacity='1';this.style.background='rgba(255,255,255,0.15)'"
+            onmouseleave="this.style.opacity='0.3';this.style.background='rgba(255,255,255,0.08)'"
+        >
+            <!-- Expand icon (shown when NOT fullscreen) -->
+            <svg id="fsIconExpand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            <!-- Collapse icon (shown when IN fullscreen) -->
+            <svg id="fsIconCollapse" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M4 14h6v6m10-10h-6V4M4 10h6V4m10 10h-6v6"/>
+            </svg>
+        </button>
+
         <!-- Auto-fit root: viewport container (NOT transformed) -->
         <div id="fitRoot" class="h-full w-full">
 
@@ -1331,5 +1366,26 @@
   </noscript>
 
     <script src="{% static 'js/display.js' %}?v=2026-02-08-standby-autohide-v1"></script>
+
+    <script>
+    /* Fullscreen Toggle */
+    function toggleFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            var el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+    }
+    function updateFsIcon() {
+        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        document.getElementById('fsIconExpand').style.display = isFs ? 'none' : 'block';
+        document.getElementById('fsIconCollapse').style.display = isFs ? 'block' : 'none';
+    }
+    document.addEventListener('fullscreenchange', updateFsIcon);
+    document.addEventListener('webkitfullscreenchange', updateFsIcon);
+    </script>
 </body>
 </html>
