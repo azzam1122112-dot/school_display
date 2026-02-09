@@ -90,10 +90,10 @@ def _steady_cache_log_enabled() -> bool:
 
 
 def _steady_cache_key_for_school_rev(school_id: int, rev: int) -> str:
-    # ✅ FIX: إزالة التاريخ من المفتاح لتجنب Cold Start عند منتصف الليل
-    # الـ revision كافٍ للتمييز بين الإصدارات - يزيد عند أي تعديل
-    # عند بداية يوم جديد، سيزيد الـ revision تلقائياً من schedule/signals.py
-    return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady"
+    # ✅ FIX: إعادة التاريخ للمفتاح لأن rev لا يتغير يومياً، مما قد يسبب عرض جدول الأمس
+    # عند منتصف الليل، سيتغير التاريخ => cache miss => build new snapshot (صحيح)
+    date_str = str(timezone.localdate())
+    return f"snapshot:v5:school:{int(school_id)}:rev:{int(rev)}:steady:{date_str}"
 
 
 def _get_stale_snapshot_fallback(school_id: int) -> dict | None:
@@ -2615,7 +2615,7 @@ def snapshot(request, token: str | None = None):
 
         snap_key = _snapshot_cache_key(settings_obj)
         # IMPORTANT: steady cache must be checked before any build.
-        steady_key = _steady_snapshot_cache_key(settings_obj, {})
+        steady_key = _steady_cache_key_for_school_rev(school_id, rev)
 
         if not force_nocache:
             cached_school = cache.get(snap_key)
@@ -2667,7 +2667,8 @@ def snapshot(request, token: str | None = None):
                 return _finalize(resp, cache_status="HIT", device_bound=True if is_snapshot_path else None, school_id=school_id, rev=rev)
 
         # Stampede lock: one build per school
-        school_lock_key = f"lock:snapshot:v5:school:{school_id}:rev:{rev}"
+        date_str = str(timezone.localdate())
+        school_lock_key = f"lock:snapshot:v5:school:{school_id}:rev:{rev}:{date_str}"
         have_lock = True
         if not force_nocache:
             try:
@@ -2836,7 +2837,7 @@ def snapshot(request, token: str | None = None):
 
                 if not force_nocache:
                     try:
-                        steady_write_key = _steady_snapshot_cache_key(settings_obj, day_snap)
+                        steady_write_key = _steady_cache_key_for_school_rev(school_id, rev)
                         steady_ttl = _steady_snapshot_cache_ttl_seconds(snap)
                         cache.set(steady_write_key, snap, timeout=steady_ttl)
                         _log_steady_set(steady_write_key, ttl=int(steady_ttl), school_id=school_id, rev=rev)
