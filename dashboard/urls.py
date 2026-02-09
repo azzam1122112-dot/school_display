@@ -62,7 +62,6 @@ urlpatterns = [
     path("standby/", views.standby_list, name="standby_list"),
     path("standby/new/", views.standby_create, name="standby_create"),
     path("standby/<int:pk>/delete/", views.standby_delete, name="standby_delete"),
-    path("standby/import/", views.standby_import, name="standby_import"),
 
     # ==================
     # Duty / Supervision
