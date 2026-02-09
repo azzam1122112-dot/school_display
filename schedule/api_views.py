@@ -39,6 +39,47 @@ from schedule.cache_utils import (
 logger = logging.getLogger(__name__)
 
 
+def _ttl_jitter_seconds() -> int:
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_TTL_JITTER_SEC", os.getenv("DISPLAY_SNAPSHOT_TTL_JITTER_SEC", "0")) or 0)
+    except Exception:
+        v = 0
+    return max(0, min(15, v))
+
+
+def _stable_ttl_with_jitter(ttl: int, *, seed: str, ttl_max: int | None = None) -> int:
+    """Return a TTL with a stable per-seed jitter.
+
+    Goal: spread expirations across schools/screens to reduce peak load.
+    Default jitter=0 => no behavior change.
+    """
+    try:
+        ttl_i = int(ttl)
+    except Exception:
+        return ttl
+    if ttl_i <= 1:
+        return ttl_i
+
+    jitter = _ttl_jitter_seconds()
+    if jitter <= 0:
+        return ttl_i
+
+    # Stable delta in [0..jitter] derived from seed.
+    try:
+        h = hashlib.sha1(seed.encode("utf-8")).hexdigest()
+        delta = int(h[:8], 16) % (jitter + 1)
+    except Exception:
+        delta = 0
+
+    out = ttl_i + int(delta)
+    if ttl_max is not None:
+        try:
+            out = min(out, int(ttl_max))
+        except Exception:
+            pass
+    return max(1, out)
+
+
 def _cache_is_shared() -> bool:
     """Best-effort check whether the configured cache is shared across processes.
 
@@ -1677,12 +1718,21 @@ def _snapshot_cache_ttl_seconds() -> int:
 
 
 def _active_window_cache_ttl_seconds() -> int:
-    """Cache TTL during active window: hard clamp to 15–20 seconds (Phase 2)."""
+    """Cache TTL during active window (Phase 2).
+
+    Defaults to 15–20s, but the upper bound can be raised via
+    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX when operating large fleets.
+    """
     try:
         v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL", 15) or 15)
     except Exception:
         v = 15
-    return max(15, min(20, v))
+    try:
+        vmax = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", 20) or 20)
+    except Exception:
+        vmax = 20
+    vmax = max(15, min(60, vmax))
+    return max(15, min(vmax, v))
 
 def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
     """Outside active window/holidays: long TTL, aligned to refresh_interval_sec when available."""
@@ -2774,6 +2824,17 @@ def snapshot(request, token: str | None = None):
 
             if active_window:
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
+                # Add stable jitter to spread expirations across schools and reduce peak load.
+                try:
+                    ttl_max = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", 20) or 20)
+                except Exception:
+                    ttl_max = 20
+                ttl_max = max(15, min(60, ttl_max))
+                token_timeout = _stable_ttl_with_jitter(
+                    token_timeout,
+                    seed=f"active:{school_id}:{rev}:{timezone.localdate()}",
+                    ttl_max=ttl_max,
+                )
                 token_timeout = _clamp_active_ttl_by_remaining_seconds(snap, token_timeout)
                 if not force_nocache:
                     try:

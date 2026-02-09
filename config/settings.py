@@ -115,7 +115,23 @@ try:
 except Exception:
     DISPLAY_SNAPSHOT_ACTIVE_TTL = 15
 
-DISPLAY_SNAPSHOT_ACTIVE_TTL = max(15, min(20, DISPLAY_SNAPSHOT_ACTIVE_TTL))
+# Add TTL jitter to reduce thundering herd at fleet scale (seconds).
+# Default 0 => no behavior change.
+try:
+    DISPLAY_SNAPSHOT_TTL_JITTER_SEC = int(os.getenv("DISPLAY_SNAPSHOT_TTL_JITTER_SEC", "0"))
+except Exception:
+    DISPLAY_SNAPSHOT_TTL_JITTER_SEC = 0
+
+DISPLAY_SNAPSHOT_TTL_JITTER_SEC = max(0, min(15, DISPLAY_SNAPSHOT_TTL_JITTER_SEC))
+
+try:
+    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", "20"))
+except Exception:
+    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = 20
+
+# Keep defaults unchanged (max 20s), but allow raising the cap intentionally.
+DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = max(15, min(60, DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX))
+DISPLAY_SNAPSHOT_ACTIVE_TTL = max(15, min(DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX, DISPLAY_SNAPSHOT_ACTIVE_TTL))
 
 
 # Outside active window: steady snapshot TTL cap (1h–24h)
