@@ -462,9 +462,9 @@
                     <p>لوحة تحكم كاملة تعمل على الجوال، الآيباد، أو الكمبيوتر. أنت المدير أينما كنت.</p>
                 </div>
                 <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-paint-roller"></i></div>
-                    <h3>هوية مدرستك</h3>
-                    <p>نصمم الواجهة بألوان وشعار مدرستك لتبدو وكأنها صممت خصيصاً لكم.</p>
+                    <div class="icon-box"><i class="fa-solid fa-clipboard-user"></i></div>
+                    <h3>لوحة الإشراف والمناوبة</h3>
+                    <p>إدارة مناوبات الإشراف والاصطفاف والفسح بشكل منظم، مع عرض المناوبين تلقائياً على الشاشة.</p>
                 </div>
             </div>
         </div>
@@ -475,7 +475,7 @@
         <div class="container">
             <div class="section-header">
                 <h2>باقات تناسب الجميع</h2>
-                <p style="color:var(--text-sec)">استثمار ذكي لمستقبل مدرستك الرقمي</p>
+                <p style="color:var(--text-sec)">نفس المميزات للجميع — السعر يعتمد على عدد الشاشات فقط</p>
                 
                 <!-- Toggle -->
                 <div style="background: white; display: inline-flex; padding: 4px; border-radius: 99px; margin-top: 20px; border: 1px solid #e2e8f0;">
@@ -502,7 +502,8 @@
                 <!-- Card 1 -->
                 <div class="price-card">
                     <h3>شاشة واحدة</h3>
-                    <div class="price-val" data-p6="460" data-p12="660">660</div>
+                    <!-- UPDATED PRICES -->
+                    <div class="price-val" data-p6="420" data-p12="720">720</div>
                     <span class="price-period">ريال سعودي / سنوياً</span>
                     <ul class="feature-list">
                         <li><i class="fa-solid fa-check"></i> لوحة تحكم كاملة</li>
@@ -515,7 +516,8 @@
                 <!-- Card 2 -->
                 <div class="price-card">
                     <h3>شاشتان</h3>
-                    <div class="price-val" data-p6="700" data-p12="1170">1170</div>
+                    <!-- UPDATED PRICES -->
+                    <div class="price-val" data-p6="760" data-p12="1320">1320</div>
                     <span class="price-period">ريال سعودي / سنوياً</span>
                     <ul class="feature-list">
                         <li><i class="fa-solid fa-check"></i> مناسب للمدارس الصغيرة</li>
@@ -529,7 +531,8 @@
                 <div class="price-card popular">
                     <div style="background:var(--accent); color:white; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; display: inline-block; font-weight: 800; margin-bottom: 12px;">الأكثر طلباً</div>
                     <h3>3 شاشات</h3>
-                    <div class="price-val" data-p6="920" data-p12="1530">1530</div>
+                    <!-- UPDATED PRICES -->
+                    <div class="price-val" data-p6="1020" data-p12="1800">1800</div>
                     <span class="price-period">ريال سعودي / سنوياً</span>
                     <ul class="feature-list">
                         <li><i class="fa-solid fa-check"></i> تغطية للممرات والساحات</li>
@@ -542,7 +545,8 @@
                 <!-- Card 4 -->
                 <div class="price-card">
                     <h3>4 شاشات</h3>
-                    <div class="price-val" data-p6="1120" data-p12="1840">1840</div>
+                    <!-- UPDATED PRICES -->
+                    <div class="price-val" data-p6="1240" data-p12="2200">2200</div>
                     <span class="price-period">ريال سعودي / سنوياً</span>
                     <ul class="feature-list">
                         <li><i class="fa-solid fa-check"></i> تغطية شاملة للمبنى</li>
@@ -555,7 +559,8 @@
                 <!-- Card 5 -->
                 <div class="price-card">
                     <h3>5 شاشات</h3>
-                    <div class="price-val" data-p6="1320" data-p12="2080">2080</div>
+                    <!-- UPDATED PRICES -->
+                    <div class="price-val" data-p6="1400" data-p12="2500">2500</div>
                     <span class="price-period">ريال سعودي / سنوياً</span>
                     <ul class="feature-list">
                         <li><i class="fa-solid fa-check"></i> حل متكامل للمجمعات</li>
@@ -695,7 +700,6 @@
 
         // Helper to get current displayed price from button's container
         function getCurrentPrice(btnElement) {
-            // Traverse up to .price-card then find .price-val
             const card = btnElement.closest('.price-card');
             const valEl = card.querySelector('.price-val');
             return valEl ? valEl.innerText : '0';
@@ -705,17 +709,14 @@
         const modal = document.getElementById('orderModal');
 
         function openOrderModal(plan, period, price) {
-            // Set hidden values
             document.getElementById('p_plan').value = plan;
             
-            // Period Text Formatting
             let periodText = period;
             if (period === '12') periodText = 'سنة كاملة';
             if (period === '6') periodText = '6 أشهر';
             document.getElementById('p_period').value = periodText;
             document.getElementById('p_price').value = price;
 
-            // UI Updates
             if (plan.includes('تجربة')) {
                 document.getElementById('modalTitle').innerText = 'طلب تجربة مجانية';
                 document.getElementById('modalSubtitle').innerText = 'استمتع بكافة المميزات مجاناً لمدة 14 يوم';
