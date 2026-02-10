@@ -2944,6 +2944,25 @@
   let failStreak = 0;
   let isFetching = false;
 
+  // Page Visibility reliability tracking:
+  // Some embedded/TV browsers can misreport `document.hidden=true` even while displayed.
+  // If we pause polling based on a false hidden state, the screen may never update.
+  const vis = {
+    sawChange: false,
+    everVisible: false,
+  };
+  try {
+    vis.everVisible = !document.hidden;
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        vis.sawChange = true;
+        if (!document.hidden) vis.everVisible = true;
+      },
+      { passive: true }
+    );
+  } catch (e) {}
+
   function shouldPauseWhenHidden() {
     // Override switches (useful for TVs/embedded browsers that misreport visibility):
     // - ?nopause=1  -> never pause polling
@@ -2960,6 +2979,13 @@
     // In those cases, pausing polling makes the screen appear "خامله" and prevents wake-up.
     const ua = (navigator && navigator.userAgent) ? String(navigator.userAgent) : "";
     const isTvUa = /SmartTV|NetCast|Web0S|webOS|Tizen|HbbTV|Viera|BRAVIA|Roku|MiTV|Android TV|AFTB|AFTS|CrKey/i.test(ua);
+
+    // Extra safety: only pause if we've observed a real visibility transition.
+    // If `document.hidden` is stuck true and no events fire, treat it as unreliable.
+    try {
+      if (document.hidden && !vis.sawChange) return false;
+    } catch (e) {}
+
     return !isTvUa;
   }
 

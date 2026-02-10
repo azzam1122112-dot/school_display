@@ -1219,9 +1219,30 @@ def status(request, token: str | None = None):
             current_rev = get_cached_schedule_revision_for_school_id(int(current_school_id)) if current_school_id else None
             cached_rev = cached_entry.get("rev")
             if current_rev is None:
-                return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+                resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+                resp["Cache-Control"] = "no-store"
+                resp["Vary"] = "Accept-Encoding"
+                try:
+                    resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+                except Exception:
+                    pass
+                return resp
             if cached_rev is not None and int(current_rev) != int(cached_rev):
-                return JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+                resp = JsonResponse(
+                    {"fetch_required": True, "schedule_revision": int(current_rev)},
+                    json_dumps_params={"ensure_ascii": False},
+                )
+                resp["Cache-Control"] = "no-store"
+                resp["Vary"] = "Accept-Encoding"
+                try:
+                    resp["X-Schedule-Revision"] = str(int(current_rev))
+                except Exception:
+                    pass
+                try:
+                    resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+                except Exception:
+                    pass
+                return resp
         except Exception:
             pass
 
@@ -1250,6 +1271,13 @@ def status(request, token: str | None = None):
             return resp
 
         resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
+        resp["Cache-Control"] = "no-store"
+        resp["Vary"] = "Accept-Encoding"
+        try:
+            if current_rev is not None:
+                resp["X-Schedule-Revision"] = str(int(current_rev or 0))
+        except Exception:
+            pass
         try:
             resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
         except Exception:
@@ -1274,6 +1302,8 @@ def status(request, token: str | None = None):
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
+    resp["Cache-Control"] = "no-store"
+    resp["Vary"] = "Accept-Encoding"
     try:
         resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
     except Exception:
