@@ -109,11 +109,17 @@ DISPLAY_SNAPSHOT_TTL = max(1, min(60, DISPLAY_SNAPSHOT_TTL))
 # =========================
 # Phase 2: Dynamic Snapshot TTLs
 # =========================
-# Active window school-snapshot TTL (15–20s)
+# Active window school-snapshot TTL.
+#
+# لماذا رفعنا الافتراضي؟
+# - على أسطول شاشات كبير، poll كل ~20s مع TTL=20s يؤدي إلى cache-miss متكرر و snapshot_build.
+# - الواجهة تعتمد على X-Server-Time-MS للهندسة الزمنية، لذلك يمكننا كاش الجسم مدة أطول بأمان.
+#
+# يمكن دائمًا ضبط القيم عبر ENV عند الحاجة.
 try:
-    DISPLAY_SNAPSHOT_ACTIVE_TTL = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL", "15"))
+    DISPLAY_SNAPSHOT_ACTIVE_TTL = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL", "30"))
 except Exception:
-    DISPLAY_SNAPSHOT_ACTIVE_TTL = 15
+    DISPLAY_SNAPSHOT_ACTIVE_TTL = 30
 
 # Add TTL jitter to reduce thundering herd at fleet scale (seconds).
 # Default 0 => no behavior change.
@@ -125,11 +131,11 @@ except Exception:
 DISPLAY_SNAPSHOT_TTL_JITTER_SEC = max(0, min(15, DISPLAY_SNAPSHOT_TTL_JITTER_SEC))
 
 try:
-    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", "20"))
+    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = int(os.getenv("DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", "60"))
 except Exception:
-    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = 20
+    DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = 60
 
-# Keep defaults unchanged (max 20s), but allow raising the cap intentionally.
+# Clamp to safe bounds.
 DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = max(15, min(60, DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX))
 DISPLAY_SNAPSHOT_ACTIVE_TTL = max(15, min(DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX, DISPLAY_SNAPSHOT_ACTIVE_TTL))
 
