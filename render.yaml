@@ -65,6 +65,12 @@ services:
       - key: DISPLAY_SNAPSHOT_ACTIVE_TTL
         value: "15"
 
+      # Safe canary controls for snapshot cache behavior (disabled by default).
+      - key: SNAPSHOT_STEADY_CACHE_V2
+        value: "False"
+      - key: DISPLAY_SNAPSHOT_ACTIVE_TTL_SAFE_MIN
+        value: "30"
+
       - key: DISPLAY_SNAPSHOT_STEADY_MAX_TTL
         value: "86400"
 

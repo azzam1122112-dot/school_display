@@ -130,6 +130,21 @@ def _steady_cache_log_enabled() -> bool:
     return (os.getenv("DISPLAY_STEADY_CACHE_LOG", "").strip() == "1")
 
 
+def _safe_snapshot_rollout_enabled() -> bool:
+    try:
+        return bool(getattr(dj_settings, "SNAPSHOT_STEADY_CACHE_V2", False))
+    except Exception:
+        return False
+
+
+def _cache_backend_name() -> str:
+    try:
+        backend = caches["default"]
+        return f"{backend.__class__.__module__}.{backend.__class__.__name__}"
+    except Exception:
+        return f"{cache.__class__.__module__}.{cache.__class__.__name__}"
+
+
 def _steady_cache_key_for_school_rev(school_id: int, rev: int) -> str:
     # ✅ FIX: إعادة التاريخ للمفتاح لأن rev لا يتغير يومياً، مما قد يسبب عرض جدول الأمس
     # عند منتصف الليل، سيتغير التاريخ => cache miss => build new snapshot (صحيح)
@@ -189,17 +204,28 @@ def _log_steady_get(key: str, *, hit: bool, school_id: int | None, rev: int | No
         pass
     try:
         logger.info(
-            "steady_get key=%s hit=%s school_id=%s rev=%s",
+            "steady_get key=%s hit=%s school_id=%s rev=%s backend=%s host=%s instance=%s",
             key,
             "1" if hit else "0",
             school_id,
             rev,
+            _cache_backend_name(),
+            socket.gethostname(),
+            os.getenv("RENDER_INSTANCE_ID", ""),
         )
     except Exception:
         pass
 
 
-def _log_steady_set(key: str, *, ttl: int, school_id: int | None, rev: int | None) -> None:
+def _log_steady_set(
+    key: str,
+    *,
+    ttl: int,
+    school_id: int | None,
+    rev: int | None,
+    success: bool = True,
+    error: str = "",
+) -> None:
     if not _steady_cache_log_enabled():
         return
     try:
@@ -210,11 +236,16 @@ def _log_steady_set(key: str, *, ttl: int, school_id: int | None, rev: int | Non
         pass
     try:
         logger.info(
-            "steady_set key=%s ttl=%s school_id=%s rev=%s",
+            "steady_set key=%s ttl=%s school_id=%s rev=%s success=%s error=%s backend=%s host=%s instance=%s",
             key,
             int(ttl),
             school_id,
             rev,
+            "1" if success else "0",
+            (error or "")[:80],
+            _cache_backend_name(),
+            socket.gethostname(),
+            os.getenv("RENDER_INSTANCE_ID", ""),
         )
     except Exception:
         pass
@@ -1762,7 +1793,15 @@ def _active_window_cache_ttl_seconds() -> int:
     except Exception:
         vmax = 20
     vmax = max(15, min(60, vmax))
-    return max(15, min(vmax, v))
+    out = max(15, min(vmax, v))
+    if _safe_snapshot_rollout_enabled():
+        try:
+            safe_min = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL_SAFE_MIN", 30) or 30)
+        except Exception:
+            safe_min = 30
+        safe_min = max(15, min(60, safe_min))
+        out = max(out, safe_min)
+    return out
 
 def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
     """Outside active window/holidays: long TTL, aligned to refresh_interval_sec when available."""
@@ -2931,9 +2970,22 @@ def snapshot(request, token: str | None = None):
                         steady_write_key = _steady_cache_key_for_school_rev(school_id, rev)
                         steady_ttl = _steady_snapshot_cache_ttl_seconds(snap)
                         cache.set(steady_write_key, snap, timeout=steady_ttl)
-                        _log_steady_set(steady_write_key, ttl=int(steady_ttl), school_id=school_id, rev=rev)
-                    except Exception:
-                        pass
+                        _log_steady_set(
+                            steady_write_key,
+                            ttl=int(steady_ttl),
+                            school_id=school_id,
+                            rev=rev,
+                            success=True,
+                        )
+                    except Exception as e:
+                        _log_steady_set(
+                            _steady_cache_key_for_school_rev(school_id, rev),
+                            ttl=int(_steady_snapshot_cache_ttl_seconds(snap)),
+                            school_id=school_id,
+                            rev=rev,
+                            success=False,
+                            error=e.__class__.__name__,
+                        )
 
             build_ms = int((time.monotonic() - t0) * 1000)
             _metrics_incr("metrics:snapshot_cache:build_count")

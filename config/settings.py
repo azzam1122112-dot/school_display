@@ -139,6 +139,21 @@ except Exception:
 DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX = max(15, min(60, DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX))
 DISPLAY_SNAPSHOT_ACTIVE_TTL = max(15, min(DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX, DISPLAY_SNAPSHOT_ACTIVE_TTL))
 
+# =========================
+# Snapshot cache safe rollout controls (SaaS canary)
+# =========================
+# Disabled by default to avoid behavior changes until explicitly enabled.
+SNAPSHOT_STEADY_CACHE_V2 = env_bool("SNAPSHOT_STEADY_CACHE_V2", "False")
+
+# When SNAPSHOT_STEADY_CACHE_V2=true, enforce a safer lower-bound for active-window
+# snapshot TTL so it does not expire before common fleet polling intervals.
+DISPLAY_SNAPSHOT_ACTIVE_TTL_SAFE_MIN = env_int_clamped(
+    "DISPLAY_SNAPSHOT_ACTIVE_TTL_SAFE_MIN",
+    30,
+    15,
+    60,
+)
+
 
 # Outside active window: steady snapshot TTL cap (1h–24h)
 try:
