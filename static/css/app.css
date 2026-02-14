@@ -343,7 +343,8 @@ body.display-board .clock{
 }
 
 /* Main grid */
-body.display-board .main-grid{
+body.display-board .main-grid,
+body.display-board .board-main{
   margin-top:var(--gap);
   height:calc(100% - (96px + var(--gap)));
   display:grid;
@@ -362,7 +363,8 @@ body.display-board .col-side{
 
 /* Desktop / TV widths */
 @media (min-width: 1280px){
-  body.display-board .main-grid{
+  body.display-board .main-grid,
+  body.display-board .board-main{
     grid-template-columns: 2fr 1fr;
   }
 }
@@ -636,16 +638,16 @@ body.display-board #exSlot .honor-reason{
 
 /* Duty Items (TV Size Improvement) */
 body.display-board .duty-item {
-    font-size: clamp(20px, 1.6vw, 32px) !important;
-    padding: 14px !important;
-    gap: 12px !important;
+    font-size: clamp(20px, 1.6vw, 32px);
+    padding: 14px;
+    gap: 12px;
 }
 body.display-board .duty-item .duty-name {
-    font-size: clamp(22px, 1.8vw, 36px) !important;
+    font-size: clamp(22px, 1.8vw, 36px);
     font-weight: 800;
 }
 body.display-board .duty-item .duty-role {
-    font-size: clamp(16px, 1.2vw, 24px) !important;
+    font-size: clamp(16px, 1.2vw, 24px);
 }
 
 /* Lists */
@@ -688,13 +690,13 @@ body.display-board .slot-item{
   background:rgba(255,255,255,.055);
   border:1px solid rgba(255,255,255,.10);
   border-radius:var(--slot-radius);
-  padding:var(--slot-pad);
+  padding:12px;
   box-shadow:0 12px 26px rgba(0,0,0,.20);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
   display:flex;
   flex-direction:column;
-  gap:var(--slot-gap);
+  gap:10px;
   min-width:0;
 }
 body.display-board .slot-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
@@ -702,7 +704,7 @@ body.display-board .slot-badges{display:flex;align-items:center;gap:8px;flex-wra
 body.display-board .slot-class{
   display:inline-flex;
   align-items:center;
-  padding:.28rem .65rem;
+  padding:.3rem .6rem;
   border-radius:999px;
   background:rgba(255,255,255,.08);
   border:1px solid rgba(255,255,255,.14);
@@ -714,7 +716,7 @@ body.display-board .slot-class{
 body.display-board .slot-subject{
   display:inline-flex;
   align-items:center;
-  padding:.28rem .75rem;
+  padding:.3rem .6rem;
   border-radius:999px;
   background:linear-gradient(135deg, rgba(14,165,233,.25), rgba(14,165,233,.1));
   border:1px solid rgba(14,165,233,.4);
@@ -849,14 +851,6 @@ body.display-board .no-js{
 }
 
 
-/* ===== Stable layout (works even if Tailwind fails) ===== */
-body.display-board .board-main{
-  display:grid;
-  grid-template-columns: 1.35fr 1fr; /* يسار أوسع للهيرو + الشرف */
-  gap: var(--gap);
-  min-height: 0;
-}
-
 body.display-board .board-left,
 body.display-board .board-right{
   min-height: 0;
@@ -872,22 +866,6 @@ body.display-board .board-right{
   }
 }
 
-/* ===== Make lists denser + usable on TV ===== */
-body.display-board .slot-item{
-  padding: 12px;            /* زيادة للمساحة */
-  gap: 10px;
-}
-
-body.display-board .slot-teacher{
-  font-size: var(--slot-sub);
-  line-height: 1.25;
-}
-
-body.display-board .slot-class,
-body.display-board .slot-subject{
-  padding: .3rem .6rem;
-}
-
 /* ===== Give honor board minimum height ===== */
 body.display-board .honor-card-style{
   min-height: 210px;
@@ -901,7 +879,7 @@ body.display-board .standby-viewport{
 /* شاشات كبيرة جداً (TV 4K) */
 @media (min-width: 2000px){
   body.display-board .board-main{
-    grid-template-columns: 1.25fr 1fr;
+    grid-template-columns: 2fr 1fr;
   }
 }
 

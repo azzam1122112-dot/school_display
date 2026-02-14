@@ -3285,17 +3285,8 @@
   // ===== WebSocket: Realtime Push Invalidate (Phase 2: Dark Launch) =====
   
   function getDeviceId() {
-    // Use same device ID as HTTP requests (localStorage: display_device_id)
-    try {
-      let dk = localStorage.getItem("display_device_id");
-      if (!dk) {
-        dk = "web_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem("display_device_id", dk);
-      }
-      return dk;
-    } catch (e) {
-      return "web_" + Math.random().toString(36).substring(2);
-    }
+    // Must match HTTP snapshot/status device id to keep server binding consistent.
+    return getOrCreateDeviceId();
   }
 
   function initWebSocket() {
@@ -3305,9 +3296,13 @@
       return;
     }
     
-    // Don't reconnect if max retries exceeded
+    // After many failures, keep retrying but with long backoff instead of stopping forever.
     if (rt.wsRetryCount >= rt.wsMaxRetries) {
-      if (isDebug()) console.log("[WS] max retries exceeded, giving up");
+      const longDelaySec = 120;
+      if (isDebug()) console.log(`[WS] max retries reached; slow retry in ${longDelaySec}s`);
+      rt.wsReconnectTimer = setTimeout(() => {
+        initWebSocket();
+      }, longDelaySec * 1000);
       return;
     }
     
@@ -3446,10 +3441,14 @@
         const delay = baseDelay * jitter;
         
         if (rt.wsRetryCount >= rt.wsMaxRetries) {
-          if (isDebug()) console.log(`[WS] max retries (${rt.wsMaxRetries}) exceeded, giving up`);
+          const longDelaySec = 120;
+          if (isDebug()) console.log(`[WS] max retries (${rt.wsMaxRetries}) reached; slow retry in ${longDelaySec}s`);
+          rt.wsReconnectTimer = setTimeout(() => {
+            initWebSocket();
+          }, longDelaySec * 1000);
           return;
         }
-        
+
         if (isDebug()) console.log(`[WS] reconnecting in ${delay.toFixed(1)}s (attempt ${rt.wsRetryCount})`);
         
         rt.wsReconnectTimer = setTimeout(() => {
@@ -3461,13 +3460,19 @@
       if (isDebug()) console.error("[WS] init error:", e);
       rt.wsRetryCount++;
       
-      // Retry with backoff
+      // Retry with backoff, then degrade to slow retry instead of permanent stop.
       if (rt.wsRetryCount < rt.wsMaxRetries) {
         const delay = Math.min(60, Math.pow(2, rt.wsRetryCount - 1));
         if (isDebug()) console.log(`[WS] retrying in ${delay}s`);
         rt.wsReconnectTimer = setTimeout(() => {
           initWebSocket();
         }, delay * 1000);
+      } else {
+        const longDelaySec = 120;
+        if (isDebug()) console.log(`[WS] max retries reached from init error; slow retry in ${longDelaySec}s`);
+        rt.wsReconnectTimer = setTimeout(() => {
+          initWebSocket();
+        }, longDelaySec * 1000);
       }
     }
   }
