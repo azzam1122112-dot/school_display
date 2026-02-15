@@ -298,9 +298,59 @@
     const designWidth = 1920;
     const designHeight = 1080;
 
+    // Guarded compensation for TVs that report a half-sized CSS viewport
+    // (e.g. 960x540 on a physical 1080p panel). This branch is intentionally
+    // narrow to avoid impacting displays that already render correctly.
+    let effectiveWidth = viewportWidth;
+    let effectiveHeight = viewportHeight;
+    let fitSource = "inner";
+    try {
+      const dpr = Number(window.devicePixelRatio || 1);
+      const sw = Number(window.screen && window.screen.width ? window.screen.width : 0);
+      const sh = Number(window.screen && window.screen.height ? window.screen.height : 0);
+      const baseContain = Math.min(viewportWidth / designWidth, viewportHeight / designHeight);
+
+      const looksHalfViewport =
+        viewportWidth <= 1100 &&
+        viewportHeight <= 650 &&
+        baseContain <= 0.65 &&
+        (dpr >= 1.45 || (sw >= 1600 && sh >= 900));
+
+      if (looksHalfViewport) {
+        const candidates = [];
+        if (dpr > 1.1) {
+          candidates.push({
+            w: viewportWidth * dpr,
+            h: viewportHeight * dpr,
+            src: "dpr",
+          });
+        }
+        if (sw > 0 && sh > 0) {
+          candidates.push({ w: sw, h: sh, src: "screen" });
+        }
+
+        let best = null;
+        for (const c of candidates) {
+          if (!c || !isFinite(c.w) || !isFinite(c.h) || c.w <= 0 || c.h <= 0) continue;
+          const contain = Math.min(c.w / designWidth, c.h / designHeight);
+          // Accept only meaningful improvements in the expected range.
+          if (contain < 0.9 || contain > 1.35) continue;
+          if (!best || contain > best.contain) {
+            best = { ...c, contain };
+          }
+        }
+
+        if (best) {
+          effectiveWidth = best.w;
+          effectiveHeight = best.h;
+          fitSource = best.src;
+        }
+      }
+    } catch (e) {}
+
     // Calculate scale ratios
-    const scaleX = viewportWidth / designWidth;
-    const scaleY = viewportHeight / designHeight;
+    const scaleX = effectiveWidth / designWidth;
+    const scaleY = effectiveHeight / designHeight;
     
     // ✅ الحل 2 + 3: تحديد وضع الملء (cover أو contain)
     let fitMode = getFitMode(); // من الـ URL parameter
@@ -341,6 +391,7 @@
       const body = document.body || document.documentElement;
       body.dataset.uiScale = scale.toFixed(4);
       body.dataset.fitMode = fitMode; // للـ debugging
+      body.dataset.fitSource = fitSource; // inner | dpr | screen
       
       // ✅ FIX: تكبير الخطوط تلقائياً للشاشات الكبيرة
       // إذا كان scale أكبر من 1 (شاشات 4K, 8K, إلخ)

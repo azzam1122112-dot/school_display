@@ -166,16 +166,17 @@ def _get_stale_snapshot_fallback(school_id: int) -> dict | None:
         # نستخدم pattern matching للبحث في الكاش
         redis_client = get_redis_connection("default")
         
-        # البحث عن مفاتيح تطابق المدرسة
-        pattern = f"school_display:snapshot:v5:school:{int(school_id)}:rev:*:steady"
+        # البحث عن مفاتيح تطابق المدرسة (مع احترام KEY_PREFIX الفعلي في الإعدادات)
+        cache_prefix = str(getattr(dj_settings, "CACHE_KEY_PREFIX", "school_display") or "school_display").strip()
+        pattern = f"{cache_prefix}:snapshot:v5:school:{int(school_id)}:rev:*:steady*"
         keys = redis_client.keys(pattern)
         
         if keys:
             # استخدام أول مفتاح متوفر (يمكن تحسينه باختيار الأحدث)
             stale_key = keys[0].decode('utf-8') if isinstance(keys[0], bytes) else keys[0]
-            # إزالة الـ prefix إن وجد
-            if stale_key.startswith("school_display:"):
-                stale_key = stale_key[len("school_display:"):]
+            # إزالة الـ prefix إن وجد (ليتوافق مع cache.get الذي يضيف prefix تلقائياً)
+            if cache_prefix and stale_key.startswith(f"{cache_prefix}:"):
+                stale_key = stale_key[len(cache_prefix) + 1 :]
             
             stale_snap = cache.get(stale_key)
             if isinstance(stale_snap, dict):
@@ -2955,11 +2956,12 @@ def snapshot(request, token: str | None = None):
                 except Exception:
                     pass
 
-                # Also write a short-lived school-level cache entry keyed only by (school_id, rev).
-                # This increases hit-rate across devices/tokens while keeping staleness risk low.
+                # Also write a school-level cache entry keyed only by (school_id, rev).
+                # Use a TTL aligned with steady/off-hours refresh to avoid frequent rebuilds
+                # between polling intervals on large fleets.
                 if not force_nocache:
                     try:
-                        school_ttl = _snapshot_cache_ttl_seconds()
+                        school_ttl = _steady_snapshot_cache_ttl_seconds(snap)
                         school_ttl = _clamp_active_ttl_by_remaining_seconds(snap, school_ttl)
                         cache.set(_snapshot_cache_key(settings_obj), snap, timeout=school_ttl)
                     except Exception:
