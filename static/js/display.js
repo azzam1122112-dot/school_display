@@ -437,6 +437,7 @@
   // ===== Config =====
   const cfg = {
     REFRESH_EVERY: 20, // زيادة من 10 إلى 20 لتقليل الاستهلاك بنسبة 50%
+    WS_FALLBACK_POLL_EVERY: 90, // when WS is healthy, keep only a slow safety poll
     STANDBY_SPEED: 0.8,
     PERIODS_SPEED: 0.5,
     MEDIA_PREFIX: "/media/",
@@ -1436,7 +1437,7 @@
         if (inTrans) {
           scheduleNext(Number(rt.transitionBackoffSec) || 1.2);
         } else {
-          scheduleNext(cfg.REFRESH_EVERY);
+          scheduleNext(basePollEverySec());
         }
       } catch (e) {}
     }
@@ -3052,7 +3053,7 @@
     // Never skip the very first snapshot fetch because that can leave the UI blank.
     // Also, only pause when hidden on browsers that reliably support it.
     if (document.hidden && !!lastPayloadForFiltering && shouldPauseWhenHidden()) {
-      scheduleNext(cfg.REFRESH_EVERY);
+      scheduleNext(basePollEverySec());
       return;
     }
 
@@ -3076,7 +3077,7 @@
           // WS invalidate (or manual force-refresh) should fetch snapshot even if revision didn't bump.
           rt.forceFetchSnapshot = false;
           rt.status304Streak = 0;
-          rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+          rt.statusEverySec = basePollEverySec();
           snap = await safeFetchSnapshot({ bypassEtag: true });
         } else {
           const st = await safeFetchStatus();
@@ -3111,7 +3112,7 @@
 
             // Backoff on 304 to reduce polling load when nothing changes.
             // Tuned for large deployments (many screens): bounded, with stable jitter.
-            const base = Math.max(2, Number(cfg.REFRESH_EVERY) || 10);
+            const base = Math.max(2, basePollEverySec());
             const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
             const minEvery = isActiveWin ? Math.min(10, Math.max(8, base)) : 60;
             const maxEvery = isActiveWin ? 45 : 300;
@@ -3144,11 +3145,11 @@
           const need = !st || st.fetch_required !== false;
           if (need) {
             rt.status304Streak = 0;
-            rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+            rt.statusEverySec = basePollEverySec();
             snap = await safeFetchSnapshot();
           } else {
             rt.status304Streak = 0;
-            rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+            rt.statusEverySec = basePollEverySec();
             isFetching = false;
             failStreak = 0;
             scheduleNext(rt.statusEverySec || cfg.REFRESH_EVERY);
@@ -3176,7 +3177,7 @@
         wait = Math.min(10, Math.max(1.2, base * 1.7));
         rt.transitionBackoffSec = wait;
       } else {
-        const base = Number(cfg.REFRESH_EVERY) || 10;
+        const base = Math.max(2, basePollEverySec());
         wait = Math.min(120, Math.max(15, base * 2));
       }
       scheduleNext(wait);
@@ -3205,7 +3206,7 @@
           const jitterFactor = 0.75 + Math.random() * 0.5; // 0.75 to 1.25
           backoff = baseBackoff * jitterFactor;
       } else {
-          backoff = Math.min(60, cfg.REFRESH_EVERY + failStreak * 5);
+          backoff = Math.min(60, basePollEverySec() + failStreak * 5);
       }
       scheduleNext(backoff);
       return;
@@ -3230,7 +3231,7 @@
 
       isFetching = false;
       failStreak = 0;
-      scheduleNext(cfg.REFRESH_EVERY);
+      scheduleNext(basePollEverySec());
       if (isDebug()) {
         ensureDebugOverlay();
         setDebugText("304 not-modified | " + new Date().toLocaleTimeString());
@@ -3327,7 +3328,7 @@
 
     {
       const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
-      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : cfg.REFRESH_EVERY);
+      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : basePollEverySec());
     }
   }
 
@@ -3338,6 +3339,14 @@
   function getDeviceId() {
     // Must match HTTP snapshot/status device id to keep server binding consistent.
     return getOrCreateDeviceId();
+  }
+
+  function basePollEverySec() {
+    try {
+      const wsOpen = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN);
+      if (wsOpen) return Number(cfg.WS_FALLBACK_POLL_EVERY) || 90;
+    } catch (e) {}
+    return Number(cfg.REFRESH_EVERY) || 20;
   }
 
   function initWebSocket() {
@@ -3392,6 +3401,10 @@
       rt.ws.onopen = function() {
         rt.wsRetryCount = 0; // reset on successful connection
         if (isDebug()) console.log("[WS] connected");
+        try {
+          rt.status304Streak = 0;
+          rt.statusEverySec = basePollEverySec();
+        } catch (e) {}
         
         // Start keepalive ping (every 30s)
         if (rt.wsPingInterval) clearInterval(rt.wsPingInterval);
@@ -3451,7 +3464,7 @@
             if (!isFetching) {
               if (isDebug()) console.log("[WS] triggering immediate refresh");
               rt.status304Streak = 0; // reset backoff
-              rt.statusEverySec = Number(cfg.REFRESH_EVERY) || 10;
+              rt.statusEverySec = basePollEverySec();
               scheduleNext(0.5); // slight delay to avoid storm if multiple messages arrive
             } else {
               if (isDebug()) console.log("[WS] fetch in progress, will pick up pendingRev on next cycle");
@@ -3482,6 +3495,11 @@
         if (code === 4400 || code === 4403 || code === 4408) {
           if (isDebug()) console.log("[WS] auth failure, not reconnecting");
           rt.wsEnabled = false; // disable WS
+          try {
+            rt.status304Streak = 0;
+            rt.statusEverySec = basePollEverySec();
+            scheduleNext(1);
+          } catch (e) {}
           return;
         }
         
@@ -3614,6 +3632,7 @@
     } catch (e) {}
 
     cfg.REFRESH_EVERY = clamp(parseFloat(body.dataset.refresh || "10") || 10, 5, 120);
+    cfg.WS_FALLBACK_POLL_EVERY = clamp(parseFloat(body.dataset.wsFallbackPoll || "90") || 90, 30, 600);
     cfg.STANDBY_SPEED = normSpeed(body.dataset.standby || "0.8", 0.8);
     cfg.PERIODS_SPEED = normSpeed(body.dataset.periodsSpeed || "0.5", 0.5);
 

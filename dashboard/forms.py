@@ -79,7 +79,6 @@ class SchoolSettingsForm(forms.ModelForm):
             "name",
             "featured_panel",
             "theme",
-            "refresh_interval_sec",
             "standby_scroll_speed",
             "periods_scroll_speed",
             "display_accent_color",
@@ -88,9 +87,6 @@ class SchoolSettingsForm(forms.ModelForm):
         widgets = {
             "featured_panel": forms.Select(),
             "theme": forms.Select(),
-
-            # ✅ حد أدنى 15 ثانية + خطوة 1 (أوضح للمستخدم)
-            "refresh_interval_sec": forms.NumberInput(attrs={"min": 15, "step": 1}),
 
             # ✅ حد أدنى 0.5 + خطوة 0.1 (قيم عملية للعرض)
             "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
@@ -113,12 +109,6 @@ class SchoolSettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # تأكيد attrs حتى لو تغيّرت الـ widgets أو تم override من مكان آخر
-        if "refresh_interval_sec" in self.fields:
-            self.fields["refresh_interval_sec"].widget.attrs.update({"min": "15", "step": "1"})
-            self.fields["refresh_interval_sec"].help_text = (
-                "الحد الأدنى 15 ثانية. (موصى به 20–30 لتجربة ثابتة وتقليل الضغط)"
-            )
-
         for fname in ["standby_scroll_speed", "periods_scroll_speed"]:
             if fname in self.fields:
                 self.fields[fname].widget.attrs.update({"min": "0.5", "max": "5.0", "step": "0.1"})
@@ -151,18 +141,6 @@ class SchoolSettingsForm(forms.ModelForm):
     # =========================
     # ✅ Server-side validation
     # =========================
-    def clean_refresh_interval_sec(self):
-        v = self.cleaned_data.get("refresh_interval_sec")
-        if v is None:
-            return v
-        try:
-            v_int = int(v)
-        except (TypeError, ValueError):
-            raise forms.ValidationError("الرجاء إدخال رقم صحيح لفاصل التحديث.")
-        if v_int < 15:
-            raise forms.ValidationError("الحد الأدنى لفاصل تحديث الشاشة هو 15 ثانية.")
-        return v_int
-
     def clean_standby_scroll_speed(self):
         v = self.cleaned_data.get("standby_scroll_speed")
         if v is None:

@@ -88,7 +88,7 @@
                 <div class="col-span-1 lg:col-span-2">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                      {% for field in form %}
-                        {% if field.name != 'theme' and field.name != 'featured_panel' and field.name != 'refresh_interval_sec' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
+                        {% if field.name != 'theme' and field.name != 'featured_panel' and field.name != 'standby_scroll_speed' and field.name != 'periods_scroll_speed' and field.name != 'display_accent_color' %}
                             <div class="group relative">
                                 <label class="text-sm font-bold text-slate-600 mb-2 transition-colors group-focus-within:text-indigo-600 flex items-center justify-between">
                                     <span>{{ field.label }}</span>
@@ -238,37 +238,6 @@
                         فترات التحديث والسرعة
                     </h4>
 
-                    <!-- Refresh Interval -->
-                    <div class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-emerald-300 transition-all shadow-sm group">
-                        <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.refresh_interval_sec.label }}</label>
-                        <div class="flex items-center gap-4">
-                            <div class="relative flex-1">
-                                {{ form.refresh_interval_sec }}
-                                <div class="absolute inset-y-0 left-0 flex items-center px-4 bg-slate-50 border-r border-slate-200 rounded-l-xl text-slate-500 text-sm font-bold group-focus-within:border-emerald-200 group-focus-within:bg-emerald-50 group-focus-within:text-emerald-700 transition-colors">ثانية</div>
-                            </div>
-                            <!-- Helper visual -->
-                             <div class="hidden md:flex flex-col items-center justify-center px-4">
-                                <span class="text-[10px] uppercase text-slate-400 font-bold mb-1">سرعة التحديث</span>
-                                <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                     <div class="h-full bg-emerald-400 rounded-full w-1/3"></div>
-                                </div>
-                             </div>
-                        </div>
-                        <div class="mt-4 flex flex-wrap items-center justify-between text-xs gap-2">
-                             <span class="text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">القيمة الافتراضية: 20 ثانية</span>
-                             <span class="text-slate-400 font-medium">المدى المسموح: 20 - 50</span>
-                        </div>
-                        <div id="refreshWarn" class="hidden mt-3 text-xs font-bold text-rose-600 bg-rose-50 px-3 py-2.5 rounded-xl border border-rose-100 animate-pulse">
-                            <div class="flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                <span>القيمة يجب أن تكون بين 20 و 50 ثانية</span>
-                            </div>
-                        </div>
-                         {% if form.refresh_interval_sec.errors %}
-                            <div class="mt-1 text-red-600 text-sm">{% for error in form.refresh_interval_sec.errors %}{{ error }}{% endfor %}</div>
-                        {% endif %}
-                    </div>
-
                     <!-- Scroll Speeds Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <!-- Standby Speed -->
@@ -336,13 +305,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const form = document.getElementById('settingsForm');
-    const refreshEl = document.getElementById('id_refresh_interval_sec');
     const standbyEl = document.getElementById('id_standby_scroll_speed');
     const periodsEl = document.getElementById('id_periods_scroll_speed');
     const accentInput = document.getElementById('id_display_accent_color');
     const themePalette = document.getElementById('displayThemePalette');
 
-    const refreshWarn = document.getElementById('refreshWarn');
     const standbyWarn = document.getElementById('standbyWarn');
     const periodsWarn = document.getElementById('periodsWarn');
 
@@ -403,16 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Apply strict attributes
-    if(refreshEl) {
-        refreshEl.setAttribute('min', '20');
-        refreshEl.setAttribute('max', '50');
-        refreshEl.setAttribute('step', '1');
-        
-        // Default to 20 if empty
-        if(!refreshEl.value) refreshEl.value = '20';
-
-        refreshEl.addEventListener('input', () => validateInput(refreshEl, 20, 50, refreshWarn));
-    }
     if(standbyEl) {
         standbyEl.setAttribute('min', '0.5');
         standbyEl.setAttribute('step', '0.1');
@@ -495,18 +452,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form Submit
     if(form) {
         form.addEventListener('submit', function(e) {
-            const valid1 = validateInput(refreshEl, 20, 50, refreshWarn);
-            const valid2 = validateInput(standbyEl, 0.5, null, standbyWarn);
-            const valid3 = validateInput(periodsEl, 0.5, null, periodsWarn);
+            const valid1 = validateInput(standbyEl, 0.5, null, standbyWarn);
+            const valid2 = validateInput(periodsEl, 0.5, null, periodsWarn);
 
-            if(!valid1 || !valid2 || !valid3) {
+            if(!valid1 || !valid2) {
                 e.preventDefault();
                 showToast('تنبيه', 'يرجى تصحيح القيم المدخلة قبل الحفظ', 'error');
                 
                 // Scroll to first error
-                if(!valid1) refreshEl.scrollIntoView({behavior: 'smooth', block: 'center'});
-                else if(!valid2) standbyEl.scrollIntoView({behavior: 'smooth', block: 'center'});
-                else if(!valid3) periodsEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                if(!valid1) standbyEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                else if(!valid2) periodsEl.scrollIntoView({behavior: 'smooth', block: 'center'});
                 
                 return;
             }

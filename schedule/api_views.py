@@ -2350,11 +2350,35 @@ def snapshot(request, token: str | None = None):
 
         # School-level shared snapshot cache (order):
         # token->school (cache first) -> snap_key -> wait_for -> lock -> build
-        if not force_nocache and display_keys is not None and get_school_id_by_token is not None:
-            try:
-                school_id_fast = get_school_id_by_token(token_value)
-            except Exception:
-                school_id_fast = None
+        if not force_nocache and display_keys is not None:
+            school_id_fast = None
+            if get_school_id_by_token is not None:
+                try:
+                    school_id_fast = get_school_id_by_token(token_value)
+                except Exception:
+                    school_id_fast = None
+
+            # Fallback: if token->school fast resolver misses, reuse existing token_map cache.
+            # This avoids unnecessary rebuilds when the dedicated helper cache is cold.
+            if not school_id_fast:
+                try:
+                    map_cached_fast = cache.get(f"display:token_map:{token_hash}")
+                    if isinstance(map_cached_fast, dict):
+                        sid_fast = map_cached_fast.get("school_id")
+                    else:
+                        sid_fast = map_cached_fast
+                    if sid_fast:
+                        school_id_fast = int(sid_fast)
+                except Exception:
+                    school_id_fast = None
+
+            # Last fallback in snapshot path: use already-bound screen context if available.
+            if not school_id_fast and is_snapshot_path:
+                try:
+                    if "screen" in locals() and getattr(screen, "school_id", None):
+                        school_id_fast = int(screen.school_id)
+                except Exception:
+                    school_id_fast = None
 
             if school_id_fast:
                 rev_fast = None
