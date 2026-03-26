@@ -1291,12 +1291,9 @@
   }
 
   /**
-   * Check if the state type changed and play bell on transitions:
-   * - period start (before -> period)
-   * - period end (period -> break / period -> period)
-   * - break start (period -> break)
-   * - day start (before -> period, first period)
-   * - day end (period/break -> after/off/done)
+   * Check if the state type changed and play bell on day start only.
+   * نهاية الحصة تُعالج في onCountdownZero (لأنها أدق توقيتاً).
+   * هنا نعالج فقط: بداية الدوام (before -> period)
    */
   function checkStateTransitionBell(newStateType) {
     var key = safeText(newStateType);
@@ -1308,15 +1305,8 @@
     var prev = lastBellStateKey;
     lastBellStateKey = key;
 
-    // Play bell on all meaningful transitions
-    var shouldPlay = false;
-    if (prev === "before" && key === "period") shouldPlay = true;  // بداية الدوام / بداية حصة
-    if (prev === "period" && key === "break") shouldPlay = true;   // نهاية حصة -> فسحة
-    if (prev === "break" && key === "period") shouldPlay = true;   // نهاية فسحة -> بداية حصة
-    if (prev === "period" && key === "period") shouldPlay = true;  // حصة -> حصة
-    if ((prev === "period" || prev === "break") && (key === "after" || key === "off" || key === "done" || key === "ended")) shouldPlay = true; // نهاية الدوام
-
-    if (shouldPlay) {
+    // بداية الدوام فقط
+    if (prev === "before" && key === "period") {
       try { playBellSound(); } catch (e) {}
     }
   }
@@ -1429,8 +1419,10 @@
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
 
-    // Play bell notification sound at end of period
-    try { playBellSound(); } catch (e) {}
+    // Play bell at end of period only (not at end of break)
+    if (rt.activeStateType === "period") {
+      try { playBellSound(); } catch (e) {}
+    }
 
     // UX guarantee: if we already know what's next (next_period), show it immediately.
     // This avoids waiting for schedule_revision changes or cache TTLs.
