@@ -710,9 +710,10 @@
     rt.activeTargetHM = (stType === "before") ? block.from : block.to;
     rt.dayOver = false;
 
-    // Prevent duplicate 00:00 handling.
+    // Record the currently rendered core state, but do not mark countdown-zero
+    // as handled yet. Zero should only be consumed when a boundary transition
+    // actually fires, otherwise TVs that land directly on 00:00 can get stuck.
     lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(block.from || "") + "||" + safeText(block.to || "");
-    lastZeroHandledCoreSig = lastStateCoreSig;
 
     // Re-filter standby list.
     try {
@@ -1690,9 +1691,9 @@
         );
       } catch (e) {}
 
-      // Prevent duplicate 00:00 handling for the just-applied optimistic state.
+      // Keep the rendered core signature in sync, but do not pre-consume the
+      // zero-boundary for the newly applied state.
       lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(fromHM || "") + "||" + safeText(toHM || "");
-      lastZeroHandledCoreSig = lastStateCoreSig;
 
       return true;
     } catch (e) {
