@@ -59,16 +59,24 @@ class ExcellenceForm(forms.ModelForm):
             "end_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
         }
 
+    _ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
     def clean_photo(self):
         file = self.cleaned_data.get("photo")
         if not file:
             return file
-        # تحقق من الحجم تقريبًا (الأمان الحقيقي يكون عبر إعدادات الخادم / Nginx)
+        # تحقق من الحجم
         max_bytes = self.MAX_PHOTO_MB * 1024 * 1024
         if getattr(file, "size", 0) > max_bytes:
             raise ValidationError(
                 _("حجم الصورة يتجاوز %(mb)s م.ب."),
                 params={"mb": self.MAX_PHOTO_MB},
+            )
+        # تحقق من نوع المحتوى
+        content_type = getattr(file, "content_type", "") or ""
+        if content_type not in self._ALLOWED_CONTENT_TYPES:
+            raise ValidationError(
+                _("نوع الملف غير مسموح به. الأنواع المسموحة: JPEG, PNG, WebP."),
             )
         return file
 

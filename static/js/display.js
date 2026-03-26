@@ -573,6 +573,7 @@
   const _dayEngine = {
     blocks: [],       // sorted [{kind,label,from,to,fromMs,toMs,index}, ...]
     lastDayKey: "",   // signature to detect changes
+    ringPoints: [],   // sorted epoch-ms boundaries to ring on
   };
 
   /**
@@ -612,6 +613,30 @@
     }
     blocks.sort(function (a, b) { return a.fromMs - b.fromMs; });
     _dayEngine.blocks = blocks;
+
+    // Build unique bell boundaries (start/end of period/break blocks).
+    // Using time boundaries directly keeps bell behavior independent from UI counters.
+    var ringMap = Object.create(null);
+    for (var j = 0; j < blocks.length; j++) {
+      var rb = blocks[j];
+      if (!rb) continue;
+      var knd = safeText(rb.kind || "").toLowerCase();
+      if (knd !== "period" && knd !== "break") continue;
+      if (rb.fromMs && isFinite(Number(rb.fromMs))) ringMap[String(Math.floor(Number(rb.fromMs)))] = 1;
+      if (rb.toMs && isFinite(Number(rb.toMs))) ringMap[String(Math.floor(Number(rb.toMs)))] = 1;
+    }
+    var points = Object.keys(ringMap)
+      .map(function (x) { return parseInt(x, 10); })
+      .filter(function (x) { return isFinite(x) && x > 0; })
+      .sort(function (a, b) { return a - b; });
+    _dayEngine.ringPoints = points;
+
+    // New day/schedule signature: reset boundary ring memory so future boundaries can ring.
+    lastBellBoundaryCheckMs = nowMs();
+    lastBellBoundaryDaySig = sig;
+    for (var rk in bellBoundarySeen) {
+      if (Object.prototype.hasOwnProperty.call(bellBoundarySeen, rk)) delete bellBoundarySeen[rk];
+    }
   }
 
   /**
@@ -656,6 +681,67 @@
     return { current: null, next: null, dayOver: false };
   }
 
+  function dayEngineResolvePeriodIndex(block) {
+    if (!block) return null;
+
+    var direct = getPeriodIndex(block);
+    if (direct && Number(direct) > 0) return Number(direct);
+
+    var blocks = _dayEngine.blocks || [];
+    if (!blocks.length) return null;
+
+    var ord = 0;
+    var bf = safeText(block.from || "");
+    var bt = safeText(block.to || "");
+    var bl = safeText(block.label || "");
+
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (safeText(b.kind || "").toLowerCase() !== "period") continue;
+      ord += 1;
+
+      var idx = getPeriodIndex(b);
+      var candidate = idx && Number(idx) > 0 ? Number(idx) : ord;
+
+      if (b === block) return candidate;
+
+      var sameWindow = safeText(b.from || "") === bf && safeText(b.to || "") === bt;
+      var sameLabel = bl && safeText(b.label || "") === bl;
+      if (sameWindow || sameLabel) return candidate;
+    }
+
+    return null;
+  }
+
+  function dayEngineReferencePeriodIndex() {
+    var runtime = Number(rt && rt.activePeriodIndex);
+    if (isFinite(runtime) && runtime > 0) return Math.floor(runtime);
+
+    if (!_dayEngine.blocks.length) return null;
+
+    var res = dayEngineFindNow();
+    if (!res || res.dayOver) return null;
+
+    if (res.current) {
+      var kind = safeText(res.current.kind || "").toLowerCase();
+      if (kind === "period") {
+        var curIdx = dayEngineResolvePeriodIndex(res.current);
+        if (curIdx && curIdx > 0) return curIdx;
+      }
+      if (kind === "break") {
+        var nextIdx = dayEngineResolvePeriodIndex(res.next);
+        if (nextIdx && nextIdx > 0) return nextIdx;
+      }
+    }
+
+    if (res.next) {
+      var idx = dayEngineResolvePeriodIndex(res.next);
+      if (idx && idx > 0) return idx;
+    }
+
+    return null;
+  }
+
   /**
    * Advance the display to a specific block from the day engine.
    * This replaces optimisticAdvanceToNextBlock for day_path-based transitions.
@@ -698,12 +784,19 @@
     hasActiveCountdown = true;
     progressRange = { start: block.fromMs, end: block.toMs };
 
+    var blockPeriodIdx = dayEngineResolvePeriodIndex(block);
+    var nextPeriodIdx = dayEngineResolvePeriodIndex(nextBlock);
+
     if (stType === "period") {
-      rt.activePeriodIndex = block.index || rt.activePeriodIndex;
+      rt.activePeriodIndex = blockPeriodIdx || rt.activePeriodIndex;
       rt.activeFromHM = block.from;
     } else if (stType === "break") {
+      // During break, use the upcoming period index so ended standby items disappear immediately.
+      rt.activePeriodIndex = nextPeriodIdx || rt.activePeriodIndex;
       rt.activeFromHM = block.from;
     } else if (stType === "before") {
+      // Before first period (or in gaps), keep filter aligned with the next period.
+      rt.activePeriodIndex = nextPeriodIdx || rt.activePeriodIndex;
       rt.activeFromHM = block.from;
     }
     rt.activeToHM = block.to;
@@ -733,6 +826,10 @@
 
     try {
       renderNextLabel(nextBlock || null);
+    } catch (e) {}
+
+    try {
+      renderPeriodClasses(stType === "period" ? pickRuntimePeriodClasses(lastPayloadForFiltering) : []);
     } catch (e) {}
 
     return true;
@@ -789,6 +886,7 @@
 
   function dayEngineApplyDayOver() {
     rt.dayOver = true;
+    rt.activePeriodIndex = null;
     rt.activeStateType = "after";
     rt.activeFromHM = null;
     rt.activeToHM = null;
@@ -804,6 +902,7 @@
     lastZeroHandledCoreSig = lastStateCoreSig;
     try { renderCurrentChips("after", { label: "انتهى اليوم الدراسي", from: null, to: null }, null); } catch (e) {}
     try { renderNextLabel(null); } catch (e) {}
+    try { renderPeriodClasses([]); } catch (e) {}
     return true;
   }
 
@@ -816,17 +915,9 @@
     var have = dayEngineRuntimeSlotSig();
     if (want === have) return false;
 
-    var prevType = safeText(rt && rt.activeStateType ? rt.activeStateType : "").toLowerCase();
     var nextType = "before";
     if (res.dayOver) nextType = "after";
     else if (res.current) nextType = safeText(res.current.kind || "period").toLowerCase();
-
-    // Boundary bell (end of period/break) when local-time sync forces transition.
-    if (prevType && prevType !== nextType && (prevType === "period" || prevType === "break")) {
-      lastBoundaryBellStateKey = prevType;
-      lastBoundaryBellAt = Date.now();
-      try { playBellSound(); } catch (e) {}
-    }
 
     try { checkStateTransitionBell(nextType); } catch (e) {}
 
@@ -1310,12 +1401,13 @@
     
     // 1) فلترة بالأرقام (الأفضل) - نبحث في جميع الحقول الممكنة
     const idx = getPeriodIndex(x);
-    
-    if (idx && rt.activePeriodIndex) {
+    const refIdx = dayEngineReferencePeriodIndex() || (rt.activePeriodIndex ? Number(rt.activePeriodIndex) : null);
+
+    if (idx && refIdx) {
       // نعرض الحصص التي >= الحصة الحالية (أي الحصة الحالية والحصص القادمة)
       // مثال: إذا الحصة الحالية = 2، نعرض حصة انتظار 2، 3، 4...
       // عند بداية الحصة 3، حصة انتظار الحصة 2 ستختفي
-      const keep = idx >= rt.activePeriodIndex;
+      const keep = Number(idx) >= Number(refIdx);
       return keep;
     }
 
@@ -1528,6 +1620,9 @@
   let lastBellStateKey = "";
   let lastBoundaryBellStateKey = "";
   let lastBoundaryBellAt = 0;
+  let lastBellBoundaryCheckMs = 0;
+  let lastBellBoundaryDaySig = "";
+  const bellBoundarySeen = Object.create(null);
 
   function ensureBellAudio() {
     if (bellAudio) return bellAudio;
@@ -1646,6 +1741,9 @@
     if (key === lastBellStateKey) return;
     var prev = lastBellStateKey;
     lastBellStateKey = key;
+
+    // With day_path loaded, bell timing is governed by boundary timestamps.
+    if (_dayEngine && Array.isArray(_dayEngine.blocks) && _dayEngine.blocks.length) return;
 
     const boundaryBellJustPlayed =
       prev &&
@@ -1892,7 +1990,7 @@
         renderAnnouncements(snap.announcements || []);
         renderFeaturedPanel(snap);
         renderStandby(snap.standby || []);
-        renderPeriodClasses(snap.period_classes || []);
+        renderPeriodClasses(pickRuntimePeriodClasses(snap));
       } catch (e) {
         renderAlert("حدث خطأ أثناء العرض", "افتح ?debug=1 لمزيد من التفاصيل.");
         ensureDebugOverlay();
@@ -1930,7 +2028,7 @@
                     renderAnnouncements(snap2.announcements || []);
                     renderFeaturedPanel(snap2);
                     renderStandby(snap2.standby || []);
-                    renderPeriodClasses(snap2.period_classes || []);
+                    renderPeriodClasses(pickRuntimePeriodClasses(snap2));
                   } catch (e) {}
 
                   try {
@@ -2387,6 +2485,151 @@
   let dutyScroller = null;
 
   let lastPayloadForFiltering = null;
+  const periodClassesByIndex = Object.create(null);
+
+  function _normalizePeriodClassRow(item, fallbackIdx) {
+    const x = item || {};
+    const cls = safeText(x.class_name || x["class"] || x.classroom || "");
+    const subj = safeText(x.subject_name || x.subject || x.label || "");
+    const teacher = safeText(x.teacher_name || x.teacher || x.teacher_full_name || "");
+    const idxRaw = getPeriodIndex(x) || fallbackIdx;
+    const idx = Number(idxRaw);
+    return {
+      class_name: cls,
+      subject_name: subj,
+      teacher_name: teacher,
+      class: cls,
+      subject: subj,
+      teacher: teacher,
+      period_index: isFinite(idx) && idx > 0 ? idx : null,
+    };
+  }
+
+  function _cachePeriodClassesForIndex(index, items, overwrite) {
+    const idx = Number(index);
+    if (!isFinite(idx) || idx <= 0) return;
+    const key = String(Math.floor(idx));
+    if (!overwrite && Array.isArray(periodClassesByIndex[key]) && periodClassesByIndex[key].length) return;
+    const rows = Array.isArray(items) ? items : [];
+    const seen = new Set();
+    const norm = [];
+    rows.forEach((it) => {
+      const r = _normalizePeriodClassRow(it, idx);
+      if (!r.class_name && !r.subject_name && !r.teacher_name) return;
+      const sig = safeText(r.class_name) + "||" + safeText(r.subject_name) + "||" + safeText(r.teacher_name);
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      norm.push(r);
+    });
+    periodClassesByIndex[key] = norm;
+  }
+
+  function _getCachedPeriodClassesForIndex(index) {
+    const idx = Number(index);
+    if (!isFinite(idx) || idx <= 0) return [];
+    const key = String(Math.floor(idx));
+    const arr = periodClassesByIndex[key];
+    return Array.isArray(arr) ? arr.slice() : [];
+  }
+
+  function ingestPeriodClassesFromPayload(payload) {
+    if (!payload || typeof payload !== "object") return;
+
+    const map = payload.period_classes_map;
+    if (map && typeof map === "object" && !Array.isArray(map)) {
+      Object.keys(map).forEach((k) => {
+        _cachePeriodClassesForIndex(k, map[k], true);
+      });
+    }
+
+    const curIdx =
+      getPeriodIndex((payload && payload.current_period) || null) ||
+      getPeriodIndex((payload && payload.state) || null) ||
+      Number(rt && rt.activePeriodIndex);
+    if (curIdx && Array.isArray(payload.period_classes) && payload.period_classes.length) {
+      _cachePeriodClassesForIndex(curIdx, payload.period_classes, true);
+    }
+
+    // Minimal fallback from day_path in case map is missing (single-row per period).
+    if (Array.isArray(payload.day_path)) {
+      payload.day_path.forEach((b) => {
+        if (!b) return;
+        const kind = safeText(b.kind || b.type || "").toLowerCase();
+        if (kind !== "period") return;
+        const idx = getPeriodIndex(b);
+        if (!idx) return;
+        const row = {
+          class_name: safeText(b["class"] || b.class_name || ""),
+          subject_name: safeText(b.label || ""),
+          teacher_name: safeText(b.teacher || ""),
+          period_index: idx,
+        };
+        _cachePeriodClassesForIndex(idx, [row], false);
+      });
+    }
+  }
+
+  function tickBoundaryBell() {
+    if (!_dayEngine.blocks.length || !_dayEngine.ringPoints.length) {
+      lastBellBoundaryCheckMs = nowMs();
+      return;
+    }
+
+    const now = nowMs();
+    let prev = Number(lastBellBoundaryCheckMs || 0);
+    if (!isFinite(prev) || prev <= 0) prev = now;
+    if (prev > now) prev = now;
+
+    // Ring once per tick at most (latest crossed boundary), to avoid bursts
+    // when the tab/device wakes up after a long pause.
+    let crossedTs = null;
+    for (let i = 0; i < _dayEngine.ringPoints.length; i++) {
+      const ts = Number(_dayEngine.ringPoints[i] || 0);
+      if (!isFinite(ts) || ts <= 0) continue;
+      if (ts >= prev && ts <= now) crossedTs = ts;
+    }
+
+    if (crossedTs !== null) {
+      const daySig = _dayEngine.lastDayKey || "";
+      if (lastBellBoundaryDaySig && daySig && lastBellBoundaryDaySig !== daySig) {
+        for (const rk in bellBoundarySeen) {
+          if (Object.prototype.hasOwnProperty.call(bellBoundarySeen, rk)) delete bellBoundarySeen[rk];
+        }
+      }
+      lastBellBoundaryDaySig = daySig;
+
+      const key = daySig + "|" + String(Math.floor(crossedTs));
+      if (!bellBoundarySeen[key]) {
+        bellBoundarySeen[key] = 1;
+        lastBoundaryBellStateKey = "boundary";
+        lastBoundaryBellAt = Date.now();
+        try { playBellSound(); } catch (e) {}
+      }
+    }
+
+    lastBellBoundaryCheckMs = now;
+  }
+
+  function pickRuntimePeriodClasses(payload) {
+    const src = payload || lastPayloadForFiltering || null;
+    ingestPeriodClassesFromPayload(src);
+
+    const stType = safeText((rt && rt.activeStateType) || ((src && src.state && src.state.type) || "")).toLowerCase();
+    if (stType !== "period") return [];
+
+    const idx =
+      Number((rt && rt.activePeriodIndex) || 0) ||
+      Number(getPeriodIndex(src && src.current_period)) ||
+      Number(getPeriodIndex(src && src.state));
+    if (!isFinite(idx) || idx <= 0) return [];
+
+    let arr = _getCachedPeriodClassesForIndex(idx);
+    if ((!arr || !arr.length) && src && Array.isArray(src.period_classes) && src.period_classes.length) {
+      arr = src.period_classes.slice();
+      _cachePeriodClassesForIndex(idx, arr, true);
+    }
+    return Array.isArray(arr) ? arr : [];
+  }
 
   function renderPeriodClasses(items) {
     const raw = Array.isArray(items) ? items.slice() : [];
@@ -2968,6 +3211,7 @@
     rt.activeTargetHM = (stType === "before" ? stateFrom : stateTo) || null;
     rt.activeTargetMs = null;
     rt.dayOver = computeDayOver(payload, baseMs);
+    try { ingestPeriodClassesFromPayload(payload); } catch (e) {}
 
     countdownSeconds = null;
     progressRange = { start: null, end: null };
@@ -3114,6 +3358,10 @@
       // Keep period/break/before transitions driven by local synchronized time
       // even if the visual countdown gets stuck at 00:00.
       try { dayEngineSyncToLocalNow(); } catch (e) {}
+
+      // Ring by actual timetable boundary crossings (local synchronized clock),
+      // independent from countdown rendering or delayed UI state updates.
+      try { tickBoundaryBell(); } catch (e) {}
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         const prev = countdownSeconds;
@@ -3859,7 +4107,7 @@
       renderFeaturedPanel(snap);
 
       renderStandby(snap.standby || []);
-      renderPeriodClasses(snap.period_classes || []);
+      renderPeriodClasses(pickRuntimePeriodClasses(snap));
 
       // Phase 2: Initialize WebSocket (feature flag from server)
       try {

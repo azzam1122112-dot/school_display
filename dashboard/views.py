@@ -330,10 +330,6 @@ def _safe_next_url(request, default_name: str = "dashboard:index") -> str:
     if not nxt:
         return reverse(default_name)
     allowed_hosts = {request.get_host()}
-    try:
-        allowed_hosts |= set(dj_settings.ALLOWED_HOSTS or [])
-    except Exception:
-        pass
     if url_has_allowed_host_and_scheme(nxt, allowed_hosts=allowed_hosts, require_https=request.is_secure()):
         return nxt
     return reverse(default_name)
@@ -451,6 +447,10 @@ def login_view(request):
 
 
 def demo_login(request):
+    if not getattr(dj_settings, "DEBUG", False):
+        from django.http import Http404
+        raise Http404
+
     School = SchoolModel()
     DEMO_ID = "demo_user"
     DEMO_SCHOOL_SLUG = "demo-school"
@@ -3862,7 +3862,12 @@ def system_support_ticket_detail(request, pk):
     if request.method == "POST":
         # Handle status change
         if "status" in request.POST:
-            ticket.status = request.POST["status"]
+            VALID_STATUSES = {s[0] for s in SupportTicket.STATUS_CHOICES}
+            new_status = request.POST["status"]
+            if new_status not in VALID_STATUSES:
+                messages.error(request, "حالة غير صالحة.")
+                return redirect("dashboard:system_support_ticket_detail", pk=pk)
+            ticket.status = new_status
             ticket.save()
             messages.success(request, "تم تحديث حالة التذكرة.")
             return redirect("dashboard:system_support_ticket_detail", pk=pk)

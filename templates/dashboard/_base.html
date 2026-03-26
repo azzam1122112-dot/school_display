@@ -441,60 +441,6 @@
           </div>
         </a>
 
-        {% if not is_support_staff %}
-          <a href="{% url 'dashboard:system_schools_list' %}"
-             class="nav-item block px-4 py-3 rounded-xl border transition-all
-                 {% if request.resolver_match.url_name == 'system_schools_list' %}active-nav{% else %}bg-white/80{% endif %}">
-            <div class="flex items-center">
-              <span class="ml-2 text-lg">🏫</span>
-              <span class="font-medium">المدارس</span>
-            </div>
-          </a>
-        {% endif %}
-
-        <a href="{% url 'dashboard:system_users_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'system_users_list' %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">👤</span>
-            <span class="font-medium">مستخدمو النظام</span>
-          </div>
-        </a>
-
-        <a href="{% url 'dashboard:system_employees_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'system_employees_list' %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🧑‍💼</span>
-            <span class="font-medium">الموظفون</span>
-          </div>
-        </a>
-
-        <a href="{% url 'dashboard:system_subscriptions_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'system_subscriptions_list' %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">💳</span>
-            <span class="font-medium">اشتراكات المدارس</span>
-          </div>
-        </a>
-
-        <a href="{% url 'dashboard:system_subscription_requests_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if 'system_subscription_request' in request.resolver_match.url_name %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <span class="ml-2 text-lg">🧾</span>
-              <span class="font-medium">طلبات التجديد/الاشتراك</span>
-            </div>
-            {% if admin_open_subscription_requests_count %}
-              <span class="inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-600 text-white text-[11px] font-bold">
-                {{ admin_open_subscription_requests_count }}
-              </span>
-            {% endif %}
-          </div>
-        </a>
-
         <a href="{% url 'dashboard:system_screen_addons_list' %}"
            class="nav-item block px-4 py-3 rounded-xl border transition-all
                {% if 'system_screen_addon' in request.resolver_match.url_name %}active-nav{% else %}bg-white/80{% endif %}">

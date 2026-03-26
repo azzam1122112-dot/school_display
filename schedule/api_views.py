@@ -807,6 +807,7 @@ def _normalize_snapshot_keys(snap: dict) -> dict:
             "current_period": None,
             "next_period": None,
             "period_classes": [],
+            "period_classes_map": {},
             "standby": [],
             "excellence": [],
             "announcements": [],
@@ -845,6 +846,18 @@ def _normalize_snapshot_keys(snap: dict) -> dict:
 
     snap["day_path"] = _as_list(snap.get("day_path"))
     snap["period_classes"] = _as_list(snap.get("period_classes"))
+    pcm = snap.get("period_classes_map")
+    if isinstance(pcm, dict):
+        norm_map = {}
+        for k, v in pcm.items():
+            try:
+                kk = str(int(k))
+            except Exception:
+                continue
+            norm_map[kk] = _as_list(v)
+        snap["period_classes_map"] = norm_map
+    else:
+        snap["period_classes_map"] = {}
     return snap
 
 
@@ -872,6 +885,7 @@ def _fallback_payload(message: str = "إعدادات المدرسة غير مه�
         "current_period": None,
         "next_period": None,
         "period_classes": [],
+        "period_classes_map": {},
         "standby": [],
         "excellence": [],
         "announcements": [],
@@ -1598,6 +1612,32 @@ def _build_period_classes(settings_obj: SchoolSettings, weekday: int, period_ind
     return items
 
 
+def _build_period_classes_map(settings_obj: SchoolSettings, weekday: int) -> dict[str, list[dict]]:
+    qs = (
+        ClassLesson.objects
+        .filter(settings=settings_obj, weekday=weekday, is_active=True)
+        .select_related("school_class", "subject", "teacher")
+        .order_by("period_index", "school_class__name")
+    )
+    out: dict[str, list[dict]] = {}
+    for cl in qs:
+        try:
+            idx = int(getattr(cl, "period_index", 0) or 0)
+        except Exception:
+            idx = 0
+        if idx <= 0:
+            continue
+        k = str(idx)
+        out.setdefault(k, []).append({
+            "class": getattr(cl.school_class, "name", "") or "",
+            "subject": getattr(cl.subject, "name", "") or "",
+            "teacher": getattr(cl.teacher, "name", "") or "",
+            "period_index": idx,
+            "weekday": cl.weekday,
+        })
+    return out
+
+
 def _normalize_theme_value(raw: str | None) -> str:
     """
     SchoolSettings.theme عندك: default/boys/girls
@@ -1983,6 +2023,7 @@ def build_steady_snapshot(
         "current_period": None,
         "next_period": None,
         "period_classes": [],
+        "period_classes_map": {},
         "standby": [],
         "excellence": [],
         "duty": {"items": []},
@@ -2015,6 +2056,7 @@ def _build_final_snapshot(
     snap.setdefault("current_period", None)
     snap.setdefault("next_period", None)
     snap.setdefault("period_classes", [])
+    snap.setdefault("period_classes_map", {})
     snap.setdefault("standby", [])
     snap.setdefault("excellence", [])
     snap.setdefault("duty", {"items": []})
@@ -2097,6 +2139,19 @@ def _build_final_snapshot(
                         snap["current_period"]["index"] = period_index
         except Exception:
             logger.exception("snapshot: failed to fill period_classes")
+
+        # ✅ تجهيز خريطة الحصص لكل اليوم لتحديث "حصص جارية" محليًا بدون انتظار snapshot جديد
+        try:
+            if not isinstance(snap.get("period_classes_map"), dict) or not snap.get("period_classes_map"):
+                meta = snap.get("meta") or {}
+                weekday_raw = meta.get("weekday")
+                try:
+                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
+                except Exception:
+                    weekday = timezone.localdate().weekday() + 1
+                snap["period_classes_map"] = _build_period_classes_map(settings_obj, weekday)
+        except Exception:
+            logger.exception("snapshot: failed to build period_classes_map")
 
         # ✅ ضمان ظهور رقم الحصة للـ current و next
         try:
