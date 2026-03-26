@@ -2624,9 +2624,40 @@
     if (!isFinite(idx) || idx <= 0) return [];
 
     let arr = _getCachedPeriodClassesForIndex(idx);
+    // Guard against stale carry-over: keep only rows that match the active period index
+    // (or rows without explicit index from legacy payloads).
+    if (Array.isArray(arr) && arr.length) {
+      arr = arr.filter((row) => {
+        const rowIdx = Number(getPeriodIndex(row) || 0);
+        return !rowIdx || rowIdx === idx;
+      });
+      if (!arr.length) _cachePeriodClassesForIndex(idx, [], true);
+    }
+
     if ((!arr || !arr.length) && src && Array.isArray(src.period_classes) && src.period_classes.length) {
-      arr = src.period_classes.slice();
-      _cachePeriodClassesForIndex(idx, arr, true);
+      const srcCur = (src && src.current_period) || null;
+      const srcState = (src && src.state) || {};
+      const srcIdx = Number(getPeriodIndex(srcCur) || getPeriodIndex(srcState) || 0);
+      const srcFrom = safeText((srcCur && (srcCur.from || srcCur.starts_at)) || srcState.from || "");
+      const srcTo = safeText((srcCur && (srcCur.to || srcCur.ends_at)) || srcState.to || "");
+      const rtFrom = safeText((rt && rt.activeFromHM) || "");
+      const rtTo = safeText((rt && rt.activeToHM) || "");
+
+      // Only trust snapshot period_classes when it clearly belongs to this same period slot.
+      const sameIdx = srcIdx > 0 ? srcIdx === idx : false;
+      const sameSlot = !!(srcFrom && srcTo && srcFrom === rtFrom && srcTo === rtTo);
+      const allowFallback = sameIdx || sameSlot;
+
+      if (allowFallback) {
+        const fallbackRows = src.period_classes.filter((row) => {
+          const rowIdx = Number(getPeriodIndex(row) || 0);
+          return !rowIdx || rowIdx === idx;
+        });
+        if (fallbackRows.length) {
+          arr = fallbackRows;
+          _cachePeriodClassesForIndex(idx, arr, true);
+        }
+      }
     }
     return Array.isArray(arr) ? arr : [];
   }
@@ -2651,14 +2682,16 @@
     if (dom.pcCount) setTextIfChanged(dom.pcCount, String(arr.length));
     if (!dom.periodClassesTrack || !periodsScroller) return;
 
-    const sig = listSignature(arr, "periods");
+    // Include runtime state in signature so empty-state message updates correctly
+    // when switching between "day over" and "no ongoing classes".
+    const sig = (rt.dayOver ? "1" : "0") + "|" + safeText((rt && rt.activeStateType) || "") + "|" + listSignature(arr, "periods");
     periodsScroller.render(sig, () => {
       if (!arr.length) {
         const msg = document.createElement("div");
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا توجد حصص جارية";
+        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا يوجد حصص جارية الآن";
         return msg;
       }
 
@@ -4391,7 +4424,9 @@
 
         // No successful WS connection yet + repeated failures => assume endpoint
         // is unavailable for this deployment/device and pause retries briefly.
-        if (!rt.wsEverConnected && rt.wsRetryCount >= 6) {
+        // Reduced threshold from 6→3: each failed attempt generates a server 404,
+        // so suppress early to cut log noise and unnecessary requests.
+        if (!rt.wsEverConnected && rt.wsRetryCount >= 3) {
           rt.wsSuppressedUntilTs = Date.now() + (10 * 60 * 1000); // 10 minutes
           if (isDebug()) console.log("[WS] endpoint seems unavailable; suppressing retries for 10 minutes");
           return;

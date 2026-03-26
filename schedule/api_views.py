@@ -1939,7 +1939,13 @@ def _clamp_active_ttl_by_remaining_seconds(snap: dict, ttl: int) -> int:
 
     If we cache a snapshot for (say) 15–20s while a period/break has 3s remaining,
     clients can keep receiving the *previous* block even after time has passed.
-    That is especially problematic with status-first polling (revision may not change).
+
+    However, clamping below the fleet polling interval (~20s) causes the cache to
+    expire before the next poll arrives, leading to repeated cache MISS / rebuild
+    cycles.  The client-side dayEngine already handles time-based transitions
+    locally (via day_path + serverNowMs), so a short stale window is harmless.
+
+    Minimum clamp: 15s — matches DISPLAY_SNAPSHOT_ACTIVE_TTL lower bound.
     """
     try:
         if not isinstance(snap, dict):
@@ -1953,7 +1959,7 @@ def _clamp_active_ttl_by_remaining_seconds(snap: dict, ttl: int) -> int:
             r = int(rem)
             if r < 1:
                 r = 1
-            return max(1, min(int(ttl), r))
+            return max(15, min(int(ttl), r))
     except Exception:
         return ttl
     return ttl

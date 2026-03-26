@@ -1,10 +1,25 @@
 from django.contrib import admin
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.contrib.staticfiles import finders
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+
+
+def ws_display_http_fallback(request):
+    """Return 400 instead of 404 when WebSocket endpoint is hit over plain HTTP.
+
+    This happens when a reverse-proxy (e.g. Cloudflare) strips the Upgrade
+    header, so the ASGI ProtocolTypeRouter classifies the request as HTTP and
+    Django's URL router handles it.  Returning 400 silences the noisy
+    '[WARNING] Not Found: /ws/display/' log entries and signals the root cause.
+    """
+    return JsonResponse(
+        {"error": "websocket_required", "detail": "This endpoint requires a WebSocket connection. "
+         "If you see this, your proxy may be stripping the Upgrade header."},
+        status=400,
+    )
 
 
 def favicon(request):
@@ -68,6 +83,9 @@ urlpatterns = [
 
     # robots.txt (serve directly to avoid startup/runtime failures in test/dev)
     path("robots.txt", robots_txt, name="robots_txt"),
+
+    # WebSocket HTTP fallback (prevents 404 noise when proxy strips Upgrade header)
+    path("ws/display/", ws_display_http_fallback, name="ws_display_fallback"),
 
     # موقع الويب (يشمل / و /subscriptions-page/ و /s/<code>)
     path("", include(("website.urls", "website"), namespace="website")),
