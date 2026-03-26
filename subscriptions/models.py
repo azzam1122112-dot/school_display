@@ -1,14 +1,35 @@
 from datetime import date
 from decimal import Decimal
 from datetime import timedelta
+import os
 
 from django.conf import settings
 import secrets
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
 from core.models import School, SubscriptionPlan
+
+
+_RECEIPT_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
+
+
+def _validate_receipt_extension(value):
+    if not value:
+        return
+    name = (getattr(value, "name", "") or "").strip()
+    _, ext = os.path.splitext(name)
+    ext = (ext or "").lower()
+    if ext == "":
+        return
+    if ext not in _RECEIPT_ALLOWED_EXTS:
+        raise ValidationError(
+            f"امتداد الملف \"{ext.lstrip('.')}\" غير مسموح به. "
+            f"الامتدادات المسموح بها: {', '.join(sorted(e.lstrip('.') for e in _RECEIPT_ALLOWED_EXTS))}.",
+            code="invalid_extension",
+        )
 
 
 class SchoolSubscription(models.Model):
@@ -438,6 +459,7 @@ class SubscriptionRequest(models.Model):
         upload_to="receipts/subscription_requests/%Y/%m",
         max_length=500,
         verbose_name="إيصال التحويل (صورة)",
+        validators=[_validate_receipt_extension],
     )
     transfer_note = models.CharField(
         "ملاحظة العميل",

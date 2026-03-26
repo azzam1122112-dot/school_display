@@ -1,7 +1,28 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils import timezone
+import os
 import secrets
+
+
+_IMAGE_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _validate_image_extension(value):
+    if not value:
+        return
+    name = (getattr(value, "name", "") or "").strip()
+    _, ext = os.path.splitext(name)
+    ext = (ext or "").lower()
+    if ext == "":
+        return
+    if ext not in _IMAGE_ALLOWED_EXTS:
+        raise ValidationError(
+            f"امتداد الملف \"{ext.lstrip('.')}\" غير مسموح به. "
+            f"الامتدادات المسموح بها: {', '.join(sorted(e.lstrip('.') for e in _IMAGE_ALLOWED_EXTS))}.",
+            code="invalid_extension",
+        )
 
 
 class SchoolType(models.TextChoices):
@@ -21,6 +42,7 @@ class School(models.Model):
         upload_to="schools/logos/",
         blank=True,
         null=True,
+        validators=[_validate_image_extension],
     )
     is_active = models.BooleanField(
         "اشتراك نشط",

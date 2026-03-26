@@ -1,3 +1,4 @@
+from django.db import models as db_models
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
@@ -16,15 +17,18 @@ def active_announcements(request):
     if not screen or not school:
         return Response({"detail": "Forbidden"}, status=403)
 
+    now = timezone.now()
     qs = Announcement.objects.filter(
         school=school,
         is_active=True,
-    ).order_by("-starts_at")
-
-    items = [a for a in qs if a.active_now]
+    ).filter(
+        db_models.Q(starts_at__lte=now) | db_models.Q(starts_at__isnull=True),
+    ).filter(
+        db_models.Q(expires_at__gt=now) | db_models.Q(expires_at__isnull=True),
+    ).order_by("-starts_at")[:100]
 
     return Response(
-        {"items": AnnouncementSerializer(items, many=True).data},
+        {"items": AnnouncementSerializer(qs, many=True).data},
         status=200,
     )
 
@@ -37,14 +41,17 @@ def active_excellence(request):
     if not screen or not school:
         return Response({"detail": "Forbidden"}, status=403)
 
+    now = timezone.now()
     qs = Excellence.objects.filter(
-        school=school
-    ).order_by("priority", "-start_at")
-
-    items = [e for e in qs if e.active_now]
+        school=school,
+    ).filter(
+        db_models.Q(start_at__lte=now) | db_models.Q(start_at__isnull=True),
+    ).filter(
+        db_models.Q(end_at__isnull=True) | db_models.Q(end_at__gte=now),
+    ).order_by("priority", "-start_at")[:100]
 
     serializer = ExcellenceSerializer(
-        items,
+        qs,
         many=True,
         context={"request": request},
     )

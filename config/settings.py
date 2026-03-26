@@ -526,7 +526,7 @@ USE_TZ = True
 # Sessions (idle timeout)
 # =========================
 SESSION_COOKIE_AGE = env_int("SESSION_IDLE_TIMEOUT_SECONDS", "3600")
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -605,6 +605,14 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "120/minute",
+    },
     "DEFAULT_RENDERER_CLASSES": (
         ("rest_framework.renderers.JSONRenderer",)
         if not DEBUG
