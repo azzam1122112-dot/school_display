@@ -489,6 +489,7 @@
     activeFromHM: null, // وقت بداية النشاط الحالي/التالي
     activeToHM: null, // وقت نهاية النشاط الحالي (للحساب الدقيق)
     activeTargetHM: null, // الوقت المستهدف للعد التنازلي (from في before, to في period/break)
+    activeTargetMs: null, // epoch ms للحد الفاصل الفعلي حتى لا يسبق الانتقال وقتَه
     activeStateType: null, // نوع الحالة الحالية (period/break/before)
     dayOver: false, // انتهاء الدوام
     refreshJitterFrac: 0, // jitter نسبي ثابت لكل شاشة لتفريق الحمل
@@ -708,6 +709,7 @@
     rt.activeToHM = block.to;
     rt.activeStateType = stType;
     rt.activeTargetHM = (stType === "before") ? block.from : block.to;
+    rt.activeTargetMs = isFinite(Number(targetMs)) ? Number(targetMs) : null;
     rt.dayOver = false;
 
     // Record the currently rendered core state, but do not mark countdown-zero
@@ -749,6 +751,8 @@
     if (res.dayOver) {
       // Day ended — show day-over state, no need to fetch.
       rt.dayOver = true;
+      rt.activeTargetHM = null;
+      rt.activeTargetMs = null;
       setTextIfChanged(dom.heroTitle, "انتهى الدوام");
       setTextIfChanged(dom.heroRange, "");
       setTextIfChanged(dom.badgeKind, "انتهى الدوام");
@@ -1020,11 +1024,10 @@
     const m = parseInt(parts[1], 10);
     if (isNaN(h) || isNaN(m)) return null;
 
-    // ✅ FIX: استخدام nowMs() مباشرة بدلاً من baseMs القديم
-    // baseMs يتم حسابه مرة واحدة عند بداية معالجة البيانات، لكن serverOffsetMs
-    // قد يتم تحديثه أثناء المعالجة، مما يسبب استخدام offset قديم
-    // nowMs() تعطي دائماً الوقت الصحيح المتزامن مع السيرفر
-    const b = nowMs();
+    // Use the caller's reference time when available so countdown logic stays
+    // deterministic within the same render/tick. Fallback to nowMs() only when
+    // no base was provided.
+    const b = isFinite(Number(baseMs)) ? Number(baseMs) : nowMs();
     
     // Prefer server-derived day start to avoid relying on the device timezone.
     // We compute it from server tz offset + base time to stay correct across midnight
@@ -1050,6 +1053,14 @@
     if (!end) return false;
     // ✅ FIX: استخدام nowMs() دائماً للحصول على الوقت الصحيح المتزامن
     return nowMs() >= end;
+  }
+
+  function isBoundaryReached(targetHM, targetMs, refMs) {
+    const n = isFinite(Number(refMs)) ? Number(refMs) : nowMs();
+    let t = isFinite(Number(targetMs)) ? Number(targetMs) : null;
+    if (!t && targetHM) t = hmToMs(targetHM, n);
+    if (!t || !isFinite(t)) return false;
+    return n >= t;
   }
 
   function isNowBetween(startHM, endHM, baseMs) {
@@ -1676,6 +1687,7 @@
       rt.activeToHM = toHM;
       rt.activeStateType = stType;
       rt.activeTargetHM = (stType === "before" ? fromHM : toHM) || null;
+      rt.activeTargetMs = isBefore ? startMs : endMs;
       rt.dayOver = false;
 
       // Immediately re-filter standby list (removes ended standby without waiting for server cache/ETag).
@@ -2886,6 +2898,7 @@
     rt.activeToHM = stateTo || null;
     rt.activeStateType = stType || null;
     rt.activeTargetHM = (stType === "before" ? stateFrom : stateTo) || null;
+    rt.activeTargetMs = null;
     rt.dayOver = computeDayOver(payload, baseMs);
 
     countdownSeconds = null;
@@ -2898,11 +2911,16 @@
       // نحسب الوقت لحظياً لتجنب أي تأخير في المعالجة
       const currentMs = nowMs();
       const targetHM = stType === "before" ? stateFrom : stateTo;
+      let targetMs = null;
       if (targetHM) {
         const tMs = hmToMs(targetHM, currentMs);
         // الحساب: وقت الهدف - الوقت الحالي = الوقت المتبقي
-        if (tMs) localCalc = Math.floor((tMs - currentMs) / 1000);
+        if (tMs) {
+          targetMs = tMs;
+          localCalc = Math.floor((tMs - currentMs) / 1000);
+        }
       }
+      rt.activeTargetMs = isFinite(Number(targetMs)) ? Number(targetMs) : null;
 
       const serverRem =
         typeof s.remaining_seconds === "number"
@@ -2922,7 +2940,8 @@
     // If the server says 0 (or we clamped to 0) and we haven't handled this core state yet,
     // trigger the countdown-zero refresh even if we didn't observe a local 1->0 transition.
     if (hasActiveCountdown && typeof countdownSeconds === "number" && countdownSeconds === 0) {
-      if (nextCoreSig && nextCoreSig !== lastZeroHandledCoreSig) {
+      const zeroBoundaryReached = isBoundaryReached(rt.activeTargetHM, rt.activeTargetMs, nowMs());
+      if (zeroBoundaryReached && nextCoreSig && nextCoreSig !== lastZeroHandledCoreSig) {
         lastZeroHandledCoreSig = nextCoreSig;
         onCountdownZero();
       }
@@ -3022,15 +3041,20 @@
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         const prev = countdownSeconds;
+        const tickNowMs = nowMs();
+        let boundaryReached = false;
 
         // إعادة حساب الوقت المتبقي من الساعة المتزامنة مع السيرفر بدل الإنقاص -1
         // هذا يمنع أي انحراف تراكمي من setInterval غير الدقيق
         var recalcOk = false;
         if (rt.activeTargetHM) {
           try {
-            var tgtMs = hmToMs(rt.activeTargetHM, nowMs());
+            var tgtMs = rt.activeTargetMs;
+            if (!tgtMs) tgtMs = hmToMs(rt.activeTargetHM, tickNowMs);
             if (tgtMs) {
-              var freshRem = Math.floor((tgtMs - nowMs()) / 1000);
+              rt.activeTargetMs = tgtMs;
+              boundaryReached = tickNowMs >= tgtMs;
+              var freshRem = Math.floor((tgtMs - tickNowMs) / 1000);
               if (freshRem > -43200 && freshRem < 86400) {
                 countdownSeconds = Math.max(0, freshRem);
                 recalcOk = true;
@@ -3043,10 +3067,10 @@
           if (countdownSeconds > 0) countdownSeconds -= 1;
         }
 
-        if (prev > 0 && countdownSeconds === 0) onCountdownZero();
+        if (prev > 0 && countdownSeconds === 0 && boundaryReached) onCountdownZero();
 
         // Handle cases where countdown starts at 0 (server rounding/caching) without a local 1->0 transition.
-        if (countdownSeconds === 0 && lastStateCoreSig && lastStateCoreSig !== lastZeroHandledCoreSig) {
+        if (countdownSeconds === 0 && boundaryReached && lastStateCoreSig && lastStateCoreSig !== lastZeroHandledCoreSig) {
           lastZeroHandledCoreSig = lastStateCoreSig;
           onCountdownZero();
         }
