@@ -696,7 +696,9 @@ def _snapshot_anti_loop_check(token_hash: str) -> bool:
     """
     Checks if a token is requesting too frequently (looping).
     Returns True if safe, False if looping (should receive cool-down).
-    Limit: 30 requests per minute.
+    Limit: 60 requests per minute.
+    (Raised from 30 — transition windows at period boundaries cause
+    legitimate bursts of ~15 req in 30 s that stack across consecutive periods.)
     """
     key = f"loop:{token_hash}"
     try:
@@ -707,7 +709,7 @@ def _snapshot_anti_loop_check(token_hash: str) -> bool:
         else:
             val = cache.incr(key)
         
-        if val > 30: 
+        if val > 60: 
             return False
         return True
     except Exception:

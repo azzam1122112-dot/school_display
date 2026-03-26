@@ -496,7 +496,7 @@
     status304Streak: 0, // consecutive status 304 streak
     scheduleRevision: 0, // last known schedule_revision (numeric truth for /status?v=...)
     transitionUntilTs: 0, // while > Date.now(): force snapshot fetch to cross 00:00 boundaries
-    transitionBackoffSec: 1.2, // bounded backoff during transition window
+    transitionBackoffSec: 2.0, // bounded backoff during transition window
     pollStateLastLogTs: 0, // debug-only: last time we logged poll state
     
     // WebSocket state (Phase 2: Dark Launch)
@@ -1452,8 +1452,8 @@
     // Time-based transitions (period/break) don't bump schedule_revision, so /status may stay 304.
     // Enter a short window where we fetch snapshots directly until the UI advances.
     try {
-      rt.transitionUntilTs = nowMs() + 30000; // 30s window for transition
-      rt.transitionBackoffSec = 1.0;
+      rt.transitionUntilTs = nowMs() + 20000; // 20s window for transition
+      rt.transitionBackoffSec = 2.0;
     } catch (e) {}
 
     // Optional (heavier) behavior: full page reload if explicitly requested.
@@ -1520,8 +1520,8 @@
       // If we got rate-limited exactly at the boundary, retry via the normal loop with backoff.
       if (snap && snap._rateLimited) {
         try {
-          const base = Number(rt.transitionBackoffSec) || 1.2;
-          rt.transitionBackoffSec = Math.min(10, Math.max(1.2, base * 1.7));
+          const base = Number(rt.transitionBackoffSec) || 2.0;
+          rt.transitionBackoffSec = Math.min(10, Math.max(2.0, base * 1.7));
         } catch (e) {}
         return;
       }
@@ -1546,7 +1546,7 @@
         const remOk = typeof sOk.remaining_seconds === "number" ? Math.max(0, Math.floor(sOk.remaining_seconds)) : null;
         if (remOk !== null && remOk > 0) {
           rt.transitionUntilTs = 0;
-          rt.transitionBackoffSec = 1.2;
+          rt.transitionBackoffSec = 2.0;
         }
       } catch (e) {}
 
@@ -1607,7 +1607,7 @@
       try {
         const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
         if (inTrans) {
-          scheduleNext(Number(rt.transitionBackoffSec) || 1.2);
+          scheduleNext(Number(rt.transitionBackoffSec) || 2.0);
         } else {
           scheduleNext(basePollEverySec());
         }
@@ -3369,8 +3369,8 @@
       const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
       let wait;
       if (inTrans) {
-        const base = Number(rt.transitionBackoffSec) || 1.2;
-        wait = Math.min(10, Math.max(1.2, base * 1.7));
+        const base = Number(rt.transitionBackoffSec) || 2.0;
+        wait = Math.min(10, Math.max(2.0, base * 1.7));
         rt.transitionBackoffSec = wait;
       } else {
         const base = Math.max(2, basePollEverySec());
@@ -3482,7 +3482,7 @@
         const remOk = typeof sOk.remaining_seconds === "number" ? Math.max(0, Math.floor(sOk.remaining_seconds)) : null;
         if (remOk !== null && remOk > 0) {
           rt.transitionUntilTs = 0;
-          rt.transitionBackoffSec = 1.2;
+          rt.transitionBackoffSec = 2.0;
         }
       } catch (e) {}
 
@@ -3524,7 +3524,7 @@
 
     {
       const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
-      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 1.2) : basePollEverySec());
+      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 2.0) : basePollEverySec());
     }
   }
 
