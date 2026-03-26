@@ -508,6 +508,8 @@
     wsEnabled: false, // feature flag from server (TBD: read from snapshot meta)
     wsPingInterval: null, // keepalive ping timer
     wsMaxRetries: 10, // max reconnection attempts before giving up
+    wsEverConnected: false, // becomes true after first successful WS open
+    wsSuppressedUntilTs: 0, // temporary cooldown when WS endpoint appears unavailable
   };
 
 
@@ -3870,6 +3872,21 @@
       if (isDebug()) console.log("[WS] disabled by feature flag");
       return;
     }
+
+    // If WS repeatedly fails before any successful open, cool down for a while
+    // and let status polling carry the screen.
+    const nowTs = Date.now();
+    if (rt.wsSuppressedUntilTs && nowTs < rt.wsSuppressedUntilTs) {
+      const waitMs = Math.max(1000, rt.wsSuppressedUntilTs - nowTs);
+      if (isDebug()) console.log(`[WS] temporarily suppressed for ${(waitMs / 1000).toFixed(0)}s`);
+      if (!rt.wsReconnectTimer) {
+        rt.wsReconnectTimer = setTimeout(() => {
+          rt.wsReconnectTimer = null;
+          initWebSocket();
+        }, waitMs);
+      }
+      return;
+    }
     
     // After many failures, keep retrying but with long backoff instead of stopping forever.
     if (rt.wsRetryCount >= rt.wsMaxRetries) {
@@ -3915,6 +3932,8 @@
       
       rt.ws.onopen = function() {
         rt.wsRetryCount = 0; // reset on successful connection
+        rt.wsEverConnected = true;
+        rt.wsSuppressedUntilTs = 0;
         if (isDebug()) console.log("[WS] connected");
         try {
           rt.status304Streak = 0;
@@ -4020,6 +4039,15 @@
         
         // Exponential backoff: 1s → 2s → 4s → 8s → 16s → 32s → 60s (max)
         rt.wsRetryCount++;
+
+        // No successful WS connection yet + repeated failures => assume endpoint
+        // is unavailable for this deployment/device and pause retries briefly.
+        if (!rt.wsEverConnected && rt.wsRetryCount >= 6) {
+          rt.wsSuppressedUntilTs = Date.now() + (10 * 60 * 1000); // 10 minutes
+          if (isDebug()) console.log("[WS] endpoint seems unavailable; suppressing retries for 10 minutes");
+          return;
+        }
+
         const baseDelay = Math.min(60, Math.pow(2, Math.min(5, rt.wsRetryCount - 1)));
         const jitter = 0.5 + Math.random(); // 0.5x to 1.5x jitter
         const delay = baseDelay * jitter;

@@ -9,6 +9,7 @@ from schedule.cache_utils import (
     get_schedule_revision_for_school_id,
     invalidate_display_snapshot_cache_for_school_id,
 )
+from display.ws_groups import school_group_name
 from schedule.models import Break, ClassLesson, DaySchedule, Period, SchoolSettings
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def _broadcast_invalidate_ws(school_id: int, revision: int) -> None:
         if not channel_layer:
             return
         
-        group_name = f"school:{school_id}"
+        group_name = school_group_name(school_id)
         
         # Broadcast to all clients in school group
         async_to_sync(channel_layer.group_send)(

@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from display.ws_groups import token_group_name
 from .forms import DisplayScreenForm
 
 logger = logging.getLogger(__name__)
@@ -321,7 +322,7 @@ def screen_refresh_now(
             if not channel_layer:
                 return
 
-            group = f"token:{str(token_hash)[:16]}"
+            group = token_group_name(token_hash, hash_len=16)
             async_to_sync(channel_layer.group_send)(
                 group,
                 {
@@ -406,7 +407,7 @@ def screen_reload_now(
             if not channel_layer:
                 return
 
-            group = f"token:{str(token_hash)[:16]}"
+            group = token_group_name(token_hash, hash_len=16)
             async_to_sync(channel_layer.group_send)(
                 group,
                 {

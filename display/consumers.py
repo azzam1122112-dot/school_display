@@ -4,7 +4,7 @@ WebSocket consumer for display screens.
 Phase 1 (Server-Side Readiness):
     - Token validation (query param: token=xxx)
     - Device binding enforcement (dk required)
-    - Tenant isolation (server-derived group: school:<id>)
+    - Tenant isolation (server-derived group: school_<id>)
     - Broadcast handler for invalidation messages
     - Ping/pong keepalive
 
@@ -19,19 +19,18 @@ Security:
 """
 
 import json
-import hashlib
 import logging
 import time
 from urllib.parse import parse_qs
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.conf import settings
 
 from display.services import (
     ScreenBoundError,
     ScreenNotFoundError,
     bind_device_atomic,
 )
+from display.ws_groups import school_group_name, token_group_name
 from display.ws_metrics import ws_metrics
 
 logger = logging.getLogger(__name__)
@@ -106,21 +105,21 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             await self.close(code=4500)
             return
         
-        # Server-derived group (tenant isolation)
-        self.school_group_name = f"school:{self.screen.school_id}"
+        # Server-derived groups (tenant isolation + per-screen targeting)
+        self.school_group_name = school_group_name(self.screen.school_id)
+        self.token_group_name = token_group_name(str(token), hash_len=16)
 
-        # Token-scoped group (for single-screen refresh). Keep it short and safe.
+        # Join school group (required). If this fails, the connection is unusable.
         try:
-            token_hash = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
-            self.token_group_name = f"token:{token_hash[:16]}"
-        except Exception:
-            self.token_group_name = None
-        
-        # Join school group
-        await self.channel_layer.group_add(
-            self.school_group_name,
-            self.channel_name
-        )
+            await self.channel_layer.group_add(
+                self.school_group_name,
+                self.channel_name
+            )
+        except Exception as e:
+            logger.exception(f"WS connect failed group_add school group: {e}")
+            ws_metrics.connection_failed()
+            await self.close(code=4501)
+            return
 
         # Join token group (best-effort)
         if self.token_group_name:
@@ -149,10 +148,13 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         ws_metrics.connection_closed()
         
         if self.school_group_name:
-            await self.channel_layer.group_discard(
-                self.school_group_name,
-                self.channel_name
-            )
+            try:
+                await self.channel_layer.group_discard(
+                    self.school_group_name,
+                    self.channel_name
+                )
+            except Exception:
+                pass
             logger.info(
                 f"WS disconnected: screen {self.screen.id if self.screen else '?'} "
                 f"code {close_code} group {self.school_group_name}"
