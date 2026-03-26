@@ -776,6 +776,20 @@
     return new Date(nowMs() + off * 60 * 1000);
   }
 
+  // Clock display must always follow Riyadh timezone (UTC+3) in 12h format.
+  const RIYADH_OFFSET_MIN = 180;
+  function riyadhWallNowDate() {
+    return new Date(nowMs() + RIYADH_OFFSET_MIN * 60 * 1000);
+  }
+
+  function fmtRiyadh12HM(dateObj) {
+    const d = dateObj instanceof Date ? dateObj : riyadhWallNowDate();
+    const h24 = d.getUTCHours();
+    const h12 = h24 % 12 || 12;
+    const meridiem = h24 >= 12 ? "م" : "ص";
+    return fmt2(h12) + ":" + fmt2(d.getUTCMinutes()) + " " + meridiem;
+  }
+
   function fmtTimeRange(fromHM, toHM) {
     // Bidi-safe: isolate as LTR so times don't visually flip in RTL UI.
     // U+2066 LRI ... U+2069 PDI
@@ -1122,11 +1136,9 @@
   let cachedDateInfo = null;
   function tickClock(dateInfo) {
     const wall = serverWallNowDate();
+    const riyadhWall = riyadhWallNowDate();
     if (dom.clock) {
-      setTextIfChanged(
-        dom.clock,
-        fmt2(wall.getUTCHours()) + ":" + fmt2(wall.getUTCMinutes()) + ":" + fmt2(wall.getUTCSeconds())
-      );
+      setTextIfChanged(dom.clock, fmtRiyadh12HM(riyadhWall));
     }
     if (dateInfo) cachedDateInfo = dateInfo;
 
@@ -2079,33 +2091,26 @@
       img.alt = name;
       img.loading = "lazy";
       img.crossOrigin = "anonymous";
-      img.className = "w-full h-full object-cover rounded-2xl border-2 border-amber-500/20 shadow-2xl transition-transform duration-700 hover:scale-105";
+      img.className = "honor-avatar";
       
-      const fallbackSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%231e293b'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2.5' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g1)'/%3E%3Cpath d='M100,40 L120,80 L165,85 L130,115 L140,160 L100,135 L60,160 L70,115 L35,85 L80,80 Z' fill='%23fbbf24' filter='url(%23glow)'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%23fff' opacity='0.9'/%3E%3C/svg%3E";
+      const fallbackSvg =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230f172a'/%3E%3Cstop offset='1' stop-color='%231e293b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='100' cy='78' r='34' fill='%2394a3b8' opacity='.82'/%3E%3Crect x='46' y='116' width='108' height='58' rx='28' fill='%2364748b' opacity='.86'/%3E%3Ccircle cx='152' cy='150' r='20' fill='%23fbbf24'/%3E%3Cpath d='M152 139l3.8 7.7 8.5 1.2-6.1 5.9 1.4 8.5-7.6-4-7.6 4 1.4-8.5-6.1-5.9 8.5-1.2 3.8-7.7z' fill='%23fff'/%3E%3C/svg%3E";
       
       img.src = src || fallbackSvg;
 
-      // Wrap image container for glow effect
       const imgContainer = document.createElement("div");
-      imgContainer.className = "relative shrink-0 w-[clamp(120px,8vw,180px)] h-[clamp(120px,8vw,180px)] rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.15)] group-hover:shadow-[0_0_50px_rgba(245,158,11,0.3)] transition-shadow duration-500";
-      
-      // Golden border accent
-      const borderAccent = document.createElement("div");
-      borderAccent.className = "absolute inset-0 rounded-2xl border border-amber-500/30 rotate-3 z-0";
-      imgContainer.appendChild(borderAccent);
+      imgContainer.className = "honor-avatar-wrap";
       imgContainer.appendChild(img);
 
 
       const meta = document.createElement("div");
-      meta.className = "honor-meta flex flex-col justify-center min-w-0 flex-1 pl-4";
+      meta.className = "honor-meta";
 
       const nm = document.createElement("div");
-      // Clean, professional: no colored background/gradient behind the name
-      nm.className = "honor-name mb-2";
+      nm.className = "honor-name";
       nm.textContent = name;
 
       const rs = document.createElement("div");
-      // Minimal glass box (CSS-driven) for a cleaner, more professional look
       rs.className = "honor-reason";
       rs.textContent = reason || "—";
 
@@ -2150,8 +2155,7 @@
       if (dom.exIndex) setTextIfChanged(dom.exIndex, "0");
       dom.exSlot.innerHTML = "";
       const msg = document.createElement("div");
-      msg.style.textAlign = "center";
-      msg.style.opacity = "0.85";
+      msg.className = "honor-empty-state";
       msg.textContent = "لا يوجد متميزون حالياً";
       dom.exSlot.appendChild(msg);
       return;
