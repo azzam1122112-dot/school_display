@@ -85,15 +85,23 @@ WEEKDAY_MAP = {
     7: "الأحد",
 }
 
-# أيام الدراسة الافتراضية (الأحد → الخميس)
+# أيام الأسبوع كاملة (الأحد → السبت) بترتيب الأسبوع السعودي
 SCHOOL_WEEK = [
     (7, "الأحد"),
     (1, "الاثنين"),
     (2, "الثلاثاء"),
     (3, "الأربعاء"),
     (4, "الخميس"),
+    (5, "الجمعة"),
+    (6, "السبت"),
 ]
 SCHOOL_WEEKDAY_IDS = [w for w, _ in SCHOOL_WEEK]
+
+# أيام عطلة نهاية الأسبوع الافتراضية (تُنشأ بـ is_active=False)
+WEEKEND_WEEKDAY_IDS = {5, 6}
+
+# ترتيب العرض: الأحد أولاً ثم الاثنين … السبت
+WEEKDAY_SORT = {7: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6}
 
 
 # ======================
@@ -317,6 +325,105 @@ def _parse_hhmm_or_hhmmss(s: str) -> time:
         except ValueError:
             continue
     raise ValueError("صيغة الوقت غير صحيحة. استخدم HH:MM أو HH:MM:SS.")
+
+
+def _time_to_hhmm(value: time | None) -> str:
+    if value is None:
+        return ""
+    return value.strftime("%H:%M")
+
+
+def _minutes_diff_wrap(start_t: time, end_t: time) -> int:
+    start_total = (start_t.hour * 60) + start_t.minute
+    end_total = (end_t.hour * 60) + end_t.minute
+    diff = end_total - start_total
+    if diff < 0:
+        diff += 24 * 60
+    return diff
+
+
+def _build_day_autofill_seed(day) -> dict[str, Any]:
+    seed: dict[str, Any] = {
+        "target_periods_count": int(getattr(day, "periods_count", 0) or 0),
+        "start_time": "",
+        "period_minutes": "",
+        "gap_minutes": "",
+        "break_after": "",
+        "break_minutes": "",
+        "has_actual_values": False,
+    }
+
+    periods_mgr = _rev_manager(day, "periods", "period_set")
+    breaks_mgr = _rev_manager(day, "breaks", "break_set")
+
+    periods = list(periods_mgr.all()) if periods_mgr is not None else []
+    periods.sort(key=lambda p: (int(getattr(p, "index", 0) or 0), getattr(p, "starts_at", time.min)))
+
+    breaks = list(breaks_mgr.all().order_by("starts_at")) if breaks_mgr is not None else []
+
+    if not periods:
+        return seed
+
+    seed["has_actual_values"] = True
+
+    first_period = periods[0]
+    seed["start_time"] = _time_to_hhmm(getattr(first_period, "starts_at", None))
+
+    durations = [
+        _minutes_diff_wrap(p.starts_at, p.ends_at)
+        for p in periods
+        if getattr(p, "starts_at", None) and getattr(p, "ends_at", None)
+    ]
+    if durations:
+        seed["period_minutes"] = max(1, int(durations[0]))
+
+    intervals: list[int] = []
+    for idx in range(len(periods) - 1):
+        current_end = getattr(periods[idx], "ends_at", None)
+        next_start = getattr(periods[idx + 1], "starts_at", None)
+        if current_end and next_start:
+            intervals.append(_minutes_diff_wrap(current_end, next_start))
+
+    if breaks:
+        first_break = breaks[0]
+        seed["break_minutes"] = int(getattr(first_break, "duration_min", 0) or 0)
+
+        break_after = 0
+        for pos, period in enumerate(periods, start=1):
+            if getattr(period, "ends_at", None) == getattr(first_break, "starts_at", None):
+                break_after = pos
+                break
+        if break_after == 0:
+            best_idx = 0
+            best_gap = None
+            b_start = getattr(first_break, "starts_at", None)
+            if b_start:
+                for pos, period in enumerate(periods, start=1):
+                    end_t = getattr(period, "ends_at", None)
+                    if end_t is None:
+                        continue
+                    gap_val = _minutes_diff_wrap(end_t, b_start)
+                    if best_gap is None or gap_val < best_gap:
+                        best_gap = gap_val
+                        best_idx = pos
+            break_after = best_idx
+        seed["break_after"] = int(max(0, break_after))
+    else:
+        seed["break_after"] = 0
+        seed["break_minutes"] = 0
+
+    if intervals:
+        gap_candidates = [max(0, int(v)) for v in intervals]
+        break_after = int(seed.get("break_after") or 0)
+        break_minutes = int(seed.get("break_minutes") or 0)
+        if break_minutes > 0 and 1 <= break_after <= len(intervals):
+            adjusted_gap = intervals[break_after - 1] - break_minutes
+            gap_candidates.append(max(0, int(adjusted_gap)))
+        seed["gap_minutes"] = min(gap_candidates) if gap_candidates else 0
+    else:
+        seed["gap_minutes"] = 0
+
+    return seed
 
 
 def _get_or_create_profile(user):
@@ -667,14 +774,14 @@ def days_list(request):
                 settings=settings_obj,
                 weekday=w,
                 periods_count=7 if w in (7, 1) else 6,
-                is_active=True,
+                is_active=(w not in WEEKEND_WEEKDAY_IDS),
             )
 
     days = list(
         DaySchedule.objects.filter(settings=settings_obj, weekday__in=SCHOOL_WEEKDAY_IDS)
-        .order_by("weekday")
         .prefetch_related("periods", "breaks")
     )
+    days.sort(key=lambda d: WEEKDAY_SORT.get(d.weekday, 99))
 
     total_periods = 0
     for d in days:
@@ -720,7 +827,7 @@ def day_edit(request, weekday: int):
     if weekday == 0:
         weekday = 7
     if weekday not in SCHOOL_WEEKDAY_IDS:
-        messages.error(request, "اليوم غير موجود في قائمة الأيام الدراسية.")
+        messages.error(request, "رقم اليوم غير صالح.")
         return redirect("dashboard:days_list")
 
     SchoolSettings = SchoolSettingsModel()
@@ -772,7 +879,13 @@ def day_edit(request, weekday: int):
     return render(
         request,
         "dashboard/day_edit.html",
-        {"day": day, "form": form, "p_formset": p_formset, "b_formset": b_formset},
+        {
+            "day": day,
+            "form": form,
+            "p_formset": p_formset,
+            "b_formset": b_formset,
+            "autofill_seed": _build_day_autofill_seed(day),
+        },
     )
 
 
@@ -781,7 +894,7 @@ def day_edit(request, weekday: int):
 @require_POST
 def day_autofill(request, weekday: int):
     if weekday not in SCHOOL_WEEKDAY_IDS:
-        messages.error(request, "اليوم خارج أيام الأسبوع الدراسي.")
+        messages.error(request, "رقم اليوم غير صالح.")
         return redirect("dashboard:days_list")
 
     SchoolSettings = SchoolSettingsModel()
@@ -799,20 +912,34 @@ def day_autofill(request, weekday: int):
     day = get_object_or_404(DaySchedule, settings=settings_obj, weekday=weekday)
 
     try:
-        # Check if user wants to update period count along with autofill
-        new_count = _to_int(request.POST.get("target_periods_count"), 0)
-        if new_count > 0:
-            day.periods_count = new_count
-            day.save()
+        def _required_int_param(name: str, label: str, *, min_value: int) -> int:
+            raw = (request.POST.get(name) or "").strip()
+            if raw == "":
+                raise ValueError(f"حقل '{label}' مطلوب.")
+            try:
+                value = int(raw)
+            except (TypeError, ValueError):
+                raise ValueError(f"قيمة '{label}' غير صالحة.")
+            if value < min_value:
+                raise ValueError(f"قيمة '{label}' يجب أن تكون {min_value} أو أكثر.")
+            return value
 
-        start_time_str = request.POST.get("start_time", "07:00:00")
-        period_minutes = _to_int(request.POST.get("period_minutes"), 45)
-        period_seconds = _to_int(request.POST.get("period_seconds"), 0)
-        gap_minutes = _to_int(request.POST.get("gap_minutes"), 0)
-        gap_seconds = _to_int(request.POST.get("gap_seconds"), 0)
-        break_after = _to_int(request.POST.get("break_after"), 0)
-        break_minutes = _to_int(request.POST.get("break_minutes"), 0)
-        break_seconds = _to_int(request.POST.get("break_seconds"), 0)
+        start_time_str = (request.POST.get("start_time") or "").strip()
+        if not start_time_str:
+            raise ValueError("حقل 'بداية اليوم' مطلوب.")
+
+        new_count = _required_int_param("target_periods_count", "عدد الحصص المطلوب", min_value=1)
+        period_minutes = _required_int_param("period_minutes", "زمن الحصة", min_value=1)
+        gap_minutes = _required_int_param("gap_minutes", "فاصل بين الحصص", min_value=0)
+        break_after = _required_int_param("break_after", "الفسحة بعد حصة رقم", min_value=0)
+        break_minutes = _required_int_param("break_minutes", "مدة الفسحة", min_value=0)
+
+        day.periods_count = new_count
+        day.save(update_fields=["periods_count"])
+
+        period_seconds = 0
+        gap_seconds = 0
+        break_seconds = 0
 
         start_t = _parse_hhmm_or_hhmmss(start_time_str)
 

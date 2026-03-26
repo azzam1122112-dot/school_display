@@ -108,33 +108,39 @@
   </div>
 
   <!-- Days List Grid -->
-  <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
     {% for d in days %}
-    <div class="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl dark:bg-slate-800 dark:ring-white/10 {% if not d.is_active %} grayscale-[0.8] opacity-75 {% endif %}">
+    <div class="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl dark:bg-slate-800 dark:ring-white/10 {% if not d.is_active %} opacity-70 {% endif %}">
        
        <!-- Status Stripe -->
-       <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r {% if d.is_active %} from-emerald-400 to-teal-500 {% else %} from-slate-300 to-slate-400 {% endif %}"></div>
+       <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r {% if d.is_active %} from-emerald-400 to-teal-500 {% else %} from-amber-300 to-amber-400 {% endif %}"></div>
 
        <!-- Card Content -->
        <div class="flex-1 p-6">
           <div class="flex items-start justify-between">
             <div>
                <h3 class="text-2xl font-bold text-slate-800 dark:text-white">{{ d.day_name }}</h3>
+               {% if d.is_active %}
                <span class="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   اليوم {{ forloop.counter }}
                </span>
+               {% else %}
+               <span class="inline-block mt-2 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  إجازة
+               </span>
+               {% endif %}
             </div>
             
             {% if d.is_active %}
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" title="يوم دراسي">
                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                </svg>
             </div>
             {% else %}
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" title="إجازة">
                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                </svg>
             </div>
             {% endif %}
@@ -177,11 +183,19 @@
              <form method="post" action="{% url 'dashboard:day_toggle' d.weekday %}">
                {% csrf_token %}
                <button type="submit" 
-                       class="flex h-10 w-10 items-center justify-center rounded-xl border transition-all hover:shadow-md focus:ring-2 focus:ring-offset-2 {% if d.is_active %} border-rose-200 bg-white text-rose-500 hover:bg-rose-50 hover:border-rose-300 {% else %} border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300 {% endif %}"
-                       title="{% if d.is_active %}تعطيل{% else %}تفعيل{% endif %}">
+                       class="flex h-10 w-10 items-center justify-center rounded-xl border transition-all hover:shadow-md focus:ring-2 focus:ring-offset-2 {% if d.is_active %} border-amber-200 bg-white text-amber-500 hover:bg-amber-50 hover:border-amber-300 {% else %} border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300 {% endif %}"
+                       title="{% if d.is_active %}تحويل لإجازة{% else %}تفعيل كيوم دراسي{% endif %}">
+                  {% if d.is_active %}
+                  <!-- Moon icon: click to make holiday -->
                   <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                   </svg>
+                  {% else %}
+                  <!-- Book icon: click to make school day -->
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  {% endif %}
                </button>
              </form>
           </div>

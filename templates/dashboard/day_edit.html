@@ -57,6 +57,13 @@
                     <p class="text-xs text-slate-500">تعبئة الجدول تلقائياً بضغطة واحدة</p>
                 </div>
             </div>
+            <div class="mb-4 rounded-xl border p-3 text-xs {% if autofill_seed.has_actual_values %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-300{% else %}border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300{% endif %}">
+                {% if autofill_seed.has_actual_values %}
+                    تم تحميل القيم من جدول اليوم الفعلي، وسيتم الحفظ بنفس التوقيت المُدخل دون قيم افتراضية.
+                {% else %}
+                    لا توجد بيانات زمنية محفوظة لهذا اليوم بعد. أدخل التوقيت يدويًا وسيتم حفظه كما هو.
+                {% endif %}
+            </div>
 
             <form method="post" action="{% url 'dashboard:day_autofill' day.weekday %}" class="space-y-4" id="autofillForm">
                 {% csrf_token %}
@@ -64,7 +71,7 @@
                 <!-- New: Target Periods Count -->
                 <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">عدد الحصص المطلوب</label>
-                    <input type="number" name="target_periods_count" value="{{ day.periods_count|default:7 }}" min="1" max="20"
+                    <input type="number" name="target_periods_count" value="{{ autofill_seed.target_periods_count }}" min="1" max="20"
                            class="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                            required id="af_count">
                 </div>
@@ -72,23 +79,23 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">بداية اليوم</label>
-                        <input type="time" name="start_time" value="07:00" 
+                        <input type="time" name="start_time" value="{{ autofill_seed.start_time }}"
                                class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                               id="af_start">
+                               id="af_start" required>
                     </div>
                     <div class="space-y-1">
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">زمن الحصة (د)</label>
-                        <input type="number" name="period_minutes" value="45" min="1"
+                        <input type="number" name="period_minutes" value="{{ autofill_seed.period_minutes }}" min="1"
                                class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                               id="af_period">
+                               id="af_period" required>
                     </div>
                 </div>
 
                 <div class="space-y-1">
                      <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">فاصل بين الحصص (د)</label>
-                     <input type="number" name="gap_minutes" value="0" min="0" placeholder="0"
+                     <input type="number" name="gap_minutes" value="{{ autofill_seed.gap_minutes }}" min="0" placeholder="0"
                             class="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                            id="af_gap">
+                            id="af_gap" required>
                 </div>
 
                 <div class="rounded-xl border border-dashed border-slate-300 p-3 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
@@ -96,15 +103,15 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="text-[10px] text-slate-400">بعد حصة رقم</label>
-                            <input type="number" name="break_after" value="4" min="0"
+                            <input type="number" name="break_after" value="{{ autofill_seed.break_after }}" min="0"
                                    class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700"
-                                   id="af_break_after">
+                                   id="af_break_after" required>
                         </div>
                         <div>
                             <label class="text-[10px] text-slate-400">المدة (د)</label>
-                            <input type="number" name="break_minutes" value="20" min="0"
+                            <input type="number" name="break_minutes" value="{{ autofill_seed.break_minutes }}" min="0"
                                    class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700"
-                                   id="af_break_dur">
+                                   id="af_break_dur" required>
                         </div>
                     </div>
                 </div>
@@ -124,7 +131,7 @@
                 <button type="submit" class="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-800 hover:shadow-slate-900/30 dark:bg-indigo-600 dark:hover:bg-indigo-500">
                     توليد الجدول الآن
                 </button>
-                <p class="text-[10px] text-center text-slate-400">سيقوم هذا الإجراء باستبدال جميع الحصص الحالية.</p>
+                <p class="text-[10px] text-center text-slate-400">سيتم حفظ التوقيت المدخل كما هو، وسيُستبدل الجدول الحالي بالكامل.</p>
             </form>
         </div>
       </div>
@@ -430,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function(){
         const breakAfter = parseInt(afElements[4].value) || 0;
         const breakDur = parseInt(afElements[5].value) || 0;
 
-        if (!startStr || count <= 0) {
+        if (!startStr || count <= 0 || periodMin <= 0) {
             simResult.classList.add('hidden');
             nextDayWarn.classList.add('hidden');
             return;

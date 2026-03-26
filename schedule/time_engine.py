@@ -110,7 +110,7 @@ def build_day_snapshot(settings, now=None):
                 "active_window": None,
             },
             "settings": settings_payload,
-            "state": {"type": "off", "label": "لا يوجد جدول لليوم", "from": None, "to": None, "remaining_seconds": None},
+            "state": {"type": "off", "label": "يوم إجازة", "from": None, "to": None, "remaining_seconds": None},
             "current_period": None,
             "next_period": None,
             "day_path": [],
