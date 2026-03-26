@@ -750,17 +750,7 @@
 
     if (res.dayOver) {
       // Day ended — show day-over state, no need to fetch.
-      rt.dayOver = true;
-      rt.activeTargetHM = null;
-      rt.activeTargetMs = null;
-      setTextIfChanged(dom.heroTitle, "انتهى الدوام");
-      setTextIfChanged(dom.heroRange, "");
-      setTextIfChanged(dom.badgeKind, "انتهى الدوام");
-      countdownSeconds = null;
-      hasActiveCountdown = false;
-      try { renderCurrentChips("after", { label: "انتهى اليوم الدراسي", from: null, to: null }, null); } catch (e) {}
-      try { renderNextLabel(null); } catch (e) {}
-      return true;
+      return dayEngineApplyDayOver();
     }
 
     if (res.current) {
@@ -775,6 +765,74 @@
       return dayEngineApplyBlock(res.next, "before", res.next);
     }
 
+    return false;
+  }
+
+  function dayEngineRuntimeSlotSig() {
+    var type = safeText(rt && rt.activeStateType ? rt.activeStateType : "").toLowerCase();
+    if (rt && rt.dayOver) type = "after";
+    return type + "||" + safeText(rt && rt.activeFromHM ? rt.activeFromHM : "") + "||" + safeText(rt && rt.activeToHM ? rt.activeToHM : "");
+  }
+
+  function dayEngineDesiredSlotSig(res) {
+    if (!res || typeof res !== "object") return "";
+    if (res.dayOver) return "after||||";
+    if (res.current) {
+      var k = safeText(res.current.kind || "period").toLowerCase();
+      return k + "||" + safeText(res.current.from || "") + "||" + safeText(res.current.to || "");
+    }
+    if (res.next) {
+      return "before||" + safeText(res.next.from || "") + "||" + safeText(res.next.to || "");
+    }
+    return "";
+  }
+
+  function dayEngineApplyDayOver() {
+    rt.dayOver = true;
+    rt.activeStateType = "after";
+    rt.activeFromHM = null;
+    rt.activeToHM = null;
+    rt.activeTargetHM = null;
+    rt.activeTargetMs = null;
+    setTextIfChanged(dom.heroTitle, "انتهى الدوام");
+    setTextIfChanged(dom.heroRange, "");
+    setTextIfChanged(dom.badgeKind, "انتهى الدوام");
+    countdownSeconds = null;
+    hasActiveCountdown = false;
+    progressRange = { start: null, end: null };
+    lastStateCoreSig = "after||انتهى اليوم الدراسي||||";
+    lastZeroHandledCoreSig = lastStateCoreSig;
+    try { renderCurrentChips("after", { label: "انتهى اليوم الدراسي", from: null, to: null }, null); } catch (e) {}
+    try { renderNextLabel(null); } catch (e) {}
+    return true;
+  }
+
+  function dayEngineSyncToLocalNow() {
+    if (!_dayEngine.blocks.length) return false;
+    var res = dayEngineFindNow();
+    var want = dayEngineDesiredSlotSig(res);
+    if (!want) return false;
+
+    var have = dayEngineRuntimeSlotSig();
+    if (want === have) return false;
+
+    var prevType = safeText(rt && rt.activeStateType ? rt.activeStateType : "").toLowerCase();
+    var nextType = "before";
+    if (res.dayOver) nextType = "after";
+    else if (res.current) nextType = safeText(res.current.kind || "period").toLowerCase();
+
+    // Boundary bell (end of period/break) when local-time sync forces transition.
+    if (prevType && prevType !== nextType && (prevType === "period" || prevType === "break")) {
+      lastBoundaryBellStateKey = prevType;
+      lastBoundaryBellAt = Date.now();
+      try { playBellSound(); } catch (e) {}
+    }
+
+    try { checkStateTransitionBell(nextType); } catch (e) {}
+
+    if (res.dayOver) return dayEngineApplyDayOver();
+    if (res.current) return dayEngineApplyBlock(res.current, nextType, res.next);
+    if (res.next) return dayEngineApplyBlock(res.next, "before", res.next);
     return false;
   }
 
@@ -845,7 +903,8 @@
   
   // ✅ THROTTLING: منع الطلبات الزائدة على السيرفر
   let lastReSyncTime = 0;
-  const RE_SYNC_COOLDOWN = 5000; // 5 ثوانٍ بين كل re-sync
+  const RE_SYNC_COOLDOWN = 30000; // 30 ثانية بين كل re-sync
+  let lastServerSyncAt = 0; // آخر وقت وصلنا فيه وقت خادم صالح (status/snapshot)
   
   let serverTzOffsetMin = null;
   let serverLocalDateStr = null; // YYYY-MM-DD
@@ -869,6 +928,7 @@
       serverOffsetMs = Math.round(serverOffsetMs * 0.5 + measured * 0.5);
     }
     hasServerClockSync = true;
+    lastServerSyncAt = Date.now();
     
     // ✅ تحديث آخر وقت معروف للمراقبة
     lastLocalTime = Date.now();
@@ -910,9 +970,20 @@
   }
 
   // ✅ THROTTLED RE-SYNC: طلب re-sync مع حماية من الطلبات الزائدة
-  // ⚠️ COST PROTECTION: لا يرسل أكثر من request واحد كل 5 ثوانٍ
+  // ⚠️ COST PROTECTION: لا يرسل أكثر من request واحد كل 30 ثانية
   function requestReSyncIfNeeded() {
+    if (rt && rt.wsConnected) return;
     const now = Date.now();
+
+    // We already receive server time on normal status/snapshot responses.
+    // If sync is still fresh, skip extra re-sync requests completely.
+    const pollEveryMs = Math.max(1000, Math.round((Number(rt && rt.statusEverySec) || Number(cfg.REFRESH_EVERY) || 20) * 1000));
+    const freshSyncWindowMs = Math.max(30000, Math.round(pollEveryMs * 1.5));
+    if (lastServerSyncAt > 0 && now - lastServerSyncAt < freshSyncWindowMs) return;
+
+    // Avoid piling re-sync while a status request is already in-flight.
+    if (inflightStatus) return;
+
     const timeSinceLastSync = now - lastReSyncTime;
     
     // ✅ COOLDOWN: إذا كان آخر re-sync قبل أقل من 5 ثوانٍ، تجاهل
@@ -926,7 +997,7 @@
     
     // ✅ SEND: الآن فقط نرسل الطلب
     if (isDebug()) setDebugText("Clock drift detected - re-syncing...");
-    safeFetchStatus(true).catch(() => {});
+    safeFetchStatus().catch(() => {});
   }
 
   function _parseTzOffsetMinFromIso(iso) {
@@ -1719,12 +1790,9 @@
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
 
-    // Play bell at end of period and end of break (to signal new period starting)
-    if (rt.activeStateType === "period" || rt.activeStateType === "break") {
-      lastBoundaryBellStateKey = safeText(rt.activeStateType);
-      lastBoundaryBellAt = Date.now();
-      try { playBellSound(); } catch (e) {}
-    }
+    // Bell is intentionally not triggered here. Ringing is driven by local-time
+    // boundary transitions (dayEngineSyncToLocalNow / checkStateTransitionBell),
+    // not by the visual countdown reaching 00:00.
 
     // ── Push-only architecture: use dayEngine for ALL time-based transitions ──
     // dayEngineOnZero() uses the cached day_path to figure out what block
@@ -3023,6 +3091,10 @@
 
     renderCurrentChips(stType, s, current);
     renderMiniSchedule(payload, baseMs);
+
+    // Local-time authority: if cached payload lags behind real boundary, correct UI
+    // immediately from day_path without any server request.
+    try { dayEngineSyncToLocalNow(); } catch (e) {}
   }
 
   // ===== Ticker 1s =====
@@ -3038,6 +3110,10 @@
       }
       
       tickClock();
+
+      // Keep period/break/before transitions driven by local synchronized time
+      // even if the visual countdown gets stuck at 00:00.
+      try { dayEngineSyncToLocalNow(); } catch (e) {}
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         const prev = countdownSeconds;
