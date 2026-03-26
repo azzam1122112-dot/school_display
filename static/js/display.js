@@ -185,10 +185,7 @@
     toggleHidden(dom.blocker, false);
   }
   function stopPolling() {
-    if (pollTimer) {
-      clearTimeout(pollTimer);
-      pollTimer = null;
-    }
+    clearNamedTimer("poll");
     if (ctrl) {
       try {
         ctrl.abort();
@@ -500,18 +497,441 @@
     transitionBackoffSec: 2.0, // bounded backoff during transition window
     pollStateLastLogTs: 0, // debug-only: last time we logged poll state
     
-    // WebSocket state (Phase 2: Dark Launch)
-    ws: null, // WebSocket instance
-    wsRetryCount: 0, // consecutive connection failures
-    wsReconnectTimer: null, // reconnect timer ID
-    pendingRev: null, // revision received from WS but not yet fetched
-    forceFetchSnapshot: false, // set true to bypass /status once and fetch snapshot immediately
-    wsEnabled: false, // feature flag from server (TBD: read from snapshot meta)
-    wsPingInterval: null, // keepalive ping timer
-    wsMaxRetries: 10, // max reconnection attempts before giving up
-    wsEverConnected: false, // becomes true after first successful WS open
-    wsSuppressedUntilTs: 0, // temporary cooldown when WS endpoint appears unavailable
+    // ===== Unified Operational Mode =====
+    // Single source of truth for display state. All decisions flow from this.
+    // Valid modes: "init" | "active" | "ws-live" | "sleeping" | "waking" | "fallback-poll"
+    mode: "init",
+    modePrev: "",
+    modeReason: "",
+    modeChangedAt: 0,
+
+    // Schedule meta from server (authoritative)
+    isSchoolDay: true,
+    isActiveWindow: true,
+    activeWindowStartMs: null,
+    activeWindowEndMs: null,
+
+    // WebSocket state
+    ws: null,
+    wsConnected: false,
+    wsRetryCount: 0,
+    pendingRev: null,
+    forceFetchSnapshot: false,
+    wsEnabled: false,
+    wsMaxRetries: 10,
+    wsEverConnected: false,
+    wsSuppressedUntilTs: 0,
+
+    // Sleep/Wake
+    sleepReason: "", // "before_hours" | "after_hours" | "holiday"
+
+    // Adaptive Fallback Polling (improvement #2)
+    // Tracks escalation level when WS is down and mode is fallback-poll.
+    // Level 0 = fastest (20s), escalates through tiers, resets on WS recovery.
+    fallbackLevel: 0,
   };
+
+  // ===========================================================================
+  // ===== Unified Timer Manager ===============================================
+  // ===========================================================================
+  // Single registry for ALL named timers. Prevents duplicates and leaks.
+  // Rules:
+  //   - Every setTimeout/setInterval must go through setNamedTimer/setNamedInterval.
+  //   - clear-before-set is enforced automatically.
+  //   - Each name maps to exactly one active timer.
+  // ===========================================================================
+
+  const _timers = Object.create(null); // name → {id, type:"timeout"|"interval", label}
+
+  function setNamedTimer(name, fn, delayMs, label) {
+    clearNamedTimer(name);
+    var id = setTimeout(function _namedTimerFire() {
+      delete _timers[name];
+      _log("timer_fire", { name: name, label: label || name });
+      try { fn(); } catch (e) {
+        if (isDebug()) console.error("[timer] " + name + " error:", e);
+      }
+    }, Math.max(0, delayMs));
+    _timers[name] = { id: id, type: "timeout", label: label || name };
+    _log("timer_set", { name: name, delay: Math.round(delayMs), label: label || name });
+    return id;
+  }
+
+  function setNamedInterval(name, fn, intervalMs, label) {
+    clearNamedTimer(name);
+    var id = setInterval(function _namedIntervalFire() {
+      _log("timer_fire", { name: name, label: label || name });
+      try { fn(); } catch (e) {
+        if (isDebug()) console.error("[interval] " + name + " error:", e);
+      }
+    }, Math.max(100, intervalMs));
+    _timers[name] = { id: id, type: "interval", label: label || name };
+    _log("timer_set", { name: name, interval: Math.round(intervalMs), label: label || name });
+    return id;
+  }
+
+  function clearNamedTimer(name) {
+    var t = _timers[name];
+    if (!t) return;
+    if (t.type === "interval") {
+      clearInterval(t.id);
+    } else {
+      clearTimeout(t.id);
+    }
+    delete _timers[name];
+    _log("timer_clear", { name: name });
+  }
+
+  function clearAllRuntimeTimers(exclusions) {
+    var excl = exclusions || [];
+    var names = Object.keys(_timers);
+    for (var i = 0; i < names.length; i++) {
+      if (excl.indexOf(names[i]) === -1) {
+        clearNamedTimer(names[i]);
+      }
+    }
+  }
+
+  // ===========================================================================
+  // ===== Unified Structured Logger ===========================================
+  // ===========================================================================
+  // All instrumentation flows through _log(event, data).
+  // In debug mode: console.log with structured object.
+  // In production: silent (zero overhead).
+  // ===========================================================================
+
+  function _log(event, data) {
+    if (!isDebug()) return;
+    try {
+      var obj = { event: event, mode: rt.mode, ts: new Date().toISOString() };
+      if (data) {
+        var keys = Object.keys(data);
+        for (var i = 0; i < keys.length; i++) obj[keys[i]] = data[keys[i]];
+      }
+      console.log("[display]", obj);
+    } catch (e) {}
+  }
+
+  // ===========================================================================
+  // ===== Mode State Machine ==================================================
+  // ===========================================================================
+  // setMode() is the ONLY way to change rt.mode. All transitions are validated.
+  // Invalid transitions are rejected with a warning.
+  //
+  //  init → active | sleeping | fallback-poll
+  //  active → ws-live | sleeping | fallback-poll
+  //  ws-live → active | sleeping | fallback-poll
+  //  sleeping → waking
+  //  waking → active | ws-live | sleeping | fallback-poll
+  //  fallback-poll → active | ws-live | sleeping
+  //
+  //  "init" is only valid at startup before first snapshot.
+  // ===========================================================================
+
+  var _validTransitions = {
+    "init":          ["active", "sleeping", "fallback-poll"],
+    "active":        ["ws-live", "sleeping", "fallback-poll"],
+    "ws-live":       ["active", "sleeping", "fallback-poll"],
+    "sleeping":      ["waking"],
+    "waking":        ["active", "ws-live", "sleeping", "fallback-poll"],
+    "fallback-poll": ["active", "ws-live", "sleeping"],
+  };
+
+  function setMode(next, reason) {
+    var prev = rt.mode;
+    if (prev === next) return; // no-op for same mode
+
+    // Validate transition
+    var allowed = _validTransitions[prev];
+    if (!allowed || allowed.indexOf(next) === -1) {
+      _log("mode_rejected", { from: prev, to: next, reason: reason });
+      if (isDebug()) console.warn("[mode] REJECTED: " + prev + " → " + next + " (" + reason + ")");
+      return;
+    }
+
+    rt.modePrev = prev;
+    rt.mode = next;
+    rt.modeReason = reason || "";
+    rt.modeChangedAt = Date.now();
+
+    _log("mode_change", { from: prev, to: next, reason: reason });
+
+    // Side effects on mode entry
+    _onModeEnter(next, prev, reason);
+  }
+
+  function _onModeEnter(mode, prev, reason) {
+    if (mode === "sleeping") {
+      // Cancel polling timer — sleep engine manages wake
+      clearNamedTimer("poll");
+      clearNamedTimer("ws_snapshot"); // cancel any pending WS-triggered fetch
+      _log("polling_stopped", { reason: "entered_sleep" });
+    }
+
+    if (mode === "waking") {
+      // Transient state: immediately transition to active or ws-live
+      clearNamedTimer("wake");
+      clearNamedTimer("safety_check");
+      clearNamedTimer("sleep_reconnect");  // cancel sleep reconnect
+      clearNamedTimer("ws_snapshot");       // cancel stale WS snapshot fetch
+      rt.status304Streak = 0;
+      rt.statusEverySec = 0;
+      resetFallbackPollLevel("waking");
+
+      // Determine target mode
+      var target = (rt.wsConnected) ? "ws-live" : "active";
+      setMode(target, "wake_complete_" + reason);
+      // Schedule immediate fetch
+      scheduleNext(0.3);
+      return;
+    }
+
+    if (mode === "ws-live") {
+      _log("ws_live_entered", { reason: reason });
+      resetFallbackPollLevel("ws_live");
+      clearNamedTimer("sleep_reconnect"); // cancel any pending sleep reconnect
+    }
+
+    if (mode === "active") {
+      // Resume polling if not already scheduled
+      resetFallbackPollLevel("entered_active");
+      if (!_timers["poll"]) {
+        scheduleNext(0.3);
+      }
+    }
+
+    if (mode === "fallback-poll") {
+      // Enter adaptive fallback — start at level 0 (fastest)
+      // Don't reset level here (it may already be mid-escalation from a prior cycle)
+      _log("fallback_poll_entered", {
+        level: rt.fallbackLevel,
+        intervalSec: getFallbackPollDelay(),
+        reason: reason,
+      });
+      if (!_timers["poll"]) {
+        scheduleNext(0.3);
+      }
+    }
+  }
+
+  // ===========================================================================
+  // ===== validateScheduleMeta ================================================
+  // ===========================================================================
+  // Validates server-supplied meta before any sleep/mode decision.
+  // Returns { valid: bool, meta: {…}, reason: string }
+  // If invalid: returns valid=false — caller MUST NOT sleep.
+  // ===========================================================================
+
+  function validateScheduleMeta(payload) {
+    var result = { valid: false, meta: null, reason: "no_payload" };
+    if (!payload || !payload.meta) return result;
+
+    var m = payload.meta;
+    result.meta = m;
+
+    // Required boolean flags
+    if (typeof m.is_active_window !== "boolean") {
+      result.reason = "missing_is_active_window";
+      _log("meta_invalid", result);
+      return result;
+    }
+    if (typeof m.is_school_day !== "boolean") {
+      result.reason = "missing_is_school_day";
+      _log("meta_invalid", result);
+      return result;
+    }
+
+    // If not active window, we need active_window start/end for scheduling wake
+    if (!m.is_active_window && m.active_window) {
+      if (!m.active_window.start || !m.active_window.end) {
+        result.reason = "incomplete_active_window";
+        _log("meta_invalid", result);
+        return result;
+      }
+    }
+
+    result.valid = true;
+    result.reason = "ok";
+    return result;
+  }
+
+  // ===========================================================================
+  // ===== Jitter for Thundering Herd Prevention ===============================
+  // ===========================================================================
+  // Deterministic per-device jitter (0–60s) for scheduled wakes.
+  // NOT applied on WS-push wakes (instant response needed).
+  // ===========================================================================
+
+  var WAKE_JITTER_MAX_MS = 60 * 1000; // 60 seconds max jitter
+
+  function _wakeJitterMs() {
+    // Use the stable per-device jitter fraction (0.0–0.5)
+    // Scale to 0..WAKE_JITTER_MAX_MS
+    return Math.abs(rt.refreshJitterFrac) * 2 * WAKE_JITTER_MAX_MS;
+  }
+
+  // ===========================================================================
+  // ===== Improvement #1: Sleep Reconnect Jitter ==============================
+  // ===========================================================================
+  // When WS drops during sleep, thousands of devices could try to reconnect
+  // simultaneously. This helper adds a bounded, deterministic-ish per-device
+  // jitter (5–30s) specifically for sleep-mode reconnects.
+  //
+  // Range rationale:
+  //   - 5s minimum: avoids instant stampede, gives server breathing room
+  //   - 30s maximum: keeps reconnect responsive enough that WS recovers quickly
+  //   - 25s spread across N devices distributes load evenly
+  //   - Uses refreshJitterFrac (stable per page load) + small random component
+  //     so devices don't cluster on the same deterministic offset
+  // ===========================================================================
+
+  var SLEEP_RECONNECT_MIN_MS = 5 * 1000;   // 5s floor
+  var SLEEP_RECONNECT_MAX_MS = 30 * 1000;  // 30s ceiling
+
+  function _sleepReconnectJitterMs() {
+    // Deterministic base from per-device fraction (0..25s spread)
+    var base = Math.abs(rt.refreshJitterFrac) * 2 * (SLEEP_RECONNECT_MAX_MS - SLEEP_RECONNECT_MIN_MS);
+    // Small random perturbation (±3s) to break ties between devices with similar fractions
+    var perturbation = (Math.random() - 0.5) * 6000;
+    var jitter = SLEEP_RECONNECT_MIN_MS + base + perturbation;
+    // Clamp to [min, max]
+    return Math.max(SLEEP_RECONNECT_MIN_MS, Math.min(SLEEP_RECONNECT_MAX_MS, Math.round(jitter)));
+  }
+
+  /**
+   * Schedule a WS reconnect attempt during sleep mode.
+   * Uses dedicated jitter and named timer to prevent reconnect storms.
+   * If WS comes back before the timer fires, it will be safely cancelled by
+   * clearNamedTimer("sleep_reconnect") in the WS onopen handler.
+   */
+  function _scheduleSleepReconnect() {
+    // Guard: only during sleep
+    if (rt.mode !== "sleeping") return;
+    // Guard: don't schedule if WS already connected
+    if (rt.wsConnected) return;
+    // Guard: don't schedule if WS is disabled
+    if (!rt.wsEnabled) return;
+
+    var jitter = _sleepReconnectJitterMs();
+    _log("sleep_reconnect_scheduled", {
+      jitterMs: jitter,
+      jitterSec: (jitter / 1000).toFixed(1),
+    });
+
+    setNamedTimer("sleep_reconnect", function () {
+      // Re-check mode at fire time — mode may have changed
+      if (rt.mode !== "sleeping") {
+        _log("sleep_reconnect_skipped", { reason: "mode_changed", mode: rt.mode });
+        return;
+      }
+      if (rt.wsConnected) {
+        _log("sleep_reconnect_skipped", { reason: "ws_already_connected" });
+        return;
+      }
+      _log("sleep_reconnect_fired", {});
+      initWebSocket();
+    }, jitter, "sleep_ws_reconnect");
+  }
+
+  // ===========================================================================
+  // ===== Improvement #2: Adaptive Fallback Polling ===========================
+  // ===========================================================================
+  // When WS fails and mode is fallback-poll, polling starts fast (20s) then
+  // gradually slows to reduce server load. Resets on WS recovery or successful
+  // data fetch that restores confidence.
+  //
+  // Tier rationale:
+  //   Level 0: 20s  — immediate responsiveness after WS loss
+  //   Level 1: 45s  — still responsive, first cooldown
+  //   Level 2: 90s  — moderate pace for sustained outage
+  //   Level 3: 180s — 3 minutes, significant load reduction
+  //   Level 4: 300s — 5 minutes, steady state for long outages
+  //
+  // At 30K screens:
+  //   Level 0 (20s) → 1500 req/s — only during first ~20s
+  //   Level 4 (300s) → 100 req/s — sustainable steady state
+  // ===========================================================================
+
+  var _FALLBACK_TIERS = [20, 45, 90, 180, 300]; // seconds per level
+
+  function getFallbackPollDelay() {
+    var level = Math.min(rt.fallbackLevel, _FALLBACK_TIERS.length - 1);
+    return _FALLBACK_TIERS[level];
+  }
+
+  function advanceFallbackPollLevel() {
+    if (rt.mode !== "fallback-poll") return;
+    var prev = rt.fallbackLevel;
+    rt.fallbackLevel = Math.min(rt.fallbackLevel + 1, _FALLBACK_TIERS.length - 1);
+    if (rt.fallbackLevel !== prev) {
+      _log("fallback_level_advanced", {
+        from: prev,
+        to: rt.fallbackLevel,
+        intervalSec: getFallbackPollDelay(),
+      });
+    }
+  }
+
+  function resetFallbackPollLevel(reason) {
+    if (rt.fallbackLevel === 0) return;
+    var prev = rt.fallbackLevel;
+    rt.fallbackLevel = 0;
+    _log("fallback_level_reset", { from: prev, reason: reason });
+  }
+
+  // ===========================================================================
+  // ===== Improvement #3: WS Snapshot Fetch Jitter ============================
+  // ===========================================================================
+  // When a WS invalidate/broadcast reaches thousands of screens, they all
+  // request a snapshot simultaneously → snapshot storm. This adds a small
+  // jitter (0–200ms) to spread requests.
+  //
+  // Range rationale:
+  //   - 200ms max: imperceptible to humans (<250ms reaction threshold)
+  //   - At 30K screens over 200ms → ~150K req/s becomes ~150K spread over 200ms
+  //     which reduces peak by ~5x vs instant burst
+  //   - 0ms floor: some devices go first for fastest visible update
+  //   - Coalescing: if multiple invalidates arrive rapidly, only the last one
+  //     results in a fetch (overwrite pattern via named timer)
+  // ===========================================================================
+
+  var WS_SNAPSHOT_JITTER_MAX_MS = 200; // 200ms ceiling
+
+  function _wsSnapshotJitterMs() {
+    return Math.round(Math.random() * WS_SNAPSHOT_JITTER_MAX_MS);
+  }
+
+  /**
+   * Schedule a snapshot refresh after WS invalidate, with jitter + coalescing.
+   * If called again before the timer fires, the previous timer is replaced
+   * (coalesced) — only one fetch executes per burst of invalidates.
+   */
+  function scheduleWsSnapshotRefresh(revision) {
+    var jitter = _wsSnapshotJitterMs();
+
+    _log("ws_snapshot_scheduled", {
+      revision: revision,
+      jitterMs: jitter,
+      coalesced: !!_timers["ws_snapshot"],
+    });
+
+    setNamedTimer("ws_snapshot", function () {
+      // Guard: don't fetch if mode changed to sleeping
+      if (rt.mode === "sleeping") {
+        _log("ws_snapshot_skipped", { reason: "sleeping" });
+        return;
+      }
+      // Guard: if another fetch completed and revision already consumed
+      if (rt.pendingRev === null && !rt.forceFetchSnapshot) {
+        _log("ws_snapshot_skipped", { reason: "already_consumed" });
+        return;
+      }
+      _log("ws_snapshot_fired", { revision: revision });
+      rt.status304Streak = 0;
+      rt.statusEverySec = basePollEverySec();
+      scheduleNext(0.1); // near-instant after jitter
+    }, jitter, "ws_invalidate_fetch");
+  }
 
 
   function maybeLogPollState(activeWindow, nextPollSec) {
@@ -1064,6 +1484,7 @@
   // ⚠️ COST PROTECTION: لا يرسل أكثر من request واحد كل 30 ثانية
   function requestReSyncIfNeeded() {
     if (rt && rt.wsConnected) return;
+    if (rt && rt.mode === "sleeping") return; // no re-sync while sleeping
     const now = Date.now();
 
     // We already receive server time on normal status/snapshot responses.
@@ -3377,6 +3798,11 @@
     // Local-time authority: if cached payload lags behind real boundary, correct UI
     // immediately from day_path without any server request.
     try { dayEngineSyncToLocalNow(); } catch (e) {}
+
+    // Smart Sleep/Wake: evaluate whether to enter sleep mode based on new payload.
+    try { sleepEvaluate(); } catch (e) {
+      if (isDebug()) console.warn("[sleep] evaluate error:", e);
+    }
   }
 
   // ===== Ticker 1s =====
@@ -3890,7 +4316,6 @@
   }
 
   // ===== Refresh loop =====
-  let pollTimer = null;
   let failStreak = 0;
   let isFetching = false;
 
@@ -3940,13 +4365,19 @@
   }
 
   function scheduleNext(sec) {
-    if (pollTimer) clearTimeout(pollTimer);
-    pollTimer = setTimeout(refreshLoop, Math.max(0.2, sec) * 1000);
+    setNamedTimer("poll", refreshLoop, Math.max(0.2, sec) * 1000, "poll_loop");
   }
 
   async function refreshLoop() {
     if (isBlocked) return;
     if (isFetching) return; // Prevent overlapping loops
+
+    // Mode-based gate: sleeping displays do not poll.
+    // Wake-up timer or WS invalidate will resume.
+    if (rt.mode === "sleeping" && !!lastPayloadForFiltering) {
+      _log("poll_skipped", { reason: "sleeping", sleepReason: rt.sleepReason });
+      return; // no scheduleNext — wake-up system handles resumption
+    }
 
     // Never skip the very first snapshot fetch because that can leave the UI blank.
     // Also, only pause when hidden on browsers that reliably support it.
@@ -4153,25 +4584,23 @@
         if (wsEnabledFromServer && !rt.wsEnabled) {
           // Feature enabled by server, init WS
           rt.wsEnabled = true;
-          if (isDebug()) console.log("[WS] feature enabled by server, initializing");
+          _log("ws_feature", { enabled: true });
           initWebSocket();
         } else if (!wsEnabledFromServer && rt.wsEnabled) {
           // Feature disabled by server, close WS
           rt.wsEnabled = false;
           if (rt.ws) {
-            if (isDebug()) console.log("[WS] feature disabled by server, closing");
+            _log("ws_feature", { enabled: false });
             try {
               rt.ws.close();
             } catch (e) {}
             rt.ws = null;
           }
-          if (rt.wsPingInterval) {
-            clearInterval(rt.wsPingInterval);
-            rt.wsPingInterval = null;
-          }
-          if (rt.wsReconnectTimer) {
-            clearTimeout(rt.wsReconnectTimer);
-            rt.wsReconnectTimer = null;
+          clearNamedTimer("ws_ping");
+          clearNamedTimer("ws_reconnect");
+          // Transition mode from ws-live to active if needed
+          if (rt.mode === "ws-live") {
+            setMode("active", "ws_disabled_by_server");
           }
         }
       } catch (e) {
@@ -4224,198 +4653,431 @@
         isFetching = false;
     }
 
+    // Mode transition: after first successful render, leave "init"
+    if (rt.mode === "init") {
+      setMode("active", "first_render_complete");
+    }
+
     {
       const inTrans = nowMs() < (Number(rt.transitionUntilTs) || 0);
-      scheduleNext(inTrans ? (Number(rt.transitionBackoffSec) || 2.0) : basePollEverySec());
+      var nextSec = inTrans ? (Number(rt.transitionBackoffSec) || 2.0) : basePollEverySec();
+      scheduleNext(nextSec);
+
+      // Improvement #2: escalate fallback level each cycle in fallback-poll mode
+      if (rt.mode === "fallback-poll" && !inTrans) {
+        advanceFallbackPollLevel();
+      }
     }
   }
 
 
 
-  // ===== WebSocket: Realtime Push Invalidate (Phase 2: Dark Launch) =====
+  // ===========================================================================
+  // ===== Unified Sleep/Wake Engine ==========================================
+  // ===========================================================================
+  // Mode-based sleep/wake driven by validated server meta.
+  //
+  // Guarantees:
+  //  1. Zero HTTP requests while sleeping (WS stays alive for push).
+  //  2. 15-min named safety timer guards against drift / tab freeze.
+  //  3. WS invalidate wakes immediately (no jitter).
+  //  4. Scheduled wakes have per-device jitter (thundering herd prevention).
+  //  5. First page load always fetches (never sleeps before first payload).
+  //  6. If meta validation fails, display stays active (safe default).
+  // ===========================================================================
+
+  const SLEEP_WAKE_EARLY_MIN = 20;    // wake up 20 minutes before active window
+  const SLEEP_CHECK_MS = 15 * 60 * 1000; // safety re-check every 15 min
+
+  function _parseIsoToMs(iso) {
+    if (!iso) return null;
+    try {
+      var ms = new Date(String(iso)).getTime();
+      return isFinite(ms) && ms > 0 ? ms : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Evaluate whether the display should sleep or wake based on latest snapshot meta.
+   * Called after every successful renderState().
+   */
+  function sleepEvaluate() {
+    if (!lastPayloadForFiltering) return; // never sleep before first render
+
+    // Validate meta before any decision
+    var v = validateScheduleMeta(lastPayloadForFiltering);
+    if (!v.valid) {
+      // Invalid/missing meta — stay active (safe default)
+      if (rt.mode === "sleeping") {
+        setMode("waking", "meta_invalid_" + v.reason);
+      }
+      return;
+    }
+
+    var meta = v.meta;
+    var state = lastPayloadForFiltering.state || {};
+
+    // Update authoritative server fields
+    rt.isSchoolDay = meta.is_school_day !== false;
+    rt.isActiveWindow = !!meta.is_active_window;
+
+    var aw = meta.active_window || null;
+    if (aw) {
+      rt.activeWindowStartMs = _parseIsoToMs(aw.start);
+      rt.activeWindowEndMs = _parseIsoToMs(aw.end);
+    } else {
+      rt.activeWindowStartMs = null;
+      rt.activeWindowEndMs = null;
+    }
+
+    // Determine sleep reason
+    var stateType = (state.type || "").toLowerCase();
+    var sleepReason = "";
+
+    if (!rt.isSchoolDay) {
+      sleepReason = "holiday";
+    } else if (!rt.isActiveWindow && stateType === "off") {
+      var now = nowMs();
+      if (rt.activeWindowStartMs && now < rt.activeWindowStartMs) {
+        sleepReason = "before_hours";
+      } else {
+        sleepReason = "after_hours";
+      }
+    }
+
+    if (sleepReason) {
+      sleepEnter(sleepReason);
+    } else if (rt.mode === "sleeping") {
+      setMode("waking", "active_window_entered");
+    }
+  }
+
+  /**
+   * Enter sleep mode — stop polling, schedule wake-up with jitter.
+   */
+  function sleepEnter(reason) {
+    if (rt.mode === "sleeping" && rt.sleepReason === reason) return; // idempotent
+
+    rt.sleepReason = reason;
+
+    // Transition mode (if not already sleeping)
+    if (rt.mode !== "sleeping") {
+      // setMode will clear poll timer via _onModeEnter
+      setMode("sleeping", reason);
+    }
+
+    // Clear previous wake timers
+    clearNamedTimer("wake");
+    clearNamedTimer("wake_chunk");
+
+    var now = nowMs();
+    var wakeMs = null;
+
+    if (reason === "before_hours" && rt.activeWindowStartMs) {
+      wakeMs = rt.activeWindowStartMs - (SLEEP_WAKE_EARLY_MIN * 60 * 1000);
+      if (wakeMs <= now) {
+        setMode("waking", "already_near_active");
+        return;
+      }
+    } else if (reason === "after_hours" || reason === "holiday") {
+      var midnight = _nextMidnightMs(now);
+      wakeMs = midnight + (5 * 60 * 1000);
+    }
+
+    if (wakeMs && wakeMs > now) {
+      // Add per-device jitter to prevent thundering herd
+      var delayMs = (wakeMs - now) + _wakeJitterMs();
+      _scheduleCappedWake(delayMs);
+
+      _log("sleep_entered", {
+        reason: reason,
+        wakeInMin: Math.round(delayMs / 60000),
+        jitterMs: Math.round(_wakeJitterMs()),
+      });
+    } else {
+      _log("sleep_entered", { reason: reason, wakeTarget: "none" });
+    }
+
+    // Start safety check interval
+    setNamedInterval("safety_check", sleepSafetyCheck, SLEEP_CHECK_MS, "sleep_safety");
+  }
+
+  /**
+   * Schedule a wake-up, splitting long delays into 2-hour chunks.
+   */
+  function _scheduleCappedWake(delayMs) {
+    var MAX_CHUNK = 2 * 60 * 60 * 1000; // 2 hours
+
+    if (delayMs <= MAX_CHUNK) {
+      setNamedTimer("wake", function () {
+        if (rt.mode === "sleeping") {
+          setMode("waking", "timer");
+        }
+      }, delayMs, "scheduled_wake");
+    } else {
+      // Schedule intermediate chunk, then re-evaluate
+      setNamedTimer("wake_chunk", function () {
+        if (rt.mode !== "sleeping") return;
+        sleepSafetyCheck();
+      }, MAX_CHUNK, "wake_chunk_reeval");
+    }
+  }
+
+  /**
+   * Safety check — runs every 15 min during sleep.
+   * Guards against setTimeout drift or tab freeze.
+   */
+  function sleepSafetyCheck() {
+    if (rt.mode !== "sleeping") return;
+
+    var now = nowMs();
+
+    // Check if we should be in active window now
+    if (rt.activeWindowStartMs) {
+      var wakeTarget = rt.activeWindowStartMs - (SLEEP_WAKE_EARLY_MIN * 60 * 1000);
+      if (now >= wakeTarget) {
+        setMode("waking", "safety_check_near_active");
+        return;
+      }
+      // Reschedule precise timer for remaining time
+      var remaining = wakeTarget - now + _wakeJitterMs();
+      clearNamedTimer("wake");
+      clearNamedTimer("wake_chunk");
+      _scheduleCappedWake(remaining);
+    }
+
+    // Holiday / after_hours: check midnight boundary
+    if (rt.sleepReason === "after_hours" || rt.sleepReason === "holiday") {
+      var midnight = _nextMidnightMs(now);
+      var wakeAtMidnight = midnight + (5 * 60 * 1000);
+      if (now >= wakeAtMidnight - 60000) {
+        setMode("waking", "safety_check_midnight");
+        return;
+      }
+    }
+
+    // WS degraded during sleep: schedule reconnect with jitter (improvement #1)
+    if (rt.wsEnabled && !rt.wsConnected) {
+      _log("ws_degraded_in_sleep", { reason: "ws_disconnected_during_sleep" });
+      // Don't reconnect immediately — use jittered timer to prevent storm
+      _scheduleSleepReconnect();
+    }
+
+    _log("safety_check_passed", { sleepReason: rt.sleepReason });
+  }
+
+  /**
+   * Calculate next midnight in server-synchronized time.
+   */
+  function _nextMidnightMs(fromMs) {
+    var d = new Date(fromMs);
+    if (serverTzOffsetMin !== null) {
+      var utcMs = fromMs;
+      var serverLocalMs = utcMs + (serverTzOffsetMin * 60 * 1000);
+      var serverLocal = new Date(serverLocalMs);
+      var nextDay = new Date(Date.UTC(
+        serverLocal.getUTCFullYear(),
+        serverLocal.getUTCMonth(),
+        serverLocal.getUTCDate() + 1,
+        0, 0, 0, 0
+      ));
+      return nextDay.getTime() - (serverTzOffsetMin * 60 * 1000);
+    }
+    var nextLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+    return nextLocal.getTime();
+  }
+
+
+  // ===== WebSocket: Realtime Push Invalidate =====
   
   function getDeviceId() {
-    // Must match HTTP snapshot/status device id to keep server binding consistent.
     return getOrCreateDeviceId();
   }
 
+  /**
+   * Mode-aware polling interval calculator.
+   * Returns seconds until next poll based on current mode.
+   */
   function basePollEverySec() {
+    // Sleeping: no poll (wake system handles resumption)
+    if (rt.mode === "sleeping") return 86400;
+
     try {
-      const wsOpen = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN);
+      var wsOpen = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN);
       if (wsOpen) {
-        // Push-only mode: if WS is connected AND dayEngine has schedule data,
-        // we only need a safety heartbeat poll (5 min). WS push handles data
-        // changes and dayEngine handles all time-based transitions locally.
-        if (_dayEngine.blocks.length > 0) return 300; // 5 min heartbeat
+        // Off-hours with WS: 30-min heartbeat
+        if (!rt.isActiveWindow) return 1800;
+        // ws-live with dayEngine: 5-min heartbeat
+        if (_dayEngine.blocks.length > 0) return 300;
         return Number(cfg.WS_FALLBACK_POLL_EVERY) || 90;
       }
     } catch (e) {}
+
+    // Adaptive fallback polling (improvement #2)
+    if (rt.mode === "fallback-poll") {
+      // Off-hours in fallback: slow heartbeat regardless of level
+      if (!rt.isActiveWindow) return 1800;
+      return getFallbackPollDelay();
+    }
+
+    // active mode without WS
+    if (!rt.isActiveWindow) return 1800;
     return Number(cfg.REFRESH_EVERY) || 20;
   }
 
   function initWebSocket() {
-    // Only attempt WS if feature enabled (from server meta or flag)
     if (!rt.wsEnabled) {
-      if (isDebug()) console.log("[WS] disabled by feature flag");
+      _log("ws_disabled", { reason: "feature_flag" });
       return;
     }
 
-    // If WS repeatedly fails before any successful open, cool down for a while
-    // and let status polling carry the screen.
-    const nowTs = Date.now();
+    // If WS repeatedly fails before any successful open, cool down
+    var nowTs = Date.now();
     if (rt.wsSuppressedUntilTs && nowTs < rt.wsSuppressedUntilTs) {
-      const waitMs = Math.max(1000, rt.wsSuppressedUntilTs - nowTs);
-      if (isDebug()) console.log(`[WS] temporarily suppressed for ${(waitMs / 1000).toFixed(0)}s`);
-      if (!rt.wsReconnectTimer) {
-        rt.wsReconnectTimer = setTimeout(() => {
-          rt.wsReconnectTimer = null;
-          initWebSocket();
-        }, waitMs);
-      }
+      var waitMs = Math.max(1000, rt.wsSuppressedUntilTs - nowTs);
+      _log("ws_suppressed", { waitSec: Math.round(waitMs / 1000) });
+      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, waitMs, "ws_suppressed_retry");
       return;
     }
     
-    // After many failures, keep retrying but with long backoff instead of stopping forever.
+    // After many failures, slow retry
     if (rt.wsRetryCount >= rt.wsMaxRetries) {
-      const longDelaySec = 120;
-      if (isDebug()) console.log(`[WS] max retries reached; slow retry in ${longDelaySec}s`);
-      rt.wsReconnectTimer = setTimeout(() => {
-        initWebSocket();
-      }, longDelaySec * 1000);
+      var longDelayMs = 120 * 1000;
+      _log("ws_max_retries", { delay: 120 });
+      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, longDelayMs, "ws_slow_retry");
       return;
     }
     
-    // Close existing connection if any
+    // Close existing connection
     if (rt.ws) {
-      try {
-        rt.ws.close();
-      } catch (e) {}
+      try { rt.ws.close(); } catch (e) {}
       rt.ws = null;
     }
     
-    // Clear any reconnect timer
-    if (rt.wsReconnectTimer) {
-      clearTimeout(rt.wsReconnectTimer);
-      rt.wsReconnectTimer = null;
-    }
+    clearNamedTimer("ws_reconnect");
     
-    const token = getToken();
-    const deviceId = getDeviceId();
+    var token = getToken();
+    var deviceId = getDeviceId();
     
     if (!token || !deviceId) {
-      if (isDebug()) console.log("[WS] missing token or device ID");
+      _log("ws_no_credentials", {});
       return;
     }
     
-    // Build WebSocket URL
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${proto}//${host}/ws/display/?token=${encodeURIComponent(token)}&dk=${encodeURIComponent(deviceId)}`;
+    var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var host = window.location.host;
+    var wsUrl = proto + "//" + host + "/ws/display/?token=" + encodeURIComponent(token) + "&dk=" + encodeURIComponent(deviceId);
     
     try {
-      if (isDebug()) console.log(`[WS] connecting to ${wsUrl.substring(0, 80)}...`);
+      _log("ws_connecting", { url: wsUrl.substring(0, 80) });
       
       rt.ws = new WebSocket(wsUrl);
       
       rt.ws.onopen = function() {
-        rt.wsRetryCount = 0; // reset on successful connection
+        rt.wsConnected = true;
+        rt.wsRetryCount = 0;
         rt.wsEverConnected = true;
         rt.wsSuppressedUntilTs = 0;
-        if (isDebug()) console.log("[WS] connected");
+
+        _log("ws_connected", {});
+
+        // Cancel any pending sleep reconnect timer (improvement #1)
+        clearNamedTimer("sleep_reconnect");
+
+        // Reset adaptive fallback (improvement #2)
+        resetFallbackPollLevel("ws_connected");
+
         try {
           rt.status304Streak = 0;
           rt.statusEverySec = basePollEverySec();
         } catch (e) {}
+
+        // Transition mode to ws-live if currently active/fallback-poll
+        if (rt.mode === "active" || rt.mode === "fallback-poll") {
+          setMode("ws-live", "ws_connected");
+        }
         
-        // Start keepalive ping (every 30s)
-        if (rt.wsPingInterval) clearInterval(rt.wsPingInterval);
-        rt.wsPingInterval = setInterval(() => {
+        // Start keepalive ping (every 30s) via named interval
+        setNamedInterval("ws_ping", function () {
           if (rt.ws && rt.ws.readyState === WebSocket.OPEN) {
             try {
               rt.ws.send(JSON.stringify({ type: "ping" }));
             } catch (e) {
-              if (isDebug()) console.warn("[WS] ping failed:", e);
+              _log("ws_ping_failed", { error: String(e) });
             }
           }
-        }, 30000);
+        }, 30000, "ws_keepalive");
       };
       
       rt.ws.onmessage = function(event) {
         try {
-          const msg = JSON.parse(event.data);
+          var msg = JSON.parse(event.data);
           
-          if (msg.type === "pong") {
-            // Keepalive response
-            return;
-          }
+          if (msg.type === "pong") return;
 
           if (msg.type === "reload") {
-            if (isDebug()) console.log("[WS] reload received");
-            try {
-              setTimeout(() => {
-                try {
-                  window.location.reload();
-                } catch (e) {
-                  window.location.href = window.location.href;
-                }
-              }, 200);
-            } catch (e) {
-              try {
-                window.location.reload();
-              } catch (e2) {
-                window.location.href = window.location.href;
-              }
-            }
+            _log("ws_reload", {});
+            setNamedTimer("ws_reload", function () {
+              try { window.location.reload(); } catch (e) { window.location.href = window.location.href; }
+            }, 200, "ws_reload_delay");
             return;
           }
           
           if (msg.type === "invalidate") {
-            const newRev = parseInt(msg.revision, 10);
+            var newRev = parseInt(msg.revision, 10);
             if (isNaN(newRev)) return;
             
-            if (isDebug()) console.log(`[WS] invalidate received: revision ${newRev}`);
+            _log("ws_invalidate", { revision: newRev });
             
-            // Store pending revision
             rt.pendingRev = newRev;
-
-            // Force a snapshot fetch (do not rely on /status revision compare)
             rt.forceFetchSnapshot = true;
-            
-            // If not currently fetching, trigger immediate refresh
-            if (!isFetching) {
-              if (isDebug()) console.log("[WS] triggering immediate refresh");
-              rt.status304Streak = 0; // reset backoff
-              rt.statusEverySec = basePollEverySec();
-              scheduleNext(0.5); // slight delay to avoid storm if multiple messages arrive
+
+            // Reset adaptive fallback on valid WS data (improvement #2)
+            resetFallbackPollLevel("ws_invalidate");
+
+            // Wake from sleep immediately — NO jitter for WS invalidate wake
+            if (rt.mode === "sleeping") {
+              setMode("waking", "ws_invalidate");
+              // waking→active/ws-live already calls scheduleNext(0.3)
+              // No snapshot jitter needed — wake path handles it
+            } else if (!isFetching) {
+              // Improvement #3: jittered snapshot fetch to prevent storm
+              scheduleWsSnapshotRefresh(newRev);
             } else {
-              if (isDebug()) console.log("[WS] fetch in progress, will pick up pendingRev on next cycle");
+              _log("ws_invalidate_deferred", { reason: "fetch_in_progress" });
             }
           }
         } catch (e) {
-          if (isDebug()) console.warn("[WS] message parse error:", e);
+          _log("ws_message_error", { error: String(e) });
         }
       };
       
       rt.ws.onerror = function(err) {
-        if (isDebug()) console.warn("[WS] error:", err);
+        _log("ws_error", {});
       };
       
       rt.ws.onclose = function(event) {
-        // Clear ping interval
-        if (rt.wsPingInterval) {
-          clearInterval(rt.wsPingInterval);
-          rt.wsPingInterval = null;
+        rt.wsConnected = false;
+        clearNamedTimer("ws_ping");
+        
+        var code = event.code;
+        var reason = event.reason || "";
+        
+        _log("ws_closed", { code: code, reason: reason });
+
+        // Transition mode: if was ws-live, degrade to adaptive fallback
+        if (rt.mode === "ws-live") {
+          setMode("fallback-poll", "ws_closed_code_" + code);
         }
+        // Advance fallback escalation on each WS close (improvement #2)
+        advanceFallbackPollLevel();
         
-        const code = event.code;
-        const reason = event.reason || "";
-        
-        if (isDebug()) console.log(`[WS] closed: code=${code} reason=${reason}`);
-        
-        // Don't reconnect on auth failures (4400, 4403, 4408)
+        // Don't reconnect on auth failures
         if (code === 4400 || code === 4403 || code === 4408) {
-          if (isDebug()) console.log("[WS] auth failure, not reconnecting");
-          rt.wsEnabled = false; // disable WS
+          _log("ws_auth_failure", { code: code });
+          rt.wsEnabled = false;
           try {
             rt.status304Streak = 0;
             rt.statusEverySec = basePollEverySec();
@@ -4424,75 +5086,54 @@
           return;
         }
         
-        // Exponential backoff: 1s → 2s → 4s → 8s → 16s → 32s → 60s (max)
         rt.wsRetryCount++;
 
-        // No successful WS connection yet + repeated failures => assume endpoint
-        // is unavailable for this deployment/device and pause retries briefly.
-        // Reduced threshold from 6→3: each failed attempt generates a server 404,
-        // so suppress early to cut log noise and unnecessary requests.
+        // Suppress if endpoint seems unavailable
         if (!rt.wsEverConnected && rt.wsRetryCount >= 3) {
-          rt.wsSuppressedUntilTs = Date.now() + (10 * 60 * 1000); // 10 minutes
-          if (isDebug()) console.log("[WS] endpoint seems unavailable; suppressing retries for 10 minutes");
+          rt.wsSuppressedUntilTs = Date.now() + (10 * 60 * 1000);
+          _log("ws_suppressed_no_connection", { durationMin: 10 });
           return;
         }
 
-        const baseDelay = Math.min(60, Math.pow(2, Math.min(5, rt.wsRetryCount - 1)));
-        const jitter = 0.5 + Math.random(); // 0.5x to 1.5x jitter
-        const delay = baseDelay * jitter;
+        var baseDelay = Math.min(60, Math.pow(2, Math.min(5, rt.wsRetryCount - 1)));
+        var jitter = 0.5 + Math.random();
+        var delay = baseDelay * jitter;
         
         if (rt.wsRetryCount >= rt.wsMaxRetries) {
-          const longDelaySec = 120;
-          if (isDebug()) console.log(`[WS] max retries (${rt.wsMaxRetries}) reached; slow retry in ${longDelaySec}s`);
-          rt.wsReconnectTimer = setTimeout(() => {
-            initWebSocket();
-          }, longDelaySec * 1000);
+          var longDelaySec = 120;
+          _log("ws_max_retries_reconnect", { delay: longDelaySec });
+          setNamedTimer("ws_reconnect", function () { initWebSocket(); }, longDelaySec * 1000, "ws_slow_retry");
           return;
         }
 
-        if (isDebug()) console.log(`[WS] reconnecting in ${delay.toFixed(1)}s (attempt ${rt.wsRetryCount})`);
-        
-        rt.wsReconnectTimer = setTimeout(() => {
-          initWebSocket();
-        }, delay * 1000);
+        _log("ws_reconnecting", { delaySec: delay.toFixed(1), attempt: rt.wsRetryCount });
+        setNamedTimer("ws_reconnect", function () { initWebSocket(); }, delay * 1000, "ws_retry");
       };
       
     } catch (e) {
-      if (isDebug()) console.error("[WS] init error:", e);
+      _log("ws_init_error", { error: String(e) });
       rt.wsRetryCount++;
       
-      // Retry with backoff, then degrade to slow retry instead of permanent stop.
-      if (rt.wsRetryCount < rt.wsMaxRetries) {
-        const delay = Math.min(60, Math.pow(2, rt.wsRetryCount - 1));
-        if (isDebug()) console.log(`[WS] retrying in ${delay}s`);
-        rt.wsReconnectTimer = setTimeout(() => {
-          initWebSocket();
-        }, delay * 1000);
-      } else {
-        const longDelaySec = 120;
-        if (isDebug()) console.log(`[WS] max retries reached from init error; slow retry in ${longDelaySec}s`);
-        rt.wsReconnectTimer = setTimeout(() => {
-          initWebSocket();
-        }, longDelaySec * 1000);
-      }
+      var retryDelay = (rt.wsRetryCount < rt.wsMaxRetries)
+        ? Math.min(60, Math.pow(2, rt.wsRetryCount - 1))
+        : 120;
+      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, retryDelay * 1000, "ws_error_retry");
     }
   }
 
 
 
   // ===== Resize: فقط إعادة القياس =====
-  let resizeT = null;
   window.addEventListener(
     "resize",
-    () => {
-      if (resizeT) clearTimeout(resizeT);
-      resizeT = setTimeout(() => {
+    function () {
+      setNamedTimer("resize", function () {
         setVhVar();
         applyAutoFit();
         if (periodsScroller) periodsScroller.recalc();
         if (standbyScroller) standbyScroller.recalc();
         if (dutyScroller) dutyScroller.recalc();
-      }, 160);
+      }, 160, "resize_debounce");
     },
     { passive: true }
   );
@@ -4537,16 +5178,20 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
-      // ✅ عند العودة للصفحة، نتحقق من تزامن الوقت
-      // ⚠️ THROTTLED: محمي بـ cooldown لمنع الطلبات الزائدة
-      detectClockDrift(); // reset counters
-      requestReSyncIfNeeded(); // throttled request
+      detectClockDrift();
+      requestReSyncIfNeeded();
       
       if (periodsScroller) periodsScroller.recalc();
       if (standbyScroller) standbyScroller.recalc();
       if (dutyScroller) dutyScroller.recalc();
       scheduleFit(0);
-      scheduleNext(0.25);
+
+      // Mode-based: sleeping → safety check, otherwise → poll
+      if (rt.mode === "sleeping") {
+        try { sleepSafetyCheck(); } catch (e) {}
+      } else {
+        scheduleNext(0.25);
+      }
     }
   });
 
@@ -4554,7 +5199,7 @@
   // ⚠️ THROTTLED: محمي بـ cooldown لمنع الطلبات الزائدة
   window.addEventListener("focus", () => {
     detectClockDrift();
-    requestReSyncIfNeeded(); // throttled request
+    requestReSyncIfNeeded(); // throttled request (skipped if sleeping or WS connected)
   }, { passive: true });
 
   // ===== Global errors =====
