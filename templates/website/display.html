@@ -1506,6 +1506,7 @@
   data-school-id="{% if school_id %}{{ school_id }}{% endif %}"
   data-school-type="{% if school_type %}{{ school_type }}{% endif %}"
   data-media-prefix="{% if MEDIA_URL %}{{ MEDIA_URL }}{% else %}/media/{% endif %}"
+  data-bell-sound-url="{% static 'sounds/bell.mp3' %}"
   data-refresh="{% if refresh_interval_sec %}{{ refresh_interval_sec }}{% else %}10{% endif %}"
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
@@ -1882,7 +1883,7 @@
     </div>
   </noscript>
 
-    <script src="{% static 'js/display.js' %}?v=2026-03-26-riyadh-12h-v5"></script>
+    <script src="{% static 'js/display.js' %}?v=2026-03-26-bell-mp3-v7"></script>
 
     <script>
     /* Fullscreen Toggle */

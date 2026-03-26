@@ -470,6 +470,7 @@
     STANDBY_SPEED: 0.8,
     PERIODS_SPEED: 0.5,
     MEDIA_PREFIX: "/media/",
+    BELL_SOUND_URL: "",
     SNAPSHOT_URL: "",
     SERVER_TOKEN: "",
     SCHOOL_TYPE: "",
@@ -486,6 +487,9 @@
   const rt = {
     activePeriodIndex: null, // رقم الحصة الحالية/التالية
     activeFromHM: null, // وقت بداية النشاط الحالي/التالي
+    activeToHM: null, // وقت نهاية النشاط الحالي (للحساب الدقيق)
+    activeTargetHM: null, // الوقت المستهدف للعد التنازلي (from في before, to في period/break)
+    activeStateType: null, // نوع الحالة الحالية (period/break/before)
     dayOver: false, // انتهاء الدوام
     refreshJitterFrac: 0, // jitter نسبي ثابت لكل شاشة لتفريق الحمل
     statusEverySec: 0, // adaptive polling interval for status-first mode
@@ -1197,33 +1201,40 @@
 
   let lastCountdownZeroAt = 0;
 
-  // ===== Period-End Bell Sound (Web Audio API) =====
-  let bellAudioCtx = null;
+  // ===== Bell Sound (MP3) =====
+  let bellAudio = null;
   let bellUnlocked = false;
+  let lastBellPlayedAt = 0;
+  let lastBellStateKey = "";
 
-  function ensureBellAudioCtx() {
-    if (bellAudioCtx) return bellAudioCtx;
+  function ensureBellAudio() {
+    if (bellAudio) return bellAudio;
     try {
-      bellAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var url = cfg.BELL_SOUND_URL || "/static/sounds/bell.mp3";
+      bellAudio = new Audio(url);
+      bellAudio.preload = "auto";
+      bellAudio.volume = 0.7;
     } catch (e) {}
-    return bellAudioCtx;
+    return bellAudio;
   }
 
-  // Unlock AudioContext on first user interaction (browser autoplay policy)
+  // Unlock audio on first user interaction (browser autoplay policy)
   function unlockBellAudio() {
     if (bellUnlocked) return;
-    const ctx = ensureBellAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(function () {});
-    }
-    // Play a silent buffer to fully unlock
+    var audio = ensureBellAudio();
+    if (!audio) return;
+    // Play+pause immediately to unlock
     try {
-      var buf = ctx.createBuffer(1, 1, 22050);
-      var src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
+      var p = audio.play();
+      if (p && p.then) {
+        p.then(function () {
+          audio.pause();
+          audio.currentTime = 0;
+        }).catch(function () {});
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+      }
     } catch (e) {}
     bellUnlocked = true;
     // Hide the bell-enable button and show "sound enabled" feedback
@@ -1250,8 +1261,8 @@
   // Expose for the HTML onclick handler
   window._unlockBellFromBtn = function () {
     unlockBellAudio();
-    // Play a short preview chime so user knows it works
-    try { playPeriodEndBell(); } catch (e) {}
+    // Play the bell so user knows it works
+    try { playBellSound(); } catch (e) {}
   };
 
   ["click", "touchstart", "keydown"].forEach(function (evt) {
@@ -1264,63 +1275,50 @@
   });
 
   /**
-   * Play a pleasant two-tone school bell chime.
-   * Uses Web Audio API oscillators — no external files needed.
+   * Play the school bell MP3 sound.
+   * Debounced: won't play more than once every 3 seconds.
    */
-  function playPeriodEndBell() {
-    var ctx = ensureBellAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(function () {});
-    }
+  function playBellSound() {
+    var now = Date.now();
+    if (now - lastBellPlayedAt < 3000) return;
+    lastBellPlayedAt = now;
+    var audio = ensureBellAudio();
+    if (!audio) return;
     try {
-      var now = ctx.currentTime;
-      var master = ctx.createGain();
-      master.gain.setValueAtTime(0.35, now);
-      master.connect(ctx.destination);
-
-      // Chime 1 — E5 (659 Hz)
-      var osc1 = ctx.createOscillator();
-      var gain1 = ctx.createGain();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(659.25, now);
-      gain1.gain.setValueAtTime(1, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-      osc1.connect(gain1);
-      gain1.connect(master);
-      osc1.start(now);
-      osc1.stop(now + 1.2);
-
-      // Chime 2 — G5 (784 Hz), slightly delayed
-      var osc2 = ctx.createOscillator();
-      var gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(783.99, now + 0.15);
-      gain2.gain.setValueAtTime(0.001, now);
-      gain2.gain.setValueAtTime(1, now + 0.15);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
-      osc2.connect(gain2);
-      gain2.connect(master);
-      osc2.start(now + 0.15);
-      osc2.stop(now + 1.4);
-
-      // Chime 3 — C6 (1047 Hz), final bright note
-      var osc3 = ctx.createOscillator();
-      var gain3 = ctx.createGain();
-      osc3.type = "sine";
-      osc3.frequency.setValueAtTime(1046.50, now + 0.35);
-      gain3.gain.setValueAtTime(0.001, now);
-      gain3.gain.setValueAtTime(0.8, now + 0.35);
-      gain3.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
-      osc3.connect(gain3);
-      gain3.connect(master);
-      osc3.start(now + 0.35);
-      osc3.stop(now + 1.8);
-
-      // Fade out master
-      master.gain.setValueAtTime(0.35, now + 1.5);
-      master.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+      audio.currentTime = 0;
+      audio.play().catch(function () {});
     } catch (e) {}
+  }
+
+  /**
+   * Check if the state type changed and play bell on transitions:
+   * - period start (before -> period)
+   * - period end (period -> break / period -> period)
+   * - break start (period -> break)
+   * - day start (before -> period, first period)
+   * - day end (period/break -> after/off/done)
+   */
+  function checkStateTransitionBell(newStateType) {
+    var key = safeText(newStateType);
+    if (!key || !lastBellStateKey) {
+      lastBellStateKey = key;
+      return;
+    }
+    if (key === lastBellStateKey) return;
+    var prev = lastBellStateKey;
+    lastBellStateKey = key;
+
+    // Play bell on all meaningful transitions
+    var shouldPlay = false;
+    if (prev === "before" && key === "period") shouldPlay = true;  // بداية الدوام / بداية حصة
+    if (prev === "period" && key === "break") shouldPlay = true;   // نهاية حصة -> فسحة
+    if (prev === "break" && key === "period") shouldPlay = true;   // نهاية فسحة -> بداية حصة
+    if (prev === "period" && key === "period") shouldPlay = true;  // حصة -> حصة
+    if ((prev === "period" || prev === "break") && (key === "after" || key === "off" || key === "done" || key === "ended")) shouldPlay = true; // نهاية الدوام
+
+    if (shouldPlay) {
+      try { playBellSound(); } catch (e) {}
+    }
   }
 
   function optimisticAdvanceToNextBlock() {
@@ -1405,6 +1403,10 @@
         // If we're waiting for a known next block, keep runtime aligned with its start.
         rt.activeFromHM = fromHM;
       }
+      // تحديث بيانات الوقت المستهدف للعد التنازلي الدقيق
+      rt.activeToHM = toHM;
+      rt.activeStateType = stType;
+      rt.activeTargetHM = (stType === "before" ? fromHM : toHM) || null;
 
       // Immediately re-filter standby list (removes ended standby without waiting for server cache/ETag).
       try {
@@ -1428,7 +1430,7 @@
     lastCountdownZeroAt = now;
 
     // Play bell notification sound at end of period
-    try { playPeriodEndBell(); } catch (e) {}
+    try { playBellSound(); } catch (e) {}
 
     // UX guarantee: if we already know what's next (next_period), show it immediately.
     // This avoids waiting for schedule_revision changes or cache TTLs.
@@ -1439,8 +1441,8 @@
     // Time-based transitions (period/break) don't bump schedule_revision, so /status may stay 304.
     // Enter a short window where we fetch snapshots directly until the UI advances.
     try {
-      rt.transitionUntilTs = nowMs() + 15000; // 15s max
-      rt.transitionBackoffSec = 1.2;
+      rt.transitionUntilTs = nowMs() + 30000; // 30s window for transition
+      rt.transitionBackoffSec = 1.0;
     } catch (e) {}
 
     // Optional (heavier) behavior: full page reload if explicitly requested.
@@ -1462,21 +1464,10 @@
     } catch (e) {}
 
     // Default: force-refresh data ASAP (bypasses ETag + server-side snapshot cache).
-    // Add a randomized jitter to distribute load across multiple seconds (not milliseconds).
-    // مع 200 شاشة، نحتاج توزيع على 10-15 ثانية لتجنب الضغط المفاجئ
+    // Jitter قصير (200-2000ms) — الحماية من الحمل تتم عبر rate limiting في السيرفر.
+    // التأخير الكبير سابقاً (1-44 ثانية) كان يسبب بقاء النشاط القديم معروضاً.
     try {
-      // Base random jitter: 1-15 seconds
-      const baseJitter = 1000 + Math.floor(Math.random() * 14000);
-      
-      // School-based deterministic jitter: adds 0-29 seconds based on school ID
-      // This ensures schools spread their requests even more during simultaneous events
-      let schoolJitter = 0;
-      try {
-        const schoolId = parseInt(cfg.SERVER_TOKEN.split(':')[0]) || 0;
-        schoolJitter = (schoolId % 30) * 1000; // 0-29 seconds
-      } catch (e) {}
-      
-      const totalJitter = baseJitter + schoolJitter; // 1-44 seconds total distribution
+      const baseJitter = 200 + Math.floor(Math.random() * 1800); // 200ms - 2s
       
       setTimeout(() => {
         try {
@@ -1486,7 +1477,7 @@
             scheduleNext(0.2);
           } catch (e2) {}
         }
-      }, totalJitter);
+      }, baseJitter);
     } catch (e) {
       try {
         scheduleNext(0.2);
@@ -2576,12 +2567,18 @@
       stType + "||" + safeText(s.label || "") + "||" + safeText(s.from || "") + "||" + safeText(s.to || "");
     lastStateCoreSig = nextCoreSig;
 
+    // ===== تشغيل الجرس عند تغيّر نوع النشاط =====
+    try { checkStateTransitionBell(stType); } catch (e) {}
+
     // ===== تحديث runtime =====
     rt.activePeriodIndex = getPeriodIndex(current) || getPeriodIndex(nextP) || getCurrentPeriodIdxFromPayload(payload) || null;
     rt.activeFromHM =
       (stType === "period"
         ? stateFrom
         : (nextFrom || stateFrom)) || null;
+    rt.activeToHM = stateTo || null;
+    rt.activeStateType = stType || null;
+    rt.activeTargetHM = (stType === "before" ? stateFrom : stateTo) || null;
     rt.dayOver = computeDayOver(payload, baseMs);
 
     countdownSeconds = null;
@@ -2716,7 +2713,27 @@
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         const prev = countdownSeconds;
-        if (countdownSeconds > 0) countdownSeconds -= 1;
+
+        // إعادة حساب الوقت المتبقي من الساعة المتزامنة مع السيرفر بدل الإنقاص -1
+        // هذا يمنع أي انحراف تراكمي من setInterval غير الدقيق
+        var recalcOk = false;
+        if (rt.activeTargetHM) {
+          try {
+            var tgtMs = hmToMs(rt.activeTargetHM, nowMs());
+            if (tgtMs) {
+              var freshRem = Math.floor((tgtMs - nowMs()) / 1000);
+              if (freshRem > -43200 && freshRem < 86400) {
+                countdownSeconds = Math.max(0, freshRem);
+                recalcOk = true;
+              }
+            }
+          } catch (e) {}
+        }
+        // Fallback: إنقاص -1 إذا فشل الحساب
+        if (!recalcOk) {
+          if (countdownSeconds > 0) countdownSeconds -= 1;
+        }
+
         if (prev > 0 && countdownSeconds === 0) onCountdownZero();
 
         // Handle cases where countdown starts at 0 (server rounding/caching) without a local 1->0 transition.
@@ -3273,11 +3290,11 @@
             rt.status304Streak = (Number(rt.status304Streak) || 0) + 1;
 
             // Backoff on 304 to reduce polling load when nothing changes.
-            // Tuned for large deployments (many screens): bounded, with stable jitter.
+            // Tuned: max 20s during active window to catch period transitions quickly.
             const base = Math.max(2, basePollEverySec());
             const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
-            const minEvery = isActiveWin ? Math.min(10, Math.max(8, base)) : 60;
-            const maxEvery = isActiveWin ? 45 : 300;
+            const minEvery = isActiveWin ? Math.min(8, Math.max(5, base)) : 60;
+            const maxEvery = isActiveWin ? 20 : 300;
 
             const backoffFactor = isActiveWin ? 1.7 : 2.0;
 
@@ -3837,6 +3854,7 @@
     cfg.PERIODS_SPEED = normSpeed(body.dataset.periodsSpeed || "0.5", 0.5);
 
     cfg.MEDIA_PREFIX = (body.dataset.mediaPrefix || "/media/").toString().trim();
+    cfg.BELL_SOUND_URL = (body.dataset.bellSoundUrl || "/static/sounds/bell.mp3").toString().trim();
     cfg.SNAPSHOT_URL = (body.dataset.snapshotUrl || "").toString().trim();
     cfg.SERVER_TOKEN = (body.dataset.apiToken || body.dataset.token || "").toString().trim();
     cfg.SCHOOL_TYPE = (body.dataset.schoolType || "").toString().trim();

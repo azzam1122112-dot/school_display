@@ -191,6 +191,13 @@
         
         <!-- أزرار إجراءات سريعة -->
         <div class="flex items-center gap-2 md:gap-3">
+          {% if not is_support_staff %}
+          <a href="{% url 'dashboard:index' %}"
+             class="flex-1 md:flex-none px-3 py-2 md:px-4 md:py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition-colors shadow-sm hover:shadow">
+            <i class="fas fa-arrow-left ml-1 md:ml-2"></i>
+            لوحة المدرسة
+          </a>
+          {% endif %}
           <button onclick="window.print()" 
                   class="flex-1 md:flex-none px-3 py-2 md:px-4 md:py-2 rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors shadow-sm hover:shadow">
             <i class="fas fa-print ml-1 md:ml-2"></i>
