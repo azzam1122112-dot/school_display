@@ -1535,6 +1535,46 @@
     </div>
   </div>
 
+        <!-- Sound Enable Button (for TVs / no-interaction displays) -->
+        <button id="bellEnableBtn" title="تفعيل صوت الجرس"
+            onclick="if(window._unlockBellFromBtn)window._unlockBellFromBtn()"
+            style="
+                position: fixed;
+                bottom: 12px;
+                left: 56px;
+                z-index: 9999;
+                width: 36px;
+                height: 36px;
+                border: none;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.5);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: opacity 0.3s, background 0.3s, transform 0.3s;
+                opacity: 0.6;
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                animation: bellPulse 2s ease-in-out infinite;
+            "
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                <line x1="23" y1="9" x2="17" y2="15" style="display:none" id="bellMuteX1"/>
+                <line x1="17" y1="9" x2="23" y2="15" style="display:none" id="bellMuteX2"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" id="bellWave1" opacity="0.5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" id="bellWave2"/>
+            </svg>
+        </button>
+        <style>
+            @keyframes bellPulse {
+                0%, 100% { opacity: 0.5; transform: scale(1); }
+                50% { opacity: 0.9; transform: scale(1.08); }
+            }
+        </style>
+
         <!-- Fullscreen Toggle Button -->
         <button id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة"
             style="

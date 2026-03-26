@@ -1197,6 +1197,132 @@
 
   let lastCountdownZeroAt = 0;
 
+  // ===== Period-End Bell Sound (Web Audio API) =====
+  let bellAudioCtx = null;
+  let bellUnlocked = false;
+
+  function ensureBellAudioCtx() {
+    if (bellAudioCtx) return bellAudioCtx;
+    try {
+      bellAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+    return bellAudioCtx;
+  }
+
+  // Unlock AudioContext on first user interaction (browser autoplay policy)
+  function unlockBellAudio() {
+    if (bellUnlocked) return;
+    const ctx = ensureBellAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(function () {});
+    }
+    // Play a silent buffer to fully unlock
+    try {
+      var buf = ctx.createBuffer(1, 1, 22050);
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (e) {}
+    bellUnlocked = true;
+    // Hide the bell-enable button and show "sound enabled" feedback
+    hideBellEnableBtn();
+  }
+
+  function hideBellEnableBtn() {
+    try {
+      var btn = document.getElementById("bellEnableBtn");
+      if (!btn) return;
+      // Brief green flash to confirm
+      btn.style.animation = "none";
+      btn.style.background = "rgba(34,197,94,0.25)";
+      btn.style.color = "rgba(34,197,94,0.9)";
+      btn.style.opacity = "1";
+      setTimeout(function () {
+        btn.style.transition = "opacity 0.8s";
+        btn.style.opacity = "0";
+        setTimeout(function () { btn.style.display = "none"; }, 900);
+      }, 1200);
+    } catch (e) {}
+  }
+
+  // Expose for the HTML onclick handler
+  window._unlockBellFromBtn = function () {
+    unlockBellAudio();
+    // Play a short preview chime so user knows it works
+    try { playPeriodEndBell(); } catch (e) {}
+  };
+
+  ["click", "touchstart", "keydown"].forEach(function (evt) {
+    document.addEventListener(evt, unlockBellAudio, { once: false, passive: true });
+  });
+
+  // Also unlock when entering/exiting fullscreen (common first action on TVs)
+  ["fullscreenchange", "webkitfullscreenchange"].forEach(function (evt) {
+    document.addEventListener(evt, unlockBellAudio);
+  });
+
+  /**
+   * Play a pleasant two-tone school bell chime.
+   * Uses Web Audio API oscillators — no external files needed.
+   */
+  function playPeriodEndBell() {
+    var ctx = ensureBellAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(function () {});
+    }
+    try {
+      var now = ctx.currentTime;
+      var master = ctx.createGain();
+      master.gain.setValueAtTime(0.35, now);
+      master.connect(ctx.destination);
+
+      // Chime 1 — E5 (659 Hz)
+      var osc1 = ctx.createOscillator();
+      var gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(1, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      osc1.connect(gain1);
+      gain1.connect(master);
+      osc1.start(now);
+      osc1.stop(now + 1.2);
+
+      // Chime 2 — G5 (784 Hz), slightly delayed
+      var osc2 = ctx.createOscillator();
+      var gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(783.99, now + 0.15);
+      gain2.gain.setValueAtTime(0.001, now);
+      gain2.gain.setValueAtTime(1, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      osc2.connect(gain2);
+      gain2.connect(master);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 1.4);
+
+      // Chime 3 — C6 (1047 Hz), final bright note
+      var osc3 = ctx.createOscillator();
+      var gain3 = ctx.createGain();
+      osc3.type = "sine";
+      osc3.frequency.setValueAtTime(1046.50, now + 0.35);
+      gain3.gain.setValueAtTime(0.001, now);
+      gain3.gain.setValueAtTime(0.8, now + 0.35);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+      osc3.connect(gain3);
+      gain3.connect(master);
+      osc3.start(now + 0.35);
+      osc3.stop(now + 1.8);
+
+      // Fade out master
+      master.gain.setValueAtTime(0.35, now + 1.5);
+      master.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+    } catch (e) {}
+  }
+
   function optimisticAdvanceToNextBlock() {
     try {
       if (!lastPayloadForFiltering) return false;
@@ -1300,6 +1426,9 @@
     const now = nowMs();
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
+
+    // Play bell notification sound at end of period
+    try { playPeriodEndBell(); } catch (e) {}
 
     // UX guarantee: if we already know what's next (next_period), show it immediately.
     // This avoids waiting for schedule_revision changes or cache TTLs.
