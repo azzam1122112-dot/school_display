@@ -1272,15 +1272,35 @@
     var audio = ensureBellAudio();
     if (!audio) return;
     try {
+      audio.pause();
       audio.currentTime = 0;
-      audio.play().catch(function () {});
-    } catch (e) {}
+      // load() resets the audio element state — required on many TVs/older browsers
+      // where a finished Audio element silently fails on subsequent play() calls.
+      audio.load();
+      audio.play().catch(function () {
+        // Retry with a fresh Audio element
+        try {
+          bellAudio = null;
+          var fresh = ensureBellAudio();
+          if (fresh) fresh.play().catch(function () {});
+        } catch (e2) {}
+      });
+    } catch (e) {
+      // Last resort: recreate and try once more
+      try {
+        bellAudio = null;
+        var fresh2 = ensureBellAudio();
+        if (fresh2) fresh2.play().catch(function () {});
+      } catch (e2) {}
+    }
   }
 
   /**
-   * Check if the state type changed and play bell on day start only.
-   * نهاية الحصة تُعالج في onCountdownZero (لأنها أدق توقيتاً).
-   * هنا نعالج فقط: بداية الدوام (before -> period)
+   * Check if the state type changed and play bell.
+   * يشتغل الجرس عند:
+   *  - بداية الدوام (before -> period)
+   *  - بداية حصة بعد استراحة (break -> period)
+   *  - بداية استراحة بعد حصة (period -> break)
    */
   function checkStateTransitionBell(newStateType) {
     var key = safeText(newStateType);
@@ -1292,8 +1312,16 @@
     var prev = lastBellStateKey;
     lastBellStateKey = key;
 
-    // بداية الدوام فقط
+    // بداية الدوام
     if (prev === "before" && key === "period") {
+      try { playBellSound(); } catch (e) {}
+    }
+    // بداية حصة بعد استراحة
+    else if (prev === "break" && key === "period") {
+      try { playBellSound(); } catch (e) {}
+    }
+    // بداية استراحة بعد حصة
+    else if (prev === "period" && key === "break") {
       try { playBellSound(); } catch (e) {}
     }
   }
