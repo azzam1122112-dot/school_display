@@ -392,7 +392,7 @@
       if (aspectDiff > threshold) {
         // شاشة بنسبة مختلفة كثيراً عن 16:9 (مثل IQTouch)
         fitMode = "contain";
-        console.log(`[Auto-fit] Non-standard aspect ratio detected (${aspectRatio.toFixed(3)} vs ${designAspectRatio.toFixed(3)}), switching to contain mode`);
+        if (isDebug()) console.log(`[Auto-fit] Non-standard aspect ratio detected (${aspectRatio.toFixed(3)} vs ${designAspectRatio.toFixed(3)}), switching to contain mode`);
       }
     }
     
@@ -2877,6 +2877,11 @@
         "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230f172a'/%3E%3Cstop offset='1' stop-color='%231e293b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='100' cy='78' r='34' fill='%2394a3b8' opacity='.82'/%3E%3Crect x='46' y='116' width='108' height='58' rx='28' fill='%2364748b' opacity='.86'/%3E%3Ccircle cx='152' cy='150' r='20' fill='%23fbbf24'/%3E%3Cpath d='M152 139l3.8 7.7 8.5 1.2-6.1 5.9 1.4 8.5-7.6-4-7.6 4 1.4-8.5-6.1-5.9 8.5-1.2 3.8-7.7z' fill='%23fff'/%3E%3C/svg%3E";
       
       img.src = src || fallbackSvg;
+
+      // Fallback: if Cloudinary/remote image 404s, swap to SVG placeholder
+      img.addEventListener("error", function() {
+        if (img.src !== fallbackSvg) img.src = fallbackSvg;
+      }, { once: true, passive: true });
 
       const imgContainer = document.createElement("div");
       imgContainer.className = "honor-avatar-wrap";
