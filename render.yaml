@@ -64,6 +64,8 @@ services:
 
       - key: DISPLAY_SNAPSHOT_ACTIVE_TTL
         value: "30"
+      - key: DISPLAY_SNAPSHOT_TTL_JITTER_SEC
+        value: "10"
 
       # Safe canary controls for snapshot cache behavior (disabled by default).
       - key: SNAPSHOT_STEADY_CACHE_V2
@@ -73,6 +75,8 @@ services:
 
       - key: DISPLAY_SNAPSHOT_STEADY_MAX_TTL
         value: "86400"
+      - key: SCHOOL_SNAPSHOT_TTL
+        value: "900"
 
       - key: DISPLAY_SNAPSHOT_CACHE_METRICS_INTERVAL_SEC
         value: "600"
@@ -97,6 +101,8 @@ services:
           name: school-display-redis
           type: redis
           property: connectionString
+      - key: REDIS_MAX_CONNECTIONS
+        value: "20"
 
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

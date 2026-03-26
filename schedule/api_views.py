@@ -2650,15 +2650,13 @@ def snapshot(request, token: str | None = None):
             if isinstance(cached_snap, dict):
                 _metrics_incr("metrics:snapshot_cache:school_hit")
                 _metrics_log_maybe()
-                # We'll still go through token-keyed cache so ETag/304 and rate limit are consistent.
+                # Serve directly from school-level cache.
+                # IMPORTANT: do not duplicate full snapshot body into token-scoped keys.
+                # At fleet scale (tens of thousands of screens), token-level body copies
+                # multiply Redis memory usage without adding correctness guarantees.
                 try:
                     json_bytes = _stable_json_bytes(cached_snap)
                     etag = _etag_from_json_bytes(json_bytes)
-                    token_timeout = _active_snapshot_cache_ttl_seconds(cached_snap) if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
-                    token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_snap, token_timeout)
-                    tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
-                    cache.set(tok_key, {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
-                    cache.set(get_cache_key(token_hash), {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
                 except Exception:
                     etag = None
 
@@ -2686,10 +2684,6 @@ def snapshot(request, token: str | None = None):
                 try:
                     json_bytes = _stable_json_bytes(cached_steady)
                     etag = _etag_from_json_bytes(json_bytes)
-                    token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady)
-                    tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
-                    cache.set(tok_key, {"snap": cached_steady, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
-                    cache.set(get_cache_key(token_hash), {"snap": cached_steady, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
                 except Exception:
                     etag = None
 
@@ -2804,12 +2798,6 @@ def snapshot(request, token: str | None = None):
                 _metrics_log_maybe()
                 json_bytes = _stable_json_bytes(cached_school)
                 etag = _etag_from_json_bytes(json_bytes)
-                token_timeout = _active_snapshot_cache_ttl_seconds(cached_school) if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
-                token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_school, token_timeout)
-                try:
-                    cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
-                except Exception:
-                    pass
 
                 inm = _parse_if_none_match(request.headers.get("If-None-Match"))
                 if inm and inm == etag:
@@ -2829,11 +2817,6 @@ def snapshot(request, token: str | None = None):
                 _metrics_log_maybe()
                 json_bytes = _stable_json_bytes(cached_steady2)
                 etag = _etag_from_json_bytes(json_bytes)
-                token_timeout = _steady_snapshot_cache_ttl_seconds(cached_steady2)
-                try:
-                    cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
-                except Exception:
-                    pass
 
                 inm = _parse_if_none_match(request.headers.get("If-None-Match"))
                 if inm and inm == etag:
@@ -2880,13 +2863,6 @@ def snapshot(request, token: str | None = None):
                 if isinstance(cached_school, dict):
                     json_bytes = _stable_json_bytes(cached_school)
                     etag = _etag_from_json_bytes(json_bytes)
-                    try:
-                        tmo = _active_snapshot_cache_ttl_seconds(cached_school)
-                        tmo = _clamp_active_ttl_by_remaining_seconds(cached_school, tmo)
-                        cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
-                        cache.set(get_cache_key(token_hash), {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
-                    except Exception:
-                        pass
                     resp = JsonResponse(cached_school, json_dumps_params={"ensure_ascii": False})
                     resp["ETag"] = f"\"{etag}\""
                     _apply_success_cache_headers(resp, cached_school)
@@ -2896,12 +2872,6 @@ def snapshot(request, token: str | None = None):
                 if isinstance(cached_steady2, dict):
                     json_bytes = _stable_json_bytes(cached_steady2)
                     etag = _etag_from_json_bytes(json_bytes)
-                    try:
-                        tmo = _steady_snapshot_cache_ttl_seconds(cached_steady2)
-                        cache.set(tenant_cache_key, {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=tmo)
-                        cache.set(get_cache_key(token_hash), {"snap": cached_steady2, "etag": etag, "rev": int(rev)}, timeout=tmo)
-                    except Exception:
-                        pass
                     resp = JsonResponse(cached_steady2, json_dumps_params={"ensure_ascii": False})
                     resp["ETag"] = f"\"{etag}\""
                     _apply_success_cache_headers(resp, cached_steady2)
@@ -2919,11 +2889,6 @@ def snapshot(request, token: str | None = None):
             )
             json_bytes = _stable_json_bytes(tmp)
             etag = _etag_from_json_bytes(json_bytes)
-            try:
-                cache.set(tenant_cache_key, {"snap": tmp, "etag": etag, "rev": int(rev)}, timeout=5)
-                cache.set(get_cache_key(token_hash), {"snap": tmp, "etag": etag, "rev": int(rev)}, timeout=5)
-            except Exception:
-                pass
             resp = JsonResponse(tmp, json_dumps_params={"ensure_ascii": False})
             resp["ETag"] = f"\"{etag}\""
             _apply_success_cache_headers(resp, tmp)
@@ -3151,13 +3116,8 @@ def snapshot(request, token: str | None = None):
             except Exception:
                 pass
 
-            if not force_nocache:
-                try:
-                    token_timeout = _clamp_active_ttl_by_remaining_seconds(snap, token_timeout)
-                    cache.set(tenant_cache_key, {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
-                    cache.set(get_cache_key(token_hash), {"snap": snap, "etag": etag, "rev": rev}, timeout=token_timeout)
-                except Exception:
-                    pass
+            # Keep full-body caching at school scope only.
+            # Avoid writing per-token snapshot bodies to Redis.
 
             inm = _parse_if_none_match(request.headers.get("If-None-Match"))
             if inm and inm == etag:

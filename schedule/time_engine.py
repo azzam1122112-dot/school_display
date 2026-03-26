@@ -313,12 +313,21 @@ def build_day_snapshot(settings, now=None):
             out["index"] = block.get("index")
         return out
 
-    day_path = [{
-        "kind": b["kind"],
-        "label": b.get("label"),
-        "from": b["start"].strftime("%H:%M"),
-        "to": b["end"].strftime("%H:%M"),
-    } for b in timeline]
+    day_path = []
+    for b in timeline:
+        block = {
+            "kind": b["kind"],
+            "label": b.get("label"),
+            "from": b["start"].strftime("%H:%M"),
+            "to": b["end"].strftime("%H:%M"),
+        }
+        if b.get("kind") == "period":
+            # day_path powers the client-side transition engine, so it needs the
+            # same metadata the hero chips depend on after local boundary changes.
+            block["index"] = b.get("index")
+            block["class"] = b.get("class")
+            block["teacher"] = b.get("teacher")
+        day_path.append(block)
 
     # state
     if current:

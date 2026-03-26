@@ -598,6 +598,8 @@
       blocks.push({
         kind: safeText(b.kind || b.type || "period").toLowerCase(),
         label: safeText(b.label || ""),
+        class: safeText(b["class"] || b.class_name || ""),
+        teacher: safeText(b.teacher || ""),
         from: safeText(b.from),
         to: safeText(b.to),
         fromMs: fMs,
@@ -655,22 +657,28 @@
    * Advance the display to a specific block from the day engine.
    * This replaces optimisticAdvanceToNextBlock for day_path-based transitions.
    */
-  function dayEngineApplyBlock(block, stateType) {
+  function dayEngineApplyBlock(block, stateType, nextBlock) {
     if (!block) return false;
 
     var stType = stateType || block.kind || "period";
     var badge = "حالة اليوم";
     var title = "";
+    var stateObj = { from: block.from, to: block.to, label: block.label || "" };
+    var currentObj = block;
 
     if (stType === "period") {
       badge = "درس";
-      title = block.label || formatPeriodTitle(block);
+      title = formatPeriodTitle(block);
+      stateObj.label = block.label || title;
     } else if (stType === "break") {
       badge = "استراحة";
       title = block.label || "استراحة";
+      stateObj.label = title;
     } else if (stType === "before") {
       badge = "انتظار";
-      title = block.label || "انتظار";
+      title = "قبل بداية اليوم الدراسي";
+      stateObj.label = title;
+      currentObj = null;
     }
 
     var range = fmtTimeRange(block.from, block.to);
@@ -698,6 +706,7 @@
     rt.activeToHM = block.to;
     rt.activeStateType = stType;
     rt.activeTargetHM = (stType === "before") ? block.from : block.to;
+    rt.dayOver = false;
 
     // Prevent duplicate 00:00 handling.
     lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(block.from || "") + "||" + safeText(block.to || "");
@@ -711,6 +720,14 @@
     // Re-render mini schedule.
     try {
       if (lastPayloadForFiltering) renderMiniSchedule(lastPayloadForFiltering, nowMsVal);
+    } catch (e) {}
+
+    try {
+      renderCurrentChips(stType, stateObj, currentObj);
+    } catch (e) {}
+
+    try {
+      renderNextLabel(nextBlock || null);
     } catch (e) {}
 
     return true;
@@ -731,22 +748,24 @@
       rt.dayOver = true;
       setTextIfChanged(dom.heroTitle, "انتهى الدوام");
       setTextIfChanged(dom.heroRange, "");
-      setTextIfChanged(dom.badgeKind, "حالة اليوم");
+      setTextIfChanged(dom.badgeKind, "انتهى الدوام");
       countdownSeconds = null;
       hasActiveCountdown = false;
+      try { renderCurrentChips("after", { label: "انتهى اليوم الدراسي", from: null, to: null }, null); } catch (e) {}
+      try { renderNextLabel(null); } catch (e) {}
       return true;
     }
 
     if (res.current) {
       // We're inside a block — show it.
       checkStateTransitionBell(res.current.kind);
-      return dayEngineApplyBlock(res.current, res.current.kind);
+      return dayEngineApplyBlock(res.current, res.current.kind, res.next);
     }
 
     if (res.next) {
       // We're between blocks or before the first — show "waiting for next".
       checkStateTransitionBell("before");
-      return dayEngineApplyBlock(res.next, "before");
+      return dayEngineApplyBlock(res.next, "before", res.next);
     }
 
     return false;
@@ -810,6 +829,7 @@
   // serverOffsetMs: difference between server time and local time
   // NOT persisted to localStorage to avoid stale values causing wrong period display
   let serverOffsetMs = 0;
+  let hasServerClockSync = false;
   
   // ✅ CLOCK DRIFT DETECTION: مراقبة تغيرات التوقيت المحلي
   let lastLocalTime = Date.now();
@@ -832,13 +852,16 @@
     const n = Number(serverNowMs);
     if (!isFinite(n) || n <= 0) return;
     const measured = n - Date.now();
-    // Snap immediately on >5s drift; use 50/50 smoothing for fast convergence
     const delta = measured - serverOffsetMs;
-    if (Math.abs(delta) > 5000) {
+    // Snap hard on the first sync, on detected clock jumps, or while still off
+    // by at least one second so the bell/countdown stay aligned to the server.
+    if (!hasServerClockSync || clockDriftDetected || Math.abs(delta) >= 1000) {
       serverOffsetMs = measured;
     } else {
+      // Only smooth small jitter once we are already close to server time.
       serverOffsetMs = Math.round(serverOffsetMs * 0.5 + measured * 0.5);
     }
+    hasServerClockSync = true;
     
     // ✅ تحديث آخر وقت معروف للمراقبة
     lastLocalTime = Date.now();
@@ -960,14 +983,13 @@
     return new Date(nowMs() + off * 60 * 1000);
   }
 
-  // Clock display must always follow Riyadh timezone (UTC+3) in 12h format.
-  const RIYADH_OFFSET_MIN = 180;
-  function riyadhWallNowDate() {
-    return new Date(nowMs() + RIYADH_OFFSET_MIN * 60 * 1000);
+  // Clock display follows the school's local timezone as reported by the server.
+  function localWallNowDate() {
+    return serverWallNowDate();
   }
 
-  function fmtRiyadh12HM(dateObj) {
-    const d = dateObj instanceof Date ? dateObj : riyadhWallNowDate();
+  function fmtLocal12HM(dateObj) {
+    const d = dateObj instanceof Date ? dateObj : localWallNowDate();
     const h24 = d.getUTCHours();
     const h12 = h24 % 12 || 12;
     const meridiem = h24 >= 12 ? "م" : "ص";
@@ -1122,6 +1144,40 @@
 
     // fallback for uncommon indices
     return "الحصة رقم " + toArabicDigits(idx);
+  }
+
+  function getCurrentActivityLabel(stType, currentObj, stateObj) {
+    const cur = currentObj || {};
+    const st = stateObj || {};
+    if (stType === "period") {
+      return safeText(cur.label || cur.subject || st.label || "");
+    }
+    return safeText(cur.label || st.label || "");
+  }
+
+  function renderNextLabel(nextObj) {
+    if (!dom.nextLabel) return;
+
+    if (!nextObj) {
+      setTextIfChanged(dom.nextLabel, "—");
+      return;
+    }
+
+    const kind = safeText(nextObj.kind || nextObj.type || "").trim().toLowerCase();
+    const from = toTimeStr(nextObj.from || nextObj.starts_at);
+    let title = "";
+
+    if (kind === "period") {
+      const periodTitle = formatPeriodTitle(nextObj);
+      const activity = safeText(nextObj.label || "");
+      title = activity && activity !== periodTitle ? periodTitle + " - " + activity : periodTitle;
+    } else if (kind === "break") {
+      title = safeText(nextObj.label || "استراحة");
+    } else {
+      title = safeText(nextObj.label || "");
+    }
+
+    setTextIfChanged(dom.nextLabel, title ? (from !== "--:--" ? title + " (" + from + ")" : title) : "—");
   }
 
   function getCurrentPeriodIdxFromPayload(payload) {
@@ -1320,9 +1376,8 @@
   let cachedDateInfo = null;
   function tickClock(dateInfo) {
     const wall = serverWallNowDate();
-    const riyadhWall = riyadhWallNowDate();
     if (dom.clock) {
-      setTextIfChanged(dom.clock, fmtRiyadh12HM(riyadhWall));
+      setTextIfChanged(dom.clock, fmtLocal12HM(wall));
     }
     if (dateInfo) cachedDateInfo = dateInfo;
 
@@ -1386,6 +1441,8 @@
   let bellUnlocked = false;
   let lastBellPlayedAt = 0;
   let lastBellStateKey = "";
+  let lastBoundaryBellStateKey = "";
+  let lastBoundaryBellAt = 0;
 
   function ensureBellAudio() {
     if (bellAudio) return bellAudio;
@@ -1505,6 +1562,13 @@
     var prev = lastBellStateKey;
     lastBellStateKey = key;
 
+    const boundaryBellJustPlayed =
+      prev &&
+      prev === lastBoundaryBellStateKey &&
+      Date.now() - lastBoundaryBellAt < 10000 &&
+      ((prev === "period" && key === "break") || (prev === "break" && key === "period"));
+    if (boundaryBellJustPlayed) return;
+
     // بداية الدوام
     if (prev === "before" && key === "period") {
       try { playBellSound(); } catch (e) {}
@@ -1569,7 +1633,7 @@
         title = nextTitle || safeText(nextP.label || "استراحة");
       } else if (stType === "before") {
         badge = "انتظار";
-        title = nextTitle || "انتظار";
+        title = "قبل بداية اليوم الدراسي";
       }
 
       const range = fmtTimeRange(fromHM, toHM);
@@ -1609,10 +1673,19 @@
       rt.activeToHM = toHM;
       rt.activeStateType = stType;
       rt.activeTargetHM = (stType === "before" ? fromHM : toHM) || null;
+      rt.dayOver = false;
 
       // Immediately re-filter standby list (removes ended standby without waiting for server cache/ETag).
       try {
         renderStandby((snap && snap.standby) || []);
+      } catch (e) {}
+
+      try {
+        renderCurrentChips(
+          stType,
+          { label: stType === "before" ? title : safeText(nextP.label || title), from: fromHM, to: toHM },
+          stType === "before" ? null : nextP
+        );
       } catch (e) {}
 
       // Prevent duplicate 00:00 handling for the just-applied optimistic state.
@@ -1633,6 +1706,8 @@
 
     // Play bell at end of period and end of break (to signal new period starting)
     if (rt.activeStateType === "period" || rt.activeStateType === "break") {
+      lastBoundaryBellStateKey = safeText(rt.activeStateType);
+      lastBoundaryBellAt = Date.now();
       try { playBellSound(); } catch (e) {}
     }
 
@@ -1844,18 +1919,26 @@
   function renderCurrentChips(stType, stateObj, currentObj) {
     if (!dom.currentScheduleList) return;
 
+    const st = stateObj || {};
     const cur = currentObj || {};
     const cls = safeText(cur["class"] || cur.class_name || cur.classroom || "");
-    const subj = stType === "period" ? formatPeriodTitle(cur) : safeText(cur.label || stateObj.label || "");
-    const range = fmtTimeRange(cur.from || stateObj.from, cur.to || stateObj.to);
+    const periodTitle = stType === "period" ? formatPeriodTitle(cur) : "";
+    const activity =
+      stType === "after" || stType === "off" || stType === "day"
+        ? ""
+        : getCurrentActivityLabel(stType, cur, st);
+    const range =
+      stType === "after" || stType === "off" || stType === "day"
+        ? "--:--"
+        : fmtTimeRange(cur.from || st.from, cur.to || st.to);
 
-    const sig = cls + "||" + subj + "||" + range + "||" + stType;
+    const sig = cls + "||" + periodTitle + "||" + activity + "||" + range + "||" + stType;
     if (sig === last.currentSig) return;
     last.currentSig = sig;
 
     clearNode(dom.currentScheduleList);
 
-    if (!cls && !subj && range.indexOf("--:--") >= 0) {
+    if (!cls && !periodTitle && !activity && range.indexOf("--:--") >= 0) {
       const msg = document.createElement("div");
       msg.style.textAlign = "center";
       msg.style.opacity = "0.75";
@@ -1865,8 +1948,9 @@
       return;
     }
 
+    if (periodTitle) dom.currentScheduleList.appendChild(makeChip(periodTitle));
+    if (activity && activity !== periodTitle) dom.currentScheduleList.appendChild(makeChip(activity));
     if (cls) dom.currentScheduleList.appendChild(makeChip(cls));
-    if (subj) dom.currentScheduleList.appendChild(makeChip(subj));
     dom.currentScheduleList.appendChild(makeChip(range, "num-font"));
   }
 
@@ -2898,7 +2982,9 @@
     if (dom.nextLabel) {
       const nextSig =
         nextP && (nextFrom || nextTo || nextP.label || nextP.index || nextP.period_index)
-          ? safeText(nextFrom) +
+          ? safeText(nextP.kind || nextP.type || "") +
+            "||" +
+            safeText(nextFrom) +
             "||" +
             safeText(nextTo) +
             "||" +
@@ -2909,13 +2995,7 @@
 
       if (nextSig !== last.nextSig) {
         last.nextSig = nextSig;
-        if (nextSig === "none") {
-          setTextIfChanged(dom.nextLabel, "—");
-        } else {
-          const nextTitle = formatPeriodTitle(nextP);
-          const from = toTimeStr(nextFrom);
-          setTextIfChanged(dom.nextLabel, from !== "--:--" ? nextTitle + " (" + from + ")" : nextTitle);
-        }
+        renderNextLabel(nextSig === "none" ? null : nextP);
       }
     }
 

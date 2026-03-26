@@ -1,3 +1,6 @@
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 from django.test import TestCase, override_settings
 from django.conf import settings as dj_settings
 from django.core.cache import cache
@@ -241,3 +244,87 @@ class SnapshotTtlHelpersTests(TestCase):
         }
         ttl = _active_fallback_steady_ttl_seconds(snap)
         self.assertEqual(ttl, 12)
+
+
+class BuildDaySnapshotTimingTests(TestCase):
+    def test_build_day_snapshot_preserves_precise_timing_metadata_for_local_transitions(self):
+        from schedule.models import Break, DaySchedule, Period, SchoolClass, Subject, Teacher
+        from schedule.time_engine import build_day_snapshot
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        settings = bundle.settings
+        settings.timezone_name = "Asia/Riyadh"
+        settings.save(update_fields=["timezone_name"])
+
+        tz = ZoneInfo("Asia/Riyadh")
+        before_start = datetime(2026, 3, 29, 7, 55, tzinfo=tz)
+
+        school_class = SchoolClass.objects.create(settings=settings, name="1/أ")
+        teacher = Teacher.objects.create(school=bundle.school, name="أ. أحمد")
+        math = Subject.objects.create(school=bundle.school, name="رياضيات")
+        science = Subject.objects.create(school=bundle.school, name="علوم")
+
+        day = DaySchedule.objects.create(
+            settings=settings,
+            weekday=before_start.weekday() + 1,
+            is_active=True,
+            periods_count=2,
+        )
+        Period.objects.create(
+            day=day,
+            school_class=school_class,
+            subject=math,
+            teacher=teacher,
+            index=1,
+            starts_at=time(8, 0),
+            ends_at=time(8, 30),
+        )
+        Break.objects.create(
+            day=day,
+            label="فسحة الصباح",
+            starts_at=time(8, 30),
+            duration_min=10,
+        )
+        Period.objects.create(
+            day=day,
+            school_class=school_class,
+            subject=science,
+            teacher=teacher,
+            index=2,
+            starts_at=time(8, 40),
+            ends_at=time(9, 10),
+        )
+
+        before = build_day_snapshot(settings, now=before_start)
+        self.assertTrue(before["now"].endswith("+03:00"))
+        self.assertEqual(before["state"]["type"], "before")
+        self.assertEqual(before["state"]["remaining_seconds"], 5 * 60)
+        self.assertEqual(before["next_period"]["index"], 1)
+        self.assertEqual(before["day_path"][0]["index"], 1)
+        self.assertEqual(before["day_path"][0]["label"], "رياضيات")
+        self.assertEqual(before["day_path"][0]["class"], "1/أ")
+        self.assertEqual(before["day_path"][0]["teacher"], "أ. أحمد")
+
+        first_period = build_day_snapshot(settings, now=datetime(2026, 3, 29, 8, 10, tzinfo=tz))
+        self.assertEqual(first_period["state"]["type"], "period")
+        self.assertEqual(first_period["state"]["period_index"], 1)
+        self.assertEqual(first_period["state"]["remaining_seconds"], 20 * 60)
+        self.assertEqual(first_period["current_period"]["label"], "رياضيات")
+        self.assertEqual(first_period["current_period"]["class"], "1/أ")
+        self.assertEqual(first_period["current_period"]["remaining_seconds"], 20 * 60)
+        self.assertEqual(first_period["next_period"]["kind"], "break")
+        self.assertEqual(first_period["next_period"]["label"], "فسحة الصباح")
+
+        break_time = build_day_snapshot(settings, now=datetime(2026, 3, 29, 8, 35, tzinfo=tz))
+        self.assertEqual(break_time["state"]["type"], "break")
+        self.assertEqual(break_time["state"]["label"], "فسحة الصباح")
+        self.assertEqual(break_time["state"]["remaining_seconds"], 5 * 60)
+        self.assertEqual(break_time["current_period"]["label"], "فسحة الصباح")
+        self.assertEqual(break_time["next_period"]["index"], 2)
+        self.assertEqual(break_time["next_period"]["label"], "علوم")
+
+        after = build_day_snapshot(settings, now=datetime(2026, 3, 29, 9, 10, tzinfo=tz))
+        self.assertEqual(after["state"]["type"], "after")
+        self.assertEqual(after["state"]["remaining_seconds"], 0)
