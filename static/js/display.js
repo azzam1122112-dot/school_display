@@ -614,17 +614,9 @@
   }
 
   // ===== Time helpers =====
-  // ✅ FIX: حفظ واستعادة serverOffset من localStorage لتجنب القفزة عند التحديث
+  // serverOffsetMs: difference between server time and local time
+  // NOT persisted to localStorage to avoid stale values causing wrong period display
   let serverOffsetMs = 0;
-  try {
-    const saved = localStorage.getItem("serverOffsetMs");
-    if (saved) {
-      const parsed = parseInt(saved, 10);
-      if (isFinite(parsed)) {
-        serverOffsetMs = parsed;
-      }
-    }
-  } catch (e) {}
   
   // ✅ CLOCK DRIFT DETECTION: مراقبة تغيرات التوقيت المحلي
   let lastLocalTime = Date.now();
@@ -647,18 +639,13 @@
     const n = Number(serverNowMs);
     if (!isFinite(n) || n <= 0) return;
     const measured = n - Date.now();
-    // Smooth small jitter; snap on large drift corrections.
+    // Snap immediately on >5s drift; use 50/50 smoothing for fast convergence
     const delta = measured - serverOffsetMs;
-    if (Math.abs(delta) > 30000) {
+    if (Math.abs(delta) > 5000) {
       serverOffsetMs = measured;
     } else {
-      serverOffsetMs = Math.round(serverOffsetMs * 0.8 + measured * 0.2);
+      serverOffsetMs = Math.round(serverOffsetMs * 0.5 + measured * 0.5);
     }
-    
-    // ✅ FIX: حفظ القيمة الجديدة في localStorage
-    try {
-      localStorage.setItem("serverOffsetMs", String(serverOffsetMs));
-    } catch (e) {}
     
     // ✅ تحديث آخر وقت معروف للمراقبة
     lastLocalTime = Date.now();
@@ -1333,6 +1320,10 @@
       const isBefore = n < startMs;
       const isActive = n >= startMs && n < endMs;
 
+      // إذا السيرفر يقول الحالة "before" (انتظار) والوقت المحلي يقول إن الحصة لم تبدأ (isBefore)، لا تقفز للحصة
+      // السيرفر هو مصدر الحقيقة — انتظر السنابشوت التالي
+      if (isBefore && rt.activeStateType === "before") return false;
+
       let stType = kind || "period";
       if (isBefore) stType = "before";
 
@@ -1419,8 +1410,8 @@
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
 
-    // Play bell at end of period only (not at end of break)
-    if (rt.activeStateType === "period") {
+    // Play bell at end of period and end of break (to signal new period starting)
+    if (rt.activeStateType === "period" || rt.activeStateType === "break") {
       try { playBellSound(); } catch (e) {}
     }
 
@@ -2635,6 +2626,12 @@
     } else if (stType === "before") {
       badge = "انتظار";
       title = safeText(s.label || "انتظار");
+    } else if (stType === "after") {
+      badge = "انتهى الدوام";
+      title = safeText(s.label || "انتهى اليوم الدراسي");
+    } else if (stType === "day") {
+      badge = "اليوم الدراسي";
+      title = safeText(s.label || "اليوم الدراسي");
     } else if (stType === "off") {
       badge = "عطلة";
       title = safeText(s.label || "يوم إجازة");
