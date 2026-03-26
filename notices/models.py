@@ -307,7 +307,7 @@ class Excellence(models.Model):
     @classmethod
     def active_for_today(cls, school: Optional[School]) -> "ExcellenceQuerySet":
         """
-        تُستخدم في dashboard/api_display.py:
+        تُستخدم في طبقة snapshot الحالية:
             Excellence.active_for_today(request.school)
         """
         return cls.objects.active_for_today(school)

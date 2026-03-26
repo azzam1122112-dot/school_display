@@ -1,49 +1,52 @@
 # schedule/forms.py
-from datetime import time, datetime
+from datetime import time
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet
+
 from .models import Period
 
-def _fmt(t: time) -> str:
-    return t.strftime("%H:%M:%S") if t else "—"
+
+def _fmt(t: time | None) -> str:
+    return t.strftime("%H:%M:%S") if t else "-"
+
 
 class PeriodForm(forms.ModelForm):
     class Meta:
         model = Period
-        fields = ["day", "order", "title", "start_time", "end_time", "is_break"]
+        fields = ["day", "index", "starts_at", "ends_at"]
         widgets = {
-            "title": forms.TextInput(attrs={"placeholder": "اسم الحصة/الفسحة"}),
+            "starts_at": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+            "ends_at": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
         }
 
     def clean(self):
         cleaned = super().clean()
-        st = cleaned.get("start_time")
-        en = cleaned.get("end_time")
+        starts_at = cleaned.get("starts_at")
+        ends_at = cleaned.get("ends_at")
 
-        # حماية None
-        if st is None:
-            self.add_error("start_time", "هذا الحقل مطلوب.")
-        if en is None:
-            self.add_error("end_time", "هذا الحقل مطلوب.")
-        if st and en and not (st < en):
-            self.add_error("end_time", f"وقت النهاية يجب أن يكون بعد البداية. ({_fmt(st)} < {_fmt(en)})")
+        if starts_at is None:
+            self.add_error("starts_at", "هذا الحقل مطلوب.")
+        if ends_at is None:
+            self.add_error("ends_at", "هذا الحقل مطلوب.")
+        if starts_at and ends_at and not (starts_at < ends_at):
+            self.add_error(
+                "ends_at",
+                f"وقت النهاية يجب أن يكون بعد البداية. ({_fmt(starts_at)} < {_fmt(ends_at)})",
+            )
 
         return cleaned
 
 
 class PeriodInlineFormSet(BaseInlineFormSet):
-    """
-    تحقّق جماعي داخل نفس اليوم:
-    - منع تكرار order
-    - منع التداخل بين العناصر (يشمل العناصر الجديدة قبل الحفظ)
-    - منع وجود فترة يوم كاملة مع غيرها
-    """
+    """تحقق جماعي داخل نفس اليوم: ترتيب فريد ومنع التداخل الزمني."""
+
     def clean(self):
         super().clean()
-        items = []
-        orders = set()
-        full_day_exists = False
+
+        rows: list[tuple[time, time, int]] = []
+        used_indexes: set[int] = set()
 
         for form in self.forms:
             if not hasattr(form, "cleaned_data"):
@@ -51,50 +54,47 @@ class PeriodInlineFormSet(BaseInlineFormSet):
             if form.cleaned_data.get("DELETE", False):
                 continue
 
-            st = form.cleaned_data.get("start_time")
-            en = form.cleaned_data.get("end_time")
-            order = form.cleaned_data.get("order")
-            title = form.cleaned_data.get("title") or "حصة"
-            is_break = form.cleaned_data.get("is_break", False)
+            starts_at = form.cleaned_data.get("starts_at")
+            ends_at = form.cleaned_data.get("ends_at")
+            index = form.cleaned_data.get("index")
 
-            if st is None or en is None:
-                # الأخطاء الحقلية ستُظهر الرسالة
+            if index in (None, ""):
+                form.add_error("index", "ترتيب الحصة مطلوب.")
                 continue
 
-            # يوم كامل؟
-            if st == time(0, 0, 0) and en >= time(23, 59, 59):
-                if items:
-                    raise ValidationError("لا يمكن إضافة فترة تمتد اليوم كله مع فترات أخرى في نفس اليوم.")
-                full_day_exists = True
+            try:
+                idx = int(index)
+            except Exception:
+                form.add_error("index", "ترتيب الحصة غير صالح.")
+                continue
 
-            # تكرار الترتيب
-            if order in orders:
-                raise ValidationError("حصة بهذا Day و الترتيب (1..ن) موجود سلفاً.")
-            orders.add(order)
+            if idx in used_indexes:
+                form.add_error("index", "رقم الحصة مكرر داخل نفس اليوم.")
+                continue
+            used_indexes.add(idx)
 
-            items.append((st, en, title, is_break, order))
+            if starts_at is None or ends_at is None:
+                # أخطاء الحقول نفسها ستظهر من PeriodForm.clean
+                continue
 
-        if full_day_exists and len(items) > 1:
-            # لو مرّت السابقة لأي سبب
-            raise ValidationError("لا يمكن الجمع بين فترة اليوم الكامل وفترات أخرى.")
+            if not (starts_at < ends_at):
+                form.add_error(
+                    "ends_at",
+                    f"وقت النهاية يجب أن يكون بعد البداية. ({_fmt(starts_at)} < {_fmt(ends_at)})",
+                )
+                continue
 
-        # فحص التداخلات داخل المجموعة نفسها
-        # مرتبة بالبدء يمنع رسائل زائدة ويجعلها دقيقة
-        items.sort(key=lambda x: x[0])  # sort by start_time
-        for i in range(len(items)):
-            st1, en1, title1, is_break1, order1 = items[i]
-            for j in range(i + 1, len(items)):
-                st2, en2, title2, is_break2, order2 = items[j]
-                if max(st1, st2) < min(en1, en2):
-                    # رسالة مخصصة حسب النوع
-                    if is_break1 or is_break2:
-                        raise ValidationError(
-                            f"تداخل وقت الفسحة مع '{title1 if is_break1 else title2}' "
-                            f"({_fmt(st1)}-{_fmt(en1)}) / ({_fmt(st2)}-{_fmt(en2)})."
-                        )
-                    else:
-                        # اذكر رقمي الحصتين
-                        raise ValidationError(
-                            f"تداخل وقت الحصة مع الحصة #{order1 if order1 < order2 else order2} "
-                            f"({_fmt(st1)}-{_fmt(en1)}) / ({_fmt(st2)}-{_fmt(en2)})."
-                        )
+            rows.append((starts_at, ends_at, idx))
+
+        rows.sort(key=lambda row: row[0])
+        for i in range(len(rows)):
+            s1, e1, idx1 = rows[i]
+            for j in range(i + 1, len(rows)):
+                s2, e2, idx2 = rows[j]
+                if max(s1, s2) < min(e1, e2):
+                    first = idx1 if idx1 < idx2 else idx2
+                    second = idx2 if idx1 < idx2 else idx1
+                    raise ValidationError(
+                        f"تداخل وقتي بين الحصة #{first} ({_fmt(s1)}-{_fmt(e1)}) "
+                        f"والحصة #{second} ({_fmt(s2)}-{_fmt(e2)})."
+                    )

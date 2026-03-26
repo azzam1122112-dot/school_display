@@ -1804,6 +1804,24 @@ def _active_window_cache_ttl_seconds() -> int:
         out = max(out, safe_min)
     return out
 
+
+def _active_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
+    """Active-window TTL aligned with client poll interval when available.
+
+    Some fleets poll every ~20s. If active TTL is lower (e.g. 15s), we get
+    avoidable MISS/build cycles. We keep server-config as the base, then lift
+    it to the snapshot refresh interval (bounded) when present.
+    """
+    base = _active_window_cache_ttl_seconds()
+    try:
+        s = (day_snap.get("settings") or {}) if isinstance(day_snap, dict) else {}
+        refresh = int(s.get("refresh_interval_sec") or 0)
+    except Exception:
+        refresh = 0
+    if refresh > 0:
+        base = max(base, min(60, refresh))
+    return max(15, min(60, int(base)))
+
 def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
     """Outside active window/holidays: long TTL, aligned to refresh_interval_sec when available."""
     try:
@@ -1819,6 +1837,21 @@ def _steady_snapshot_cache_ttl_seconds(day_snap: dict) -> int:
     # Allow env to override up to 24h, but default logic caps at 600s (10m)
     max_ttl = max(300, min(86400, max_ttl))
     return max(300, min(max_ttl, refresh))
+
+
+def _active_fallback_steady_ttl_seconds(snap: dict) -> int:
+    """TTL for steady fallback key when current snapshot is active-window.
+
+    Keep it modest (default 90s) and clamp by remaining_seconds so we never
+    serve a block beyond its natural boundary.
+    """
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_STEADY_TTL", 90) or 90)
+    except Exception:
+        v = 90
+    v = max(30, min(300, v))
+    v = max(v, _active_snapshot_cache_ttl_seconds(snap))
+    return _clamp_active_ttl_by_remaining_seconds(snap, v)
 
 def _is_active_window(day_snap: dict) -> bool:
     try:
@@ -1854,7 +1887,7 @@ def get_cache_key_rev(token_hash: str, school_id: int, schedule_revision: int) -
 
 def compute_dynamic_ttl_seconds(day_snap: dict) -> int:
     if _is_active_window(day_snap):
-        return _active_window_cache_ttl_seconds()
+        return _active_snapshot_cache_ttl_seconds(day_snap)
     return _steady_snapshot_cache_ttl_seconds(day_snap)
 
 
@@ -2618,7 +2651,7 @@ def snapshot(request, token: str | None = None):
                 try:
                     json_bytes = _stable_json_bytes(cached_snap)
                     etag = _etag_from_json_bytes(json_bytes)
-                    token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
+                    token_timeout = _active_snapshot_cache_ttl_seconds(cached_snap) if _is_active_window(cached_snap) else _steady_snapshot_cache_ttl_seconds(cached_snap)
                     token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_snap, token_timeout)
                     tok_key = get_cache_key_rev(token_hash, int(cached_school_id), int(cached_rev))
                     cache.set(tok_key, {"snap": cached_snap, "etag": etag, "rev": int(cached_rev)}, timeout=token_timeout)
@@ -2768,7 +2801,7 @@ def snapshot(request, token: str | None = None):
                 _metrics_log_maybe()
                 json_bytes = _stable_json_bytes(cached_school)
                 etag = _etag_from_json_bytes(json_bytes)
-                token_timeout = _active_window_cache_ttl_seconds() if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
+                token_timeout = _active_snapshot_cache_ttl_seconds(cached_school) if _is_active_window(cached_school) else _steady_snapshot_cache_ttl_seconds(cached_school)
                 token_timeout = _clamp_active_ttl_by_remaining_seconds(cached_school, token_timeout)
                 try:
                     cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=token_timeout)
@@ -2845,7 +2878,7 @@ def snapshot(request, token: str | None = None):
                     json_bytes = _stable_json_bytes(cached_school)
                     etag = _etag_from_json_bytes(json_bytes)
                     try:
-                        tmo = _active_window_cache_ttl_seconds()
+                        tmo = _active_snapshot_cache_ttl_seconds(cached_school)
                         tmo = _clamp_active_ttl_by_remaining_seconds(cached_school, tmo)
                         cache.set(tenant_cache_key, {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
                         cache.set(get_cache_key(token_hash), {"snap": cached_school, "etag": etag, "rev": int(rev)}, timeout=tmo)
@@ -2918,6 +2951,7 @@ def snapshot(request, token: str | None = None):
 
             if active_window:
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
+                token_timeout = _active_snapshot_cache_ttl_seconds(snap)
                 # Add stable jitter to spread expirations across schools and reduce peak load.
                 try:
                     ttl_max = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX", 20) or 20)
@@ -2935,6 +2969,27 @@ def snapshot(request, token: str | None = None):
                         cache.set(_snapshot_cache_key(settings_obj), snap, timeout=token_timeout)
                     except Exception:
                         pass
+                if not force_nocache:
+                    try:
+                        steady_write_key = _steady_cache_key_for_school_rev(school_id, rev)
+                        steady_ttl = _active_fallback_steady_ttl_seconds(snap)
+                        cache.set(steady_write_key, snap, timeout=steady_ttl)
+                        _log_steady_set(
+                            steady_write_key,
+                            ttl=int(steady_ttl),
+                            school_id=school_id,
+                            rev=rev,
+                            success=True,
+                        )
+                    except Exception as e:
+                        _log_steady_set(
+                            _steady_cache_key_for_school_rev(school_id, rev),
+                            ttl=int(_active_fallback_steady_ttl_seconds(snap)),
+                            school_id=school_id,
+                            rev=rev,
+                            success=False,
+                            error=e.__class__.__name__,
+                        )
             else:
                 snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=False)
 

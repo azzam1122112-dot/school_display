@@ -41,7 +41,7 @@ def get_today_state(school: School) -> Dict[str, Any]:
       - حالة اليوم (داخل حصة / بين الحصص / خارج الدوام / إجازة).
       - قائمة الحصص (periods) والفترات البينية (breaks).
 
-    * تعيد نفس البنية التي يتوقعها dashboard/api_display.py:
+    * تعيد نفس البنية التي تتوقعها طبقة snapshot الحالية في schedule.api_views:
       today_state["state"] يجب أن يكون قاموسًا يحتوي على "type".
     """
     settings = _get_school_settings_for_display(school)
@@ -82,7 +82,7 @@ def get_today_state(school: School) -> Dict[str, Any]:
         except Exception:
             logger.exception("فشل compute_today_state، سيتم إرجاع حالة افتراضية لشاشة العرض.")
 
-    # ✅ Fallback آمن ومتوافق مع dashboard/api_display._compute_refresh_hint
+    # ✅ Fallback آمن ومتوافق مع منطق refresh hint في طبقة snapshot الحالية
     today = timezone.localdate()
     now = timezone.localtime()
 

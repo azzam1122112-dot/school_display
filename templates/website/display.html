@@ -28,16 +28,19 @@
     html, body {
       width: 100%;
       height: 100%;
+      min-height: 100%;
       overflow: hidden;
-      position: fixed;
       margin: 0;
       padding: 0;
+      overscroll-behavior: none;
     }
     
     body {
       font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
       background-color: var(--bg-deep, #020617);
       color: #f8fafc;
+      position: relative;
+      touch-action: manipulation;
       /* ✅ FIX: حجم خط أساسي أكبر لتحسين القراءة على التلفاز */
       font-size: 18px; /* زيادة من 16px الافتراضي */
       line-height: 1.5;
@@ -51,6 +54,14 @@
             max-height: 100vh;
         }
 
+        @supports (height: 100dvh) {
+            body.display-board {
+                height: 100dvh;
+                min-height: 100dvh;
+                max-height: 100dvh;
+            }
+        }
+
         /* Optimized auto-fit wrapper for TV screens */
         #fitRoot {
             position: fixed;
@@ -58,11 +69,21 @@
             left: 0;
             right: 0;
             bottom: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            min-width: 100vw;
+            min-height: 100vh;
             overflow: hidden;
             display: block;
             background: var(--bg-deep, #020617);
+            isolation: isolate;
+        }
+
+        @supports (height: 100dvh) {
+            #fitRoot {
+                height: 100dvh;
+                min-height: 100dvh;
+            }
         }
 
         /* Design canvas optimized for full screen display - Airport Style */
@@ -82,6 +103,14 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
+        }
+
+        @supports not (transform: scale(1)) {
+            #fitStage {
+                position: relative;
+                width: 100%;
+                height: 100%;
+            }
         }
         
         /* Force full screen coverage - no letterboxing */
@@ -1018,6 +1047,233 @@
             background: linear-gradient(to right, var(--mesh2), transparent) !important;
         }
   </style>
+
+    <style>
+        /* 2026-03 Visual Polish Round
+           Preserves existing DOM contract + dynamic school theme variables. */
+        :root {
+            --board-surface: rgba(15, 23, 42, 0.8);
+            --board-surface-strong: rgba(15, 23, 42, 0.9);
+            --board-border: rgba(148, 163, 184, 0.28);
+            --board-border-accent: rgba(99, 102, 241, 0.44);
+            --board-shadow-xl: 0 14px 42px rgba(0, 0, 0, 0.4);
+            --board-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        @supports (color: color-mix(in srgb, white, black)) {
+            :root {
+                --board-border-accent: color-mix(in srgb, var(--accent-main, #6366f1) 40%, #ffffff 20%);
+            }
+        }
+
+        html,
+        body,
+        body.display-board,
+        #fitRoot {
+            width: 100%;
+            height: 100%;
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: var(--bg-deep, #020617);
+        }
+
+        .bg-mesh {
+            opacity: 0.62;
+            filter: none;
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.2) 0%, transparent 64%),
+                radial-gradient(circle at 88% 100%, rgba(147, 197, 253, 0.12) 0%, transparent 58%);
+        }
+
+        @supports (color: color-mix(in srgb, white, black)) {
+            .bg-mesh {
+                background-image:
+                    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent-main, #6366f1) 34%, transparent) 0%, transparent 64%),
+                    radial-gradient(circle at 88% 100%, color-mix(in srgb, var(--accent-sub, #93c5fd) 20%, transparent) 0%, transparent 58%);
+            }
+        }
+
+        .glass-panel,
+        main .glass-panel.rounded-3xl.flex-1,
+        #exCard,
+        #dutyCard,
+        aside .glass-panel:nth-child(1),
+        aside .glass-panel:nth-child(2) {
+            background: var(--board-surface) !important;
+            border: 1px solid var(--board-border) !important;
+            box-shadow: var(--board-shadow-xl) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        header .glass-panel {
+            min-height: 102px;
+            border-color: var(--board-border-accent) !important;
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.72)) !important;
+        }
+
+        #schoolLogo {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        #schoolName {
+            font-size: clamp(1.8rem, 3.2vw, 3rem) !important;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35) !important;
+        }
+
+        #clock,
+        #countdown {
+            letter-spacing: 0.03em;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+            font-variant-numeric: tabular-nums;
+        }
+
+        #badgeKind {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid var(--board-border-accent) !important;
+            color: #dbeafe !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+        }
+
+        #heroRange {
+            color: #cbd5e1 !important;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem) !important;
+        }
+
+        #heroTitle {
+            text-wrap: balance;
+            letter-spacing: -0.02em;
+            line-height: 1.12 !important;
+            text-shadow: 0 3px 14px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        #currentScheduleList {
+            gap: 0.6rem !important;
+        }
+
+        #circleProgress {
+            stroke: var(--accent-main, #6366f1) !important;
+            filter: drop-shadow(0 0 7px rgba(99, 102, 241, 0.35));
+        }
+
+        @supports (color: color-mix(in srgb, white, black)) {
+            #circleProgress {
+                filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent-main, #6366f1) 48%, transparent));
+            }
+        }
+
+        #progressBar {
+            background: linear-gradient(90deg, var(--accent-main, #6366f1), var(--accent-sub, #93c5fd)) !important;
+        }
+
+        aside .glass-panel > div:first-child,
+        #dutyCard > div.relative.w-80,
+        #exCard > div:first-child {
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.12), rgba(15, 23, 42, 0.06)) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        @supports (color: color-mix(in srgb, white, black)) {
+            aside .glass-panel > div:first-child,
+            #dutyCard > div.relative.w-80,
+            #exCard > div:first-child {
+                background: linear-gradient(
+                    180deg,
+                    color-mix(in srgb, var(--accent-main, #6366f1) 16%, transparent),
+                    color-mix(in srgb, var(--bg-deep, #020617) 18%, transparent)
+                ) !important;
+            }
+        }
+
+        .slot-item {
+            background: rgba(15, 23, 42, 0.72) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: none !important;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .slot-item:nth-child(even) {
+            background: rgba(30, 41, 59, 0.58) !important;
+        }
+
+        .slot-item:hover {
+            transform: none !important;
+            border-color: var(--board-border-accent) !important;
+            box-shadow: var(--board-shadow-md) !important;
+        }
+
+        #pcCount,
+        #sbCount,
+        #dutyTotal,
+        #exIndex,
+        #exTotal {
+            font-variant-numeric: tabular-nums;
+        }
+
+        #fullscreenBtn {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 11px !important;
+            opacity: 0.75 !important;
+            color: rgba(255, 255, 255, 0.96) !important;
+            background: rgba(15, 23, 42, 0.7) !important;
+            border: 1px solid rgba(255, 255, 255, 0.24) !important;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        #fullscreenBtn:hover {
+            opacity: 1 !important;
+            background: rgba(30, 41, 59, 0.88) !important;
+        }
+
+        @supports (color: color-mix(in srgb, white, black)) {
+            #fullscreenBtn:hover {
+                background: color-mix(in srgb, var(--accent-main, #6366f1) 34%, #0f172a 66%) !important;
+            }
+        }
+
+        body[data-lite="1"] .bg-mesh,
+        body[data-lite="1"] .glass-panel,
+        body[data-lite="1"] #exCard,
+        body[data-lite="1"] #dutyCard,
+        body[data-lite="1"] .slot-item {
+            background-image: none !important;
+            animation: none !important;
+            transition: none !important;
+            filter: none !important;
+        }
+
+        body[data-lite="1"] #fullscreenBtn {
+            box-shadow: none !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+
+        @media (max-width: 1366px), (max-height: 768px) {
+            .glass-panel {
+                font-size: 1rem !important;
+            }
+
+            #schoolName {
+                font-size: clamp(1.5rem, 2.8vw, 2.2rem) !important;
+            }
+
+            #heroTitle {
+                font-size: clamp(2rem, 4.2vw, 3rem) !important;
+            }
+
+            .slot-item {
+                font-size: clamp(1.05rem, 1.8vw, 1.35rem) !important;
+                line-height: 1.45 !important;
+            }
+        }
+    </style>
 </head>
 
 <body
@@ -1365,7 +1621,7 @@
     </div>
   </noscript>
 
-    <script src="{% static 'js/display.js' %}?v=2026-02-08-standby-autohide-v1"></script>
+    <script src="{% static 'js/display.js' %}?v=2026-03-26-fit-compat-v2"></script>
 
     <script>
     /* Fullscreen Toggle */

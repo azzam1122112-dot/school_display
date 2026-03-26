@@ -59,6 +59,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # مهم: خلي DEBUG True افتراضيًا محليًا لتفادي مشاكل SSL/Redirect إذا ما عندك .env
 DEBUG = env_bool("DEBUG", "True")
 
+# Unified test mode detection (Django test runner + pytest).
+# This keeps local/prod behavior unchanged while making tests deterministic.
+RUNNING_TESTS = bool(
+    os.getenv("PYTEST_CURRENT_TEST")
+    or "pytest" in sys.modules
+    or any(arg in {"test", "pytest"} for arg in sys.argv)
+)
+
 # Optional: enable noisy middleware debug prints (default off).
 MIDDLEWARE_DEBUG = env_bool("MIDDLEWARE_DEBUG", "False")
 
@@ -250,6 +258,10 @@ ALLOWED_HOSTS: list[str] = []
 for _h in [*_default_allowed_hosts, *_env_hosts]:
     if _h and _h not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(_h)
+if RUNNING_TESTS:
+    for _h in ("testserver", "localhost", "127.0.0.1"):
+        if _h not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_h)
 
 # CSRF_TRUSTED_ORIGINS يجب أن تحتوي scheme
 _csrf_env = env_list("CSRF_TRUSTED_ORIGINS", "")
@@ -571,7 +583,7 @@ WHITENOISE_MANIFEST_STRICT = env_bool("WHITENOISE_MANIFEST_STRICT", "True")
 
 # The Django test runner sets DEBUG=False by default, which activates the manifest storage.
 # In local/dev CI runs we may not have run collectstatic; do not fail tests on missing manifest entries.
-if "test" in sys.argv:
+if RUNNING_TESTS:
     WHITENOISE_MANIFEST_STRICT = False
     try:
         STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
@@ -611,9 +623,9 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
 # لا تفعّل redirect محليًا
-SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", "True") if not DEBUG else False
-SESSION_COOKIE_SECURE = (not DEBUG)
-CSRF_COOKIE_SECURE = (not DEBUG)
+SECURE_SSL_REDIRECT = False if (DEBUG or RUNNING_TESTS) else env_bool("SECURE_SSL_REDIRECT", "True")
+SESSION_COOKIE_SECURE = (not DEBUG) and (not RUNNING_TESTS)
+CSRF_COOKIE_SECURE = (not DEBUG) and (not RUNNING_TESTS)
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.conf import settings as dj_settings
 from django.core.cache import cache
 from django.utils import timezone
@@ -211,3 +211,33 @@ class DisplaySnapshotPhase2Tests(TestCase):
         # Second request should be served from cache (200 or 304)
         r2 = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA", "HTTP_IF_NONE_MATCH": r1.get("ETag")})
         self.assertIn(r2.status_code, {200, 304})
+
+
+class SnapshotTtlHelpersTests(TestCase):
+    @override_settings(DISPLAY_SNAPSHOT_ACTIVE_TTL=15, DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX=60)
+    def test_active_ttl_lifts_to_refresh_interval(self):
+        from schedule.api_views import _active_snapshot_cache_ttl_seconds
+
+        snap = {
+            "settings": {"refresh_interval_sec": 20},
+            "meta": {"is_active_window": True},
+            "state": {"type": "period", "remaining_seconds": 1800},
+        }
+        ttl = _active_snapshot_cache_ttl_seconds(snap)
+        self.assertGreaterEqual(ttl, 20)
+
+    @override_settings(
+        DISPLAY_SNAPSHOT_ACTIVE_TTL=15,
+        DISPLAY_SNAPSHOT_ACTIVE_TTL_MAX=60,
+        DISPLAY_SNAPSHOT_ACTIVE_STEADY_TTL=120,
+    )
+    def test_active_fallback_ttl_is_clamped_by_remaining_seconds(self):
+        from schedule.api_views import _active_fallback_steady_ttl_seconds
+
+        snap = {
+            "settings": {"refresh_interval_sec": 20},
+            "meta": {"is_active_window": True},
+            "state": {"type": "period", "remaining_seconds": 12},
+        }
+        ttl = _active_fallback_steady_ttl_seconds(snap)
+        self.assertEqual(ttl, 12)

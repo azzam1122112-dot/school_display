@@ -63,7 +63,7 @@ services:
         value: "False"
 
       - key: DISPLAY_SNAPSHOT_ACTIVE_TTL
-        value: "15"
+        value: "30"
 
       # Safe canary controls for snapshot cache behavior (disabled by default).
       - key: SNAPSHOT_STEADY_CACHE_V2

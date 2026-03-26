@@ -27,6 +27,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Max, Q, Sum, Count
+from django.db.models.functions import TruncMonth
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -35,7 +36,6 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from urllib.parse import quote
 
 # ✅ عدّل هذه الاستيرادات حسب أسماء تطبيقاتك الفعلية
 from .decorators import manager_required
@@ -47,7 +47,6 @@ from .forms import (
     ExcellenceForm,
     StandbyForm,
     DutyAssignmentForm,
-    DisplayScreenForm,
     SchoolSubscriptionForm,
     SystemUserCreateForm,
     SystemEmployeeCreateForm,
@@ -1298,478 +1297,95 @@ def duty_teacher_search(request):
 # ======================
 
 def _get_school_active_subscriptions_qs(school):
-    """يرجع QuerySet للاشتراكات السارية (قد تكون أكثر من اشتراك)."""
-    SubModel = _get_subscription_model()
-    if SubModel is None:
-        return None
+    from . import views_screens
 
-    today = timezone.localdate()
-    qs = SubModel.objects.all()
-
-    # school filter
-    try:
-        SubModel._meta.get_field("school")
-        qs = qs.filter(school=school)
-    except Exception:
-        try:
-            SubModel._meta.get_field("school_id")
-            qs = qs.filter(school_id=getattr(school, "id", school))
-        except Exception:
-            return None
-
-    # active status
-    try:
-        SubModel._meta.get_field("status")
-        qs = qs.filter(status="active")
-    except Exception:
-        try:
-            SubModel._meta.get_field("is_active")
-            qs = qs.filter(is_active=True)
-        except Exception:
-            pass
-
-    # start date
-    for f in ("starts_at", "start_date"):
-        try:
-            SubModel._meta.get_field(f)
-            qs = qs.filter(**{f"{f}__lte": today})
-            break
-        except Exception:
-            continue
-
-    # end date
-    for f in ("ends_at", "end_date"):
-        try:
-            SubModel._meta.get_field(f)
-            qs = qs.filter(Q(**{f"{f}__isnull": True}) | Q(**{f"{f}__gte": today}))
-            break
-        except Exception:
-            continue
-
-    # select plan if possible
-    try:
-        SubModel._meta.get_field("plan")
-        # نستخدم defer لتجنب الحقول التي قد لا تكون موجودة في قاعدة البيانات (مثل duration_days في بعض البيئات)
-        qs = qs.select_related("plan").defer("plan__duration_days")
-    except Exception:
-        pass
-
-    return qs
+    return views_screens.get_school_active_subscriptions_qs(school)
 
 
 def _get_school_active_subscription(school):
-    """يرجع اشتراك المدرسة الساري (إن وجد) بشكل مرن بين subscriptions و legacy."""
-    qs = _get_school_active_subscriptions_qs(school)
-    if qs is None:
-        return None
-    # ملاحظة: قد يوجد أكثر من اشتراك نشط. سنختار "أفضل" اشتراك (الأعلى في max_screens أو غير محدود).
-    subs = list(qs)
-    if not subs:
-        return None
+    from . import views_screens
 
-    def _key(sub):
-        plan = getattr(sub, "plan", None)
-        ms = getattr(plan, "max_screens", None) if plan else None
-        # None = غير محدود => أعلى
-        return (1 if ms is None else 0, int(ms or 0))
-
-    subs.sort(key=_key, reverse=True)
-    return subs[0]
+    return views_screens.get_school_active_subscription(school)
 
 
 def _get_school_max_screens_limit(school) -> int | None:
-    """يرجع الحد الأقصى للشاشات حسب خطة الاشتراك. None = غير محدود.
+    from . import views_screens
 
-    إذا كانت subscriptions.utils.school_effective_max_screens متاحة، سيتم استخدامها
-    لتضمين زيادات الشاشات (Add-ons) ضمن الحد.
-    """
-    try:
-        from subscriptions.utils import school_effective_max_screens  # local import لتجنب دورات الاستيراد
-
-        return school_effective_max_screens(getattr(school, "id", None))
-    except Exception:
-        # fallback للمنطق القديم (بدون Add-ons)
-        pass
-
-    qs = _get_school_active_subscriptions_qs(school)
-    if qs is None:
-        return 0
-    subs = list(qs)
-    if not subs:
-        return 0
-
-    # لو أي اشتراك نشط غير محدود => غير محدود
-    for sub in subs:
-        plan = getattr(sub, "plan", None)
-        if plan is not None and getattr(plan, "max_screens", None) is None:
-            return None
-
-    # اختر الحد الأعلى بين الاشتراكات النشطة
-    best = 0
-    for sub in subs:
-        plan = getattr(sub, "plan", None)
-        ms = getattr(plan, "max_screens", None) if plan else None
-        try:
-            ms_i = int(ms or 0)
-        except Exception:
-            ms_i = 0
-        if ms_i > best:
-            best = ms_i
-    return best
+    return views_screens.get_school_max_screens_limit(school)
 
 
 def _get_school_effective_plan_label(school) -> str | None:
-    """اسم الخطة المستخدمة لعرض المعلومات في الواجهة (أفضل اشتراك)."""
-    sub = _get_school_active_subscription(school)
-    if not sub:
-        return None
-    plan = getattr(sub, "plan", None)
-    return getattr(plan, "name", None) if plan else None
+    from . import views_screens
+
+    return views_screens.get_school_effective_plan_label(school)
 
 @manager_required
 def screen_list(request):
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
+    from . import views_screens
 
-    try:
-        from core.screen_limits import enforce_school_screen_limit
-        enforce_school_screen_limit(int(getattr(school, "id", 0) or 0))
-    except Exception:
-        pass
-
-    # عدد الشاشات التي تم إيقافها تلقائيًا بسبب تجاوز الحد
-    auto_disabled_count = 0
-    try:
-        if _model_has_field(DisplayScreen, "auto_disabled_by_limit"):
-            auto_disabled_count = DisplayScreen.objects.filter(
-                school=school,
-                auto_disabled_by_limit=True,
-            ).count()
-    except Exception:
-        auto_disabled_count = 0
-
-    qs = DisplayScreen.objects.filter(school=school).order_by("-created_at", "-id")
-    current_count = qs.count()
-    max_screens = _get_school_max_screens_limit(school)
-    plan_name = _get_school_effective_plan_label(school)
-
-    if max_screens is None:
-        screens_remaining = None
-    else:
-        try:
-            screens_remaining = max(int(max_screens) - int(current_count), 0)
-        except Exception:
-            screens_remaining = 0
-
-    if max_screens is None:
-        can_create_screen = True
-        show_screen_limit_message = False
-        screen_limit_message = None
-    else:
-        can_create_screen = current_count < int(max_screens)
-        show_screen_limit_message = not can_create_screen
-        if max_screens <= 0:
-            screen_limit_message = "لا يمكن إضافة شاشات لهذه المدرسة (لا يوجد اشتراك نشط)."
-        else:
-            screen_limit_message = f"لا يمكن إضافة أكثر من {int(max_screens)} شاشة لهذه المدرسة"
-
-    return render(
+    return views_screens.screen_list(
         request,
-        "dashboard/screen_list.html",
-        {
-            "screens": qs,
-            "can_create_screen": can_create_screen,
-            "show_screen_limit_message": show_screen_limit_message,
-            "screen_limit": None if max_screens is None else int(max_screens),
-            "screen_limit_message": screen_limit_message,
-            "screens_count": current_count,
-            "plan_name": plan_name,
-            "screens_remaining": screens_remaining,
-            "auto_disabled_count": auto_disabled_count,
-        },
+        get_active_school_or_redirect=get_active_school_or_redirect,
+        model_has_field=_model_has_field,
     )
 
 
 @manager_required
 def screen_create(request):
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
+    from . import views_screens
 
-    current_count = DisplayScreen.objects.filter(school=school).count()
-    max_screens = _get_school_max_screens_limit(school)
-    if (max_screens is not None) and (current_count >= int(max_screens)):
-        if max_screens <= 0:
-            messages.warning(request, "لا يمكن إنشاء شاشة بدون اشتراك نشط.")
-        else:
-            messages.warning(request, f"لا يمكن إنشاء أكثر من {int(max_screens)} شاشة لهذه المدرسة.")
-        return redirect("dashboard:screen_list")
-
-    if request.method == "POST":
-        form = DisplayScreenForm(request.POST)
-        if form.is_valid():
-            screen = form.save(commit=False)
-            screen.school = school
-            screen.save()
-            messages.success(
-                request,
-                "تم إضافة شاشة جديدة.\n\n"
-                "تنبيه مهم:\n"
-                "- سيتم حفظ الشاشة على أول تلفاز/متصفح يتم فتح الرابط عليه، ولا يمكن فتحها على جهاز آخر إلا بعد فصل الجهاز من لوحة التحكم.\n"
-                "- المحتوى موحّد وثابت في جميع الشاشات.",
-            )
-            return redirect("dashboard:screen_list")
-        messages.error(request, "الرجاء تصحيح الأخطاء.")
-    else:
-        form = DisplayScreenForm()
-
-    return render(request, "dashboard/screen_form.html", {"form": form, "title": "إضافة شاشة"})
+    return views_screens.screen_create(
+        request,
+        get_active_school_or_redirect=get_active_school_or_redirect,
+    )
 
 
 @manager_required
 @require_POST
 def screen_refresh_now(request, pk: int):
-    """Force a single screen to fetch new data.
+    from . import views_screens
 
-    - Always sets a short-lived cache flag that /api/display/status checks.
-    - If WebSockets are enabled and the TV is connected, also pushes an immediate invalidate
-      to the token-scoped WS group so the refresh happens instantly.
-    """
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
-
-    import hashlib
-    import logging
-
-    from django.core.cache import cache
-    from django.db import transaction
-    from django.utils.http import url_has_allowed_host_and_scheme
-
-    from schedule.cache_utils import get_schedule_revision_for_school_id
-
-    logger = logging.getLogger(__name__)
-
-    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
-
-    token_value = (
-        (getattr(obj, "token", None) or getattr(obj, "api_token", None) or "").strip()
+    return views_screens.screen_refresh_now(
+        request,
+        pk=pk,
+        get_active_school_or_redirect=get_active_school_or_redirect,
     )
-    if not token_value:
-        messages.error(request, "تعذر تحديث الشاشة: لا يوجد token صالح.")
-        return redirect("dashboard:screen_list")
-
-    token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
-
-    # Force refresh flag (picked up by /api/display/status on next poll)
-    try:
-        cache.set(f"display:force_refresh:{token_hash}", "1", timeout=120)
-    except Exception:
-        pass
-
-    school_id = int(getattr(school, "id", 0) or 0)
-    cur_rev = int(get_schedule_revision_for_school_id(school_id) or 0)
-
-    def _broadcast_invalidate_token_ws(*, token_hash: str, revision: int) -> None:
-        try:
-            from django.conf import settings
-
-            if not getattr(settings, "DISPLAY_WS_ENABLED", False):
-                return
-        except Exception:
-            return
-
-        try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-
-            channel_layer = get_channel_layer()
-            if not channel_layer:
-                return
-
-            group = f"token:{str(token_hash)[:16]}"
-            async_to_sync(channel_layer.group_send)(
-                group,
-                {
-                    "type": "broadcast_invalidate",
-                    "school_id": int(school_id),
-                    "revision": int(revision or 0),
-                },
-            )
-        except Exception:
-            return
-
-    # Best-effort immediate push (only affects this screen if connected)
-    try:
-        transaction.on_commit(lambda: _broadcast_invalidate_token_ws(token_hash=token_hash, revision=cur_rev))
-    except Exception:
-        try:
-            _broadcast_invalidate_token_ws(token_hash=token_hash, revision=cur_rev)
-        except Exception:
-            pass
-
-    logger.info(
-        "screen_refresh_now school_id=%s screen_id=%s rev=%s",
-        int(school_id),
-        int(getattr(obj, "id", 0) or 0),
-        int(cur_rev),
-    )
-
-    messages.success(request, f"تم إرسال أمر تحديث لهذه الشاشة ({obj.name}).")
-
-    next_url = (request.POST.get("next") or "").strip()
-    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-        return redirect(next_url)
-
-    return redirect("dashboard:screen_list")
 
 
 @manager_required
 @require_POST
 def screen_reload_now(request, pk: int):
-    """Force a single screen to reload the page (equivalent to pressing F5).
+    from . import views_screens
 
-    Works in two modes:
-    1) Polling fallback: sets a short-lived cache flag that /api/display/status checks and the client
-       interprets as a full reload.
-    2) WebSocket fast path: if enabled + connected, pushes an immediate reload message.
-    """
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
-
-    import hashlib
-    import logging
-
-    from django.core.cache import cache
-    from django.db import transaction
-    from django.utils.http import url_has_allowed_host_and_scheme
-
-    logger = logging.getLogger(__name__)
-
-    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
-
-    token_value = (
-        (getattr(obj, "token", None) or getattr(obj, "api_token", None) or "").strip()
+    return views_screens.screen_reload_now(
+        request,
+        pk=pk,
+        get_active_school_or_redirect=get_active_school_or_redirect,
     )
-    if not token_value:
-        messages.error(request, "تعذر إعادة تحميل الشاشة: لا يوجد token صالح.")
-        return redirect("dashboard:screen_list")
-
-    token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
-
-    # Polling fallback: force /status to return reload=true
-    try:
-        cache.set(f"display:force_reload:{token_hash}", "1", timeout=120)
-    except Exception:
-        pass
-
-    school_id = int(getattr(school, "id", 0) or 0)
-
-    def _broadcast_reload_token_ws(*, token_hash: str) -> None:
-        try:
-            from django.conf import settings
-
-            if not getattr(settings, "DISPLAY_WS_ENABLED", False):
-                return
-        except Exception:
-            return
-
-        try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-
-            channel_layer = get_channel_layer()
-            if not channel_layer:
-                return
-
-            group = f"token:{str(token_hash)[:16]}"
-            async_to_sync(channel_layer.group_send)(
-                group,
-                {
-                    "type": "broadcast_reload",
-                    "school_id": int(school_id),
-                },
-            )
-        except Exception:
-            return
-
-    # Best-effort immediate push
-    try:
-        transaction.on_commit(lambda: _broadcast_reload_token_ws(token_hash=token_hash))
-    except Exception:
-        try:
-            _broadcast_reload_token_ws(token_hash=token_hash)
-        except Exception:
-            pass
-
-    logger.info(
-        "screen_reload_now school_id=%s screen_id=%s",
-        int(school_id),
-        int(getattr(obj, "id", 0) or 0),
-    )
-
-    messages.success(request, f"تم إرسال أمر إعادة تحميل لهذه الشاشة ({obj.name}).")
-
-    next_url = (request.POST.get("next") or "").strip()
-    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-        return redirect(next_url)
-
-    return redirect("dashboard:screen_list")
 
 
 @manager_required
 @require_POST
 def screen_delete(request, pk: int):
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
-    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
-    obj.delete()
-    messages.success(request, "تم حذف الشاشة.")
-    return redirect("dashboard:screen_list")
+    from . import views_screens
+
+    return views_screens.screen_delete(
+        request,
+        pk=pk,
+        get_active_school_or_redirect=get_active_school_or_redirect,
+    )
 
 
 @manager_required
 @require_POST
 def screen_unbind_device(request, pk: int):
-    DisplayScreen = DisplayScreenModel()
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
+    from . import views_screens
 
-    obj = get_object_or_404(DisplayScreen, pk=pk, school=school)
-
-    # حقول الربط قد لا تكون موجودة في بيئات قديمة
-    try:
-        DisplayScreen._meta.get_field("bound_device_id")
-        DisplayScreen._meta.get_field("bound_at")
-    except Exception:
-        messages.error(request, "ميزة ربط الأجهزة غير متاحة حالياً.")
-        return redirect("dashboard:screen_list")
-
-    DisplayScreen.objects.filter(pk=obj.pk).update(bound_device_id=None, bound_at=None)
-
-    # ✅ مهم: امسح كاش الربط حتى لا يبقى bound_device_id القديم (24h) ويمنع الربط بجهاز جديد
-    try:
-        from django.core.cache import cache
-        import hashlib
-
-        token_value = (getattr(obj, "token", None) or getattr(obj, "api_token", None) or "").strip()
-        if token_value:
-            token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
-            cache.delete(f"display:token_map:{token_hash}")
-    except Exception:
-        pass
-
-    messages.success(request, "تم فصل الجهاز. افتح الرابط على التلفاز الجديد ليتم ربطه تلقائياً.")
-    return redirect("dashboard:screen_list")
+    return views_screens.screen_unbind_device(
+        request,
+        pk=pk,
+        get_active_school_or_redirect=get_active_school_or_redirect,
+    )
 
 
 # ======================
@@ -2526,6 +2142,7 @@ def system_admin_dashboard(request):
             "subscriptions_count": active_subs,
             "revenue": revenue,
             "open_subscription_requests": open_requests,
+            "hide_admin_sidebar": True,
         },
     )
 
@@ -2800,15 +2417,21 @@ def system_user_delete(request, pk: int):
 
 def _get_subscription_model_robust():
     """
-    1) لو عندك تطبيق subscriptions فعليًا: subscriptions.SchoolSubscription
-    2) وإلا: استخدم core.SchoolSubscription (Legacy الموجود في core/models.py)
+    Source of truth: subscriptions.SchoolSubscription.
+    Fallback to core.SchoolSubscription exists for legacy deployments only.
     """
     try:
         return apps.get_model("subscriptions", "SchoolSubscription")
     except Exception:
+        logger.warning(
+            "subscriptions.SchoolSubscription not available; falling back to legacy core.SchoolSubscription"
+        )
         try:
             return apps.get_model("core", "SchoolSubscription")
         except Exception:
+            logger.error(
+                "No subscription model available (subscriptions/core). Subscription admin views may be degraded."
+            )
             return None
 
 def _get_subscription_model():
@@ -4069,28 +3692,155 @@ def system_plan_delete(request, pk):
 # ==================
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@system_staff_required
 def system_reports(request):
+    School = SchoolModel()
     SubModel = _get_subscription_model()
-    
+
+    schools_count = School.objects.count()
     total_revenue = 0
+    active_subscriptions_count = 0
+    total_subscriptions_count = 0
+    avg_revenue_per_active = 0
     revenue_by_plan = []
-    
+    schools_distribution = []
+    monthly_growth = []
+
+    today = timezone.localdate()
+
+    def _recent_months(count: int = 6):
+        out = []
+        for offset in range(count - 1, -1, -1):
+            year = today.year
+            month = today.month - offset
+            while month <= 0:
+                month += 12
+                year -= 1
+            out.append((year, month))
+        return out
+
+    month_keys = _recent_months(6)
+
     if SubModel is not None:
-        # Total Revenue (Active Subscriptions)
-        active_subs = SubModel.objects.filter(status="active")
-        total_revenue = active_subs.aggregate(total=Sum("plan__price"))["total"] or 0
-        
-        # Revenue by Plan
-        revenue_by_plan = (
+        all_subs = SubModel.objects.all()
+        total_subscriptions_count = all_subs.count()
+
+        active_subs = all_subs
+        if _model_has_field(SubModel, "status"):
+            active_subs = active_subs.filter(status="active")
+        elif _model_has_field(SubModel, "is_active"):
+            active_subs = active_subs.filter(is_active=True)
+
+        if _model_has_field(SubModel, "starts_at"):
+            active_subs = active_subs.filter(starts_at__lte=today)
+        elif _model_has_field(SubModel, "start_date"):
+            active_subs = active_subs.filter(start_date__lte=today)
+
+        if _model_has_field(SubModel, "ends_at"):
+            active_subs = active_subs.filter(Q(ends_at__isnull=True) | Q(ends_at__gte=today))
+        elif _model_has_field(SubModel, "end_date"):
+            active_subs = active_subs.filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+
+        active_subscriptions_count = active_subs.count()
+        total_revenue = active_subs.aggregate(total=Sum("plan__price")).get("total") or 0
+        if active_subscriptions_count:
+            avg_revenue_per_active = (total_revenue or 0) / active_subscriptions_count
+
+        revenue_rows = (
             active_subs.values("plan__name")
             .annotate(total_revenue=Sum("plan__price"), count=Count("id"))
             .order_by("-total_revenue")
         )
+        for row in revenue_rows:
+            plan_name = (row.get("plan__name") or "غير محدد").strip()
+            row_revenue = row.get("total_revenue") or 0
+            share_percent = (float(row_revenue) / float(total_revenue) * 100) if total_revenue else 0
+            revenue_by_plan.append(
+                {
+                    "plan_name": plan_name,
+                    "count": int(row.get("count") or 0),
+                    "total_revenue": row_revenue,
+                    "share_percent": round(share_percent, 1),
+                }
+            )
+
+        month_field = None
+        for candidate in ("starts_at", "start_date", "created_at"):
+            if _model_has_field(SubModel, candidate):
+                month_field = candidate
+                break
+
+        monthly_map = {}
+        if month_field:
+            try:
+                monthly_rows = (
+                    all_subs.filter(**{f"{month_field}__isnull": False})
+                    .annotate(month=TruncMonth(month_field))
+                    .values("month")
+                    .annotate(count=Count("id"))
+                    .order_by("month")
+                )
+                for row in monthly_rows:
+                    month_value = row.get("month")
+                    if not month_value:
+                        continue
+                    monthly_map[(int(month_value.year), int(month_value.month))] = int(row.get("count") or 0)
+            except Exception:
+                monthly_map = {}
+
+        monthly_growth = [
+            {
+                "label": f"{month:02d}/{year}",
+                "count": int(monthly_map.get((year, month), 0)),
+            }
+            for year, month in month_keys
+        ]
+
+    if not monthly_growth:
+        monthly_growth = [{"label": f"{month:02d}/{year}", "count": 0} for year, month in month_keys]
+
+    if _model_has_field(School, "school_type"):
+        try:
+            type_field = School._meta.get_field("school_type")
+            choices = {str(k): str(v) for k, v in (type_field.choices or [])}
+            rows = School.objects.values("school_type").annotate(count=Count("id")).order_by("-count")
+            for row in rows:
+                school_type = row.get("school_type")
+                school_type_str = "" if school_type is None else str(school_type)
+                label = choices.get(school_type_str) or school_type_str or "غير محدد"
+                schools_distribution.append(
+                    {
+                        "label": label,
+                        "count": int(row.get("count") or 0),
+                    }
+                )
+        except Exception:
+            schools_distribution = []
+
+    if not schools_distribution and schools_count:
+        schools_distribution = [{"label": "إجمالي المدارس", "count": int(schools_count)}]
+
+    schools_distribution_total = sum(int(item.get("count") or 0) for item in schools_distribution)
+    for item in schools_distribution:
+        count = int(item.get("count") or 0)
+        item["percent"] = round((count / schools_distribution_total) * 100, 1) if schools_distribution_total else 0
+
+    max_monthly_subscriptions = 0
+    if monthly_growth:
+        max_monthly_subscriptions = max(int(item.get("count") or 0) for item in monthly_growth)
 
     context = {
+        "schools_count": schools_count,
         "total_revenue": total_revenue,
+        "active_subscriptions_count": active_subscriptions_count,
+        "total_subscriptions_count": total_subscriptions_count,
+        "avg_revenue_per_active": avg_revenue_per_active,
         "revenue_by_plan": revenue_by_plan,
+        "monthly_growth": monthly_growth,
+        "max_monthly_subscriptions": max_monthly_subscriptions,
+        "schools_distribution": schools_distribution,
+        "schools_distribution_total": schools_distribution_total,
+        "hide_admin_sidebar": True,
     }
     return render(request, "admin/reports.html", context)
 
@@ -4206,34 +3956,12 @@ def customer_support_ticket_create(request):
 
 @manager_required
 def request_screen_addon(request):
-    """زر/صفحة طلب زيادة شاشات: يفتح تذكرة دعم مُعبأة تلقائيًا."""
-    DisplayScreen = DisplayScreenModel()
+    from . import views_screens
 
-    school, response = get_active_school_or_redirect(request)
-    if response:
-        return response
-
-    current_count = DisplayScreen.objects.filter(school=school).count()
-    max_screens = _get_school_max_screens_limit(school)
-    plan_name = _get_school_effective_plan_label(school) or "—"
-
-    school_name = (getattr(school, "name", "") or "").strip()
-    subject = f"طلب زيادة شاشات - {school_name}" if school_name else "طلب زيادة شاشات"
-    msg_lines = [
-        f"المدرسة: {getattr(school, 'name', '')}",
-        f"الخطة الحالية: {plan_name}",
-        f"عدد الشاشات الحالية: {current_count}",
-        f"الحد الحالي: {'غير محدود' if max_screens is None else int(max_screens)}",
-        "",
-        "المطلوب:",
-        "- عدد الشاشات الإضافية: ",
-        "- المدة: (شهر / نصف سنوي / سنوي)",
-        "- ملاحظات: ",
-    ]
-    message_text = "\n".join(msg_lines)
-
-    url = reverse("dashboard:customer_support_ticket_create")
-    return redirect(f"{url}?subject={quote(subject)}&message={quote(message_text)}")
+    return views_screens.request_screen_addon(
+        request,
+        get_active_school_or_redirect=get_active_school_or_redirect,
+    )
 
 
 def _get_screen_addon_model():

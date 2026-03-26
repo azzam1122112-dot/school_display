@@ -5,7 +5,6 @@ from django.http import HttpResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic.base import RedirectView
 
 
 def favicon(request):
@@ -35,14 +34,40 @@ def favicon(request):
     return resp
 
 
+def robots_txt(request):
+    """Serve robots.txt safely in dev/test/prod without import-time static URL resolution."""
+    content = None
+
+    # 1) Prefer finders (works in dev/test without collectstatic)
+    try:
+        found_path = finders.find("robots.txt")
+        if found_path:
+            with open(found_path, "rb") as f:
+                content = f.read()
+    except Exception:
+        content = None
+
+    # 2) Fallback to storage (works in production after collectstatic)
+    if content is None:
+        try:
+            with staticfiles_storage.open("robots.txt", "rb") as f:
+                content = f.read()
+        except Exception:
+            content = b"User-agent: *\nAllow: /\n"
+
+    resp = HttpResponse(content, content_type="text/plain; charset=utf-8")
+    resp["Cache-Control"] = "public, max-age=86400"
+    return resp
+
+
 urlpatterns = [
     path("cpanel-123/", admin.site.urls),
 
     # favicon (serve directly; avoids /static/* and avoids streaming under ASGI)
     path("favicon.ico", favicon, name="favicon"),
 
-    # robots.txt
-    path("robots.txt", RedirectView.as_view(url=staticfiles_storage.url("robots.txt"), permanent=True)),
+    # robots.txt (serve directly to avoid startup/runtime failures in test/dev)
+    path("robots.txt", robots_txt, name="robots_txt"),
 
     # موقع الويب (يشمل / و /subscriptions-page/ و /s/<code>)
     path("", include(("website.urls", "website"), namespace="website")),

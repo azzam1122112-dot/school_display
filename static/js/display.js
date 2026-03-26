@@ -97,7 +97,9 @@
   function bindDom() {
     // Prefer scaling the stage (if present) so fixed-position UI (e.g. fullscreen button)
     // remains truly fixed to the viewport.
-    dom.fitRoot = document.getElementById("fitStage") || document.getElementById("fitRoot");
+    dom.fitStage = document.getElementById("fitStage");
+    dom.fitViewport = document.getElementById("fitRoot");
+    dom.fitRoot = dom.fitStage || dom.fitViewport;
 
     dom.schoolLogo = $("schoolLogo");
     dom.schoolLogoFallback = $("schoolLogoFallback");
@@ -211,9 +213,9 @@
   }
 
   function getFitMargin() {
-    // Default: keep a safe border around the UI for TV overscan / browser chrome.
-    // 0.95 means: fit inside 95% of the viewport (≈ 2.5% padding each side).
-    let m = 0.95;
+    // Optional safe margin for overscan TVs.
+    // Default is full-fill (1.0). Use ?fitMargin=0.95 when needed.
+    let m = 1.0;
     try {
       const qs = new URLSearchParams(window.location.search);
       const raw = (qs.get("fitMargin") || qs.get("margin") || "").trim();
@@ -223,6 +225,24 @@
       }
     } catch (e) {}
     return clamp(m, 0.7, 1);
+  }
+
+  function getViewportSize() {
+    let w = Number(window.innerWidth || 0);
+    let h = Number(window.innerHeight || 0);
+    try {
+      const vv = window.visualViewport;
+      if (vv && isFinite(Number(vv.width)) && isFinite(Number(vv.height))) {
+        const vw = Number(vv.width || 0);
+        const vh = Number(vv.height || 0);
+        // Use visualViewport only when it looks sane and beneficial.
+        if (vw > 0 && vh > 0 && (Math.abs(vw - w) > 2 || Math.abs(vh - h) > 2)) {
+          w = vw;
+          h = vh;
+        }
+      }
+    } catch (e) {}
+    return { width: w, height: h };
   }
 
   function getFitMaxScale() {
@@ -285,12 +305,14 @@
     if (isFitDisabled()) {
       try {
         dom.fitRoot.style.transform = "scale(1)";
+        dom.fitRoot.style.transformOrigin = "top left";
       } catch (e) {}
       return;
     }
 
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const viewport = getViewportSize();
+    const viewportWidth = Number(viewport.width || 0);
+    const viewportHeight = Number(viewport.height || 0);
     
     if (viewportWidth <= 0 || viewportHeight <= 0) return;
 
@@ -348,9 +370,14 @@
       }
     } catch (e) {}
 
+    // Optional overscan-safe margin (defaults to full fill == 1.0)
+    const fitMargin = getFitMargin();
+    const safeWidth = effectiveWidth * fitMargin;
+    const safeHeight = effectiveHeight * fitMargin;
+
     // Calculate scale ratios
-    const scaleX = effectiveWidth / designWidth;
-    const scaleY = effectiveHeight / designHeight;
+    const scaleX = safeWidth / designWidth;
+    const scaleY = safeHeight / designHeight;
     
     // ✅ الحل 2 + 3: تحديد وضع الملء (cover أو contain)
     let fitMode = getFitMode(); // من الـ URL parameter
@@ -386,12 +413,14 @@
     // ✅ FIX: Scale from top-left corner to fill screen completely (no centering)
     // transform-origin: top left in CSS ensures content starts from corner
     dom.fitRoot.style.transform = `scale(${scale.toFixed(4)})`;
+    dom.fitRoot.style.transformOrigin = "top left";
 
     try {
       const body = document.body || document.documentElement;
       body.dataset.uiScale = scale.toFixed(4);
       body.dataset.fitMode = fitMode; // للـ debugging
       body.dataset.fitSource = fitSource; // inner | dpr | screen
+      body.dataset.fitMargin = String(fitMargin);
       
       // ✅ FIX: تكبير الخطوط تلقائياً للشاشات الكبيرة
       // إذا كان scale أكبر من 1 (شاشات 4K, 8K, إلخ)
@@ -3564,6 +3593,44 @@
     },
     { passive: true }
   );
+
+  window.addEventListener(
+    "orientationchange",
+    () => {
+      scheduleFit(120);
+    },
+    { passive: true }
+  );
+
+  window.addEventListener(
+    "pageshow",
+    () => {
+      scheduleFit(0);
+    },
+    { passive: true }
+  );
+
+  document.addEventListener("fullscreenchange", () => scheduleFit(0));
+  document.addEventListener("webkitfullscreenchange", () => scheduleFit(0));
+
+  try {
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener(
+        "resize",
+        () => {
+          scheduleFit(80);
+        },
+        { passive: true }
+      );
+      window.visualViewport.addEventListener(
+        "scroll",
+        () => {
+          scheduleFit(80);
+        },
+        { passive: true }
+      );
+    }
+  } catch (e) {}
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {

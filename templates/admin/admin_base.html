@@ -62,16 +62,17 @@
 
 <body class="min-h-screen flex" x-data="{ sidebarOpen: false }">
 
+  {% if not hide_admin_sidebar %}
   <!-- Overlay for mobile sidebar -->
-  <div x-show="sidebarOpen" 
+  <div x-show="sidebarOpen"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100"
        x-transition:leave-end="opacity-0"
-       @click="sidebarOpen = false" 
-       class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden" 
+       @click="sidebarOpen = false"
+       class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
        x-cloak></div>
 
   <!-- الشريط الجانبي -->
@@ -111,130 +112,26 @@
     <!-- قائمة التنقل -->
     <div class="flex-1 p-5 overflow-y-auto">
       <nav class="space-y-1">
-        
-        <!-- الرئيسية -->
-        <a href="{% url 'dashboard:system_admin_dashboard' %}"
-           class="sidebar-link {% if request.resolver_match.url_name == 'system_admin_dashboard' %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-home text-lg w-6 text-center"></i>
-          <span>الرئيسية</span>
-          {% if request.resolver_match.url_name == 'system_admin_dashboard' %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-
-        {% if not is_support_staff %}
-          <!-- المدارس -->
-          <div class="mt-6 mb-2 px-2">
-            <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <i class="fas fa-school"></i>
-              <span>المدارس</span>
-            </div>
-          </div>
-
-          <a href="{% url 'dashboard:system_schools_list' %}"
-             class="sidebar-link {% if 'system_school' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-            <i class="fas fa-building text-lg w-6 text-center"></i>
-            <span>إدارة المدارس</span>
-            {% if 'system_school' in request.resolver_match.url_name %}
-            <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
+        {% for item in admin_nav_links %}
+          <a href="{{ item.url }}"
+             class="sidebar-link {% if item.active %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
+            <i class="fas {{ item.icon }} text-lg w-6 text-center"></i>
+            <span>{{ item.title }}</span>
+            {% if item.badge_count %}
+              <span class="mr-auto inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-600 text-white text-xs font-bold">
+                {{ item.badge_count }}
+              </span>
+            {% elif item.active %}
+              <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
             {% endif %}
           </a>
-        {% endif %}
-        
-        <!-- المستخدمون -->
-        <div class="mt-6 mb-2 px-2">
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <i class="fas fa-users"></i>
-            <span>المستخدمون</span>
-          </div>
-        </div>
-        
-        <a href="{% url 'dashboard:system_users_list' %}"
-           class="sidebar-link {% if 'system_user' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-user-circle text-lg w-6 text-center"></i>
-          <span>إدارة المستخدمين</span>
-          {% if 'system_user' in request.resolver_match.url_name %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-
-        <a href="{% url 'dashboard:system_employees_list' %}"
-           class="sidebar-link {% if request.resolver_match.url_name == 'system_employees_list' %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-user-tie text-lg w-6 text-center"></i>
-          <span>إدارة الموظفين</span>
-          {% if request.resolver_match.url_name == 'system_employees_list' %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-        
-        <!-- الاشتراكات -->
-        <div class="mt-6 mb-2 px-2">
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <i class="fas fa-credit-card"></i>
-            <span>الاشتراكات</span>
-          </div>
-        </div>
-        
-        <a href="{% url 'dashboard:system_subscriptions_list' %}"
-           class="sidebar-link {% if 'system_subscription' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-file-invoice-dollar text-lg w-6 text-center"></i>
-          <span>إدارة الاشتراكات</span>
-          {% if 'system_subscription' in request.resolver_match.url_name %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-
-        <a href="{% url 'dashboard:system_subscription_requests_list' %}"
-           class="sidebar-link {% if 'system_subscription_request' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-receipt text-lg w-6 text-center"></i>
-          <span>طلبات التجديد/الاشتراك</span>
-          {% if admin_open_subscription_requests_count %}
-          <span class="mr-auto inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-600 text-white text-xs font-bold">
-            {{ admin_open_subscription_requests_count }}
-          </span>
-          {% elif 'system_subscription_request' in request.resolver_match.url_name %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-        
-        <!-- التقارير -->
-        <div class="mt-6 mb-2 px-2">
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <i class="fas fa-chart-bar"></i>
-            <span>التقارير</span>
-          </div>
-        </div>
-        
-        <a href="{% url 'dashboard:system_reports' %}"
-           class="sidebar-link {% if 'system_reports' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-chart-line text-lg w-6 text-center"></i>
-          <span>التقارير والإحصائيات</span>
-          {% if 'system_reports' in request.resolver_match.url_name %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-
-        <!-- الدعم الفني -->
-        <div class="mt-6 mb-2 px-2">
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <i class="fas fa-life-ring"></i>
-            <span>الدعم الفني</span>
-          </div>
-        </div>
-        
-        <a href="{% url 'dashboard:system_support_tickets' %}"
-           class="sidebar-link {% if 'system_support' in request.resolver_match.url_name %}sidebar-link-active{% else %}text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm{% endif %}">
-          <i class="fas fa-headset text-lg w-6 text-center"></i>
-          <span>تذاكر الدعم</span>
-          {% if admin_new_support_tickets_count %}
-          <span class="mr-auto inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-rose-600 text-white text-xs font-bold">
-            {{ admin_new_support_tickets_count }}
-          </span>
-          {% elif 'system_support' in request.resolver_match.url_name %}
-          <div class="mr-auto w-2 h-2 rounded-full bg-white"></div>
-          {% endif %}
-        </a>
-        
+        {% empty %}
+          <a href="{% url 'dashboard:system_admin_dashboard' %}"
+             class="sidebar-link sidebar-link-active">
+            <i class="fas fa-home text-lg w-6 text-center"></i>
+            <span>الرئيسية</span>
+          </a>
+        {% endfor %}
       </nav>
     </div>
     
@@ -261,6 +158,7 @@
       </div>
     </div>
   </aside>
+  {% endif %}
 
   <!-- المحتوى الرئيسي -->
   <main class="flex-1 p-3 md:p-8 overflow-auto w-full">
@@ -270,9 +168,11 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div class="flex items-center gap-3 md:gap-4">
           <!-- Mobile Menu Toggle -->
+          {% if not hide_admin_sidebar %}
           <button @click="sidebarOpen = true" class="lg:hidden p-1.5 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-600">
             <i class="fas fa-bars text-lg"></i>
           </button>
+          {% endif %}
           
           <div class="flex items-center gap-2 md:gap-3">
             <div class="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center shadow-sm">
