@@ -91,9 +91,9 @@ DISPLAY_SNAPSHOT_CACHE_TTL = max(5, min(30, DISPLAY_SNAPSHOT_CACHE_TTL))
 # =========================
 # Feature Flags: Realtime WebSocket Push
 # =========================
-# Phase 0-1: False (infrastructure only)
-# Phase 2-3: Gradual rollout (per-school flag TBD)
-DISPLAY_WS_ENABLED = env_bool("DISPLAY_WS_ENABLED", "False")
+# Push-only architecture: WS enabled by default for all schools.
+# Dashboard changes are pushed via WS; time-based transitions handled client-side.
+DISPLAY_WS_ENABLED = env_bool("DISPLAY_WS_ENABLED", "True")
 
 # Allow multiple devices per screen token (HTTP + WS must respect this)
 DISPLAY_ALLOW_MULTI_DEVICE = env_bool("DISPLAY_ALLOW_MULTI_DEVICE", "False")

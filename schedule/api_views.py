@@ -696,9 +696,10 @@ def _snapshot_anti_loop_check(token_hash: str) -> bool:
     """
     Checks if a token is requesting too frequently (looping).
     Returns True if safe, False if looping (should receive cool-down).
-    Limit: 60 requests per minute.
-    (Raised from 30 — transition windows at period boundaries cause
-    legitimate bursts of ~15 req in 30 s that stack across consecutive periods.)
+    Limit: 120 requests per 60-second window.
+    A single screen legitimately uses ~12 requests per period transition
+    (20 s window at 2 s intervals) plus normal polling. With back-to-back
+    transitions and page reloads this can reach 50-60 req/min easily.
     """
     key = f"loop:{token_hash}"
     try:
@@ -709,7 +710,7 @@ def _snapshot_anti_loop_check(token_hash: str) -> bool:
         else:
             val = cache.incr(key)
         
-        if val > 60: 
+        if val > 120: 
             return False
         return True
     except Exception:
@@ -2259,7 +2260,7 @@ def snapshot(request, token: str | None = None):
             
             # Return valid (but empty/safe) payload with long refresh
             payload = _fallback_payload("التحديث متوقف مؤقتًا (حماية النظام)")
-            payload["settings"]["refresh_interval_sec"] = 3600
+            payload["settings"]["refresh_interval_sec"] = 30
             
             resp = JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
             return _finalize(resp, cache_status="LOOP", device_bound=True if is_snapshot_path else None)

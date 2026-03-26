@@ -559,6 +559,199 @@
     }
   })();
 
+  // ===========================================================================
+  // ===== Client-Side Schedule Engine (day_path) ==============================
+  // ===========================================================================
+  // Uses the full day timeline received from the server to handle ALL period/break
+  // transitions locally. This eliminates the need for server polling on time-based
+  // transitions — the server is only contacted when data changes (via WebSocket push).
+  // ===========================================================================
+
+  const _dayEngine = {
+    blocks: [],       // sorted [{kind,label,from,to,fromMs,toMs,index}, ...]
+    lastDayKey: "",   // signature to detect changes
+  };
+
+  /**
+   * Load day_path from a snapshot payload.
+   * Call once per snapshot render (idempotent if data unchanged).
+   */
+  function dayEngineLoad(payload) {
+    if (!payload) return;
+    var dp = payload.day_path;
+    if (!Array.isArray(dp) || !dp.length) return;
+
+    // Build a signature to avoid re-processing identical data.
+    var sig = "";
+    try { sig = JSON.stringify(dp); } catch (e) { sig = String(dp.length); }
+    if (sig === _dayEngine.lastDayKey) return;
+    _dayEngine.lastDayKey = sig;
+
+    var base = nowMs();
+    var blocks = [];
+    for (var i = 0; i < dp.length; i++) {
+      var b = dp[i];
+      if (!b || !b.from || !b.to) continue;
+      var fMs = hmToMs(b.from, base);
+      var tMs = hmToMs(b.to, base);
+      if (!fMs || !tMs || tMs <= fMs) continue;
+      blocks.push({
+        kind: safeText(b.kind || b.type || "period").toLowerCase(),
+        label: safeText(b.label || ""),
+        from: safeText(b.from),
+        to: safeText(b.to),
+        fromMs: fMs,
+        toMs: tMs,
+        index: b.index || null,
+      });
+    }
+    blocks.sort(function (a, b) { return a.fromMs - b.fromMs; });
+    _dayEngine.blocks = blocks;
+  }
+
+  /**
+   * Find the active block and the one after it, purely from local time.
+   * Returns { current: block|null, next: block|null, dayOver: bool }
+   */
+  function dayEngineFindNow() {
+    var blocks = _dayEngine.blocks;
+    if (!blocks.length) return { current: null, next: null, dayOver: false };
+
+    var n = nowMs();
+    var current = null;
+    var next = null;
+
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (n >= b.fromMs && n < b.toMs) {
+        current = b;
+        next = (i + 1 < blocks.length) ? blocks[i + 1] : null;
+        return { current: current, next: next, dayOver: false };
+      }
+    }
+
+    // Not inside any block — check if before first or after last.
+    if (n < blocks[0].fromMs) {
+      // Before first block: "before" state, next = first block
+      return { current: null, next: blocks[0], dayOver: false };
+    }
+
+    if (n >= blocks[blocks.length - 1].toMs) {
+      // After last block: day over
+      return { current: null, next: null, dayOver: true };
+    }
+
+    // In a gap between blocks (shouldn't happen with well-formed data)
+    for (var j = 0; j < blocks.length - 1; j++) {
+      if (n >= blocks[j].toMs && n < blocks[j + 1].fromMs) {
+        return { current: null, next: blocks[j + 1], dayOver: false };
+      }
+    }
+
+    return { current: null, next: null, dayOver: false };
+  }
+
+  /**
+   * Advance the display to a specific block from the day engine.
+   * This replaces optimisticAdvanceToNextBlock for day_path-based transitions.
+   */
+  function dayEngineApplyBlock(block, stateType) {
+    if (!block) return false;
+
+    var stType = stateType || block.kind || "period";
+    var badge = "حالة اليوم";
+    var title = "";
+
+    if (stType === "period") {
+      badge = "درس";
+      title = block.label || formatPeriodTitle(block);
+    } else if (stType === "break") {
+      badge = "استراحة";
+      title = block.label || "استراحة";
+    } else if (stType === "before") {
+      badge = "انتظار";
+      title = block.label || "انتظار";
+    }
+
+    var range = fmtTimeRange(block.from, block.to);
+
+    setTextIfChanged(dom.heroTitle, title);
+    setTextIfChanged(dom.heroRange, range);
+    setTextIfChanged(dom.badgeKind, badge);
+
+    var nowMsVal = nowMs();
+    var targetMs = (stType === "before") ? block.fromMs : block.toMs;
+    var rem = Math.max(0, Math.floor((targetMs - nowMsVal) / 1000));
+
+    countdownSeconds = rem;
+    hasActiveCountdown = true;
+    progressRange = { start: block.fromMs, end: block.toMs };
+
+    if (stType === "period") {
+      rt.activePeriodIndex = block.index || rt.activePeriodIndex;
+      rt.activeFromHM = block.from;
+    } else if (stType === "break") {
+      rt.activeFromHM = block.from;
+    } else if (stType === "before") {
+      rt.activeFromHM = block.from;
+    }
+    rt.activeToHM = block.to;
+    rt.activeStateType = stType;
+    rt.activeTargetHM = (stType === "before") ? block.from : block.to;
+
+    // Prevent duplicate 00:00 handling.
+    lastStateCoreSig = stType + "||" + safeText(title || "") + "||" + safeText(block.from || "") + "||" + safeText(block.to || "");
+    lastZeroHandledCoreSig = lastStateCoreSig;
+
+    // Re-filter standby list.
+    try {
+      if (lastPayloadForFiltering) renderStandby(lastPayloadForFiltering.standby || []);
+    } catch (e) {}
+
+    // Re-render mini schedule.
+    try {
+      if (lastPayloadForFiltering) renderMiniSchedule(lastPayloadForFiltering, nowMsVal);
+    } catch (e) {}
+
+    return true;
+  }
+
+  /**
+   * Handle countdown reaching zero using the day engine.
+   * Chains through all blocks locally without needing a server fetch.
+   * Returns true if it handled the transition locally.
+   */
+  function dayEngineOnZero() {
+    if (!_dayEngine.blocks.length) return false;
+
+    var res = dayEngineFindNow();
+
+    if (res.dayOver) {
+      // Day ended — show day-over state, no need to fetch.
+      rt.dayOver = true;
+      setTextIfChanged(dom.heroTitle, "انتهى الدوام");
+      setTextIfChanged(dom.heroRange, "");
+      setTextIfChanged(dom.badgeKind, "حالة اليوم");
+      countdownSeconds = null;
+      hasActiveCountdown = false;
+      return true;
+    }
+
+    if (res.current) {
+      // We're inside a block — show it.
+      checkStateTransitionBell(res.current.kind);
+      return dayEngineApplyBlock(res.current, res.current.kind);
+    }
+
+    if (res.next) {
+      // We're between blocks or before the first — show "waiting for next".
+      checkStateTransitionBell("before");
+      return dayEngineApplyBlock(res.next, "before");
+    }
+
+    return false;
+  }
+
   function pickTokenFromUrl() {
     try {
       const qs = new URLSearchParams(window.location.search);
@@ -1443,8 +1636,24 @@
       try { playBellSound(); } catch (e) {}
     }
 
+    // ── Push-only architecture: use dayEngine for ALL time-based transitions ──
+    // dayEngineOnZero() uses the cached day_path to figure out what block
+    // we are in now and advance the UI entirely client-side.
+    // Only if it can't handle it do we fall back to server fetch.
+    try {
+      if (dayEngineOnZero()) {
+        // Day engine handled the transition locally — no server call needed.
+        // Schedule a lightweight refresh after the block duration to catch
+        // the next boundary, and keep the normal loop running slowly.
+        if (isDebug()) console.log("[dayEngine] handled countdown zero locally");
+        return;
+      }
+    } catch (e) {
+      if (isDebug()) console.warn("[dayEngine] onZero error:", e);
+    }
+
+    // ── Fallback: dayEngine couldn't handle it (no data / edge case) ──
     // UX guarantee: if we already know what's next (next_period), show it immediately.
-    // This avoids waiting for schedule_revision changes or cache TTLs.
     try {
       optimisticAdvanceToNextBlock();
     } catch (e) {}
@@ -1457,14 +1666,13 @@
     } catch (e) {}
 
     // Optional (heavier) behavior: full page reload if explicitly requested.
-    // Example: /display/<token>/?reload_on_zero=1
     try {
       const qs = new URLSearchParams(window.location.search);
       if ((qs.get("reload_on_zero") || "").trim() === "1") {
         try {
           const k = "display_reload_on_zero_ts";
           const prev = Number(sessionStorage.getItem(k) || 0);
-          if (prev && now - prev < 3000) return;
+          if (prev && now - prev < 60000) return;
           sessionStorage.setItem(k, String(now));
         } catch (e) {}
         try {
@@ -1474,25 +1682,18 @@
       }
     } catch (e) {}
 
-    // Default: force-refresh data ASAP (bypasses ETag + server-side snapshot cache).
-    // Jitter قصير (200-2000ms) — الحماية من الحمل تتم عبر rate limiting في السيرفر.
-    // التأخير الكبير سابقاً (1-44 ثانية) كان يسبب بقاء النشاط القديم معروضاً.
+    // Default fallback: force-refresh data ASAP.
     try {
-      const baseJitter = 200 + Math.floor(Math.random() * 1800); // 200ms - 2s
-      
+      const baseJitter = 200 + Math.floor(Math.random() * 1800);
       setTimeout(() => {
         try {
           forceRefreshNow("countdown_zero");
         } catch (e) {
-          try {
-            scheduleNext(0.2);
-          } catch (e2) {}
+          try { scheduleNext(0.2); } catch (e2) {}
         }
       }, baseJitter);
     } catch (e) {
-      try {
-        scheduleNext(0.2);
-      } catch (e2) {}
+      try { scheduleNext(0.2); } catch (e2) {}
     }
   }
 
@@ -1582,9 +1783,14 @@
                     const rem2 = typeof s2.remaining_seconds === "number" ? Math.max(0, Math.floor(s2.remaining_seconds)) : null;
                     if ((st2 === "period" || st2 === "break" || st2 === "before") && rem2 === 0 && core2 === coreSig) {
                       const now2 = nowMs();
-                      // Reduced timeout to 3s to ensure screen updates immediately if stuck at 00:00
-                      if (now2 - reloadFallbackTs > 3000) {
-                        reloadFallbackTs = now2;
+                      // Use sessionStorage to prevent reload loops across page reloads.
+                      // Without this, each reload resets the in-memory cooldown, creating an
+                      // infinite reload cycle that triggers the server anti-loop guard.
+                      var reloadCooldownKey = "display_reload_cooldown_ts";
+                      var lastReloadTs = 0;
+                      try { lastReloadTs = Number(sessionStorage.getItem(reloadCooldownKey) || 0); } catch (e) {}
+                      if (now2 - lastReloadTs > 60000) {
+                        try { sessionStorage.setItem(reloadCooldownKey, String(now2)); } catch (e) {}
                         try {
                           window.location.reload();
                         } catch (e) {}
@@ -2508,6 +2714,9 @@
     const baseMs = nowMs();
     hydrateBrand(payload);
 
+    // Load day_path into client-side schedule engine for local transitions.
+    try { dayEngineLoad(payload); } catch (e) {}
+
     const settings = payload.settings || {};
     const meta = payload.meta || {};
 
@@ -2799,6 +3008,24 @@
   let ctrlStatus = null;
   const etagKey = "display_etag_" + (location.pathname || "/");
 
+  // Client-side request budget: prevents hammering the server with snapshot requests.
+  // Tracks requests in a rolling 60-second window. If over budget, delays the request.
+  const _snapshotTimestamps = [];
+  const _SNAPSHOT_BUDGET_PER_MIN = 40; // max snapshot requests per 60s window
+
+  function _snapshotBudgetOk() {
+    var now = Date.now();
+    // Purge entries older than 60s
+    while (_snapshotTimestamps.length > 0 && now - _snapshotTimestamps[0] > 60000) {
+      _snapshotTimestamps.shift();
+    }
+    if (_snapshotTimestamps.length >= _SNAPSHOT_BUDGET_PER_MIN) {
+      return false;
+    }
+    _snapshotTimestamps.push(now);
+    return true;
+  }
+
   // Device ID (stable per browser/device)
   // تحقق سريع: localStorage.getItem("school_display_device_id")
   const deviceIdKey = "school_display_device_id";
@@ -2863,6 +3090,12 @@
   async function safeFetchSnapshot(opts) {
     opts = opts || {};
     if (inflight && !opts.force) return inflight;
+
+    // Client-side budget guard: prevent exceeding server anti-loop limits.
+    if (!_snapshotBudgetOk()) {
+      if (isDebug()) setDebugText("snapshot skipped (client budget) | " + new Date().toLocaleTimeString());
+      return { _rateLimited: true };
+    }
 
     const token = getToken();
     const baseUrl = resolveSnapshotUrl();
@@ -3540,7 +3773,13 @@
   function basePollEverySec() {
     try {
       const wsOpen = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN);
-      if (wsOpen) return Number(cfg.WS_FALLBACK_POLL_EVERY) || 90;
+      if (wsOpen) {
+        // Push-only mode: if WS is connected AND dayEngine has schedule data,
+        // we only need a safety heartbeat poll (5 min). WS push handles data
+        // changes and dayEngine handles all time-based transitions locally.
+        if (_dayEngine.blocks.length > 0) return 300; // 5 min heartbeat
+        return Number(cfg.WS_FALLBACK_POLL_EVERY) || 90;
+      }
     } catch (e) {}
     return Number(cfg.REFRESH_EVERY) || 20;
   }
