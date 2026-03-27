@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from core.tests_utils import make_active_school_with_screen
+from dashboard.views_screens import _screen_command_ttl_seconds
 
 
 class DashboardDisplayContractTests(TestCase):
@@ -43,3 +44,8 @@ class DashboardDisplayContractTests(TestCase):
         live_resp = self.client.get(f"/api/display/live/?token={token}")
         self.assertEqual(today_resp.status_code, 200)
         self.assertEqual(live_resp.status_code, 200)
+
+    def test_manual_screen_command_ttl_covers_ws_fallback_window(self):
+        # ws-live can wait up to 30 minutes outside the active window before the
+        # next lightweight status check, so manual commands must live longer.
+        self.assertGreaterEqual(_screen_command_ttl_seconds(), 30 * 60)

@@ -6,6 +6,7 @@ from typing import Callable
 from urllib.parse import quote
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib import messages
 from django.core.cache import cache
 from django.db import transaction
@@ -23,6 +24,23 @@ logger = logging.getLogger(__name__)
 
 def _display_screen_model():
     return apps.get_model("core", "DisplayScreen")
+
+
+def _screen_command_ttl_seconds() -> int:
+    """
+    Manual screen commands must outlive the client's fallback status checks.
+
+    The display can stay in ws-live mode and only hit `/status` every 5 minutes,
+    and outside the active window that heartbeat can stretch to 30 minutes.
+    If the token-scoped cache key expires earlier, a missed WebSocket broadcast
+    makes the command effectively disappear before the screen can observe it.
+    """
+    default_ttl = 65 * 60  # 65 minutes: safely above the 30-minute off-hours heartbeat.
+    try:
+        raw = int(getattr(settings, "DISPLAY_REMOTE_COMMAND_TTL_SEC", default_ttl) or default_ttl)
+    except Exception:
+        raw = default_ttl
+    return max(30 * 60, min(raw, 24 * 60 * 60))
 
 
 def _get_subscription_model_robust():
@@ -298,7 +316,11 @@ def screen_refresh_now(
 
     token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
     try:
-        cache.set(f"display:force_refresh:{token_hash}", "1", timeout=120)
+        cache.set(
+            f"display:force_refresh:{token_hash}",
+            "1",
+            timeout=_screen_command_ttl_seconds(),
+        )
     except Exception:
         pass
 
@@ -384,7 +406,11 @@ def screen_reload_now(
     token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
 
     try:
-        cache.set(f"display:force_reload:{token_hash}", "1", timeout=120)
+        cache.set(
+            f"display:force_reload:{token_hash}",
+            "1",
+            timeout=_screen_command_ttl_seconds(),
+        )
     except Exception:
         pass
 
