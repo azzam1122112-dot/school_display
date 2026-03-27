@@ -499,11 +499,16 @@
     
     // ===== Unified Operational Mode =====
     // Single source of truth for display state. All decisions flow from this.
-    // Valid modes: "init" | "active" | "ws-live" | "sleeping" | "waking" | "fallback-poll"
+    // Valid modes: "init" | "active" | "ws-live" | "sleeping" | "waking" | "fallback-poll" | "blocked"
     mode: "init",
     modePrev: "",
     modeReason: "",
     modeChangedAt: 0,
+    bindingLost: false,
+    terminalReason: "",
+    terminalDetails: null,
+    bindingLostAt: 0,
+    bindingConflictSource: "",
 
     // Schedule meta from server (authoritative)
     isSchoolDay: true,
@@ -613,34 +618,416 @@
     } catch (e) {}
   }
 
+  function _logContext(extra) {
+    var out = {
+      mode: rt.mode,
+      reason: rt.terminalReason || rt.modeReason || "",
+      wsConnected: !!rt.wsConnected,
+      bindingLost: !!rt.bindingLost,
+    };
+    try {
+      out.deviceKey = getOrCreateDeviceId();
+    } catch (e) {
+      out.deviceKey = "";
+    }
+    if (extra) {
+      var keys = Object.keys(extra);
+      for (var i = 0; i < keys.length; i++) out[keys[i]] = extra[keys[i]];
+    }
+    return out;
+  }
+
+  function isTerminalBlockedMode() {
+    return !!(rt.bindingLost || rt.mode === "blocked");
+  }
+
+  function _trimLogText(v, maxLen) {
+    var s = safeText(v);
+    if (!s) return "";
+    var limit = Math.max(16, Number(maxLen) || 200);
+    return s.length > limit ? s.slice(0, limit - 1) + "…" : s;
+  }
+
+  function _normSignal(v) {
+    return safeText(v)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-]+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
+  }
+
+  var _BINDING_CONFLICT_CODES = {
+    "screen_bound": 1,
+    "device_mismatch": 1,
+    "device_binding_reject": 1,
+    "another_device_active": 1,
+    "screen_active_elsewhere": 1,
+    "binding_conflict": 1,
+    "binding_lost": 1,
+    "device_revoked": 1,
+    "screen_revoked": 1,
+    "screen_rebound": 1,
+    "display_reassigned": 1,
+  };
+
+  var _BINDING_WS_TYPES = {
+    "device_binding_reject": 1,
+    "another_device_active": 1,
+    "screen_active_elsewhere": 1,
+    "binding_lost": 1,
+    "device_revoked": 1,
+  };
+
+  var _BINDING_DEVICE_REQUIRED_CODES = {
+    "missing_device_id": 1,
+    "device_required": 1,
+  };
+
+  var _AUTH_REFRESHABLE_CODES = {
+    "token_expired": 1,
+    "auth_expired": 1,
+    "invalid_token": 1,
+    "authentication_failed": 1,
+    "not_authenticated": 1,
+    "permission_denied": 1,
+  };
+
+  var _BINDING_CONFLICT_TEXT_PATTERNS = [
+    "this screen is already active on another device",
+    "already active on another device",
+    "screen is already active on another device",
+    "screen active elsewhere",
+    "active on another device",
+    "bound to another device",
+    "another_device_active",
+    "device_binding_reject",
+    "screen_active_elsewhere",
+    "device mismatch",
+    "binding conflict",
+    "screen_bound",
+    "device_mismatch",
+    "مرتبطة بجهاز آخر",
+    "جهاز آخر",
+    "شاشة أخرى أصبحت نشطة",
+    "نشطة على جهاز آخر",
+  ];
+
+  var _AUTH_REFRESHABLE_TEXT_PATTERNS = [
+    "token expired",
+    "invalid token",
+    "not authenticated",
+    "authentication credentials were not provided",
+    "unauthorized",
+    "auth expired",
+    "session expired",
+    "jwt expired",
+  ];
+
+  function _containsAny(haystack, patterns) {
+    var h = safeText(haystack).toLowerCase();
+    if (!h) return false;
+    for (var i = 0; i < patterns.length; i++) {
+      if (h.indexOf(patterns[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function _isBindingConflictText(text) {
+    return _containsAny(text, _BINDING_CONFLICT_TEXT_PATTERNS);
+  }
+
+  function _isAuthRefreshableText(text) {
+    return _containsAny(text, _AUTH_REFRESHABLE_TEXT_PATTERNS);
+  }
+
+  function _extractSignalBag(body, rawText) {
+    var b = body && typeof body === "object" ? body : null;
+    var code = _normSignal(
+      (b && (b.code || b.error_code || b.error || b.reason_code)) ||
+      ""
+    );
+    var type = _normSignal(
+      (b && (b.type || b.event || b.action)) ||
+      ""
+    );
+    var detail = safeText(
+      (b && (b.detail || b.message || b.reason || b.error_description || b.error_message || b.title)) ||
+      rawText ||
+      (typeof body === "string" ? body : "")
+    );
+    var textParts = [];
+    if (code) textParts.push(code);
+    if (type) textParts.push(type);
+    if (detail) textParts.push(detail);
+    if (rawText) textParts.push(rawText);
+    return {
+      code: code,
+      type: type,
+      detail: detail,
+      text: textParts.join(" | ").toLowerCase(),
+    };
+  }
+
+  function _bindingUiPayload(info) {
+    var code = _normSignal((info && info.code) || (info && info.type) || "");
+    var msg = _trimLogText((info && info.message) || (info && info.detail) || "", 220);
+    if (_BINDING_DEVICE_REQUIRED_CODES[code]) {
+      return {
+        title: "تعذر تعريف الجهاز",
+        details: msg || "لا يمكن متابعة العرض حتى يتم تعريف هذا الجهاز وربطه بالشاشة من لوحة التحكم.",
+      };
+    }
+    return {
+      title: "هذه الشاشة مربوطة الآن بجهاز آخر",
+      details:
+        msg ||
+        "تم سحب صلاحية هذا الجهاز لأن شاشة أخرى أصبحت نشطة. أعد الربط من لوحة التحكم إذا أردت استخدام هذا الجهاز.",
+    };
+  }
+
+  function isBindingConflictResponse(resp, body, rawText, sourcePath) {
+    var status = resp && typeof resp.status === "number" ? resp.status : 0;
+    var bag = _extractSignalBag(body, rawText);
+    var code = bag.code;
+    var type = bag.type;
+    var text = bag.text;
+
+    var statusBindingCandidate = status === 403 || status === 409;
+    var byCode = !!(_BINDING_CONFLICT_CODES[code] || _BINDING_CONFLICT_CODES[type]);
+    var byMessage = _isBindingConflictText(text);
+    var byDeviceRequired = !!(_BINDING_DEVICE_REQUIRED_CODES[code] || _BINDING_DEVICE_REQUIRED_CODES[type]);
+    var authRefreshable = !!(
+      _AUTH_REFRESHABLE_CODES[code] ||
+      _AUTH_REFRESHABLE_CODES[type] ||
+      _isAuthRefreshableText(text)
+    );
+
+    var matched = false;
+    var classification = "none";
+    if (!authRefreshable) {
+      if (statusBindingCandidate && (byCode || byMessage || byDeviceRequired)) {
+        matched = true;
+        classification = byCode ? "status_code_conflict" : byDeviceRequired ? "status_device_required" : "status_text_conflict";
+      } else if (byCode || byDeviceRequired) {
+        matched = true;
+        classification = byCode ? "payload_code_conflict" : "payload_device_required";
+      } else if (statusBindingCandidate && byMessage) {
+        matched = true;
+        classification = "payload_text_conflict";
+      }
+    }
+
+    return {
+      matched: matched,
+      source: safeText(sourcePath || ""),
+      status: status || null,
+      code: code || type || "",
+      message: bag.detail || "",
+      classification: classification,
+      text: _trimLogText(rawText || bag.text, 240),
+      authRefreshable: authRefreshable,
+    };
+  }
+
+  function isBindingConflictWsMessage(msg) {
+    var obj = msg && typeof msg === "object" ? msg : null;
+    if (!obj) {
+      return { matched: false };
+    }
+
+    var nested = obj.data && typeof obj.data === "object" ? obj.data : null;
+
+    var type = _normSignal(obj.type || obj.event || obj.action || (nested && (nested.type || nested.event || nested.action)) || "");
+    var code = _normSignal(obj.code || obj.error_code || obj.error || obj.reason_code || (nested && (nested.code || nested.error_code || nested.error || nested.reason_code)) || "");
+    var msgText = safeText(
+      obj.message ||
+      obj.detail ||
+      obj.reason ||
+      obj.error_description ||
+      (nested && (nested.message || nested.detail || nested.reason || nested.error_description)) ||
+      ""
+    );
+    var bag = _extractSignalBag(nested || obj, msgText);
+    var mergedText = [bag.text, type, code].join(" | ");
+
+    var byType = !!_BINDING_WS_TYPES[type];
+    var byCode = !!(_BINDING_CONFLICT_CODES[code] || _BINDING_CONFLICT_CODES[bag.code] || _BINDING_CONFLICT_CODES[bag.type]);
+    var byMessage = _isBindingConflictText(mergedText);
+
+    var matched = byType || byCode || byMessage;
+    return {
+      matched: matched,
+      source: "ws",
+      status: null,
+      code: code || bag.code || type || bag.type || "",
+      message: msgText || bag.detail || "",
+      classification: byType ? "ws_type_conflict" : byCode ? "ws_code_conflict" : byMessage ? "ws_text_conflict" : "none",
+      text: _trimLogText(mergedText, 240),
+    };
+  }
+
+  function isBindingConflictWsClose(event) {
+    var code = event && typeof event.code === "number" ? event.code : 0;
+    var rawReason = safeText(event && event.reason ? event.reason : "");
+    var parsed = null;
+    if (rawReason) {
+      try {
+        parsed = JSON.parse(rawReason);
+      } catch (e) {
+        parsed = null;
+      }
+    }
+    var bag = _extractSignalBag(parsed, rawReason);
+    var text = [bag.text, String(code || "")].join(" | ");
+    var byCode = !!(_BINDING_CONFLICT_CODES[bag.code] || _BINDING_CONFLICT_CODES[bag.type]);
+    var byText = _isBindingConflictText(text);
+    var matched = byCode || byText;
+    return {
+      matched: matched,
+      source: "ws_close",
+      status: code || null,
+      code: bag.code || bag.type || "",
+      message: rawReason || bag.detail || "",
+      classification: byCode ? "ws_close_code_conflict" : byText ? "ws_close_text_conflict" : "none",
+      text: _trimLogText(text, 240),
+    };
+  }
+
+  function enterBindingLostState(reason, details) {
+    var info = details || {};
+    var terminalReason = safeText(reason || info.classification || info.code || "binding_lost");
+    var sourcePath = safeText(info.sourcePath || info.source || "unknown");
+
+    if (isTerminalBlockedMode()) {
+      _log("terminal_state_entered", _logContext({
+        reason: terminalReason,
+        sourcePath: sourcePath,
+        duplicate: true,
+      }));
+      return;
+    }
+
+    var timersBefore = Object.keys(_timers);
+    var wsObj = rt.ws;
+
+    rt.bindingLost = true;
+    rt.bindingLostAt = Date.now();
+    rt.terminalReason = terminalReason;
+    rt.bindingConflictSource = sourcePath;
+    rt.terminalDetails = info;
+
+    _log("binding_conflict_detected", _logContext({
+      reason: terminalReason,
+      sourcePath: sourcePath,
+      status: typeof info.status === "number" ? info.status : null,
+      responseClassification: safeText(info.classification || ""),
+      responseCode: safeText(info.code || ""),
+      responseMessage: _trimLogText(info.message || info.text || "", 220),
+    }));
+    _log("binding_conflict_source", _logContext({
+      sourcePath: sourcePath,
+      status: typeof info.status === "number" ? info.status : null,
+      responseClassification: safeText(info.classification || ""),
+    }));
+
+    setMode("blocked", "binding_lost:" + terminalReason);
+
+    rt.pendingRev = null;
+    rt.forceFetchSnapshot = false;
+    rt.status304Streak = 0;
+    rt.statusEverySec = 0;
+    rt.transitionUntilTs = 0;
+    rt.transitionBackoffSec = 2.0;
+    rt.wsEnabled = false;
+    rt.wsConnected = false;
+    rt.wsRetryCount = rt.wsMaxRetries;
+    rt.wsSuppressedUntilTs = Number.MAX_SAFE_INTEGER;
+    failStreak = 0;
+    isFetching = false;
+    forceRefreshInProgress = false;
+
+    _stopWsHeartbeat("binding_lost_terminal");
+    _heartbeatGen++;
+
+    clearAllRuntimeTimers();
+    _log("timers_cleared_due_to_binding_loss", _logContext({
+      sourcePath: sourcePath,
+      timerNames: timersBefore.join(","),
+      timerCount: timersBefore.length,
+    }));
+
+    if (ctrl) {
+      try { ctrl.abort(); } catch (e) {}
+    }
+    if (ctrlStatus) {
+      try { ctrlStatus.abort(); } catch (e) {}
+    }
+    ctrl = null;
+    ctrlStatus = null;
+    inflight = null;
+    inflightStatus = null;
+
+    if (wsObj) {
+      try { wsObj.onopen = null; } catch (e) {}
+      try { wsObj.onmessage = null; } catch (e) {}
+      try { wsObj.onerror = null; } catch (e) {}
+      try { wsObj.onclose = null; } catch (e) {}
+      try { wsObj.close(4403, "binding_lost"); } catch (e) {}
+    }
+    rt.ws = null;
+    _log("ws_closed_due_to_binding_loss", _logContext({
+      sourcePath: sourcePath,
+      hadSocket: !!wsObj,
+    }));
+
+    var ui = _bindingUiPayload(info);
+    showBlocker(ui.title, ui.details);
+
+    _log("terminal_state_entered", _logContext({
+      reason: terminalReason,
+      sourcePath: sourcePath,
+      status: typeof info.status === "number" ? info.status : null,
+      responseClassification: safeText(info.classification || ""),
+      wsConnected: !!rt.wsConnected,
+    }));
+  }
+
   // ===========================================================================
   // ===== Mode State Machine ==================================================
   // ===========================================================================
   // setMode() is the ONLY way to change rt.mode. All transitions are validated.
   // Invalid transitions are rejected with a warning.
   //
-  //  init → active | sleeping | fallback-poll
-  //  active → ws-live | sleeping | fallback-poll
-  //  ws-live → active | sleeping | fallback-poll
-  //  sleeping → waking
-  //  waking → active | ws-live | sleeping | fallback-poll
-  //  fallback-poll → active | ws-live | sleeping
+  //  init → active | sleeping | fallback-poll | blocked
+  //  active → ws-live | sleeping | fallback-poll | blocked
+  //  ws-live → active | sleeping | fallback-poll | blocked
+  //  sleeping → waking | blocked
+  //  waking → active | ws-live | sleeping | fallback-poll | blocked
+  //  fallback-poll → active | ws-live | sleeping | blocked
+  //  blocked → (terminal, no automatic exit)
   //
   //  "init" is only valid at startup before first snapshot.
   // ===========================================================================
 
   var _validTransitions = {
-    "init":          ["active", "sleeping", "fallback-poll"],
-    "active":        ["ws-live", "sleeping", "fallback-poll"],
-    "ws-live":       ["active", "sleeping", "fallback-poll"],
-    "sleeping":      ["waking"],
-    "waking":        ["active", "ws-live", "sleeping", "fallback-poll"],
-    "fallback-poll": ["active", "ws-live", "sleeping"],
+    "init":          ["active", "sleeping", "fallback-poll", "blocked"],
+    "active":        ["ws-live", "sleeping", "fallback-poll", "blocked"],
+    "ws-live":       ["active", "sleeping", "fallback-poll", "blocked"],
+    "sleeping":      ["waking", "blocked"],
+    "waking":        ["active", "ws-live", "sleeping", "fallback-poll", "blocked"],
+    "fallback-poll": ["active", "ws-live", "sleeping", "blocked"],
+    "blocked":       [],
   };
 
   function setMode(next, reason) {
     var prev = rt.mode;
     if (prev === next) return; // no-op for same mode
+
+    // Terminal mode is one-way for this session.
+    if (prev === "blocked" && next !== "blocked") {
+      _log("mode_rejected", { from: prev, to: next, reason: reason, terminal: true });
+      return;
+    }
 
     // Validate transition
     var allowed = _validTransitions[prev];
@@ -662,6 +1049,22 @@
   }
 
   function _onModeEnter(mode, prev, reason) {
+    if (mode === "blocked") {
+      clearNamedTimer("poll");
+      clearNamedTimer("ws_snapshot");
+      clearNamedTimer("sleep_reconnect");
+      clearNamedTimer("wake");
+      clearNamedTimer("wake_chunk");
+      clearNamedTimer("safety_check");
+      clearNamedTimer("ws_reconnect");
+      _stopWsHeartbeat("entered_blocked");
+      _log("poll_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "_onModeEnter",
+        reason: reason,
+      }));
+      return;
+    }
+
     if (mode === "sleeping") {
       // Cancel polling timer — sleep engine manages wake
       clearNamedTimer("poll");
@@ -828,6 +1231,12 @@
    * clearNamedTimer("sleep_reconnect") in the WS onopen handler.
    */
   function _scheduleSleepReconnect() {
+    if (isTerminalBlockedMode()) {
+      _log("reconnect_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "sleep_reconnect",
+      }));
+      return;
+    }
     // Guard: only during sleep
     if (rt.mode !== "sleeping") return;
     // Guard: don't schedule if WS already connected
@@ -842,6 +1251,12 @@
     });
 
     setNamedTimer("sleep_reconnect", function () {
+      if (isTerminalBlockedMode()) {
+        _log("reconnect_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "sleep_reconnect_timer",
+        }));
+        return;
+      }
       // Re-check mode at fire time — mode may have changed
       if (rt.mode !== "sleeping") {
         _log("sleep_reconnect_skipped", { reason: "mode_changed", mode: rt.mode });
@@ -930,6 +1345,13 @@
    * (coalesced) — only one fetch executes per burst of invalidates.
    */
   function scheduleWsSnapshotRefresh(revision) {
+    if (isTerminalBlockedMode()) {
+      _log("snapshot_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "scheduleWsSnapshotRefresh",
+        revision: revision,
+      }));
+      return;
+    }
     var jitter = _wsSnapshotJitterMs();
 
     _log("ws_snapshot_scheduled", {
@@ -939,6 +1361,13 @@
     });
 
     setNamedTimer("ws_snapshot", function () {
+      if (isTerminalBlockedMode()) {
+        _log("snapshot_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "ws_snapshot_timer",
+          revision: revision,
+        }));
+        return;
+      }
       // Guard: don't fetch if mode changed to sleeping
       if (rt.mode === "sleeping") {
         _log("ws_snapshot_skipped", { reason: "sleeping" });
@@ -984,6 +1413,13 @@
   var _heartbeatGen = 0; // generation counter — invalidates stale callbacks
 
   function _startWsHeartbeat(reason) {
+    if (isTerminalBlockedMode()) {
+      _log("heartbeat_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "_startWsHeartbeat",
+        heartbeatReason: reason || "",
+      }));
+      return;
+    }
     clearNamedTimer("poll"); // ensure no concurrent poll timer
     _heartbeatGen++; // new generation — stale callbacks from previous cycle will bail
     setNamedTimer("ws_heartbeat", _wsHeartbeatTick, _WS_HEARTBEAT_SEC * 1000, "heartbeat_" + (reason || "start"));
@@ -1003,12 +1439,25 @@
   }
 
   function _ensureWsHeartbeat(reason) {
+    if (isTerminalBlockedMode()) {
+      _log("heartbeat_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "_ensureWsHeartbeat",
+        heartbeatReason: reason || "",
+      }));
+      return;
+    }
     if (rt.mode !== "ws-live") return;
     if (_timers["ws_heartbeat"]) return; // already scheduled
     _startWsHeartbeat(reason);
   }
 
   function _wsHeartbeatTick() {
+    if (isTerminalBlockedMode()) {
+      _log("heartbeat_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "_wsHeartbeatTick",
+      }));
+      return;
+    }
     // Mode guard: only execute heartbeat in ws-live
     if (rt.mode !== "ws-live") {
       _log("heartbeat_tick_skipped", { reason: "not_ws_live", mode: rt.mode });
@@ -1614,6 +2063,14 @@
   // ✅ THROTTLED RE-SYNC: طلب re-sync مع حماية من الطلبات الزائدة
   // ⚠️ COST PROTECTION: لا يرسل أكثر من request واحد كل 30 ثانية
   function requestReSyncIfNeeded() {
+    if (isTerminalBlockedMode()) {
+      _log("wake_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "requestReSyncIfNeeded",
+        action: "resync_skipped",
+      }));
+      return;
+    }
+    if (isBlocked) return;
     if (rt && rt.wsConnected) {
       _log("resync_skipped", { reason: "ws_connected" });
       return;
@@ -2442,7 +2899,13 @@
   }
 
   function onCountdownZero() {
-    if (isBlocked) return;
+    if (isBlocked && !isTerminalBlockedMode()) return;
+    if (isTerminalBlockedMode()) {
+      _log("snapshot_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "onCountdownZero",
+      }));
+      return;
+    }
     const now = nowMs();
     if (now - lastCountdownZeroAt < 2000) return;
     lastCountdownZeroAt = now;
@@ -2501,6 +2964,12 @@
     try {
       const baseJitter = 200 + Math.floor(Math.random() * 1800);
       setTimeout(() => {
+        if (isTerminalBlockedMode()) {
+          _log("snapshot_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "countdown_zero_delayed_force_refresh",
+          }));
+          return;
+        }
         try {
           forceRefreshNow("countdown_zero");
         } catch (e) {
@@ -2515,7 +2984,14 @@
   let forceRefreshInProgress = false;
   let reloadFallbackTs = 0;
   async function forceRefreshNow(reason) {
-    if (isBlocked) return;
+    if (isBlocked && !isTerminalBlockedMode()) return;
+    if (isTerminalBlockedMode()) {
+      _log("snapshot_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "forceRefreshNow",
+        forceReason: reason || "",
+      }));
+      return;
+    }
     if (forceRefreshInProgress) return;
     forceRefreshInProgress = true;
 
@@ -2578,6 +3054,12 @@
         if ((stType === "period" || stType === "break" || stType === "before") && rem === 0) {
           // One quick retry (server might still be computing the transition)
           setTimeout(() => {
+            if (isTerminalBlockedMode()) {
+              _log("snapshot_blocked_due_to_binding_loss", _logContext({
+                sourcePath: "countdown_zero_retry_timer",
+              }));
+              return;
+            }
             try {
               safeFetchSnapshot({ force: true, bypassEtag: true, bypassServerCache: true, transition: true, reason: "countdown_zero_retry" })
                 .then((snap2) => {
@@ -4122,6 +4604,13 @@
 
   async function safeFetchSnapshot(opts) {
     opts = opts || {};
+    if (isBlocked && !isTerminalBlockedMode()) return null;
+    if (isTerminalBlockedMode()) {
+      _log("snapshot_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "safeFetchSnapshot_preflight",
+      }));
+      return null;
+    }
     if (inflight && !opts.force) return inflight;
 
     // Client-side budget guard: prevent exceeding server anti-loop limits.
@@ -4212,6 +4701,13 @@
       credentials: "omit",
       signal: ctrl ? ctrl.signal : undefined,
     }).then(async (r) => {
+      if (isTerminalBlockedMode()) {
+        _log("snapshot_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "safeFetchSnapshot_response",
+          status: r.status,
+        }));
+        return null;
+      }
       // Server clock sync: works even when response body is cached or 304.
       try {
         const h = r.headers.get("X-Server-Time-MS");
@@ -4239,15 +4735,28 @@
           console.warn("[snapshot] HTTP", r.status);
         }
 
+        let body = null;
+        try {
+          body = raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          body = null;
+        }
+
+        var bindingInfo = isBindingConflictResponse(r, body, raw, "snapshot");
+        if (bindingInfo.matched) {
+          enterBindingLostState("snapshot_binding_conflict", {
+            sourcePath: "snapshot",
+            status: r.status,
+            classification: bindingInfo.classification,
+            code: bindingInfo.code,
+            message: bindingInfo.message || raw,
+            text: bindingInfo.text,
+          });
+          return null;
+        }
+
         // 403 عادة تعني: الشاشة مرتبطة بجهاز آخر أو لا يوجد معرف جهاز
         if (r.status === 403) {
-          let body = null;
-          try {
-            body = raw ? JSON.parse(raw) : null;
-          } catch (e) {
-            body = null;
-          }
-
           const err = body && (body.error || body.code || body.detail);
           const msg = body && (body.message || body.detail);
 
@@ -4305,7 +4814,14 @@
         } catch (e) {}
       }
 
-      return r.json();
+      var payload = await r.json().catch(() => null);
+      if (isTerminalBlockedMode()) {
+        _log("snapshot_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "safeFetchSnapshot_payload",
+        }));
+        return null;
+      }
+      return payload;
     });
 
     // Dynamic timeout: 15s for first load, 9s for subsequent refreshes
@@ -4320,7 +4836,7 @@
       }
     })
       .catch((e) => {
-        if (isBlocked) return null;
+        if (isTerminalBlockedMode()) return null;
         renderAlert("تعذر جلب البيانات", "تأكد من token ومن مسار snapshot.");
         ensureDebugOverlay();
         if (isDebug()) setDebugText("fetch error: " + (e && e.message ? e.message : String(e)));
@@ -4335,6 +4851,13 @@
 
   async function safeFetchStatus(opts) {
     opts = opts || {};
+    if (isBlocked && !isTerminalBlockedMode()) return { fetch_required: false, _blocked: true };
+    if (isTerminalBlockedMode()) {
+      _log("poll_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "safeFetchStatus_preflight",
+      }));
+      return { fetch_required: false, _blocked: true };
+    }
     if (inflightStatus && !opts.force) return inflightStatus;
 
     const token = getToken();
@@ -4377,6 +4900,13 @@
       credentials: "omit",
       signal: ctrlStatus ? ctrlStatus.signal : undefined,
     }).then(async (r) => {
+      if (isTerminalBlockedMode()) {
+        _log("poll_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "safeFetchStatus_response",
+          status: r.status,
+        }));
+        return { fetch_required: false, _blocked: true };
+      }
       // Server clock sync: keep countdown/clock aligned even when we only poll /status.
       try {
         const h = r.headers.get("X-Server-Time-MS");
@@ -4401,11 +4931,56 @@
       }
 
       if (!r.ok) {
-        // Don't block the display on status errors; just fall back to snapshot.
+        var raw = "";
+        try {
+          raw = await r.text();
+        } catch (e) {
+          raw = "";
+        }
+        var bodyErr = null;
+        try {
+          bodyErr = raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          bodyErr = null;
+        }
+
+        var bindingInfo = isBindingConflictResponse(r, bodyErr, raw, "status");
+        if (bindingInfo.matched) {
+          enterBindingLostState("status_binding_conflict", {
+            sourcePath: "status",
+            status: r.status,
+            classification: bindingInfo.classification,
+            code: bindingInfo.code,
+            message: bindingInfo.message || raw,
+            text: bindingInfo.text,
+          });
+          return { fetch_required: false, _blocked: true };
+        }
+
+        // Non-binding status errors: fall back to snapshot.
         return { fetch_required: true };
       }
 
       const body = await r.json().catch(() => null);
+      if (isTerminalBlockedMode()) {
+        _log("poll_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "safeFetchStatus_payload",
+        }));
+        return { fetch_required: false, _blocked: true };
+      }
+
+      var okBindingInfo = isBindingConflictResponse(r, body, "", "status_payload");
+      if (okBindingInfo.matched) {
+        enterBindingLostState("status_payload_binding_conflict", {
+          sourcePath: "status_payload",
+          status: r.status,
+          classification: okBindingInfo.classification,
+          code: okBindingInfo.code,
+          message: okBindingInfo.message,
+          text: okBindingInfo.text,
+        });
+        return { fetch_required: false, _blocked: true };
+      }
 
       // Prefer header revision if present (authoritative even if body is missing).
       try {
@@ -4443,6 +5018,9 @@
       }
     })
       .catch(() => {
+        if (isTerminalBlockedMode()) {
+          return { fetch_required: false, _blocked: true };
+        }
         // Silent fallback.
         return { fetch_required: true };
       })
@@ -4505,6 +5083,22 @@
   function scheduleNext(sec, forceReason) {
     var mode = rt.mode;
 
+    if (isBlocked && !isTerminalBlockedMode()) return;
+
+    if (isTerminalBlockedMode()) {
+      if (forceReason) {
+        _log("force_reason_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "scheduleNext",
+          forceReason: forceReason,
+        }));
+      }
+      _log("poll_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "scheduleNext",
+        delaySec: Math.max(0.2, Number(sec) || 0),
+      }));
+      return;
+    }
+
     // --- forceReason allowlist enforcement ---
     if (forceReason && !_isAllowedForceReason(forceReason)) {
       _log("force_reason_rejected", { reason: forceReason, mode: mode });
@@ -4542,7 +5136,13 @@
   }
 
   async function refreshLoop() {
-    if (isBlocked) return;
+    if (isBlocked && !isTerminalBlockedMode()) return;
+    if (isTerminalBlockedMode()) {
+      _log("poll_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "refreshLoop_preflight",
+      }));
+      return;
+    }
     if (isFetching) return; // Prevent overlapping loops
 
     // Mode-based gate: sleeping displays do not poll.
@@ -4591,6 +5191,13 @@
           snap = await safeFetchSnapshot({ bypassEtag: true });
         } else {
           const st = await safeFetchStatus();
+          if (isTerminalBlockedMode() || (st && st._blocked)) {
+            isFetching = false;
+            _log("poll_blocked_due_to_binding_loss", _logContext({
+              sourcePath: "refreshLoop_after_status",
+            }));
+            return;
+          }
           // Server can request a full reload (dashboard per-screen reload).
           if (st && st.reload === true) {
             isFetching = false;
@@ -4683,6 +5290,14 @@
     } catch (e) {
         // Should be caught inside safeFetchSnapshot but just in case
         snap = null;
+    }
+
+    if (isTerminalBlockedMode()) {
+      isFetching = false;
+      _log("poll_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "refreshLoop_post_fetch",
+      }));
+      return;
     }
 
     if (snap && snap._rateLimited) {
@@ -4894,6 +5509,12 @@
    * Called after every successful renderState().
    */
   function sleepEvaluate() {
+    if (isTerminalBlockedMode()) {
+      _log("wake_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "sleepEvaluate",
+      }));
+      return;
+    }
     if (!lastPayloadForFiltering) return; // never sleep before first render
 
     // Validate meta before any decision
@@ -4948,6 +5569,13 @@
    * Enter sleep mode — stop polling, schedule wake-up with jitter.
    */
   function sleepEnter(reason) {
+    if (isTerminalBlockedMode()) {
+      _log("wake_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "sleepEnter",
+        sleepReason: reason || "",
+      }));
+      return;
+    }
     if (rt.mode === "sleeping" && rt.sleepReason === reason) return; // idempotent
 
     rt.sleepReason = reason;
@@ -4998,10 +5626,23 @@
    * Schedule a wake-up, splitting long delays into 2-hour chunks.
    */
   function _scheduleCappedWake(delayMs) {
+    if (isTerminalBlockedMode()) {
+      _log("wake_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "_scheduleCappedWake",
+        delayMs: Math.round(Number(delayMs) || 0),
+      }));
+      return;
+    }
     var MAX_CHUNK = 2 * 60 * 60 * 1000; // 2 hours
 
     if (delayMs <= MAX_CHUNK) {
       setNamedTimer("wake", function () {
+        if (isTerminalBlockedMode()) {
+          _log("wake_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "wake_timer",
+          }));
+          return;
+        }
         if (rt.mode === "sleeping") {
           setMode("waking", "timer");
         }
@@ -5009,6 +5650,12 @@
     } else {
       // Schedule intermediate chunk, then re-evaluate
       setNamedTimer("wake_chunk", function () {
+        if (isTerminalBlockedMode()) {
+          _log("wake_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "wake_chunk_timer",
+          }));
+          return;
+        }
         if (rt.mode !== "sleeping") return;
         sleepSafetyCheck();
       }, MAX_CHUNK, "wake_chunk_reeval");
@@ -5020,6 +5667,12 @@
    * Guards against setTimeout drift or tab freeze.
    */
   function sleepSafetyCheck() {
+    if (isTerminalBlockedMode()) {
+      _log("wake_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "sleepSafetyCheck",
+      }));
+      return;
+    }
     if (rt.mode !== "sleeping") return;
 
     var now = nowMs();
@@ -5091,6 +5744,7 @@
    * Returns seconds until next poll based on current mode.
    */
   function basePollEverySec() {
+    if (isTerminalBlockedMode()) return 86400;
     // Sleeping: no poll (wake system handles resumption)
     if (rt.mode === "sleeping") return 86400;
 
@@ -5118,6 +5772,12 @@
   }
 
   function initWebSocket() {
+    if (isTerminalBlockedMode()) {
+      _log("reconnect_blocked_due_to_binding_loss", _logContext({
+        sourcePath: "initWebSocket",
+      }));
+      return;
+    }
     if (!rt.wsEnabled) {
       _log("ws_disabled", { reason: "feature_flag" });
       return;
@@ -5128,7 +5788,15 @@
     if (rt.wsSuppressedUntilTs && nowTs < rt.wsSuppressedUntilTs) {
       var waitMs = Math.max(1000, rt.wsSuppressedUntilTs - nowTs);
       _log("ws_suppressed", { waitSec: Math.round(waitMs / 1000) });
-      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, waitMs, "ws_suppressed_retry");
+      setNamedTimer("ws_reconnect", function () {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_suppressed_retry",
+          }));
+          return;
+        }
+        initWebSocket();
+      }, waitMs, "ws_suppressed_retry");
       return;
     }
     
@@ -5136,7 +5804,15 @@
     if (rt.wsRetryCount >= rt.wsMaxRetries) {
       var longDelayMs = 120 * 1000;
       _log("ws_max_retries", { delay: 120 });
-      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, longDelayMs, "ws_slow_retry");
+      setNamedTimer("ws_reconnect", function () {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_slow_retry",
+          }));
+          return;
+        }
+        initWebSocket();
+      }, longDelayMs, "ws_slow_retry");
       return;
     }
     
@@ -5166,6 +5842,13 @@
       rt.ws = new WebSocket(wsUrl);
       
       rt.ws.onopen = function() {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_onopen",
+          }));
+          try { rt.ws.close(4403, "binding_lost"); } catch (e) {}
+          return;
+        }
         rt.wsConnected = true;
         rt.wsRetryCount = 0;
         rt.wsEverConnected = true;
@@ -5200,6 +5883,13 @@
         
         // Start keepalive ping (every 30s) via named interval
         setNamedInterval("ws_ping", function () {
+          if (isTerminalBlockedMode()) {
+            _log("heartbeat_blocked_due_to_binding_loss", _logContext({
+              sourcePath: "ws_ping_interval",
+            }));
+            clearNamedTimer("ws_ping");
+            return;
+          }
           if (rt.ws && rt.ws.readyState === WebSocket.OPEN) {
             try {
               rt.ws.send(JSON.stringify({ type: "ping" }));
@@ -5211,10 +5901,29 @@
       };
       
       rt.ws.onmessage = function(event) {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_onmessage_ignored",
+          }));
+          return;
+        }
         try {
           var msg = JSON.parse(event.data);
           
           if (msg.type === "pong") return;
+
+          var wsBinding = isBindingConflictWsMessage(msg);
+          if (wsBinding.matched) {
+            enterBindingLostState("ws_binding_conflict", {
+              sourcePath: "ws_message",
+              status: null,
+              classification: wsBinding.classification,
+              code: wsBinding.code,
+              message: wsBinding.message || wsBinding.text,
+              text: wsBinding.text,
+            });
+            return;
+          }
 
           if (msg.type === "reload") {
             _log("ws_reload", {});
@@ -5258,6 +5967,15 @@
       };
       
       rt.ws.onclose = function(event) {
+        if (isTerminalBlockedMode()) {
+          rt.wsConnected = false;
+          clearNamedTimer("ws_ping");
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_onclose_terminal",
+            code: event && event.code ? event.code : 0,
+          }));
+          return;
+        }
         rt.wsConnected = false;
         clearNamedTimer("ws_ping");
         _stopWsHeartbeat("ws_closed"); // stop heartbeat — mode transition starts poll
@@ -5266,6 +5984,19 @@
         var reason = event.reason || "";
         
         _log("ws_closed", { code: code, reason: reason, mode: rt.mode });
+
+        var wsCloseBinding = isBindingConflictWsClose(event);
+        if (wsCloseBinding.matched) {
+          enterBindingLostState("ws_close_binding_conflict", {
+            sourcePath: "ws_close",
+            status: code || null,
+            classification: wsCloseBinding.classification,
+            code: wsCloseBinding.code,
+            message: wsCloseBinding.message || wsCloseBinding.text,
+            text: wsCloseBinding.text,
+          });
+          return;
+        }
 
         // Transition mode: if was ws-live, degrade to adaptive fallback
         if (rt.mode === "ws-live") {
@@ -5305,22 +6036,52 @@
         if (rt.wsRetryCount >= rt.wsMaxRetries) {
           var longDelaySec = 120;
           _log("ws_max_retries_reconnect", { delay: longDelaySec });
-          setNamedTimer("ws_reconnect", function () { initWebSocket(); }, longDelaySec * 1000, "ws_slow_retry");
+          setNamedTimer("ws_reconnect", function () {
+            if (isTerminalBlockedMode()) {
+              _log("reconnect_blocked_due_to_binding_loss", _logContext({
+                sourcePath: "ws_max_retries_reconnect_timer",
+              }));
+              return;
+            }
+            initWebSocket();
+          }, longDelaySec * 1000, "ws_slow_retry");
           return;
         }
 
         _log("ws_reconnecting", { delaySec: delay.toFixed(1), attempt: rt.wsRetryCount });
-        setNamedTimer("ws_reconnect", function () { initWebSocket(); }, delay * 1000, "ws_retry");
+        setNamedTimer("ws_reconnect", function () {
+          if (isTerminalBlockedMode()) {
+            _log("reconnect_blocked_due_to_binding_loss", _logContext({
+              sourcePath: "ws_retry_timer",
+            }));
+            return;
+          }
+          initWebSocket();
+        }, delay * 1000, "ws_retry");
       };
       
     } catch (e) {
+      if (isTerminalBlockedMode()) {
+        _log("reconnect_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "ws_init_error_terminal",
+        }));
+        return;
+      }
       _log("ws_init_error", { error: String(e) });
       rt.wsRetryCount++;
       
       var retryDelay = (rt.wsRetryCount < rt.wsMaxRetries)
         ? Math.min(60, Math.pow(2, rt.wsRetryCount - 1))
         : 120;
-      setNamedTimer("ws_reconnect", function () { initWebSocket(); }, retryDelay * 1000, "ws_error_retry");
+      setNamedTimer("ws_reconnect", function () {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_error_retry_timer",
+          }));
+          return;
+        }
+        initWebSocket();
+      }, retryDelay * 1000, "ws_error_retry");
     }
   }
 
@@ -5381,6 +6142,12 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+      if (isTerminalBlockedMode()) {
+        _log("visibility_resume_blocked_due_to_binding_loss", _logContext({
+          sourcePath: "visibilitychange",
+        }));
+        return;
+      }
       detectClockDrift();
       requestReSyncIfNeeded();
       
