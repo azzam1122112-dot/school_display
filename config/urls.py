@@ -1,10 +1,11 @@
 from django.contrib import admin
-from django.contrib.staticfiles.storage import staticfiles_storage
-from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
-from django.urls import path, include
+from django.urls import path, include, reverse
 from django.conf import settings
 from django.conf.urls.static import static
+from django.utils import timezone
+
+from core.static_assets import build_static_response
 
 
 def ws_display_http_fallback(request):
@@ -24,53 +25,75 @@ def ws_display_http_fallback(request):
 
 def favicon(request):
     """Serve favicon without redirect and without streaming (ASGI-friendly)."""
-    content = None
-
-    # 1) Prefer finders (works in dev without collectstatic)
-    try:
-        found_path = finders.find("favicon.ico")
-        if found_path:
-            with open(found_path, "rb") as f:
-                content = f.read()
-    except Exception:
-        content = None
-
-    # 2) Fallback to storage (works in production after collectstatic)
-    if content is None:
-        try:
-            with staticfiles_storage.open("favicon.ico", "rb") as f:
-                content = f.read()
-        except Exception:
-            return HttpResponse(status=404)
-
-    resp = HttpResponse(content, content_type="image/x-icon")
-    # Cache aggressively; file changes are fingerprinted by collectstatic/staticfiles.
-    resp["Cache-Control"] = "public, max-age=31536000, immutable"
-    return resp
+    response = build_static_response(
+        "favicon.ico",
+        method=request.method,
+        cache_control="public, max-age=31536000, immutable",
+        is_versioned=True,
+    )
+    return response or HttpResponse(status=404)
 
 
 def robots_txt(request):
     """Serve robots.txt safely in dev/test/prod without import-time static URL resolution."""
-    content = None
+    loaded = build_static_response(
+        "robots.txt",
+        method=request.method,
+        cache_control="public, max-age=86400",
+    )
+    sitemap_url = request.build_absolute_uri("/sitemap.xml")
+    base_text = "User-agent: *\nAllow: /\n"
 
-    # 1) Prefer finders (works in dev/test without collectstatic)
-    try:
-        found_path = finders.find("robots.txt")
-        if found_path:
-            with open(found_path, "rb") as f:
-                content = f.read()
-    except Exception:
-        content = None
-
-    # 2) Fallback to storage (works in production after collectstatic)
-    if content is None:
+    if loaded is not None:
+        raw = b""
         try:
-            with staticfiles_storage.open("robots.txt", "rb") as f:
-                content = f.read()
+            raw = loaded.content or b""
         except Exception:
-            content = b"User-agent: *\nAllow: /\n"
+            raw = b""
+        try:
+            base_text = raw.decode("utf-8").strip() or base_text.strip()
+        except Exception:
+            base_text = base_text.strip()
 
-    resp = HttpResponse(content, content_type="text/plain; charset=utf-8")
+    if "sitemap:" not in base_text.lower():
+        base_text = f"{base_text.rstrip()}\nSitemap: {sitemap_url}\n"
+
+    body = b"" if request.method == "HEAD" else base_text.encode("utf-8")
+    resp = HttpResponse(body, content_type="text/plain; charset=utf-8")
+    resp["Content-Length"] = str(len(base_text.encode("utf-8")))
+    resp["Cache-Control"] = "public, max-age=86400"
+    return resp
+
+
+def sitemap_xml(request):
+    """Serve a tiny sitemap for public pages to stop crawler 404 noise."""
+    lastmod = timezone.localdate().isoformat()
+    urls = [
+        (request.build_absolute_uri(reverse("website:home")), "daily", "1.0"),
+        (request.build_absolute_uri(reverse("website:subscriptions")), "weekly", "0.8"),
+    ]
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, changefreq, priority in urls:
+        lines.extend(
+            [
+                "  <url>",
+                f"    <loc>{loc}</loc>",
+                f"    <lastmod>{lastmod}</lastmod>",
+                f"    <changefreq>{changefreq}</changefreq>",
+                f"    <priority>{priority}</priority>",
+                "  </url>",
+            ]
+        )
+    lines.append("</urlset>")
+
+    content = "\n".join(lines)
+    body = b"" if request.method == "HEAD" else content.encode("utf-8")
+    resp = HttpResponse(body, content_type="application/xml; charset=utf-8")
+    resp["Content-Length"] = str(len(content.encode("utf-8")))
     resp["Cache-Control"] = "public, max-age=86400"
     return resp
 
@@ -83,6 +106,9 @@ urlpatterns = [
 
     # robots.txt (serve directly to avoid startup/runtime failures in test/dev)
     path("robots.txt", robots_txt, name="robots_txt"),
+
+    # sitemap.xml (prevents noisy 404s from crawlers and helps indexing)
+    path("sitemap.xml", sitemap_xml, name="sitemap_xml"),
 
     # WebSocket HTTP fallback (prevents 404 noise when proxy strips Upgrade header)
     path("ws/display/", ws_display_http_fallback, name="ws_display_fallback"),

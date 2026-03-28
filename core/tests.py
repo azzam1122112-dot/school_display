@@ -14,3 +14,24 @@ class ValidateDisplayTokenTests(TestCase):
     def test_forbidden_without_token(self):
         resp = self.client.get("/api/announcements/active/")
         self.assertEqual(resp.status_code, 403)
+
+
+class PublicSiteSurfaceTests(TestCase):
+    def test_sitemap_xml_is_available(self):
+        resp = self.client.get("/sitemap.xml")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/xml", resp.get("Content-Type", ""))
+        self.assertIn("<urlset", resp.content.decode("utf-8"))
+
+    def test_robots_txt_exposes_sitemap(self):
+        resp = self.client.get("/robots.txt")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode("utf-8")
+        self.assertIn("User-agent:", body)
+        self.assertIn("Sitemap:", body)
+
+    def test_static_assets_are_served_without_streaming(self):
+        resp = self.client.get("/static/robots.txt")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(bool(getattr(resp, "streaming", False)))
+        self.assertIn("User-agent:", resp.content.decode("utf-8"))

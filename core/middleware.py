@@ -15,6 +15,8 @@ from django.conf import settings as dj_settings
 from django.utils import timezone
 from django.core.cache import cache
 
+from core.static_assets import build_static_response
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,40 @@ class StaticFaviconRedirectMiddleware:
             # Make the redirect cheap and cacheable.
             resp["Cache-Control"] = "public, max-age=31536000"
             return resp
+        return self.get_response(request)
+
+
+class DirectStaticAssetMiddleware:
+    """Serve static assets as regular HttpResponse under ASGI.
+
+    WhiteNoise can emit FileResponse/StreamingHttpResponse objects, which trigger
+    Django's async warning noise under ASGI. We short-circuit common static
+    requests here with in-memory responses and let WhiteNoise remain as a
+    fallback for any misses.
+    """
+
+    STATIC_PREFIX = "/static/"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = getattr(request, "path", "") or ""
+        method = (getattr(request, "method", "") or "GET").upper()
+
+        if method not in {"GET", "HEAD"}:
+            return self.get_response(request)
+        if not path.startswith(self.STATIC_PREFIX):
+            return self.get_response(request)
+
+        static_name = path[len(self.STATIC_PREFIX):]
+        response = build_static_response(
+            static_name,
+            method=method,
+            is_versioned=bool(getattr(request, "GET", None) and request.GET.get("v")),
+        )
+        if response is not None:
+            return response
         return self.get_response(request)
 
 

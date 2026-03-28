@@ -1040,6 +1040,81 @@ def status(request, token: str | None = None):
     _metrics_incr("metrics:status:requests")
 
     token_hash = _sha256(token_value)
+    school_id = None
+
+    device_key = (request.headers.get("X-Display-Device") or "").strip()
+    if not device_key:
+        device_key = (request.GET.get("dk") or request.GET.get("device_key") or "").strip()
+
+    if device_key:
+        try:
+            from display.services import (
+                ScreenBoundError,
+                ScreenNotFoundError,
+                bind_device_atomic,
+            )
+
+            bound_screen = bind_device_atomic(token=token_value, device_id=device_key)
+            school_id = int(getattr(bound_screen, "school_id", 0) or 0) or None
+            if school_id:
+                try:
+                    cache.set(
+                        f"display:token_map:{token_hash}",
+                        {
+                            "id": int(bound_screen.pk),
+                            "school_id": int(school_id),
+                            "bound_device_id": device_key,
+                        },
+                        timeout=60 * 60,
+                    )
+                except Exception:
+                    pass
+        except ScreenNotFoundError:
+            resp = JsonResponse(
+                {
+                    "detail": "token_invalid",
+                    "message": "رمز الدخول غير صحيح أو غير نشط",
+                },
+                status=403,
+            )
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
+            return resp
+        except ScreenBoundError as e:
+            logger.warning(
+                "device_binding_reject token_hash=%s device=%s reason=%s",
+                token_hash[:12],
+                device_key[:8],
+                str(e),
+            )
+            resp = JsonResponse(
+                {
+                    "detail": "screen_bound",
+                    "message": str(e),
+                },
+                status=403,
+            )
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
+            return resp
+        except Exception:
+            logger.exception("status: device binding lookup failed token_hash=%s", token_hash[:12])
+            resp = JsonResponse({"detail": "internal_error"}, status=500)
+            resp["Cache-Control"] = "no-store"
+            resp["Vary"] = "Accept-Encoding"
+            try:
+                resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
+            except Exception:
+                pass
+            return resp
 
     # Token-scoped manual refresh: if set, force fetch_required regardless of revision.
     # Used by dashboard "refresh single screen".
@@ -1091,17 +1166,17 @@ def status(request, token: str | None = None):
         client_v = None
 
     # Resolve school_id cheaply (prefer cache map)
-    school_id = None
     try:
-        _metrics_incr("metrics:status:cache_get")
-        cached_map = cache.get(f"display:token_map:{token_hash}")
-        if isinstance(cached_map, dict):
-            school_id = cached_map.get("school_id")
-        else:
-            try:
-                school_id = int(cached_map) if cached_map else None
-            except Exception:
-                school_id = None
+        if not school_id:
+            _metrics_incr("metrics:status:cache_get")
+            cached_map = cache.get(f"display:token_map:{token_hash}")
+            if isinstance(cached_map, dict):
+                school_id = cached_map.get("school_id")
+            else:
+                try:
+                    school_id = int(cached_map) if cached_map else None
+                except Exception:
+                    school_id = None
     except Exception:
         school_id = None
 

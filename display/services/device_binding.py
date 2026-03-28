@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
 from core.models import DisplayScreen
@@ -58,7 +59,7 @@ def bind_device_atomic(
     
     try:
         screen = DisplayScreen.objects.select_related("school").get(
-            token=token,
+            token__iexact=token,
             is_active=True
         )
     except DisplayScreen.DoesNotExist:
@@ -89,7 +90,8 @@ def bind_device_atomic(
     # Atomic binding: UPDATE only if bound_device_id IS NULL
     rows_updated = DisplayScreen.objects.filter(
         id=screen.id,
-        bound_device_id__isnull=True
+    ).filter(
+        Q(bound_device_id__isnull=True) | Q(bound_device_id="")
     ).update(
         bound_device_id=device_id,
         bound_at=timezone.now()

@@ -338,6 +338,9 @@ MIDDLEWARE = [
     # Place BEFORE WhiteNoise so it runs AFTER WhiteNoise on the response path.
     "core.middleware.StreamingResponseProbeMiddleware",
 
+    # Serve /static/* without streaming under ASGI; WhiteNoise remains a fallback.
+    "core.middleware.DirectStaticAssetMiddleware",
+
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
     "django.contrib.sessions.middleware.SessionMiddleware",

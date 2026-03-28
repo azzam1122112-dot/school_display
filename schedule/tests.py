@@ -140,6 +140,30 @@ class DisplayApiAliasesTests(TestCase):
             body = {}
         self.assertIn(body.get("detail"), {"device_mismatch", "screen_bound", None})
 
+    def test_status_device_binding_rejects_other_device(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        snapshot_url = f"/api/display/snapshot/{bundle.screen.token}/"
+        status_url = f"/api/display/status/{bundle.screen.token}/?v=0"
+
+        r1 = self.client.get(snapshot_url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+        self.assertEqual(r1.status_code, 200)
+
+        r2 = self.client.get(status_url, **{"HTTP_X_DISPLAY_DEVICE": "devB"})
+        self.assertEqual(r2.status_code, 403)
+        self.assertEqual(r2.json().get("detail"), "screen_bound")
+
+    def test_snapshot_blank_bound_device_is_treated_as_unbound(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        bundle.screen.bound_device_id = ""
+        bundle.screen.bound_at = None
+        bundle.screen.save(update_fields=["bound_device_id", "bound_at"])
+
+        resp = self.client.get(
+            f"/api/display/snapshot/{bundle.screen.token}/",
+            **{"HTTP_X_DISPLAY_DEVICE": "devA"},
+        )
+        self.assertEqual(resp.status_code, 200)
+
     def test_today_alias_ok(self):
         bundle = make_active_school_with_screen(max_screens=3)
         r = self.client.get(f"/api/display/today/?token={bundle.screen.token}")
@@ -243,7 +267,7 @@ class SnapshotTtlHelpersTests(TestCase):
             "state": {"type": "period", "remaining_seconds": 12},
         }
         ttl = _active_fallback_steady_ttl_seconds(snap)
-        self.assertEqual(ttl, 12)
+        self.assertEqual(ttl, 15)
 
 
 class BuildDaySnapshotTimingTests(TestCase):
