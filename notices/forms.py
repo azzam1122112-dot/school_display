@@ -5,6 +5,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
+from core.image_uploads import optimize_uploaded_image
 from .models import Announcement, Excellence
 
 
@@ -40,6 +41,7 @@ class ExcellenceForm(forms.ModelForm):
     """
 
     MAX_PHOTO_MB = 5  # حد حجم افتراضي (يمكن تعديله)
+    MAX_SOURCE_PHOTO_MB = 20
 
     class Meta:
         model = Excellence
@@ -65,18 +67,29 @@ class ExcellenceForm(forms.ModelForm):
         file = self.cleaned_data.get("photo")
         if not file:
             return file
-        # تحقق من الحجم
-        max_bytes = self.MAX_PHOTO_MB * 1024 * 1024
-        if getattr(file, "size", 0) > max_bytes:
+        source_max_bytes = self.MAX_SOURCE_PHOTO_MB * 1024 * 1024
+        if getattr(file, "size", 0) > source_max_bytes:
             raise ValidationError(
-                _("حجم الصورة يتجاوز %(mb)s م.ب."),
-                params={"mb": self.MAX_PHOTO_MB},
+                _("حجم الصورة الخام يتجاوز %(mb)s م.ب."),
+                params={"mb": self.MAX_SOURCE_PHOTO_MB},
             )
         # تحقق من نوع المحتوى
         content_type = getattr(file, "content_type", "") or ""
         if content_type not in self._ALLOWED_CONTENT_TYPES:
             raise ValidationError(
                 _("نوع الملف غير مسموح به. الأنواع المسموحة: JPEG, PNG, WebP."),
+            )
+        file = optimize_uploaded_image(
+            file,
+            max_width=1600,
+            max_height=1600,
+            quality=82,
+        )
+        max_bytes = self.MAX_PHOTO_MB * 1024 * 1024
+        if getattr(file, "size", 0) > max_bytes:
+            raise ValidationError(
+                _("حجم الصورة بعد المعالجة يتجاوز %(mb)s م.ب."),
+                params={"mb": self.MAX_PHOTO_MB},
             )
         return file
 

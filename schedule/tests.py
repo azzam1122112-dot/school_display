@@ -269,6 +269,44 @@ class SnapshotTtlHelpersTests(TestCase):
         ttl = _active_fallback_steady_ttl_seconds(snap)
         self.assertEqual(ttl, 15)
 
+    def test_steady_cache_key_varies_by_snapshot_date(self):
+        from schedule.api_views import _steady_snapshot_cache_key
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        key_a = _steady_snapshot_cache_key(bundle.settings, {"meta": {"date": "2026-04-01"}})
+        key_b = _steady_snapshot_cache_key(bundle.settings, {"meta": {"date": "2026-04-02"}})
+
+        self.assertNotEqual(key_a, key_b)
+        self.assertIn("day:2026-04-01", key_a)
+        self.assertIn("day:2026-04-02", key_b)
+
+    def test_steady_cache_stores_precomputed_body_and_etag(self):
+        from schedule.api_views import _steady_snapshot_cache_key
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        url = f"/api/display/snapshot/{bundle.screen.token}/"
+
+        resp = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+
+        if bundle.settings:
+            try:
+                bundle.settings.refresh_from_db()
+            except Exception:
+                pass
+        steady_key = _steady_snapshot_cache_key(bundle.settings, body)
+        cached = cache.get(steady_key)
+
+        self.assertIsInstance(cached, dict)
+        self.assertIsInstance(cached.get("snap"), dict)
+        self.assertIsInstance(cached.get("etag"), str)
+        self.assertTrue(cached.get("etag"))
+        self.assertIsInstance(cached.get("body"), (bytes, bytearray))
+        self.assertGreater(len(cached.get("body") or b""), 0)
+
 
 class BuildDaySnapshotTimingTests(TestCase):
     def test_build_day_snapshot_preserves_precise_timing_metadata_for_local_transitions(self):

@@ -27,6 +27,7 @@ from schedule.models import (
 )
 from notices.models import Announcement, Excellence
 from standby.models import StandbyAssignment
+from core.image_uploads import optimize_uploaded_image
 from core.models import DisplayScreen, School, UserProfile, SubscriptionPlan
 from subscriptions.models import SchoolSubscription, SubscriptionScreenAddon, SubscriptionRequest
 logger = logging.getLogger(__name__)
@@ -164,6 +165,17 @@ class SchoolSettingsForm(forms.ModelForm):
         if v_f < 0.5:
             raise forms.ValidationError("الحد الأدنى لسرعة تمرير جدول الحصص هو 0.5.")
         return v_f
+
+    def clean_logo(self):
+        file_obj = self.cleaned_data.get("logo")
+        if not file_obj:
+            return file_obj
+        return optimize_uploaded_image(
+            file_obj,
+            max_width=1200,
+            max_height=1200,
+            quality=84,
+        )
 
     def save(self, commit=True):
         """
@@ -469,6 +481,7 @@ class AnnouncementForm(forms.ModelForm):
 
 class ExcellenceForm(forms.ModelForm):
     MAX_PHOTO_MB = 5
+    MAX_SOURCE_PHOTO_MB = 20
 
     class Meta:
         model = Excellence
@@ -499,10 +512,19 @@ class ExcellenceForm(forms.ModelForm):
         file = self.cleaned_data.get("photo")
         if not file:
             return file
-        max_bytes = self.MAX_PHOTO_MB * 1024 * 1024
+        source_max_bytes = self.MAX_SOURCE_PHOTO_MB * 1024 * 1024
         size = getattr(file, "size", 0)
-        if size and size > max_bytes:
-            raise ValidationError(f"حجم الصورة يتجاوز {self.MAX_PHOTO_MB} م.ب.")
+        if size and size > source_max_bytes:
+            raise ValidationError(f"حجم الصورة الخام يتجاوز {self.MAX_SOURCE_PHOTO_MB} م.ب.")
+        file = optimize_uploaded_image(
+            file,
+            max_width=1600,
+            max_height=1600,
+            quality=82,
+        )
+        max_bytes = self.MAX_PHOTO_MB * 1024 * 1024
+        if getattr(file, "size", 0) > max_bytes:
+            raise ValidationError(f"حجم الصورة بعد المعالجة يتجاوز {self.MAX_PHOTO_MB} م.ب.")
         return file
 
     def clean(self):
@@ -720,6 +742,17 @@ class SchoolForm(forms.ModelForm):
         }
         widgets = {"logo": forms.ClearableFileInput()}
 
+    def clean_logo(self):
+        file_obj = self.cleaned_data.get("logo")
+        if not file_obj:
+            return file_obj
+        return optimize_uploaded_image(
+            file_obj,
+            max_width=1200,
+            max_height=1200,
+            quality=84,
+        )
+
 
 class SchoolSubscriptionForm(forms.ModelForm):
     """
@@ -872,6 +905,7 @@ class SubscriptionScreenAddonForm(forms.ModelForm):
 
 class _ReceiptImageValidationMixin:
     receipt_max_size_bytes = 5 * 1024 * 1024
+    receipt_source_max_size_bytes = 20 * 1024 * 1024
     receipt_allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
 
     def _validate_receipt_image(self, file_obj):
@@ -888,10 +922,21 @@ class _ReceiptImageValidationMixin:
         if ext and ext not in self.receipt_allowed_exts:
             raise ValidationError("صيغة الإيصال غير مدعومة. الصيغ المسموحة: JPG, PNG, WEBP")
 
-        # size
+        # hard limit on raw upload before processing
         size = getattr(file_obj, "size", None)
-        if size is not None and int(size) > self.receipt_max_size_bytes:
-            raise ValidationError("حجم الصورة كبير جدًا. الحد الأقصى 5MB.")
+        if size is not None and int(size) > self.receipt_source_max_size_bytes:
+            raise ValidationError("حجم الصورة الخام كبير جدًا. الحد الأقصى 20MB.")
+
+        file_obj = optimize_uploaded_image(
+            file_obj,
+            max_width=1800,
+            max_height=1800,
+            quality=80,
+        )
+
+        final_size = getattr(file_obj, "size", None)
+        if final_size is not None and int(final_size) > self.receipt_max_size_bytes:
+            raise ValidationError("حجم الصورة بعد المعالجة كبير جدًا. الحد الأقصى 5MB.")
 
         return file_obj
 
