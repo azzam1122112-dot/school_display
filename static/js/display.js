@@ -419,18 +419,11 @@
       body.dataset.fitSource = fitSource; // inner | dpr | screen
       body.dataset.fitMargin = String(fitMargin);
       
-      // ✅ FIX: تكبير الخطوط تلقائياً للشاشات الكبيرة
-      // إذا كان scale أكبر من 1 (شاشات 4K, 8K, إلخ)
-      // نزيد حجم الخط الأساسي لتحسين القراءة
-      if (scale > 1) {
-        // مثال: scale = 2 (4K) → font-size = 125%
-        // مثال: scale = 1.5 (2K) → font-size = 112.5%
-        const fontScale = 1 + (scale - 1) * 0.5; // نصف الزيادة
-        body.style.fontSize = `${(fontScale * 100).toFixed(1)}%`;
-      } else {
-        // للشاشات الصغيرة، نبقي الحجم الافتراضي أو نزيده قليلاً
-        body.style.fontSize = '100%';
-      }
+      // Keep typography locked to the 1920x1080 design canvas.
+      // The stage is already scaled via transform(), so increasing body font-size
+      // here creates a second enlargement that can break the fixed board layout
+      // on high-DPI / very large displays.
+      body.style.fontSize = "";
     } catch (e) {}
   }
 
