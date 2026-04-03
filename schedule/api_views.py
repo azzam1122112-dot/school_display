@@ -48,6 +48,34 @@ def _stable_ttl_with_jitter(ttl: int, seed: str) -> int:
     return max(1, ttl_i + delta)
 
 
+def _cache_redis_url_configured() -> bool:
+    try:
+        if str(getattr(dj_settings, "CACHE_REDIS_URL", "") or "").strip():
+            return True
+    except Exception:
+        pass
+    try:
+        return bool(os.getenv("CACHE_REDIS_URL", "").strip() or os.getenv("REDIS_URL", "").strip())
+    except Exception:
+        return False
+
+
+def _channels_redis_url_configured() -> bool:
+    try:
+        if str(getattr(dj_settings, "CHANNELS_REDIS_URL", "") or "").strip():
+            return True
+    except Exception:
+        pass
+    try:
+        return bool(
+            os.getenv("CHANNELS_REDIS_URL", "").strip()
+            or os.getenv("CHANNEL_REDIS_URL", "").strip()
+            or os.getenv("REDIS_URL", "").strip()
+        )
+    except Exception:
+        return False
+
+
 def _cache_is_shared() -> bool:
     """Best-effort check whether the configured cache is shared across processes.
 
@@ -57,7 +85,7 @@ def _cache_is_shared() -> bool:
     worker/process.
     """
     try:
-        if str(getattr(dj_settings, "REDIS_URL", "") or "").strip():
+        if _cache_redis_url_configured():
             return True
     except Exception:
         pass
@@ -151,9 +179,10 @@ def _get_stale_snapshot_fallback(school_id: int, *, day_key: object | None = Non
 def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object | None = None):
     """
     Returns: (cache_entry, cache_kind)
-      cache_kind ∈ {"HIT", "MISS", "STALE", "BYPASS"}
+      cache_kind ∈ {"HIT", "MISS", "STALE", "BYPASS", "QUEUED"}
     """
     key = _steady_cache_key_for_school_rev(school_id, rev, day_key=day_key)
+    normalized_day_key = _snapshot_cache_day_key(day_key)
 
     try:
         entry = _snapshot_cache_entry_from_cached(cache.get(key))
@@ -174,6 +203,71 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
         _metrics_incr("metrics:snapshot_cache:steady_miss")
     except Exception:
         pass
+
+    try:
+        from schedule.snapshot_materializer import (
+            enqueue_snapshot_build,
+            snapshot_async_build_enabled,
+            snapshot_inline_fallback_enabled,
+            snapshot_queue_available,
+            snapshot_worker_status,
+            wait_for_materialized_snapshot,
+        )
+
+        async_enabled = bool(snapshot_async_build_enabled())
+        queue_available = bool(snapshot_queue_available())
+        worker_status = snapshot_worker_status() if async_enabled else {}
+        worker_alive = bool(worker_status.get("alive"))
+        inline_fallback = bool(snapshot_inline_fallback_enabled())
+    except Exception:
+        async_enabled = False
+        queue_available = False
+        worker_alive = False
+        inline_fallback = True
+
+    if async_enabled and queue_available:
+        _metrics_incr("metrics:snapshot_queue:requested")
+        queue_result = enqueue_snapshot_build(
+            school_id=int(school_id),
+            rev=int(rev),
+            day_key=normalized_day_key,
+            reason="request_miss",
+        )
+        queued_or_existing = bool(queue_result.get("queued") or queue_result.get("duplicate"))
+
+        waited_entry = wait_for_materialized_snapshot(
+            school_id=int(school_id),
+            rev=int(rev),
+            day_key=normalized_day_key,
+        )
+        if isinstance(waited_entry, dict) and isinstance(waited_entry.get("snap"), dict):
+            _metrics_incr("metrics:snapshot_queue:served_after_wait")
+            return waited_entry, "HIT"
+
+        fallback = _get_stale_snapshot_fallback(school_id, day_key=normalized_day_key)
+        if isinstance(fallback, dict):
+            try:
+                meta = fallback.get("meta")
+                if not isinstance(meta, dict):
+                    meta = {}
+                    fallback["meta"] = meta
+                meta["cache"] = "STALE"
+                meta["cache_key"] = key
+                meta["revalidate"] = "queued"
+            except Exception:
+                pass
+            return _snapshot_cache_entry(fallback), "STALE"
+
+        if queued_or_existing and worker_alive and not inline_fallback:
+            _metrics_incr("metrics:snapshot_queue:building_payload")
+            building = _fallback_building_payload(
+                school_id=int(school_id),
+                rev=int(rev),
+                day_key=normalized_day_key,
+                reason="queued_for_materialization",
+                refresh_interval_sec=3,
+            )
+            return _snapshot_cache_entry(building), "QUEUED"
 
     if _acquire_build_lock(school_id, rev):
         try:
@@ -249,6 +343,11 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                 cache.delete(f"lock:snapshot:{int(school_id)}:{int(rev)}")
             except Exception:
                 pass
+    else:
+        try:
+            _metrics_incr("metrics:snapshot_cache:build_lock_contention")
+        except Exception:
+            pass
 
     fallback = _get_stale_snapshot_fallback(school_id, day_key=day_key)
     if isinstance(fallback, dict):
@@ -373,6 +472,34 @@ def _status_warn_log_interval_seconds() -> int:
     except Exception:
         v = 300
     return max(30, min(3600, v))
+
+
+def _snapshot_resp_log_interval_seconds() -> int:
+    try:
+        v = int(
+            getattr(
+                dj_settings,
+                "DISPLAY_SNAPSHOT_RESP_LOG_INTERVAL_SEC",
+                os.getenv("DISPLAY_SNAPSHOT_RESP_LOG_INTERVAL_SEC", "60"),
+            )
+        )
+    except Exception:
+        v = 60
+    return max(10, min(3600, v))
+
+
+def _should_log_snapshot_resp(*, school_id: int | None, rev: int | None, cache_status: str | None, status_code: int) -> bool:
+    status_text = str(cache_status or "").strip().upper()
+    if status_text in {"MISS", "STALE", "BYPASS", "ERROR", "LOOP"}:
+        return True
+    try:
+        interval = _snapshot_resp_log_interval_seconds()
+        sid = int(school_id or 0)
+        rv = int(rev or 0)
+        key = f"log:snapshot_resp:{sid}:{rv}:{status_text or 'NONE'}:{int(status_code)}:{interval}"
+        return bool(cache.add(key, "1", timeout=interval))
+    except Exception:
+        return True
 
 
 def _should_log_status(token_hash: str, *, interval: int | None = None) -> bool:
@@ -508,11 +635,24 @@ def metrics(request):
         "metrics:snapshot_cache:school_miss",
         "metrics:snapshot_cache:steady_hit",
         "metrics:snapshot_cache:steady_miss",
+        "metrics:snapshot_cache:stale_fallback",
+        "metrics:snapshot_cache:build_lock_contention",
 
         # Snapshot build metrics
         "metrics:snapshot_cache:build_count",
         "metrics:snapshot_cache:build_sum_ms",
         "metrics:snapshot_cache:build_max_ms",
+        "metrics:snapshot_queue:requested",
+        "metrics:snapshot_queue:enqueued",
+        "metrics:snapshot_queue:deduped",
+        "metrics:snapshot_queue:dequeued",
+        "metrics:snapshot_queue:materialized",
+        "metrics:snapshot_queue:error",
+        "metrics:snapshot_queue:building_payload",
+        "metrics:snapshot_queue:served_after_wait",
+        "metrics:snapshot_queue:lock_busy",
+        "metrics:snapshot_queue:already_materialized",
+        "metrics:snapshot_queue:settings_missing",
     ]
 
     try:
@@ -526,9 +666,50 @@ def metrics(request):
         "hostname": (socket.gethostname() or "").strip(),
         "process_id": int(os.getpid()),
         "cache_backend": backend_name,
-        "redis_url_configured": bool(os.getenv("REDIS_URL", "").strip()),
+        "redis_url_configured": bool(
+            os.getenv("REDIS_URL", "").strip()
+            or os.getenv("CACHE_REDIS_URL", "").strip()
+            or os.getenv("CHANNELS_REDIS_URL", "").strip()
+            or os.getenv("CHANNEL_REDIS_URL", "").strip()
+        ),
+        "cache_redis_url_configured": _cache_redis_url_configured(),
+        "channels_redis_url_configured": _channels_redis_url_configured(),
+        "cache_is_shared": _cache_is_shared(),
         "cache_key_prefix": os.getenv("CACHE_KEY_PREFIX", "school_display"),
     }
+
+    try:
+        from core.redis_topology import redis_topology_summary
+
+        topology = redis_topology_summary()
+        out["redis_topology_split"] = bool(topology.get("split"))
+        out["redis_topology_shared"] = bool(topology.get("shared"))
+        out["redis_topology_warnings"] = topology.get("warnings", [])
+    except Exception:
+        out["redis_topology_split"] = False
+        out["redis_topology_shared"] = False
+        out["redis_topology_warnings"] = []
+
+    try:
+        from schedule.snapshot_materializer import snapshot_worker_status
+        from schedule.snapshot_materializer import snapshot_async_build_enabled, snapshot_inline_fallback_enabled
+
+        worker_status = snapshot_worker_status()
+        out["snapshot_async_build_enabled"] = bool(snapshot_async_build_enabled())
+        out["snapshot_inline_fallback_enabled"] = bool(snapshot_inline_fallback_enabled())
+        out["snapshot_worker_alive"] = bool(worker_status.get("alive"))
+        out["snapshot_worker_age_sec"] = worker_status.get("age_sec")
+        out["snapshot_worker_id"] = worker_status.get("worker_id")
+        out["snapshot_queue_available"] = bool(worker_status.get("queue_available"))
+        out["snapshot_queue_depth"] = worker_status.get("queue_depth")
+    except Exception:
+        out["snapshot_async_build_enabled"] = False
+        out["snapshot_inline_fallback_enabled"] = True
+        out["snapshot_worker_alive"] = False
+        out["snapshot_worker_age_sec"] = None
+        out["snapshot_worker_id"] = None
+        out["snapshot_queue_available"] = False
+        out["snapshot_queue_depth"] = None
 
     def _sanitize_error(msg: str) -> str:
         # Avoid leaking connection strings or credentials in metrics output.
@@ -592,6 +773,31 @@ def metrics(request):
     except Exception:
         out["metrics:snapshot_cache:build_avg_ms"] = 0
 
+    try:
+        status_requests = int(out.get("metrics:status:requests", 0) or 0)
+        status_db = int(out.get("metrics:status:rev_db", 0) or 0)
+        out["metrics:status:db_queries_total"] = status_db
+        out["metrics:status:db_query_ratio"] = round((status_db / status_requests), 4) if status_requests > 0 else 0.0
+    except Exception:
+        out["metrics:status:db_queries_total"] = 0
+        out["metrics:status:db_query_ratio"] = 0.0
+
+    try:
+        steady_hit = int(out.get("metrics:snapshot_cache:steady_hit", 0) or 0)
+        steady_miss = int(out.get("metrics:snapshot_cache:steady_miss", 0) or 0)
+        steady_total = steady_hit + steady_miss
+        out["metrics:snapshot_cache:steady_hit_ratio"] = round((steady_hit / steady_total), 4) if steady_total > 0 else 0.0
+    except Exception:
+        out["metrics:snapshot_cache:steady_hit_ratio"] = 0.0
+
+    try:
+        school_hit = int(out.get("metrics:snapshot_cache:school_hit", 0) or 0)
+        school_miss = int(out.get("metrics:snapshot_cache:school_miss", 0) or 0)
+        school_total = school_hit + school_miss
+        out["metrics:snapshot_cache:school_hit_ratio"] = round((school_hit / school_total), 4) if school_total > 0 else 0.0
+    except Exception:
+        out["metrics:snapshot_cache:school_hit_ratio"] = 0.0
+
     return JsonResponse(out, json_dumps_params={"ensure_ascii": False})
 
 
@@ -615,17 +821,45 @@ def ws_metrics(request):
     """
     try:
         from display.ws_metrics import ws_metrics as metrics_tracker
-        
+        from display.ws_cluster_metrics import snapshot as ws_cluster_snapshot
+
         metrics = metrics_tracker.get_snapshot()
-        
+        cluster = ws_cluster_snapshot()
+
+        def _cache_int(key: str) -> int:
+            try:
+                v = cache.get(key)
+                return int(v) if v is not None else 0
+            except Exception:
+                return 0
+
         # Calculate derived metrics
         active = metrics.get("connections_active", 0)
         failed = metrics.get("connections_failed", 0)
         total = max(1, metrics.get("connections_total", 1))  # Avoid division by zero
-        
+
         broadcasts_sent = metrics.get("broadcasts_sent", 0)
         broadcasts_failed = metrics.get("broadcasts_failed", 0)
-        
+        disconnect_codes = metrics.get("disconnect_codes", {}) or {}
+
+        shared_total = _cache_int("metrics:ws:connect_total")
+        shared_failed = _cache_int("metrics:ws:connect_failed")
+        shared_disconnect_total = _cache_int("metrics:ws:disconnect_total")
+        shared_broadcasts_sent = _cache_int("metrics:ws:broadcast_sent")
+        shared_broadcasts_failed = _cache_int("metrics:ws:broadcast_failed")
+        for code in (1000, 1001, 1006, 1011, 1012, 1013, 4400, 4403, 4408, 4500, 4501):
+            code_key = str(code)
+            shared_code_total = _cache_int(f"metrics:ws:disconnect_code:{code_key}")
+            if shared_code_total:
+                disconnect_codes[code_key] = max(int(disconnect_codes.get(code_key, 0) or 0), shared_code_total)
+
+        cluster_disconnect_codes = cluster.get("disconnect_codes", {}) or {}
+        for code_key, total_value in cluster_disconnect_codes.items():
+            try:
+                disconnect_codes[str(code_key)] = max(int(disconnect_codes.get(str(code_key), 0) or 0), int(total_value or 0))
+            except Exception:
+                continue
+
         avg_latency = 0.0
         if metrics.get("broadcast_latency_count", 0) > 0:
             avg_latency = (
@@ -648,9 +882,23 @@ def ws_metrics(request):
             "connections_active": active,
             "connections_total": total,
             "connections_failed": failed,
+            "connections_total_shared": shared_total,
+            "connections_failed_shared": shared_failed,
+            "disconnect_total_shared": shared_disconnect_total,
+            "active_ws_cluster": int(cluster.get("active_ws", 0) or 0),
+            "cluster_rates_60s": cluster.get("rates_60s", {}),
+            "cluster_rates_300s": cluster.get("rates_300s", {}),
+            "cluster_metrics_enabled": bool(cluster.get("enabled")),
+            "disconnect_codes": disconnect_codes,
             "broadcasts_sent": broadcasts_sent,
             "broadcasts_failed": broadcasts_failed,
+            "broadcasts_sent_shared": shared_broadcasts_sent,
+            "broadcasts_failed_shared": shared_broadcasts_failed,
             "broadcast_latency_avg_ms": round(avg_latency, 2),
+            "scope": {
+                "connections_active": "instance",
+                "connections_total_shared": "cluster_best_effort",
+            },
             "health": health,
         })
     except ImportError:
@@ -703,31 +951,52 @@ def _metrics_log_maybe() -> None:
         "metrics:snapshot_cache:school_miss",
         "metrics:snapshot_cache:steady_hit",
         "metrics:snapshot_cache:steady_miss",
+        "metrics:snapshot_cache:stale_fallback",
+        "metrics:snapshot_cache:build_lock_contention",
         "metrics:snapshot_cache:build_count",
         "metrics:snapshot_cache:build_sum_ms",
         "metrics:snapshot_cache:build_max_ms",
+        "metrics:snapshot_queue:enqueued",
+        "metrics:snapshot_queue:deduped",
+        "metrics:snapshot_queue:dequeued",
+        "metrics:snapshot_queue:materialized",
+        "metrics:snapshot_queue:error",
     ]
     try:
         vals = {k: (cache.get(k) or 0) for k in keys}
     except Exception:
         vals = {k: 0 for k in keys}
 
-    build_count = int(vals.get(keys[6], 0) or 0)
-    build_sum_ms = int(vals.get(keys[7], 0) or 0)
-    build_max_ms = int(vals.get(keys[8], 0) or 0)
+    build_count = int(vals.get("metrics:snapshot_cache:build_count", 0) or 0)
+    build_sum_ms = int(vals.get("metrics:snapshot_cache:build_sum_ms", 0) or 0)
+    build_max_ms = int(vals.get("metrics:snapshot_cache:build_max_ms", 0) or 0)
     build_avg_ms = int(build_sum_ms / build_count) if build_count > 0 else 0
+    stale_fallback = int(vals.get("metrics:snapshot_cache:stale_fallback", 0) or 0)
+    build_lock_contention = int(vals.get("metrics:snapshot_cache:build_lock_contention", 0) or 0)
+    queue_enqueued = int(vals.get("metrics:snapshot_queue:enqueued", 0) or 0)
+    queue_deduped = int(vals.get("metrics:snapshot_queue:deduped", 0) or 0)
+    queue_dequeued = int(vals.get("metrics:snapshot_queue:dequeued", 0) or 0)
+    queue_materialized = int(vals.get("metrics:snapshot_queue:materialized", 0) or 0)
+    queue_errors = int(vals.get("metrics:snapshot_queue:error", 0) or 0)
 
     logger.info(
-        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s build_count=%s build_avg_ms=%s build_max_ms=%s",
-        vals.get(keys[0], 0),
-        vals.get(keys[1], 0),
-        vals.get(keys[2], 0),
-        vals.get(keys[3], 0),
-        vals.get(keys[4], 0),
-        vals.get(keys[5], 0),
+        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s stale_fallback=%s build_lock_contention=%s build_count=%s build_avg_ms=%s build_max_ms=%s queue_enqueued=%s queue_deduped=%s queue_dequeued=%s queue_materialized=%s queue_errors=%s",
+        vals.get("metrics:snapshot_cache:token_hit", 0),
+        vals.get("metrics:snapshot_cache:token_miss", 0),
+        vals.get("metrics:snapshot_cache:school_hit", 0),
+        vals.get("metrics:snapshot_cache:school_miss", 0),
+        vals.get("metrics:snapshot_cache:steady_hit", 0),
+        vals.get("metrics:snapshot_cache:steady_miss", 0),
+        stale_fallback,
+        build_lock_contention,
         build_count,
         build_avg_ms,
         build_max_ms,
+        queue_enqueued,
+        queue_deduped,
+        queue_dequeued,
+        queue_materialized,
+        queue_errors,
     )
 
 
@@ -1741,6 +2010,15 @@ def _abs_media_url(request, maybe_url: str | None) -> str | None:
     try:
         return request.build_absolute_uri(s)
     except Exception:
+        try:
+            base = (
+                os.getenv("DISPLAY_PUBLIC_BASE_URL", "").strip()
+                or os.getenv("PUBLIC_BASE_URL", "").strip()
+            ).rstrip("/")
+        except Exception:
+            base = ""
+        if base:
+            return f"{base}/{s.lstrip('/')}"
         return s
 
 
@@ -2432,6 +2710,75 @@ def _build_final_snapshot(
     return snap
 
 
+def _build_snapshot_payload(
+    request,
+    settings_obj: SchoolSettings,
+    *,
+    school_id: int | None = None,
+    rev: int | None = None,
+) -> tuple[dict, int]:
+    school_id = int(school_id or getattr(settings_obj, "school_id", 0) or 0)
+    rev = int(rev if rev is not None else (getattr(settings_obj, "schedule_revision", 0) or 0))
+    t0 = time.monotonic()
+
+    day_snap = _normalize_snapshot_keys(_call_build_day_snapshot(settings_obj))
+    active_window = _is_active_window(day_snap)
+
+    try:
+        meta = day_snap.get("meta") if isinstance(day_snap, dict) else None
+        if not isinstance(meta, dict):
+            meta = {}
+            if isinstance(day_snap, dict):
+                day_snap["meta"] = meta
+        meta["schedule_revision"] = rev
+        meta["ws_enabled"] = bool(getattr(dj_settings, "DISPLAY_WS_ENABLED", False))
+    except Exception:
+        pass
+
+    if active_window:
+        snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
+    else:
+        snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=False)
+
+        meta = day_snap.get("meta") or {}
+        is_school_day = bool(meta.get("is_school_day"))
+        st = (day_snap.get("state") or {}) if isinstance(day_snap, dict) else {}
+        st_type = str(st.get("type") or "").strip().lower()
+
+        base_refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
+        if not is_school_day:
+            refresh = max(base_refresh, 3600)
+        elif st_type == "before":
+            refresh = max(base_refresh, 60)
+        else:
+            refresh = max(base_refresh, 600)
+
+        refresh = max(5, min(86400, int(refresh)))
+
+        if not is_school_day:
+            snap["state"]["type"] = "NO_SCHEDULE_TODAY"
+            snap["state"]["label"] = "لا يوجد جدول اليوم"
+        elif st_type == "before":
+            snap["state"]["type"] = "BEFORE_SCHOOL"
+            snap["state"]["label"] = "قبل بداية الدوام"
+        else:
+            snap["state"]["type"] = "OFF_HOURS"
+            snap["state"]["label"] = "انتهى الدوام"
+
+        try:
+            snap["settings"]["refresh_interval_sec"] = int(refresh)
+        except Exception:
+            pass
+
+    build_ms = int((time.monotonic() - t0) * 1000)
+    _metrics_incr("metrics:snapshot_cache:build_count")
+    _metrics_add("metrics:snapshot_cache:build_sum_ms", build_ms)
+    _metrics_set_max("metrics:snapshot_cache:build_max_ms", build_ms)
+    _metrics_log_maybe()
+
+    return snap, build_ms
+
+
 @require_http_methods(["GET", "HEAD"])
 def snapshot(request, token: str | None = None):
     """
@@ -2483,13 +2830,20 @@ def snapshot(request, token: str | None = None):
         if app_rev:
             resp["X-App-Revision"] = app_rev
         try:
-            logger.info(
-                "snapshot_resp school_id=%s rev=%s status=%s cache=%s",
-                school_id,
-                rev,
-                int(getattr(resp, "status_code", 0) or 0),
-                cache_status,
-            )
+            status_code = int(getattr(resp, "status_code", 0) or 0)
+            if _should_log_snapshot_resp(
+                school_id=school_id,
+                rev=rev,
+                cache_status=cache_status,
+                status_code=status_code,
+            ):
+                logger.info(
+                    "snapshot_resp school_id=%s rev=%s status=%s cache=%s",
+                    school_id,
+                    rev,
+                    status_code,
+                    cache_status,
+                )
         except Exception:
             pass
         return resp
@@ -2788,10 +3142,11 @@ def snapshot(request, token: str | None = None):
                 if cached_school_blob is not None:
                     _metrics_incr("metrics:snapshot_cache:school_hit")
                     _metrics_log_maybe()
-                    try:
-                        logger.info("school_snapshot_get key=%s hit=1", school_snap_key_fast)
-                    except Exception:
-                        pass
+                    if cache_debug:
+                        try:
+                            logger.info("school_snapshot_get key=%s hit=1", school_snap_key_fast)
+                        except Exception:
+                            pass
 
                     entry_fast = _snapshot_cache_entry_from_cached(cached_school_blob)
 
@@ -2826,10 +3181,11 @@ def snapshot(request, token: str | None = None):
                             rev=int(rev_fast) if rev_fast is not None else None,
                         )
 
-                try:
-                    logger.info("school_snapshot_get key=%s hit=0", school_snap_key_fast)
-                except Exception:
-                    pass
+                if cache_debug:
+                    try:
+                        logger.info("school_snapshot_get key=%s hit=0", school_snap_key_fast)
+                    except Exception:
+                        pass
 
                 if cache_wait_for is not None:
                     try:
@@ -2871,6 +3227,7 @@ def snapshot(request, token: str | None = None):
                         got_lock = True
 
                 if not got_lock:
+                    _metrics_incr("metrics:snapshot_cache:build_lock_contention")
                     waited2 = None
                     if cache_wait_for is not None:
                         try:
@@ -3153,62 +3510,12 @@ def snapshot(request, token: str | None = None):
 
         try:
             def _build_snapshot_for_school() -> dict:
-                t0 = time.monotonic()
-
-                day_snap = _normalize_snapshot_keys(_call_build_day_snapshot(settings_obj))
-                active_window = _is_active_window(day_snap)
-
-                try:
-                    meta = day_snap.get("meta") if isinstance(day_snap, dict) else None
-                    if not isinstance(meta, dict):
-                        meta = {}
-                        if isinstance(day_snap, dict):
-                            day_snap["meta"] = meta
-                    meta["schedule_revision"] = rev
-                    meta["ws_enabled"] = bool(getattr(dj_settings, "DISPLAY_WS_ENABLED", False))
-                except Exception:
-                    pass
-
-                if active_window:
-                    snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=True)
-                else:
-                    snap = _build_final_snapshot(request, settings_obj, day_snap=day_snap, merge_real_data=False)
-
-                    meta = day_snap.get("meta") or {}
-                    is_school_day = bool(meta.get("is_school_day"))
-                    st = (day_snap.get("state") or {}) if isinstance(day_snap, dict) else {}
-                    st_type = str(st.get("type") or "").strip().lower()
-
-                    base_refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
-                    if not is_school_day:
-                        refresh = max(base_refresh, 3600)
-                    elif st_type == "before":
-                        refresh = max(base_refresh, 60)
-                    else:
-                        refresh = max(base_refresh, 600)
-
-                    refresh = max(5, min(86400, int(refresh)))
-
-                    if not is_school_day:
-                        snap["state"]["type"] = "NO_SCHEDULE_TODAY"
-                        snap["state"]["label"] = "لا يوجد جدول اليوم"
-                    elif st_type == "before":
-                        snap["state"]["type"] = "BEFORE_SCHOOL"
-                        snap["state"]["label"] = "قبل بداية الدوام"
-                    else:
-                        snap["state"]["type"] = "OFF_HOURS"
-                        snap["state"]["label"] = "انتهى الدوام"
-
-                    try:
-                        snap["settings"]["refresh_interval_sec"] = int(refresh)
-                    except Exception:
-                        pass
-
-                build_ms = int((time.monotonic() - t0) * 1000)
-                _metrics_incr("metrics:snapshot_cache:build_count")
-                _metrics_add("metrics:snapshot_cache:build_sum_ms", build_ms)
-                _metrics_set_max("metrics:snapshot_cache:build_max_ms", build_ms)
-                _metrics_log_maybe()
+                snap, build_ms = _build_snapshot_payload(
+                    request,
+                    settings_obj,
+                    school_id=school_id,
+                    rev=rev,
+                )
 
                 json_bytes = _stable_json_bytes(snap)
 
@@ -3252,16 +3559,18 @@ def snapshot(request, token: str | None = None):
                         except Exception:
                             pass
 
-                        try:
-                            logger.info("school_snapshot_set key=%s bytes=%s ttl=%s", k_normal, len(blob.encode("utf-8")), SCHOOL_SNAPSHOT_TTL)
-                        except Exception:
-                            pass
-
-                        if k_transition:
+                        if cache_debug:
                             try:
-                                logger.info("school_snapshot_set_transition key=%s bytes=%s ttl=%s", k_transition, len(blob.encode("utf-8")), min(30, int(SCHOOL_SNAPSHOT_TTL)))
+                                logger.info("school_snapshot_set key=%s bytes=%s ttl=%s", k_normal, len(blob.encode("utf-8")), SCHOOL_SNAPSHOT_TTL)
                             except Exception:
                                 pass
+
+                        if k_transition:
+                            if cache_debug:
+                                try:
+                                    logger.info("school_snapshot_set_transition key=%s bytes=%s ttl=%s", k_transition, len(blob.encode("utf-8")), min(30, int(SCHOOL_SNAPSHOT_TTL)))
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
 

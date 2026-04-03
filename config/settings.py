@@ -455,18 +455,28 @@ if is_postgres and not DEBUG:
 
 
 # =========================
-# Cache (Redis if REDIS_URL exists)
+# Cache (Redis if REDIS_URL / CACHE_REDIS_URL exists)
 # =========================
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
+CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "").strip() or REDIS_URL
+CHANNELS_REDIS_URL = (
+    os.getenv("CHANNELS_REDIS_URL", "").strip()
+    or os.getenv("CHANNEL_REDIS_URL", "").strip()
+    or REDIS_URL
+)
+CACHE_REDIS_MAX_CONNECTIONS = env_int(
+    "CACHE_REDIS_MAX_CONNECTIONS",
+    os.getenv("REDIS_MAX_CONNECTIONS", "50"),
+)
 
 # Default cache TTL as a safety net (seconds)
 DEFAULT_CACHE_TIMEOUT = env_int("CACHE_DEFAULT_TIMEOUT", str(60 * 30))  # 30 minutes
 
-if REDIS_URL:
+if CACHE_REDIS_URL:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": REDIS_URL,
+            "LOCATION": CACHE_REDIS_URL,
             "TIMEOUT": DEFAULT_CACHE_TIMEOUT,
             "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "school_display"),
             "OPTIONS": {
@@ -474,7 +484,7 @@ if REDIS_URL:
                 "SOCKET_CONNECT_TIMEOUT": env_int("REDIS_CONNECT_TIMEOUT", "2"),
                 "SOCKET_TIMEOUT": env_int("REDIS_SOCKET_TIMEOUT", "2"),
                 "CONNECTION_POOL_KWARGS": {
-                    "max_connections": env_int("REDIS_MAX_CONNECTIONS", "50"),
+                    "max_connections": CACHE_REDIS_MAX_CONNECTIONS,
                     "retry_on_timeout": True,
                     "health_check_interval": env_int("REDIS_HEALTHCHECK_INTERVAL", "30"),
                     "socket_keepalive": True,
@@ -501,12 +511,12 @@ else:
 # =========================
 # Channels Layer (WebSocket)
 # =========================
-if REDIS_URL:
+if CHANNELS_REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [REDIS_URL],
+                "hosts": [CHANNELS_REDIS_URL],
                 # Capacity: max messages per channel before blocking
                 "capacity": env_int("WS_CHANNEL_CAPACITY", "2000"),
                 # Expiry: messages auto-delete after N seconds
@@ -527,6 +537,21 @@ else:
 WS_MAX_CONNECTIONS_PER_INSTANCE = env_int("WS_MAX_CONNECTIONS", "2000")
 WS_PING_INTERVAL_SECONDS = env_int("WS_PING_INTERVAL", "30")
 WS_METRICS_LOG_INTERVAL = env_int("WS_METRICS_LOG_INTERVAL", "300")  # 5 minutes
+
+# Snapshot materialization / async build
+DISPLAY_SNAPSHOT_ASYNC_BUILD = env_bool("DISPLAY_SNAPSHOT_ASYNC_BUILD", "True")
+DISPLAY_SNAPSHOT_INLINE_FALLBACK = env_bool("DISPLAY_SNAPSHOT_INLINE_FALLBACK", "True")
+DISPLAY_SNAPSHOT_QUEUE_WAIT_TIMEOUT = env_float_clamped("DISPLAY_SNAPSHOT_QUEUE_WAIT_TIMEOUT", 0.35, 0.0, 2.0)
+DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL = env_int_clamped("DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL", 90, 10, 900)
+DISPLAY_SNAPSHOT_WORKER_HEARTBEAT_TTL = env_int_clamped("DISPLAY_SNAPSHOT_WORKER_HEARTBEAT_TTL", 45, 10, 300)
+DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER = env_bool("DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER", "True")
+
+# Runtime topology validation
+DISPLAY_REQUIRE_REDIS_SPLIT = env_bool("DISPLAY_REQUIRE_REDIS_SPLIT", "False")
+
+# Cluster-wide WS metrics windows
+WS_CLUSTER_ACTIVE_TTL = env_int_clamped("WS_CLUSTER_ACTIVE_TTL", 120, 30, 900)
+WS_CLUSTER_EVENT_RETENTION = env_int_clamped("WS_CLUSTER_EVENT_RETENTION", 3600, 300, 86400)
 
 
 # =========================

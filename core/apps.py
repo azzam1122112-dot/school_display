@@ -5,6 +5,8 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import caches
 
+from core.redis_topology import redis_topology_summary
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,4 +76,28 @@ class CoreConfig(AppConfig):
             )
         except Exception:
             # Never fail app startup due to logging.
+            pass
+
+        try:
+            topology = redis_topology_summary()
+            if topology.get("split"):
+                logger.info(
+                    "redis_topology split=1 cache=%s channels=%s",
+                    topology.get("cache_url_redacted"),
+                    topology.get("channels_url_redacted"),
+                )
+            elif topology.get("shared"):
+                level = logger.error if bool(getattr(settings, "DISPLAY_REQUIRE_REDIS_SPLIT", False)) else logger.warning
+                level(
+                    "redis_topology split=0 warning=shared cache=%s channels=%s",
+                    topology.get("cache_url_redacted"),
+                    topology.get("channels_url_redacted"),
+                )
+            else:
+                logger.warning(
+                    "redis_topology split=0 warning=incomplete cache=%s channels=%s",
+                    topology.get("cache_url_redacted"),
+                    topology.get("channels_url_redacted"),
+                )
+        except Exception:
             pass

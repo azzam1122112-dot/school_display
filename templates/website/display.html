@@ -1137,6 +1137,20 @@
             gap: clamp(0.65rem, 1vw, 1.4rem);
         }
 
+        /* The display board lives on a fixed 1920x1080 stage.
+           Some TV browsers report a reduced CSS viewport, which makes Tailwind
+           breakpoints unreliable here. Force the intended 8/4 grid split inside
+           the board instead of relying on runtime viewport breakpoints. */
+        #boardMainColumn {
+            grid-column: span 8 / span 8;
+            min-width: 0;
+        }
+
+        #boardSideColumn {
+            grid-column: span 4 / span 4;
+            min-width: 0;
+        }
+
         .header-brand {
             min-width: 0;
             overflow: hidden;
@@ -1652,7 +1666,7 @@
   <main class="flex-1 min-h-0 p-5 grid grid-cols-12 gap-5">
     
     <!-- Main Column (Right) -->
-    <section class="col-span-8 flex flex-col gap-5 min-h-0">
+    <section id="boardMainColumn" class="col-span-12 lg:col-span-8 flex flex-col gap-5 min-h-0">
         
         <!-- Alert Card -->
         <div class="glass-panel rounded-2xl p-0 flex flex-col overflow-hidden u-hidden" id="alertContainer"> <!-- JS toggles hidden class -->
@@ -1833,7 +1847,7 @@
     </section>
 
     <!-- Side Column (Left) -->
-    <aside class="col-span-4 flex flex-col gap-5 min-h-0">
+    <aside id="boardSideColumn" class="col-span-12 lg:col-span-4 flex flex-col gap-5 min-h-0">
         
         <!-- Period Classes Card -->
         <div class="glass-panel rounded-2xl flex-1 flex flex-col min-h-0 relative overflow-hidden">
@@ -1883,7 +1897,7 @@
     </div>
   </noscript>
 
-    <script src="{% static 'js/display.js' %}?v=2026-03-26-bell-mp3-v7"></script>
+    <script src="{% static 'js/display.js' %}?v=2026-04-02-layout-fix-v1"></script>
 
     <script>
     /* Fullscreen Toggle */

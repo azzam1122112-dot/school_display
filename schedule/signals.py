@@ -3,6 +3,7 @@ import logging
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from schedule.cache_utils import (
     bump_schedule_revision_for_school_id_debounced,
@@ -97,9 +98,23 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
         reason,
         model_label,
     )
-    
+
+    def _enqueue_snapshot_materialization() -> None:
+        try:
+            from schedule.snapshot_materializer import enqueue_snapshot_build
+
+            enqueue_snapshot_build(
+                school_id=school_id,
+                rev=int(new_rev),
+                day_key=timezone.localdate().isoformat(),
+                reason="signal_revision_bump",
+            )
+        except Exception:
+            logger.exception("snapshot_queue enqueue failed school_id=%s rev=%s", school_id, new_rev)
+
     # Broadcast to WebSocket clients (after transaction commits)
     transaction.on_commit(lambda: _broadcast_invalidate_ws(school_id, new_rev))
+    transaction.on_commit(_enqueue_snapshot_materialization)
 
 @receiver(post_save, sender=SchoolSettings)
 def clear_display_cache_on_settings_change(sender, instance, **kwargs):

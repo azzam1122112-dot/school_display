@@ -30,6 +30,7 @@ class WSMetrics:
             "connections_active": 0,
             "connections_total": 0,
             "connections_failed": 0,
+            "disconnect_codes": {},
             "broadcasts_sent": 0,
             "broadcasts_failed": 0,
             "broadcast_latency_sum": 0.0,
@@ -43,10 +44,20 @@ class WSMetrics:
             self._metrics["connections_active"] += 1
             self._metrics["connections_total"] += 1
     
-    def connection_closed(self):
+    def connection_closed(self, close_code: int | None = None):
         """Called when WS connection closed."""
         with self._lock:
             self._metrics["connections_active"] = max(0, self._metrics["connections_active"] - 1)
+            if close_code is not None:
+                try:
+                    code = str(int(close_code))
+                except Exception:
+                    code = str(close_code)
+                codes = self._metrics.setdefault("disconnect_codes", {})
+                try:
+                    codes[code] = int(codes.get(code, 0) or 0) + 1
+                except Exception:
+                    codes[code] = 1
     
     def connection_failed(self):
         """Called when WS connection fails during handshake."""
@@ -69,7 +80,9 @@ class WSMetrics:
     def get_snapshot(self) -> Dict[str, Any]:
         """Get current metrics snapshot (thread-safe)."""
         with self._lock:
-            return self._metrics.copy()
+            snap = self._metrics.copy()
+            snap["disconnect_codes"] = dict(self._metrics.get("disconnect_codes", {}) or {})
+            return snap
     
     def log_if_needed(self, interval_seconds: int = 300):
         """

@@ -5,6 +5,12 @@ services:
     ipAllowList: []
     maxmemoryPolicy: allkeys-lru
 
+  - type: redis
+    name: school-display-channels-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
   - type: web
     name: school-display
     runtime: python
@@ -27,13 +33,28 @@ services:
       fi
 
       # IMPORTANT:
-      # - If REDIS_URL is missing, Django falls back to LocMemCache (per-process).
+      # - If CACHE_REDIS_URL / REDIS_URL is missing, Django falls back to LocMemCache (per-process).
       # - With multiple gunicorn workers, that breaks cache coherence and causes repeated snapshot_build/cache=MISS.
       WORKERS=${WEB_CONCURRENCY:-2}
-      if [ -z "$REDIS_URL" ]; then
-        echo "[WARN] REDIS_URL is not set; forcing WORKERS=1 to avoid per-process cache misses."
+      EFFECTIVE_CACHE_REDIS_URL="${CACHE_REDIS_URL:-$REDIS_URL}"
+      if [ -z "$EFFECTIVE_CACHE_REDIS_URL" ]; then
+        echo "[WARN] CACHE_REDIS_URL/REDIS_URL is not set; forcing WORKERS=1 to avoid per-process cache misses."
         WORKERS=1
       fi
+
+      SNAPSHOT_WORKER_PID=""
+      if [ "${DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER:-True}" = "True" ]; then
+        python manage.py display_snapshot_worker --poll-timeout=5 &
+        SNAPSHOT_WORKER_PID=$!
+        echo "[INFO] started embedded snapshot worker pid=${SNAPSHOT_WORKER_PID}"
+      fi
+
+      cleanup() {
+        if [ -n "$SNAPSHOT_WORKER_PID" ]; then
+          kill "$SNAPSHOT_WORKER_PID" 2>/dev/null || true
+        fi
+      }
+      trap cleanup TERM INT EXIT
 
       # Run as ASGI to support WebSockets (/ws/display/) for realtime screen refresh.
       # Gunicorn + UvicornWorker supports both HTTP and WebSocket.
@@ -83,6 +104,16 @@ services:
 
       - key: DISPLAY_WS_ENABLED
         value: "True"
+      - key: DISPLAY_SNAPSHOT_ASYNC_BUILD
+        value: "True"
+      - key: DISPLAY_SNAPSHOT_INLINE_FALLBACK
+        value: "False"
+      - key: DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER
+        value: "True"
+      - key: DISPLAY_REQUIRE_REDIS_SPLIT
+        value: "True"
+      - key: DISPLAY_PUBLIC_BASE_URL
+        value: "https://school-display-p8ec.onrender.com"
 
       - key: ALLOWED_HOSTS
         value: "school-display-p8ec.onrender.com,.onrender.com"
@@ -101,7 +132,19 @@ services:
           name: school-display-redis
           type: redis
           property: connectionString
+      - key: CACHE_REDIS_URL
+        fromService:
+          name: school-display-redis
+          type: redis
+          property: connectionString
+      - key: CHANNELS_REDIS_URL
+        fromService:
+          name: school-display-channels-redis
+          type: redis
+          property: connectionString
       - key: REDIS_MAX_CONNECTIONS
+        value: "20"
+      - key: CACHE_REDIS_MAX_CONNECTIONS
         value: "20"
 
       - key: CLOUDINARY_CLOUD_NAME

@@ -1326,10 +1326,14 @@
   //     results in a fetch (overwrite pattern via named timer)
   // ===========================================================================
 
-  var WS_SNAPSHOT_JITTER_MAX_MS = 200; // 200ms ceiling
+  var WS_SNAPSHOT_JITTER_MAX_MS = 1200; // wider spread to avoid post-invalidate stampedes
 
-  function _wsSnapshotJitterMs() {
-    return Math.round(Math.random() * WS_SNAPSHOT_JITTER_MAX_MS);
+  function _wsSnapshotJitterMs(revision) {
+    var cap = Math.max(200, Number(cfg.WS_SNAPSHOT_JITTER_MAX_MS) || WS_SNAPSHOT_JITTER_MAX_MS);
+    var floor = Math.min(250, Math.round(cap * 0.2));
+    var seed = (getDeviceId() || window.location.pathname || "display") + "|" + String(revision || 0);
+    var fraction = _stableUnitInterval("ws_snapshot:" + seed);
+    return floor + Math.round(fraction * Math.max(0, cap - floor));
   }
 
   /**
@@ -1345,7 +1349,7 @@
       }));
       return;
     }
-    var jitter = _wsSnapshotJitterMs();
+    var jitter = _wsSnapshotJitterMs(revision);
 
     _log("ws_snapshot_scheduled", {
       revision: revision,
@@ -1535,6 +1539,21 @@
     return "display_rev:" + safe;
   }
 
+  function _stableUnitInterval(seed) {
+    try {
+      var s = String(seed || "");
+      if (!s) return Math.random();
+      var h = 2166136261;
+      for (var i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+      }
+      return ((h >>> 0) % 1000000) / 1000000;
+    } catch (e) {
+      return Math.random();
+    }
+  }
+
   (function initRevision() {
     try {
       const raw = localStorage.getItem(revStorageKey()) || "";
@@ -1545,10 +1564,11 @@
     }
   })();
 
-  // Pick a stable jitter per page load: ~±25% لتوزيع أفضل للحمل مع عدد كبير من الشاشات
+  // Pick a stable per-device jitter: ~±25% لتوزيع أفضل للحمل مع عدد كبير من الشاشات
   (function initRefreshJitter() {
     try {
-      const v = (Math.random() * 0.5) - 0.25; // -0.25..+0.25 (زيادة من ±15% إلى ±25%)
+      const seed = getOrCreateDeviceId() || window.location.pathname || "display";
+      const v = (_stableUnitInterval("poll:" + seed) * 0.5) - 0.25; // -0.25..+0.25
       rt.refreshJitterFrac = Math.abs(v) < 0.01 ? 0.20 : v;
     } catch (e) {
       rt.refreshJitterFrac = 0.20;
@@ -5764,6 +5784,35 @@
     return Number(cfg.REFRESH_EVERY) || 20;
   }
 
+  function _wsReconnectDelaySec(attempt, closeCode) {
+    var n = Math.max(1, parseInt(attempt, 10) || 1);
+    var code = parseInt(closeCode, 10) || 0;
+    var exp = Math.min(4, Math.max(0, n - 1));
+    var baseDelay;
+    var jitterMin = 0.75;
+    var jitterMax = 1.35;
+
+    // Restart / overload close codes should reconnect more gently to avoid
+    // a fleet-wide rush immediately after deploy or worker restart.
+    if (code === 1012 || code === 1013) {
+      baseDelay = Math.min(90, 5 * Math.pow(2, exp));
+      jitterMin = 1.0;
+      jitterMax = 2.0;
+    } else if (code === 1001) {
+      baseDelay = Math.min(45, 3 * Math.pow(1.8, exp));
+      jitterMin = 0.9;
+      jitterMax = 1.8;
+    } else if (code === 1006 || code === 0) {
+      baseDelay = Math.min(30, 2 * Math.pow(1.8, exp));
+      jitterMin = 0.9;
+      jitterMax = 1.6;
+    } else {
+      baseDelay = Math.min(60, Math.pow(2, Math.min(5, n - 1)));
+    }
+
+    return Math.max(1, baseDelay * (jitterMin + (Math.random() * (jitterMax - jitterMin))));
+  }
+
   function initWebSocket() {
     if (isTerminalBlockedMode()) {
       _log("reconnect_blocked_due_to_binding_loss", _logContext({
@@ -6022,9 +6071,7 @@
           return;
         }
 
-        var baseDelay = Math.min(60, Math.pow(2, Math.min(5, rt.wsRetryCount - 1)));
-        var jitter = 0.5 + Math.random();
-        var delay = baseDelay * jitter;
+        var delay = _wsReconnectDelaySec(rt.wsRetryCount, code);
         
         if (rt.wsRetryCount >= rt.wsMaxRetries) {
           var longDelaySec = 120;
@@ -6064,7 +6111,7 @@
       rt.wsRetryCount++;
       
       var retryDelay = (rt.wsRetryCount < rt.wsMaxRetries)
-        ? Math.min(60, Math.pow(2, rt.wsRetryCount - 1))
+        ? _wsReconnectDelaySec(rt.wsRetryCount, 0)
         : 120;
       setNamedTimer("ws_reconnect", function () {
         if (isTerminalBlockedMode()) {

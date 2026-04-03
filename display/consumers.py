@@ -24,16 +24,62 @@ import time
 from urllib.parse import parse_qs
 
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.conf import settings
+from django.core.cache import cache
 
 from display.services import (
     ScreenBoundError,
     ScreenNotFoundError,
     bind_device_atomic,
 )
+from display.ws_cluster_metrics import heartbeat as ws_cluster_heartbeat
+from display.ws_cluster_metrics import register_connect as ws_cluster_register_connect
+from display.ws_cluster_metrics import register_disconnect as ws_cluster_register_disconnect
 from display.ws_groups import school_group_name, token_group_name
 from display.ws_metrics import ws_metrics
 
 logger = logging.getLogger(__name__)
+
+
+def _ws_log_interval_seconds() -> int:
+    try:
+        v = int(getattr(settings, "WS_METRICS_LOG_INTERVAL", 300) or 300)
+    except Exception:
+        v = 300
+    return max(30, min(3600, v))
+
+
+def _should_log_ws_event(kind: str, *, screen_id: int | None = None, code: int | None = None) -> bool:
+    parts = [str(kind or "ws")]
+    if screen_id is not None:
+        parts.append(str(int(screen_id)))
+    if code is not None:
+        parts.append(str(int(code)))
+    key = "display:ws_log:" + ":".join(parts)
+    try:
+        return bool(cache.add(key, "1", timeout=_ws_log_interval_seconds()))
+    except Exception:
+        return True
+
+
+def _ws_metric_ttl_seconds() -> int:
+    return 60 * 60 * 24
+
+
+def _ws_metric_incr(name: str) -> None:
+    key = f"metrics:ws:{str(name or '').strip()}"
+    try:
+        cache.add(key, 0, timeout=_ws_metric_ttl_seconds())
+    except Exception:
+        pass
+    try:
+        cache.incr(key)
+    except Exception:
+        try:
+            cur = int(cache.get(key) or 0)
+            cache.set(key, cur + 1, timeout=_ws_metric_ttl_seconds())
+        except Exception:
+            pass
 
 
 class DisplayConsumer(AsyncWebsocketConsumer):
@@ -55,6 +101,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         self.school_group_name = None
         self.token_group_name = None
         self.device_id = None
+        self.token_value = None
     
     async def connect(self):
         """
@@ -70,12 +117,14 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         query_params = parse_qs(query_string)
         
         token = query_params.get("token", [None])[0]
+        self.token_value = token
         self.device_id = query_params.get("dk", [None])[0]
         
         # Validate required params
         if not token or not self.device_id:
             logger.warning("WS connect rejected: missing token or dk")
             ws_metrics.connection_failed()
+            _ws_metric_incr("connect_failed")
             await self.close(code=4400)
             return
         
@@ -90,6 +139,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         except ScreenNotFoundError:
             logger.warning(f"WS connect rejected: token not found {token[:8]}...")
             ws_metrics.connection_failed()
+            _ws_metric_incr("connect_failed")
             await self.close(code=4403)
             return
         except ScreenBoundError:
@@ -97,11 +147,13 @@ class DisplayConsumer(AsyncWebsocketConsumer):
                 f"WS connect rejected: screen {token[:8]}... bound to different device"
             )
             ws_metrics.connection_failed()
+            _ws_metric_incr("connect_failed")
             await self.close(code=4408)
             return
         except Exception as e:
             logger.exception(f"WS connect error: {e}")
             ws_metrics.connection_failed()
+            _ws_metric_incr("connect_failed")
             await self.close(code=4500)
             return
         
@@ -118,6 +170,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.exception(f"WS connect failed group_add school group: {e}")
             ws_metrics.connection_failed()
+            _ws_metric_incr("connect_failed")
             await self.close(code=4501)
             return
 
@@ -133,11 +186,17 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         
         # Track successful connection
         ws_metrics.connection_opened()
+        _ws_metric_incr("connect_total")
+        try:
+            ws_cluster_register_connect(channel_name=self.channel_name, token=self.token_value, device_id=self.device_id)
+        except Exception:
+            pass
         
-        logger.info(
-            f"WS connected: screen {self.screen.id} (school {self.screen.school_id}) "
-            f"device {self.device_id[:8]}... group {self.school_group_name}"
-        )
+        if _should_log_ws_event("connect", screen_id=int(self.screen.id)):
+            logger.info(
+                f"WS connected: screen {self.screen.id} (school {self.screen.school_id}) "
+                f"device {self.device_id[:8]}... group {self.school_group_name}"
+            )
         
         # Log metrics periodically (every 5 minutes)
         ws_metrics.log_if_needed(interval_seconds=300)
@@ -145,7 +204,17 @@ class DisplayConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         """Leave school group on disconnect."""
         # Track disconnection
-        ws_metrics.connection_closed()
+        ws_metrics.connection_closed(close_code)
+        _ws_metric_incr("disconnect_total")
+        try:
+            ws_cluster_register_disconnect(channel_name=self.channel_name, close_code=close_code)
+        except Exception:
+            pass
+        if close_code is not None:
+            try:
+                _ws_metric_incr(f"disconnect_code:{int(close_code)}")
+            except Exception:
+                _ws_metric_incr(f"disconnect_code:{close_code}")
         
         if self.school_group_name:
             try:
@@ -155,10 +224,12 @@ class DisplayConsumer(AsyncWebsocketConsumer):
                 )
             except Exception:
                 pass
-            logger.info(
-                f"WS disconnected: screen {self.screen.id if self.screen else '?'} "
-                f"code {close_code} group {self.school_group_name}"
-            )
+            screen_id = self.screen.id if self.screen else None
+            if _should_log_ws_event("disconnect", screen_id=screen_id, code=close_code):
+                logger.info(
+                    f"WS disconnected: screen {screen_id if screen_id is not None else '?'} "
+                    f"code {close_code} group {self.school_group_name}"
+                )
 
         if self.token_group_name:
             try:
@@ -181,6 +252,10 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             msg_type = data.get("type")
             
             if msg_type == "ping":
+                try:
+                    ws_cluster_heartbeat(channel_name=self.channel_name)
+                except Exception:
+                    pass
                 await self.send(text_data=json.dumps({"type": "pong"}))
             else:
                 logger.debug(f"WS received unknown message type: {msg_type}")
@@ -228,6 +303,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             # Track successful broadcast
             latency_ms = (time.time() - start_time) * 1000
             ws_metrics.broadcast_sent(latency_ms)
+            _ws_metric_incr("broadcast_sent")
             
             logger.debug(
                 f"WS sent invalidate: screen {self.screen.id if self.screen else '?'} "
@@ -235,6 +311,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             )
         except Exception as e:
             ws_metrics.broadcast_failed()
+            _ws_metric_incr("broadcast_failed")
             logger.exception(f"WS broadcast send failed: {e}")
 
 
@@ -252,7 +329,9 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "reload"}))
             latency_ms = (time.time() - start_time) * 1000
             ws_metrics.broadcast_sent(latency_ms)
+            _ws_metric_incr("broadcast_sent")
         except Exception as e:
             ws_metrics.broadcast_failed()
+            _ws_metric_incr("broadcast_failed")
             logger.exception(f"WS reload send failed: {e}")
 

@@ -5,16 +5,20 @@ Enforces atomic single-device binding to prevent race conditions.
 Used by both HTTP snapshot endpoint and WebSocket consumer.
 """
 
+import hashlib
 import logging
 from typing import Optional
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
 
 from core.models import DisplayScreen
 
 logger = logging.getLogger(__name__)
+
+TOKEN_MAP_TTL = 60 * 60 * 24  # 24h
 
 
 class DeviceBindingError(Exception):
@@ -30,6 +34,52 @@ class ScreenBoundError(DeviceBindingError):
 class ScreenNotFoundError(DeviceBindingError):
     """Screen token not found."""
     pass
+
+
+def _token_map_key(token: str) -> str:
+    token_hash = hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+    return f"display:token_map:{token_hash}"
+
+
+def _cache_screen(token: str, *, screen_id: int, school_id: int, bound_device_id: str | None) -> None:
+    try:
+        cache.set(
+            _token_map_key(token),
+            {
+                "id": int(screen_id),
+                "school_id": int(school_id),
+                "bound_device_id": (bound_device_id or "").strip() or None,
+            },
+            timeout=TOKEN_MAP_TTL,
+        )
+    except Exception:
+        pass
+
+
+def _screen_from_cached_map(cached_map: object, *, device_id: str) -> DisplayScreen | None:
+    if not isinstance(cached_map, dict):
+        return None
+
+    try:
+        bound_device_id = (cached_map.get("bound_device_id") or "").strip()
+        if not bound_device_id or bound_device_id != (device_id or "").strip():
+            return None
+
+        screen_id = int(cached_map.get("id") or 0)
+        school_id = int(cached_map.get("school_id") or 0)
+        if screen_id <= 0 or school_id <= 0:
+            return None
+
+        screen = DisplayScreen(
+            id=screen_id,
+            school_id=school_id,
+            bound_device_id=bound_device_id,
+            is_active=True,
+        )
+        screen.pk = screen_id
+        return screen
+    except Exception:
+        return None
 
 
 def bind_device_atomic(
@@ -56,6 +106,26 @@ def bind_device_atomic(
     """
     if allow_multi_device is None:
         allow_multi_device = getattr(settings, "DISPLAY_ALLOW_MULTI_DEVICE", False)
+
+    token = (token or "").strip()
+    device_id = (device_id or "").strip()
+    if not token:
+        raise ScreenNotFoundError("Screen token not found or inactive")
+
+    # Hot-path optimization: once a screen is already bound to this exact device,
+    # avoid a DB read on every /status poll and snapshot fetch.
+    # We intentionally do NOT trust cache-only mismatches for rejection because
+    # admins may unbind a screen and we must not reject based on stale cache.
+    if not allow_multi_device and device_id:
+        try:
+            cached_screen = _screen_from_cached_map(
+                cache.get(_token_map_key(token)),
+                device_id=device_id,
+            )
+            if cached_screen is not None:
+                return cached_screen
+        except Exception:
+            pass
     
     try:
         screen = DisplayScreen.objects.select_related("school").get(
@@ -68,11 +138,23 @@ def bind_device_atomic(
     
     # If multi-device allowed, skip binding enforcement
     if allow_multi_device:
+        _cache_screen(
+            token,
+            screen_id=int(screen.id),
+            school_id=int(screen.school_id or 0),
+            bound_device_id=getattr(screen, "bound_device_id", None),
+        )
         logger.info(f"Multi-device enabled for screen {screen.id}, skipping binding")
         return screen
     
     # Check if already bound to THIS device
     if screen.bound_device_id == device_id:
+        _cache_screen(
+            token,
+            screen_id=int(screen.id),
+            school_id=int(screen.school_id or 0),
+            bound_device_id=device_id,
+        )
         logger.debug(f"Screen {screen.id} already bound to device {device_id[:8]}...")
         return screen
     
@@ -102,6 +184,12 @@ def bind_device_atomic(
         screen.refresh_from_db()
         if screen.bound_device_id == device_id:
             # We won! (unlikely but possible if multiple requests from same device)
+            _cache_screen(
+                token,
+                screen_id=int(screen.id),
+                school_id=int(screen.school_id or 0),
+                bound_device_id=device_id,
+            )
             logger.info(f"Screen {screen.id} bound to device {device_id[:8]}... (race won)")
             return screen
         else:
@@ -117,6 +205,12 @@ def bind_device_atomic(
     
     # Success: we bound it
     screen.refresh_from_db()
+    _cache_screen(
+        token,
+        screen_id=int(screen.id),
+        school_id=int(screen.school_id or 0),
+        bound_device_id=device_id,
+    )
     logger.info(f"Screen {screen.id} newly bound to device {device_id[:8]}...")
     return screen
 
@@ -128,11 +222,23 @@ def unbind_device(screen_id: int) -> bool:
     Returns:
         True if unbound, False if screen not found
     """
+    screen = (
+        DisplayScreen.objects
+        .filter(id=screen_id)
+        .only("id", "token")
+        .first()
+    )
     rows_updated = DisplayScreen.objects.filter(id=screen_id).update(
         bound_device_id=None,
         bound_at=None
     )
     if rows_updated:
+        try:
+            token = (getattr(screen, "token", "") or "").strip()
+            if token:
+                cache.delete(_token_map_key(token))
+        except Exception:
+            pass
         logger.info(f"Unbound device from screen {screen_id}")
         return True
     return False

@@ -6,6 +6,8 @@ from django.conf import settings
 from django.core.cache import caches
 from django.core.management.base import BaseCommand
 
+from core.redis_topology import redis_topology_summary
+
 
 def _redact_location(value: object) -> object:
     if not isinstance(value, str):
@@ -45,6 +47,14 @@ class Command(BaseCommand):
         self.stdout.write(f"redis_url_configured={bool(os.getenv('REDIS_URL', '').strip())}")
         self.stdout.write(f"cache_backend={backend_name}")
         self.stdout.write(f"settings.CACHES['default']={default_cfg}")
+        try:
+            topology = redis_topology_summary()
+            self.stdout.write(f"redis_topology_split={int(bool(topology.get('split')))}")
+            self.stdout.write(f"cache_redis_url={topology.get('cache_url_redacted')}")
+            self.stdout.write(f"channels_redis_url={topology.get('channels_url_redacted')}")
+            self.stdout.write(f"redis_topology_warnings={topology.get('warnings')}")
+        except Exception:
+            pass
 
         # Best-effort connectivity check for django-redis.
         try:

@@ -1,12 +1,16 @@
 from datetime import datetime, time
+from unittest import mock
 from zoneinfo import ZoneInfo
 
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.conf import settings as dj_settings
 from django.core.cache import cache
 from django.utils import timezone
 
 from core.tests_utils import make_active_school_with_screen
+from schedule.cache_utils import set_cached_schedule_revision_for_school_id
 
 
 def _assert_snapshot_cache_control(resp) -> None:
@@ -52,6 +56,38 @@ class DisplayApiAliasesTests(TestCase):
             f"/api/display/status/{bundle.screen.token}/?v={cur_rev}",
         )
         self.assertEqual(r2.status_code, 304)
+
+    def test_status_steady_state_is_zero_db_queries(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+
+        # Prime device binding + token->school cache through snapshot once.
+        snapshot_resp = self.client.get(
+            f"/api/display/snapshot/{bundle.screen.token}/",
+            **{"HTTP_X_DISPLAY_DEVICE": "devA"},
+        )
+        self.assertEqual(snapshot_resp.status_code, 200)
+
+        if bundle.settings:
+            try:
+                bundle.settings.refresh_from_db()
+            except Exception:
+                pass
+        cur_rev = int(getattr(bundle.settings, "schedule_revision", 0) or 0)
+        set_cached_schedule_revision_for_school_id(bundle.school.id, cur_rev)
+
+        with mock.patch("schedule.api_views._cache_is_shared", return_value=True):
+            with CaptureQueriesContext(connection) as ctx:
+                status_resp = self.client.get(
+                    f"/api/display/status/{bundle.screen.token}/?v={cur_rev}",
+                    **{"HTTP_X_DISPLAY_DEVICE": "devA"},
+                )
+
+        self.assertEqual(status_resp.status_code, 304)
+        self.assertEqual(
+            len(ctx.captured_queries),
+            0,
+            msg=f"expected 0 DB queries in /status steady state, saw {len(ctx.captured_queries)}",
+        )
 
     def test_snapshot_requires_device_key_is_403(self):
         bundle = make_active_school_with_screen(max_screens=3)
@@ -238,6 +274,56 @@ class DisplaySnapshotPhase2Tests(TestCase):
         # Second request should be served from cache (200 or 304)
         r2 = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA", "HTTP_IF_NONE_MATCH": r1.get("ETag")})
         self.assertIn(r2.status_code, {200, 304})
+
+    def test_materialize_snapshot_for_school_writes_shared_artifact(self):
+        bundle = make_active_school_with_screen(max_screens=3)
+        cache.clear()
+
+        if bundle.settings:
+            try:
+                bundle.settings.refresh_from_db()
+            except Exception:
+                pass
+        rev = int(getattr(bundle.settings, "schedule_revision", 0) or 0)
+
+        from schedule.api_views import _snapshot_cache_entry_from_cached, _steady_cache_key_for_school_rev
+        from schedule.snapshot_materializer import materialize_snapshot_for_school
+
+        result = materialize_snapshot_for_school(
+            school_id=bundle.school.id,
+            rev=rev,
+            day_key=timezone.localdate().isoformat(),
+            source="test",
+        )
+        self.assertTrue(result.get("ok"), msg=str(result))
+
+        steady_key = _steady_cache_key_for_school_rev(bundle.school.id, int(result.get("built_rev") or rev), day_key=timezone.localdate().isoformat())
+        entry = _snapshot_cache_entry_from_cached(cache.get(steady_key))
+        self.assertIsInstance(entry, dict)
+        self.assertEqual((entry.get("snap") or {}).get("meta", {}).get("materialized"), True)
+
+    def test_get_or_build_snapshot_can_return_queued_building_payload(self):
+        cache.clear()
+
+        from schedule.api_views import get_or_build_snapshot
+
+        with mock.patch("schedule.snapshot_materializer.snapshot_async_build_enabled", return_value=True), \
+             mock.patch("schedule.snapshot_materializer.snapshot_queue_available", return_value=True), \
+             mock.patch("schedule.snapshot_materializer.snapshot_worker_status", return_value={"alive": True, "queue_available": True}), \
+             mock.patch("schedule.snapshot_materializer.snapshot_inline_fallback_enabled", return_value=False), \
+             mock.patch("schedule.snapshot_materializer.enqueue_snapshot_build") as enqueue_mock, \
+             mock.patch("schedule.snapshot_materializer.wait_for_materialized_snapshot", return_value=None), \
+             mock.patch("schedule.api_views._get_stale_snapshot_fallback", return_value=None):
+            entry, cache_kind = get_or_build_snapshot(
+                999,
+                77,
+                mock.Mock(side_effect=AssertionError("builder should not run inline")),
+                day_key="2026-04-03",
+            )
+
+        self.assertEqual(cache_kind, "QUEUED")
+        self.assertEqual(((entry.get("snap") or {}).get("state") or {}).get("type"), "BUILDING")
+        enqueue_mock.assert_called_once()
 
 
 class SnapshotTtlHelpersTests(TestCase):
