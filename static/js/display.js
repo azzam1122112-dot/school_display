@@ -456,7 +456,7 @@
   // ===== Config =====
   const cfg = {
     REFRESH_EVERY: 20, // زيادة من 10 إلى 20 لتقليل الاستهلاك بنسبة 50%
-    WS_FALLBACK_POLL_EVERY: 90, // when WS is healthy, keep only a slow safety poll
+    WS_FALLBACK_POLL_EVERY: 180, // when WS is healthy, keep only a sparse safety poll
     STANDBY_SPEED: 0.8,
     PERIODS_SPEED: 0.5,
     MEDIA_PREFIX: "/media/",
@@ -5813,6 +5813,14 @@
     return Math.max(1, baseDelay * (jitterMin + (Math.random() * (jitterMax - jitterMin))));
   }
 
+  function _browserOffline() {
+    try {
+      return typeof navigator !== "undefined" && navigator.onLine === false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function initWebSocket() {
     if (isTerminalBlockedMode()) {
       _log("reconnect_blocked_due_to_binding_loss", _logContext({
@@ -5822,6 +5830,23 @@
     }
     if (!rt.wsEnabled) {
       _log("ws_disabled", { reason: "feature_flag" });
+      return;
+    }
+
+    if (_browserOffline()) {
+      _log("ws_offline_skip", { retryCount: rt.wsRetryCount, mode: rt.mode });
+      if (rt.mode === "ws-live") {
+        setMode("fallback-poll", "browser_offline");
+      }
+      setNamedTimer("ws_reconnect", function () {
+        if (isTerminalBlockedMode()) {
+          _log("reconnect_blocked_due_to_binding_loss", _logContext({
+            sourcePath: "ws_offline_retry",
+          }));
+          return;
+        }
+        initWebSocket();
+      }, 15000, "ws_offline_retry");
       return;
     }
 
@@ -5879,6 +5904,12 @@
     var wsUrl = proto + "//" + host + "/ws/display/?token=" + encodeURIComponent(token) + "&dk=" + encodeURIComponent(deviceId);
     
     try {
+      if (rt.wsRetryCount > 0) {
+        _log("ws_reconnect_attempt", {
+          attempt: rt.wsRetryCount,
+          mode: rt.mode,
+        });
+      }
       _log("ws_connecting", { url: wsUrl.substring(0, 80) });
       
       rt.ws = new WebSocket(wsUrl);
@@ -5897,6 +5928,7 @@
         rt.wsSuppressedUntilTs = 0;
         rt.wsOpenedAt = Date.now(); // cooldown reference for fetch dedup
 
+        _log("ws_connected", { mode: rt.mode, openedAt: rt.wsOpenedAt });
         _log("ws_reconnect_succeeded", { mode: rt.mode });
 
         // Cancel any pending sleep reconnect timer (improvement #1)
@@ -5979,6 +6011,7 @@
             var newRev = parseInt(msg.revision, 10);
             if (isNaN(newRev)) return;
             
+            _log("ws_revision_received", { revision: newRev, mode: rt.mode });
             _log("ws_invalidate", { revision: newRev });
             
             rt.pendingRev = newRev;
@@ -6025,6 +6058,7 @@
         var code = event.code;
         var reason = event.reason || "";
         
+        _log("ws_disconnected", { code: code, reason: reason, mode: rt.mode, attempt: rt.wsRetryCount + 1 });
         _log("ws_closed", { code: code, reason: reason, mode: rt.mode });
 
         var wsCloseBinding = isBindingConflictWsClose(event);
@@ -6216,6 +6250,25 @@
     requestReSyncIfNeeded(); // throttled request (skipped if sleeping or WS connected)
   }, { passive: true });
 
+  window.addEventListener("online", function () {
+    if (isTerminalBlockedMode()) return;
+    _log("browser_online", { mode: rt.mode, wsEnabled: rt.wsEnabled, wsConnected: rt.wsConnected });
+    if (rt.wsEnabled && !rt.wsConnected) {
+      clearNamedTimer("ws_reconnect");
+      initWebSocket();
+    }
+    if (rt.mode !== "ws-live") {
+      scheduleNext(0.25);
+    }
+  }, { passive: true });
+
+  window.addEventListener("offline", function () {
+    _log("browser_offline", { mode: rt.mode, wsConnected: rt.wsConnected });
+    if (rt.mode === "ws-live") {
+      setMode("fallback-poll", "browser_offline");
+    }
+  }, { passive: true });
+
   // ===== Global errors =====
   window.addEventListener("error", (ev) => {
     ensureDebugOverlay();
@@ -6261,7 +6314,7 @@
     } catch (e) {}
 
     cfg.REFRESH_EVERY = clamp(parseFloat(body.dataset.refresh || "10") || 10, 5, 120);
-    cfg.WS_FALLBACK_POLL_EVERY = clamp(parseFloat(body.dataset.wsFallbackPoll || "90") || 90, 30, 600);
+    cfg.WS_FALLBACK_POLL_EVERY = clamp(parseFloat(body.dataset.wsFallbackPoll || "180") || 180, 30, 600);
     cfg.STANDBY_SPEED = normSpeed(body.dataset.standby || "0.8", 0.8);
     cfg.PERIODS_SPEED = normSpeed(body.dataset.periodsSpeed || "0.5", 0.5);
 

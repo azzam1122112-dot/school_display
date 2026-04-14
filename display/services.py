@@ -70,4 +70,4 @@ def get_school_id_by_token(token: str) -> int | None:
 
 def get_day_key() -> str:
     # Local day (Asia/Riyadh configured in settings)
-    return timezone.localdate().strftime("%Y%m%d")
+    return timezone.localdate().isoformat()

@@ -9,6 +9,8 @@ from django.db.models import F
 from django.utils import timezone
 
 from core.models import DisplayScreen
+from display.cache_utils import keys as display_cache_keys
+from display.cache_utils import normalize_day_key
 from schedule.models import SchoolSettings
 
 
@@ -212,7 +214,11 @@ def invalidate_display_snapshot_cache_for_school_id(school_id: int) -> None:
     if not school_id:
         return
 
-    # Delete token caches used by /api/display/status
+    rev = get_schedule_revision_for_school_id(int(school_id)) or 0
+    revs = {rev, max(0, rev - 1), rev + 1}
+
+    # Delete token-scoped snapshot caches, but keep token->school mapping.
+    # The mapping stays valid across revision bumps and keeps /status cache-only.
     try:
         screens = DisplayScreen.objects.filter(school_id=int(school_id)).only("token")
     except Exception:
@@ -227,15 +233,13 @@ def invalidate_display_snapshot_cache_for_school_id(school_id: int) -> None:
             cache.delete(f"display:snapshot:{token_hash}")
         except Exception:
             pass
-        try:
-            cache.delete(f"display:token_map:{token_hash}")
-        except Exception:
-            pass
+        for r in revs:
+            try:
+                cache.delete(f"display:snapshot:{int(school_id)}:rev:{int(r)}:{token_hash}")
+            except Exception:
+                pass
 
     # Delete a small window of possible school keys (today +/- 1) across current and previous revisions.
-    rev = get_schedule_revision_for_school_id(int(school_id)) or 0
-    revs = {rev, max(0, rev - 1), rev + 1}
-
     try:
         today = timezone.localdate()
     except Exception:
@@ -245,13 +249,52 @@ def invalidate_display_snapshot_cache_for_school_id(school_id: int) -> None:
     if today:
         dates = [today, today - timedelta(days=1), today + timedelta(days=1)]
 
-    for r in revs:
+    day_candidates = set()
+    for d in dates:
         try:
-            cache.delete(f"snapshot:v5:school:{int(school_id)}:rev:{int(r)}")
+            day_candidates.add(d.isoformat())
         except Exception:
             pass
-        for d in dates:
+        try:
+            day_candidates.add(d.strftime("%Y%m%d"))
+        except Exception:
+            pass
+        try:
+            day_candidates.add(normalize_day_key(d))
+        except Exception:
+            pass
+
+    for r in revs:
+        try:
+            cache.delete(f"lock:snapshot:{int(school_id)}:{int(r)}")
+        except Exception:
+            pass
+        for d in day_candidates:
             try:
-                cache.delete(f"snapshot:v5:school:{int(school_id)}:rev:{int(r)}:steady:{str(d)}")
+                cache.delete(f"snapshot:v7:school:{int(school_id)}:rev:{int(r)}:day:{str(d)}")
+            except Exception:
+                pass
+            try:
+                cache.delete(f"snapshot:v8:school:{int(school_id)}:rev:{int(r)}:day:{str(d)}")
+            except Exception:
+                pass
+            try:
+                cache.delete(f"lock:snapshot:{int(school_id)}:{int(r)}:day:{str(d)}")
+            except Exception:
+                pass
+            try:
+                cache.delete(display_cache_keys.snapshot(int(school_id), int(r), str(d)))
+            except Exception:
+                pass
+            try:
+                cache.delete(display_cache_keys.snapshot_transition(int(school_id), int(r), str(d)))
+            except Exception:
+                pass
+            try:
+                cache.delete(display_cache_keys.snapshot_lock(int(school_id), int(r), str(d)))
+            except Exception:
+                pass
+            try:
+                cache.delete(display_cache_keys.school_snapshot_stale(int(school_id), str(d)))
             except Exception:
                 pass

@@ -150,6 +150,13 @@
           </div>
         {% endif %}
 
+        {% if csrf_retry %}
+          <div class="mb-6 rounded-xl px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved"></i>
+            {{ csrf_failure_reason|default:"انتهت صلاحية جلسة الحماية لهذه الصفحة. تم توليد رمز جديد، أعد المحاولة الآن." }}
+          </div>
+        {% endif %}
+
         <form method="post" autocomplete="on" class="space-y-5">
           {% csrf_token %}
           {% if next %}

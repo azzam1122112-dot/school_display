@@ -30,11 +30,14 @@ from django.db.models import Max, Q, Sum, Count
 from django.db.models.functions import TruncMonth
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, NoReverseMatch, get_resolver
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.views.decorators.http import require_POST
 
 # ✅ عدّل هذه الاستيرادات حسب أسماء تطبيقاتك الفعلية
@@ -520,7 +523,12 @@ def get_active_school_or_redirect(request):
 # مصادقة ولوحة المدير
 # ======================
 
+@never_cache
+@ensure_csrf_cookie
+@csrf_protect
 def login_view(request):
+    next_url = _safe_next_url(request, default_name="dashboard:index")
+
     if request.user.is_authenticated:
         try:
             is_support = request.user.groups.filter(name="Support").exists()
@@ -535,6 +543,7 @@ def login_view(request):
     if request.method == "POST":
         u = (request.POST.get("username") or "").strip()
         p = request.POST.get("password") or ""
+        next_url = _safe_next_url(request, default_name="dashboard:index")
         user = authenticate(request, username=u, password=p)
         if user:
             login(request, user)
@@ -548,9 +557,16 @@ def login_view(request):
             _school, resp = get_active_school_or_redirect(request)
             return resp or redirect(_safe_next_url(request, default_name="dashboard:index"))
 
+        logger.warning(
+            "login_failed username=%s next=%s path=%s",
+            u[:80],
+            next_url,
+            getattr(request, "path", ""),
+        )
         messages.error(request, "بيانات الدخول غير صحيحة.")
 
-    return render(request, "dashboard/login.html")
+    get_token(request)
+    return render(request, "dashboard/login.html", {"next": next_url})
 
 
 def demo_login(request):

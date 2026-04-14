@@ -1,11 +1,38 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import time
+from datetime import date, datetime
 from dataclasses import dataclass
 from typing import Any
 
 from django.core.cache import cache
+
+
+_COMPACT_DAY_KEY_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})$")
+
+
+def normalize_day_key(day_key: object | None = None) -> str:
+    if isinstance(day_key, datetime):
+        return day_key.date().isoformat()
+    if isinstance(day_key, date):
+        return day_key.isoformat()
+
+    raw = str(day_key or "").strip()
+    if not raw:
+        try:
+            from django.utils import timezone
+
+            return timezone.localdate().isoformat()
+        except Exception:
+            return date.today().isoformat()
+
+    match = _COMPACT_DAY_KEY_RE.match(raw)
+    if match:
+        return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+
+    return raw[:32]
 
 
 @dataclass(frozen=True)
@@ -26,19 +53,31 @@ class CacheKeys:
 
     # snapshot per school+rev+day
     def snapshot(self, school_id: int, rev: int, day_key: str) -> str:
-        return f"display:snap:v5:school:{int(school_id)}:rev:{int(rev)}:day:{day_key}"
+        return (
+            f"display:snap:v6:school:{int(school_id)}:rev:{int(rev)}:"
+            f"day:{normalize_day_key(day_key)}"
+        )
 
     # short-lived snapshot used only during time-based transitions (countdown==0)
     def snapshot_transition(self, school_id: int, rev: int, day_key: str) -> str:
-        return f"display:snap:v5:school:{int(school_id)}:rev:{int(rev)}:day:{day_key}:transition"
+        return (
+            f"display:snap:v6:school:{int(school_id)}:rev:{int(rev)}:"
+            f"day:{normalize_day_key(day_key)}:transition"
+        )
 
     # stale snapshot per school+day (rev-agnostic)
     def school_snapshot_stale(self, school_id: int, day_key: str) -> str:
-        return f"display:school_snapshot:stale:school:{int(school_id)}:day:{day_key}"
+        return (
+            f"display:school_snapshot:stale:school:{int(school_id)}:"
+            f"day:{normalize_day_key(day_key)}"
+        )
 
     # lock key
     def snapshot_lock(self, school_id: int, rev: int, day_key: str) -> str:
-        return f"display:lock:snap:school:{int(school_id)}:rev:{int(rev)}:day:{day_key}"
+        return (
+            f"display:lock:snap:school:{int(school_id)}:rev:{int(rev)}:"
+            f"day:{normalize_day_key(day_key)}"
+        )
 
 
 keys = CacheKeys()

@@ -30,24 +30,31 @@ class WSMetrics:
             "connections_active": 0,
             "connections_total": 0,
             "connections_failed": 0,
+            "reconnects_total": 0,
             "disconnect_codes": {},
             "broadcasts_sent": 0,
             "broadcasts_failed": 0,
             "broadcast_latency_sum": 0.0,
             "broadcast_latency_count": 0,
+            "last_connected_at": 0.0,
+            "last_disconnected_at": 0.0,
             "last_logged": 0,
         }
     
-    def connection_opened(self):
+    def connection_opened(self, *, is_reconnect: bool = False):
         """Called when WS connection established."""
         with self._lock:
             self._metrics["connections_active"] += 1
             self._metrics["connections_total"] += 1
+            if is_reconnect:
+                self._metrics["reconnects_total"] += 1
+            self._metrics["last_connected_at"] = time.time()
     
     def connection_closed(self, close_code: int | None = None):
         """Called when WS connection closed."""
         with self._lock:
             self._metrics["connections_active"] = max(0, self._metrics["connections_active"] - 1)
+            self._metrics["last_disconnected_at"] = time.time()
             if close_code is not None:
                 try:
                     code = str(int(close_code))
@@ -101,6 +108,7 @@ class WSMetrics:
             active = self._metrics["connections_active"]
             total = self._metrics["connections_total"]
             failed = self._metrics["connections_failed"]
+            reconnects = self._metrics["reconnects_total"]
             sent = self._metrics["broadcasts_sent"]
             b_failed = self._metrics["broadcasts_failed"]
             
@@ -112,7 +120,7 @@ class WSMetrics:
                 )
             
             logger.info(
-                f"[WS Metrics] Active: {active} | Total: {total} | Failed: {failed} | "
+                f"[WS Metrics] Active: {active} | Total: {total} | Failed: {failed} | Reconnects: {reconnects} | "
                 f"Broadcasts: {sent} (failed: {b_failed}) | Avg Latency: {avg_latency:.1f}ms"
             )
 

@@ -185,17 +185,26 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         await self.accept()
         
         # Track successful connection
-        ws_metrics.connection_opened()
+        connect_event = None
         _ws_metric_incr("connect_total")
         try:
-            ws_cluster_register_connect(channel_name=self.channel_name, token=self.token_value, device_id=self.device_id)
+            connect_info = ws_cluster_register_connect(
+                channel_name=self.channel_name,
+                token=self.token_value,
+                device_id=self.device_id,
+            )
+            connect_event = str((connect_info or {}).get("event") or "")
         except Exception:
             pass
+        is_reconnect = connect_event == "reconnect"
+        ws_metrics.connection_opened(is_reconnect=is_reconnect)
+        if is_reconnect:
+            _ws_metric_incr("reconnect_total")
         
         if _should_log_ws_event("connect", screen_id=int(self.screen.id)):
             logger.info(
                 f"WS connected: screen {self.screen.id} (school {self.screen.school_id}) "
-                f"device {self.device_id[:8]}... group {self.school_group_name}"
+                f"device {self.device_id[:8]}... group {self.school_group_name} event={connect_event or 'connect'}"
             )
         
         # Log metrics periodically (every 5 minutes)
@@ -304,11 +313,14 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             latency_ms = (time.time() - start_time) * 1000
             ws_metrics.broadcast_sent(latency_ms)
             _ws_metric_incr("broadcast_sent")
-            
-            logger.debug(
-                f"WS sent invalidate: screen {self.screen.id if self.screen else '?'} "
-                f"revision {revision} latency {latency_ms:.1f}ms"
-            )
+            _ws_metric_incr("invalidate_total")
+
+            screen_id = int(self.screen.id) if self.screen else 0
+            if _should_log_ws_event("invalidate", screen_id=screen_id):
+                logger.info(
+                    f"WS sent invalidate: screen {self.screen.id if self.screen else '?'} "
+                    f"school {school_id} revision {revision} latency {latency_ms:.1f}ms"
+                )
         except Exception as e:
             ws_metrics.broadcast_failed()
             _ws_metric_incr("broadcast_failed")

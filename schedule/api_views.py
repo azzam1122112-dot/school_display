@@ -143,13 +143,16 @@ def _cache_backend_name() -> str:
 
 def _steady_cache_key_for_school_rev(school_id: int, rev: int, *, day_key: object | None = None) -> str:
     return (
-        f"snapshot:v7:school:{int(school_id)}:rev:{int(rev)}:"
+        f"snapshot:v8:school:{int(school_id)}:rev:{int(rev)}:"
         f"day:{_snapshot_cache_day_key(day_key)}"
     )
 
 
-def _acquire_build_lock(school_id: int, rev: int) -> bool:
-    lock_key = f"lock:snapshot:{int(school_id)}:{int(rev)}"
+def _acquire_build_lock(school_id: int, rev: int, *, day_key: object | None = None) -> bool:
+    lock_key = (
+        f"lock:snapshot:{int(school_id)}:{int(rev)}:"
+        f"day:{_snapshot_cache_day_key(day_key)}"
+    )
     try:
         return bool(cache.add(lock_key, "1", timeout=8))
     except Exception:
@@ -269,7 +272,7 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             )
             return _snapshot_cache_entry(building), "QUEUED"
 
-    if _acquire_build_lock(school_id, rev):
+    if _acquire_build_lock(school_id, rev, day_key=normalized_day_key):
         try:
             build_started = time.monotonic()
             snap = builder()
@@ -329,18 +332,23 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                     error=e.__class__.__name__,
                 )
 
+            build_ms = int((time.monotonic() - build_started) * 1000)
             try:
-                build_ms = int((time.monotonic() - build_started) * 1000)
-                _metrics_add("metrics:snapshot_cache:build_count", 1)
-                _metrics_add("metrics:snapshot_cache:build_sum_ms", build_ms)
-                _metrics_set_max("metrics:snapshot_cache:build_max_ms", build_ms)
+                meta = snap.get("meta")
+                if not isinstance(meta, dict):
+                    meta = {}
+                    snap["meta"] = meta
+                meta.setdefault("snapshot_build_ms", build_ms)
             except Exception:
                 pass
 
             return entry, "MISS"
         finally:
             try:
-                cache.delete(f"lock:snapshot:{int(school_id)}:{int(rev)}")
+                cache.delete(
+                    f"lock:snapshot:{int(school_id)}:{int(rev)}:"
+                    f"day:{normalized_day_key}"
+                )
             except Exception:
                 pass
     else:
@@ -711,6 +719,20 @@ def metrics(request):
         out["snapshot_queue_available"] = False
         out["snapshot_queue_depth"] = None
 
+    school_id_raw = (request.GET.get("school_id") or "").strip()
+    if school_id_raw.isdigit():
+        sid = int(school_id_raw)
+        try:
+            out["school_snapshot_debug"] = {
+                "school_id": sid,
+                "current_revision_cache": get_cached_schedule_revision_for_school_id(sid),
+                "last_snapshot_revision": cache.get(f"metrics:snapshot_cache:last_rev:{sid}"),
+                "last_snapshot_cache_status": cache.get(f"metrics:snapshot_cache:last_cache_status:{sid}"),
+                "last_snapshot_payload_bytes": int(cache.get(f"metrics:snapshot_cache:last_payload_bytes:{sid}") or 0),
+            }
+        except Exception:
+            out["school_snapshot_debug"] = {"school_id": sid}
+
     def _sanitize_error(msg: str) -> str:
         # Avoid leaking connection strings or credentials in metrics output.
         try:
@@ -845,6 +867,7 @@ def ws_metrics(request):
         shared_total = _cache_int("metrics:ws:connect_total")
         shared_failed = _cache_int("metrics:ws:connect_failed")
         shared_disconnect_total = _cache_int("metrics:ws:disconnect_total")
+        shared_reconnect_total = _cache_int("metrics:ws:reconnect_total")
         shared_broadcasts_sent = _cache_int("metrics:ws:broadcast_sent")
         shared_broadcasts_failed = _cache_int("metrics:ws:broadcast_failed")
         for code in (1000, 1001, 1006, 1011, 1012, 1013, 4400, 4403, 4408, 4500, 4501):
@@ -888,7 +911,10 @@ def ws_metrics(request):
             "active_ws_cluster": int(cluster.get("active_ws", 0) or 0),
             "cluster_rates_60s": cluster.get("rates_60s", {}),
             "cluster_rates_300s": cluster.get("rates_300s", {}),
+            "cluster_totals_retained": cluster.get("totals_retained", {}),
             "cluster_metrics_enabled": bool(cluster.get("enabled")),
+            "reconnects_total": metrics.get("reconnects_total", 0),
+            "reconnects_total_shared": shared_reconnect_total,
             "disconnect_codes": disconnect_codes,
             "broadcasts_sent": broadcasts_sent,
             "broadcasts_failed": broadcasts_failed,
@@ -1033,12 +1059,20 @@ def _etag_from_json_bytes(json_bytes: bytes) -> str:
 
 
 def _snapshot_cache_day_key(day_key: object | None = None) -> str:
+    if hasattr(day_key, "isoformat"):
+        try:
+            return str(day_key.isoformat())[:32]
+        except Exception:
+            pass
+
     raw = str(day_key or "").strip()
     if not raw:
         try:
             raw = timezone.localdate().isoformat()
         except Exception:
             raw = date.today().isoformat()
+    if re.fullmatch(r"\d{8}", raw):
+        raw = f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
     return raw[:32]
 
 
@@ -1048,6 +1082,7 @@ def _snapshot_cache_entry(payload: dict) -> dict:
         "snap": payload,
         "etag": _etag_from_json_bytes(json_bytes),
         "body": json_bytes,
+        "size": len(json_bytes),
     }
 
 
@@ -1069,6 +1104,7 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
                 "snap": snap,
                 "etag": etag,
                 "body": bytes(body),
+                "size": int(cached.get("size") or len(bytes(body))),
             }
 
         # Backward compatibility: cache may still contain plain snapshot dicts.
@@ -1084,6 +1120,7 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
                 "snap": snap,
                 "etag": _etag_from_json_bytes(bytes(cached)),
                 "body": bytes(cached),
+                "size": len(bytes(cached)),
             }
         return None
 
@@ -1098,6 +1135,7 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
                 "snap": snap,
                 "etag": _etag_from_json_bytes(body),
                 "body": body,
+                "size": len(body),
             }
 
     return None
@@ -2771,6 +2809,15 @@ def _build_snapshot_payload(
             pass
 
     build_ms = int((time.monotonic() - t0) * 1000)
+    try:
+        meta = snap.get("meta") if isinstance(snap, dict) else None
+        if not isinstance(meta, dict):
+            meta = {}
+            if isinstance(snap, dict):
+                snap["meta"] = meta
+        meta["snapshot_build_ms"] = int(build_ms)
+    except Exception:
+        pass
     _metrics_incr("metrics:snapshot_cache:build_count")
     _metrics_add("metrics:snapshot_cache:build_sum_ms", build_ms)
     _metrics_set_max("metrics:snapshot_cache:build_max_ms", build_ms)
@@ -2827,6 +2874,34 @@ def snapshot(request, token: str | None = None):
             resp["X-School-Id"] = str(school_id)
         if rev is not None:
             resp["X-Revision"] = str(rev)
+        payload_bytes = 0
+        try:
+            if int(getattr(resp, "status_code", 0) or 0) == 200:
+                payload_bytes = len(getattr(resp, "content", b"") or b"")
+                if payload_bytes:
+                    resp["X-Snapshot-Bytes"] = str(int(payload_bytes))
+        except Exception:
+            payload_bytes = 0
+        try:
+            if school_id is not None:
+                cache.set(
+                    f"metrics:snapshot_cache:last_cache_status:{int(school_id)}",
+                    str(cache_status or ""),
+                    timeout=60 * 60 * 24,
+                )
+                cache.set(
+                    f"metrics:snapshot_cache:last_payload_bytes:{int(school_id)}",
+                    int(payload_bytes),
+                    timeout=60 * 60 * 24,
+                )
+                if rev is not None:
+                    cache.set(
+                        f"metrics:snapshot_cache:last_rev:{int(school_id)}",
+                        int(rev),
+                        timeout=60 * 60 * 24,
+                    )
+        except Exception:
+            pass
         if app_rev:
             resp["X-App-Revision"] = app_rev
         try:
@@ -2838,11 +2913,12 @@ def snapshot(request, token: str | None = None):
                 status_code=status_code,
             ):
                 logger.info(
-                    "snapshot_resp school_id=%s rev=%s status=%s cache=%s",
+                    "snapshot_resp school_id=%s rev=%s status=%s cache=%s payload_bytes=%s",
                     school_id,
                     rev,
                     status_code,
                     cache_status,
+                    int(payload_bytes),
                 )
         except Exception:
             pass
@@ -3114,11 +3190,12 @@ def snapshot(request, token: str | None = None):
                 day_key_fast = None
                 try:
                     rev_fast = _get_schedule_revision_for_school_id(int(school_id_fast))
-                    day_key_fast = get_day_key() if get_day_key is not None else timezone.localdate().strftime("%Y%m%d")
-                    if transition_allowed and hasattr(display_keys, "snapshot_transition"):
-                        school_snap_key_fast = display_keys.snapshot_transition(int(school_id_fast), int(rev_fast), str(day_key_fast))
-                    else:
-                        school_snap_key_fast = display_keys.snapshot(int(school_id_fast), int(rev_fast), str(day_key_fast))
+                    day_key_fast = _snapshot_cache_day_key(get_day_key() if get_day_key is not None else None)
+                    school_snap_key_fast = _steady_cache_key_for_school_rev(
+                        int(school_id_fast),
+                        int(rev_fast),
+                        day_key=day_key_fast,
+                    )
                 except Exception:
                     school_snap_key_fast = None
 
@@ -3257,7 +3334,7 @@ def snapshot(request, token: str | None = None):
                             )
 
                     try:
-                        stale_key = display_keys.school_snapshot_stale(int(school_id_fast), str(day_key_fast))
+                        stale_key = _stale_snapshot_fallback_key(int(school_id_fast), day_key=day_key_fast)
                         stale_blob = cache.get(stale_key)
                     except Exception:
                         stale_blob = None
@@ -3266,6 +3343,8 @@ def snapshot(request, token: str | None = None):
                         entry_stale = _snapshot_cache_entry_from_cached(stale_blob)
                         if isinstance(entry_stale, dict) and isinstance(entry_stale.get("snap"), dict):
                             snap_stale = entry_stale["snap"]
+                            _metrics_incr("metrics:snapshot_cache:stale_fallback")
+                            _metrics_log_maybe()
                             resp = HttpResponse(
                                 _snapshot_entry_body_bytes(entry_stale),
                                 content_type="application/json; charset=utf-8",
@@ -3519,66 +3598,12 @@ def snapshot(request, token: str | None = None):
 
                 json_bytes = _stable_json_bytes(snap)
 
-                if not force_nocache and display_keys is not None:
-                    try:
-                        sid = int(school_id_fast) if school_id_fast else int(school_id)
-                        r = int(rev_fast) if rev_fast is not None else int(rev)
-                        dk = str(day_key_fast) if day_key_fast else timezone.localdate().strftime("%Y%m%d")
-                        blob = json.dumps(snap, ensure_ascii=False)
-
-                        k_normal = display_keys.snapshot(sid, r, dk)
-                        cache.set(k_normal, blob, timeout=SCHOOL_SNAPSHOT_TTL)
-
-                        k_transition = None
-                        if transition_allowed and hasattr(display_keys, "snapshot_transition"):
-                            try:
-                                k_transition = display_keys.snapshot_transition(sid, r, dk)
-                                cache.set(k_transition, blob, timeout=min(30, int(SCHOOL_SNAPSHOT_TTL)))
-                            except Exception:
-                                k_transition = None
-
-                        if cache_debug:
-                            try:
-                                probe = cache.get(k_normal)
-                                ok = bool(probe)
-                            except Exception:
-                                ok = False
-                            try:
-                                logger.info(
-                                    "school_snapshot_probe key=%s ok=%s backend=%s",
-                                    k_normal,
-                                    1 if ok else 0,
-                                    getattr(cache, "__class__", type(cache)).__name__,
-                                )
-                            except Exception:
-                                pass
-
-                        try:
-                            stale_key = display_keys.school_snapshot_stale(sid, dk)
-                            cache.set(stale_key, blob, timeout=60 * 60 * 6)
-                        except Exception:
-                            pass
-
-                        if cache_debug:
-                            try:
-                                logger.info("school_snapshot_set key=%s bytes=%s ttl=%s", k_normal, len(blob.encode("utf-8")), SCHOOL_SNAPSHOT_TTL)
-                            except Exception:
-                                pass
-
-                        if k_transition:
-                            if cache_debug:
-                                try:
-                                    logger.info("school_snapshot_set_transition key=%s bytes=%s ttl=%s", k_transition, len(blob.encode("utf-8")), min(30, int(SCHOOL_SNAPSHOT_TTL)))
-                                except Exception:
-                                    pass
-                    except Exception:
-                        pass
-
                 try:
                     logger.info(
-                        "snapshot_build school_id=%s rev=%s size_bytes=%s build_ms=%s",
+                        "snapshot_build school_id=%s rev=%s day_key=%s size_bytes=%s build_ms=%s",
                         int(school_id),
                         int(rev),
+                        _snapshot_cache_day_key(timezone.localdate().isoformat()),
                         int(len(json_bytes)),
                         int(build_ms),
                     )

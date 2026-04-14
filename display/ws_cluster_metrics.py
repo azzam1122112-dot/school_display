@@ -168,6 +168,11 @@ def snapshot() -> dict[str, Any]:
     return {
         "enabled": True,
         "active_ws": active_ws,
+        "totals_retained": {
+            "connect": _count("connect", max(60, _retention_seconds())),
+            "reconnect": _count("reconnect", max(60, _retention_seconds())),
+            "disconnect": _count("disconnect", max(60, _retention_seconds())),
+        },
         "rates_60s": {
             "connect": _count("connect", 60),
             "reconnect": _count("reconnect", 60),

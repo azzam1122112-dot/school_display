@@ -10,7 +10,8 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from core.tests_utils import make_active_school_with_screen
-from schedule.cache_utils import set_cached_schedule_revision_for_school_id
+import schedule.api_views as schedule_api_views
+from schedule.cache_utils import bump_schedule_revision_for_school_id, set_cached_schedule_revision_for_school_id
 
 
 def _assert_snapshot_cache_control(resp) -> None:
@@ -212,6 +213,41 @@ class DisplayApiAliasesTests(TestCase):
 
 
 class DisplaySnapshotPhase2Tests(TestCase):
+    def test_snapshot_reuses_cache_for_same_revision_without_rebuild(self):
+        cache.clear()
+        bundle = make_active_school_with_screen(max_screens=3)
+        url = f"/api/display/snapshot/{bundle.screen.token}/"
+
+        first = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+        self.assertEqual(first.status_code, 200)
+
+        with mock.patch(
+            "schedule.api_views._build_snapshot_payload",
+            side_effect=AssertionError("snapshot should have been served from cache"),
+        ):
+            second = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.get("X-Snapshot-Cache"), "HIT")
+
+    def test_snapshot_rebuilds_once_after_revision_bump(self):
+        cache.clear()
+        bundle = make_active_school_with_screen(max_screens=3)
+        url = f"/api/display/snapshot/{bundle.screen.token}/"
+
+        first = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+        self.assertEqual(first.status_code, 200)
+
+        new_rev = bump_schedule_revision_for_school_id(bundle.school.id)
+        self.assertIsNotNone(new_rev)
+
+        with mock.patch("schedule.api_views._build_snapshot_payload", wraps=schedule_api_views._build_snapshot_payload) as mocked_build:
+            second = self.client.get(url, **{"HTTP_X_DISPLAY_DEVICE": "devA"})
+
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(int(second.get("X-Revision") or 0), int(new_rev or 0))
+        self.assertGreaterEqual(mocked_build.call_count, 1)
+
     def test_snapshot_isolation_between_schools(self):
         cache.clear()
         a = make_active_school_with_screen(max_screens=3)
