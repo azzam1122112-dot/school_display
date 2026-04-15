@@ -331,6 +331,9 @@ class DisplaySnapshotPhase2Tests(TestCase):
 
     def test_steady_snapshot_no_schedule_has_safe_payload_and_cached(self):
         bundle = make_active_school_with_screen(max_screens=3)
+        bundle.settings.display_holiday_title = "اليوم إجازة رسمية"
+        bundle.settings.display_holiday_badge = "إجازة"
+        bundle.settings.save(update_fields=["display_holiday_title", "display_holiday_badge"])
         cache.clear()
 
         url = f"/api/display/snapshot/{bundle.screen.token}/"
@@ -340,6 +343,9 @@ class DisplaySnapshotPhase2Tests(TestCase):
 
         st = body.get("state") or {}
         self.assertEqual(st.get("type"), "NO_SCHEDULE_TODAY")
+        self.assertEqual(st.get("label"), "اليوم إجازة رسمية")
+        self.assertEqual(st.get("badge"), "إجازة")
+        self.assertEqual(st.get("reason"), "holiday")
 
         settings = body.get("settings") or {}
         self.assertGreaterEqual(int(settings.get("refresh_interval_sec") or 0), 3600)
@@ -498,6 +504,10 @@ class BuildDaySnapshotTimingTests(TestCase):
         settings.display_before_badge = "حيّاكم الله"
         settings.display_after_title = "بارك الله في جهودكم اليوم"
         settings.display_after_badge = "شكرا لكم"
+        settings.display_after_holiday_title = "نتمنى لكم إجازة سعيدة"
+        settings.display_after_holiday_badge = "إجازة"
+        settings.display_holiday_title = "اليوم إجازة"
+        settings.display_holiday_badge = "إجازة"
         settings.save(
             update_fields=[
                 "timezone_name",
@@ -505,6 +515,10 @@ class BuildDaySnapshotTimingTests(TestCase):
                 "display_before_badge",
                 "display_after_title",
                 "display_after_badge",
+                "display_after_holiday_title",
+                "display_after_holiday_badge",
+                "display_holiday_title",
+                "display_holiday_badge",
             ]
         )
 
@@ -546,6 +560,21 @@ class BuildDaySnapshotTimingTests(TestCase):
             starts_at=time(8, 40),
             ends_at=time(9, 10),
         )
+        next_day = DaySchedule.objects.create(
+            settings=settings,
+            weekday=((before_start.weekday() + 1) % 7) + 1,
+            is_active=True,
+            periods_count=1,
+        )
+        Period.objects.create(
+            day=next_day,
+            school_class=school_class,
+            subject=math,
+            teacher=teacher,
+            index=1,
+            starts_at=time(8, 0),
+            ends_at=time(8, 30),
+        )
 
         before = build_day_snapshot(settings, now=before_start)
         self.assertTrue(before["now"].endswith("+03:00"))
@@ -584,3 +613,140 @@ class BuildDaySnapshotTimingTests(TestCase):
         self.assertEqual(after["settings"]["display_after_title"], "بارك الله في جهودكم اليوم")
         self.assertEqual(after["settings"]["display_after_badge"], "شكرا لكم")
         self.assertEqual(after["state"]["remaining_seconds"], 0)
+
+    def test_build_day_snapshot_uses_exact_sleep_window_and_next_wake(self):
+        from schedule.models import DaySchedule, Period, SchoolClass, Subject, Teacher
+        from schedule.time_engine import build_day_snapshot
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        settings = bundle.settings
+        settings.timezone_name = "Asia/Riyadh"
+        settings.save(update_fields=["timezone_name"])
+
+        tz = ZoneInfo("Asia/Riyadh")
+        school_class = SchoolClass.objects.create(settings=settings, name="3/أ")
+        teacher = Teacher.objects.create(school=bundle.school, name="أ. صالح")
+        subject = Subject.objects.create(school=bundle.school, name="كيمياء")
+
+        today_dt = datetime(2026, 3, 29, 7, 20, tzinfo=tz)
+        today_schedule = DaySchedule.objects.create(
+            settings=settings,
+            weekday=today_dt.weekday() + 1,
+            is_active=True,
+            periods_count=1,
+        )
+        Period.objects.create(
+            day=today_schedule,
+            school_class=school_class,
+            subject=subject,
+            teacher=teacher,
+            index=1,
+            starts_at=time(8, 0),
+            ends_at=time(9, 0),
+        )
+
+        next_day_schedule = DaySchedule.objects.create(
+            settings=settings,
+            weekday=((today_dt.weekday() + 1) % 7) + 1,
+            is_active=True,
+            periods_count=1,
+        )
+        Period.objects.create(
+            day=next_day_schedule,
+            school_class=school_class,
+            subject=subject,
+            teacher=teacher,
+            index=1,
+            starts_at=time(8, 10),
+            ends_at=time(9, 0),
+        )
+
+        before_window = build_day_snapshot(settings, now=today_dt)
+        self.assertEqual((before_window.get("meta") or {}).get("is_active_window"), False)
+        self.assertEqual((before_window.get("state") or {}).get("reason"), "before_hours")
+        self.assertTrue(str((before_window.get("meta") or {}).get("next_wake_at") or "").startswith("2026-03-29T07:30:00"))
+
+        inside_grace = build_day_snapshot(settings, now=datetime(2026, 3, 29, 9, 14, tzinfo=tz))
+        self.assertEqual((inside_grace.get("meta") or {}).get("is_active_window"), True)
+        self.assertEqual((inside_grace.get("state") or {}).get("type"), "after")
+        self.assertIsNone((inside_grace.get("meta") or {}).get("next_wake_at"))
+
+        after_window = build_day_snapshot(settings, now=datetime(2026, 3, 29, 9, 16, tzinfo=tz))
+        self.assertEqual((after_window.get("meta") or {}).get("is_active_window"), False)
+        self.assertEqual((after_window.get("state") or {}).get("reason"), "after_hours")
+        self.assertTrue(str((after_window.get("meta") or {}).get("next_wake_at") or "").startswith("2026-03-30T07:40:00"))
+
+    def test_build_day_snapshot_uses_holiday_eve_message_when_next_day_is_not_school_day(self):
+        from schedule.models import DaySchedule, Period, SchoolClass, Subject, Teacher
+        from schedule.time_engine import build_day_snapshot
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        settings = bundle.settings
+        settings.timezone_name = "Asia/Riyadh"
+        settings.display_after_title = "نلقاكم غدا بإذن الله"
+        settings.display_after_badge = "أحسنتم"
+        settings.display_after_holiday_title = "نتمنى لكم إجازة سعيدة"
+        settings.display_after_holiday_badge = "إجازة"
+        settings.save(
+            update_fields=[
+                "timezone_name",
+                "display_after_title",
+                "display_after_badge",
+                "display_after_holiday_title",
+                "display_after_holiday_badge",
+            ]
+        )
+
+        tz = ZoneInfo("Asia/Riyadh")
+        target_now = datetime(2026, 3, 29, 9, 10, tzinfo=tz)
+
+        school_class = SchoolClass.objects.create(settings=settings, name="2/ب")
+        teacher = Teacher.objects.create(school=bundle.school, name="أ. خالد")
+        subject = Subject.objects.create(school=bundle.school, name="فيزياء")
+        day = DaySchedule.objects.create(
+            settings=settings,
+            weekday=target_now.weekday() + 1,
+            is_active=True,
+            periods_count=1,
+        )
+        Period.objects.create(
+            day=day,
+            school_class=school_class,
+            subject=subject,
+            teacher=teacher,
+            index=1,
+            starts_at=time(8, 0),
+            ends_at=time(9, 0),
+        )
+
+        snap = build_day_snapshot(settings, now=target_now)
+
+        self.assertEqual((snap.get("state") or {}).get("type"), "after")
+        self.assertEqual((snap.get("state") or {}).get("label"), "نتمنى لكم إجازة سعيدة")
+        self.assertEqual((snap.get("state") or {}).get("badge"), "إجازة")
+        self.assertEqual((snap.get("state") or {}).get("variant"), "before_holiday")
+        self.assertGreater(int(((snap.get("meta") or {}).get("next_school_day") or {}).get("days_ahead") or 0), 1)
+
+    def test_build_day_snapshot_uses_clear_holiday_message_when_today_is_holiday(self):
+        from schedule.time_engine import build_day_snapshot
+
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        settings = bundle.settings
+        settings.timezone_name = "Asia/Riyadh"
+        settings.display_holiday_title = "اليوم إجازة، نسأل الله لكم يومًا سعيدًا"
+        settings.display_holiday_badge = "إجازة"
+        settings.save(update_fields=["timezone_name", "display_holiday_title", "display_holiday_badge"])
+
+        tz = ZoneInfo("Asia/Riyadh")
+        snap = build_day_snapshot(settings, now=datetime(2026, 3, 30, 8, 0, tzinfo=tz))
+
+        self.assertEqual((snap.get("meta") or {}).get("is_school_day"), False)
+        self.assertEqual((snap.get("state") or {}).get("label"), "اليوم إجازة، نسأل الله لكم يومًا سعيدًا")
+        self.assertEqual((snap.get("state") or {}).get("badge"), "إجازة")
+        self.assertEqual((snap.get("state") or {}).get("reason"), "holiday")

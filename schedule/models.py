@@ -48,6 +48,10 @@ DEFAULT_DISPLAY_BEFORE_BADGE = "أهلا بكم"
 DEFAULT_DISPLAY_BEFORE_TITLE = "استعدوا لبداية يوم دراسي جميل"
 DEFAULT_DISPLAY_AFTER_BADGE = "أحسنتم"
 DEFAULT_DISPLAY_AFTER_TITLE = "أحسنتم اليوم، ونلقاكم غدا بإذن الله"
+DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE = "إجازة"
+DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE = "أحسنتم اليوم، نتمنى لكم إجازة سعيدة"
+DEFAULT_DISPLAY_HOLIDAY_BADGE = "إجازة"
+DEFAULT_DISPLAY_HOLIDAY_TITLE = "اليوم إجازة، نتمنى لكم وقتًا سعيدًا"
 
 
 # ============================================================
@@ -182,6 +186,38 @@ class SchoolSettings(models.Model):
         help_text="تظهر كشارة صغيرة أعلى بطاقة الحالة بعد انتهاء اليوم الدراسي.",
     )
 
+    display_after_holiday_title = models.CharField(
+        "عنوان الشاشة بعد الدوام إذا كان الغد إجازة",
+        max_length=150,
+        blank=True,
+        default=DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE,
+        help_text="يظهر بعد انتهاء الدوام عندما لا يكون اليوم التالي يومًا دراسيًا.",
+    )
+
+    display_after_holiday_badge = models.CharField(
+        "شارة الحالة بعد الدوام إذا كان الغد إجازة",
+        max_length=40,
+        blank=True,
+        default=DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE,
+        help_text="تظهر كشارة صغيرة بعد انتهاء الدوام عندما لا يكون اليوم التالي يومًا دراسيًا.",
+    )
+
+    display_holiday_title = models.CharField(
+        "عنوان الشاشة في يوم الإجازة",
+        max_length=150,
+        blank=True,
+        default=DEFAULT_DISPLAY_HOLIDAY_TITLE,
+        help_text="يظهر كنص رئيسي على الشاشة عندما يكون اليوم إجازة.",
+    )
+
+    display_holiday_badge = models.CharField(
+        "شارة الحالة في يوم الإجازة",
+        max_length=40,
+        blank=True,
+        default=DEFAULT_DISPLAY_HOLIDAY_BADGE,
+        help_text="تظهر كشارة صغيرة أعلى بطاقة الحالة عندما يكون اليوم إجازة.",
+    )
+
     display_accent_color = models.CharField(
         "لون شاشة العرض (اختياري)",
         max_length=7,
@@ -235,12 +271,28 @@ class SchoolSettings(models.Model):
     def get_display_after_badge(self) -> str:
         return _text_or_default(getattr(self, "display_after_badge", ""), DEFAULT_DISPLAY_AFTER_BADGE)
 
+    def get_display_after_holiday_title(self) -> str:
+        return _text_or_default(getattr(self, "display_after_holiday_title", ""), DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE)
+
+    def get_display_after_holiday_badge(self) -> str:
+        return _text_or_default(getattr(self, "display_after_holiday_badge", ""), DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE)
+
+    def get_display_holiday_title(self) -> str:
+        return _text_or_default(getattr(self, "display_holiday_title", ""), DEFAULT_DISPLAY_HOLIDAY_TITLE)
+
+    def get_display_holiday_badge(self) -> str:
+        return _text_or_default(getattr(self, "display_holiday_badge", ""), DEFAULT_DISPLAY_HOLIDAY_BADGE)
+
     def get_display_messages(self) -> dict[str, str]:
         return {
             "before_title": self.get_display_before_title(),
             "before_badge": self.get_display_before_badge(),
             "after_title": self.get_display_after_title(),
             "after_badge": self.get_display_after_badge(),
+            "after_holiday_title": self.get_display_after_holiday_title(),
+            "after_holiday_badge": self.get_display_after_holiday_badge(),
+            "holiday_title": self.get_display_holiday_title(),
+            "holiday_badge": self.get_display_holiday_badge(),
         }
 
 

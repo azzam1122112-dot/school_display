@@ -161,7 +161,7 @@
           if (dom.schoolLogo.src && dom.schoolLogo.src.indexOf(fallback) >= 0) return;
           dom.schoolLogo.src = fallback;
         },
-        { passive: true }
+        listenerOpts({ passive: true })
       );
     }
   }
@@ -471,6 +471,10 @@
     beforeTitle: "استعدوا لبداية يوم دراسي جميل",
     afterBadge: "أحسنتم",
     afterTitle: "أحسنتم اليوم، ونلقاكم غدا بإذن الله",
+    afterHolidayBadge: "إجازة",
+    afterHolidayTitle: "أحسنتم اليوم، نتمنى لكم إجازة سعيدة",
+    holidayBadge: "إجازة",
+    holidayTitle: "اليوم إجازة، نتمنى لكم وقتًا سعيدًا",
     afterEmpty: "أحسنتم اليوم",
   };
 
@@ -481,12 +485,42 @@
     const nextBeforeTitle = safeText(settings.display_before_title || DEFAULT_DISPLAY_COPY.beforeTitle);
     const nextAfterBadge = safeText(settings.display_after_badge || DEFAULT_DISPLAY_COPY.afterBadge);
     const nextAfterTitle = safeText(settings.display_after_title || DEFAULT_DISPLAY_COPY.afterTitle);
+    const nextAfterHolidayBadge = safeText(settings.display_after_holiday_badge || DEFAULT_DISPLAY_COPY.afterHolidayBadge);
+    const nextAfterHolidayTitle = safeText(settings.display_after_holiday_title || DEFAULT_DISPLAY_COPY.afterHolidayTitle);
+    const nextHolidayBadge = safeText(settings.display_holiday_badge || DEFAULT_DISPLAY_COPY.holidayBadge);
+    const nextHolidayTitle = safeText(settings.display_holiday_title || DEFAULT_DISPLAY_COPY.holidayTitle);
 
     DISPLAY_COPY.beforeBadge = nextBeforeBadge || DEFAULT_DISPLAY_COPY.beforeBadge;
     DISPLAY_COPY.beforeTitle = nextBeforeTitle || DEFAULT_DISPLAY_COPY.beforeTitle;
     DISPLAY_COPY.afterBadge = nextAfterBadge || DEFAULT_DISPLAY_COPY.afterBadge;
     DISPLAY_COPY.afterTitle = nextAfterTitle || DEFAULT_DISPLAY_COPY.afterTitle;
+    DISPLAY_COPY.afterHolidayBadge = nextAfterHolidayBadge || DEFAULT_DISPLAY_COPY.afterHolidayBadge;
+    DISPLAY_COPY.afterHolidayTitle = nextAfterHolidayTitle || DEFAULT_DISPLAY_COPY.afterHolidayTitle;
+    DISPLAY_COPY.holidayBadge = nextHolidayBadge || DEFAULT_DISPLAY_COPY.holidayBadge;
+    DISPLAY_COPY.holidayTitle = nextHolidayTitle || DEFAULT_DISPLAY_COPY.holidayTitle;
     DISPLAY_COPY.afterEmpty = DISPLAY_COPY.afterBadge || DEFAULT_DISPLAY_COPY.afterEmpty;
+  }
+
+  function normalizeDisplayStateType(rawType) {
+    const t = safeText(rawType || "").toLowerCase();
+    if (t === "before_school") return "before";
+    if (t === "off_hours") return "off";
+    if (t === "no_schedule_today") return "holiday";
+    return t;
+  }
+
+  function getStateReason(state) {
+    return safeText((state && state.reason) || "").toLowerCase();
+  }
+
+  function getAfterDayOverCopy() {
+    const meta = (lastPayloadForFiltering && lastPayloadForFiltering.meta) || {};
+    const nextSchoolDay = meta.next_school_day || {};
+    const daysAhead = Number(nextSchoolDay.days_ahead || 0);
+    if (daysAhead === 1) {
+      return { title: DISPLAY_COPY.afterTitle, badge: DISPLAY_COPY.afterBadge };
+    }
+    return { title: DISPLAY_COPY.afterHolidayTitle, badge: DISPLAY_COPY.afterHolidayBadge };
   }
 
   function teacherLabelText() {
@@ -531,6 +565,7 @@
     isActiveWindow: true,
     activeWindowStartMs: null,
     activeWindowEndMs: null,
+    nextWakeMs: null,
 
     // WebSocket state
     ws: null,
@@ -564,6 +599,19 @@
   // ===========================================================================
 
   const _timers = Object.create(null); // name → {id, type:"timeout"|"interval", label}
+  let _listenerAbortController = null;
+  try {
+    _listenerAbortController = new AbortController();
+  } catch (e) {}
+
+  function listenerOpts(opts) {
+    var next = opts ? Object.assign({}, opts) : {};
+    if (_listenerAbortController) next.signal = _listenerAbortController.signal;
+    return next;
+  }
+
+  const BLOCKED_RECOVERY_DELAY_MS = 5 * 60 * 1000;
+  const BLOCKED_RECOVERY_RELOAD_COOLDOWN_MS = 2 * 60 * 1000;
 
   function setNamedTimer(name, fn, delayMs, label) {
     clearNamedTimer(name);
@@ -611,6 +659,32 @@
       if (excl.indexOf(names[i]) === -1) {
         clearNamedTimer(names[i]);
       }
+    }
+  }
+
+  function cleanupPageRuntime(reason) {
+    clearAllRuntimeTimers();
+    try {
+      if (periodsScroller) periodsScroller.stop();
+      if (standbyScroller) standbyScroller.stop();
+      if (dutyScroller) dutyScroller.stop();
+    } catch (e) {}
+    try {
+      if (rt.ws) {
+        rt.ws.onopen = null;
+        rt.ws.onmessage = null;
+        rt.ws.onerror = null;
+        rt.ws.onclose = null;
+        rt.ws.close(1000, safeText(reason || "page_cleanup") || "page_cleanup");
+      }
+    } catch (e) {}
+    rt.ws = null;
+    rt.wsConnected = false;
+    if (_listenerAbortController) {
+      try {
+        _listenerAbortController.abort();
+      } catch (e) {}
+      _listenerAbortController = null;
     }
   }
 
@@ -703,6 +777,8 @@
     "token_expired": 1,
     "auth_expired": 1,
     "invalid_token": 1,
+    "access_denied": 1,
+    "token_invalid": 1,
     "authentication_failed": 1,
     "not_authenticated": 1,
     "permission_denied": 1,
@@ -957,7 +1033,7 @@
     rt.wsEnabled = false;
     rt.wsConnected = false;
     rt.wsRetryCount = rt.wsMaxRetries;
-    rt.wsSuppressedUntilTs = Number.MAX_SAFE_INTEGER;
+    rt.wsSuppressedUntilTs = Date.now() + BLOCKED_RECOVERY_DELAY_MS;
     failStreak = 0;
     isFetching = false;
     forceRefreshInProgress = false;
@@ -998,6 +1074,23 @@
 
     var ui = _bindingUiPayload(info);
     showBlocker(ui.title, ui.details);
+    setNamedTimer("blocked_recovery_reload", function () {
+      var now = Date.now();
+      var reloadCooldownKey = "display_blocked_recovery_reload_ts";
+      var lastReloadTs = 0;
+      try { lastReloadTs = Number(sessionStorage.getItem(reloadCooldownKey) || 0); } catch (e) {}
+      if (now - lastReloadTs < BLOCKED_RECOVERY_RELOAD_COOLDOWN_MS) return;
+      try { sessionStorage.setItem(reloadCooldownKey, String(now)); } catch (e) {}
+      _log("blocked_recovery_reload", _logContext({
+        sourcePath: sourcePath,
+        delayMs: BLOCKED_RECOVERY_DELAY_MS,
+      }));
+      try {
+        window.location.reload();
+      } catch (e) {
+        window.location.href = window.location.href;
+      }
+    }, BLOCKED_RECOVERY_DELAY_MS, "blocked_recovery_reload");
 
     _log("terminal_state_entered", _logContext({
       reason: terminalReason,
@@ -1085,7 +1178,7 @@
       // Cancel polling timer — sleep engine manages wake
       clearNamedTimer("poll");
       clearNamedTimer("ws_snapshot"); // cancel any pending WS-triggered fetch
-      _stopWsHeartbeat("entered_sleep");
+      _closeWsForSleep("entered_sleep");
       _log("polling_stopped", { reason: "entered_sleep" });
     }
 
@@ -1099,6 +1192,10 @@
       rt.status304Streak = 0;
       rt.statusEverySec = 0;
       resetFallbackPollLevel("waking");
+
+      if (rt.wsEnabled && !rt.wsConnected) {
+        initWebSocket();
+      }
 
       // Determine target mode
       var target = (rt.wsConnected) ? "ws-live" : "active";
@@ -1183,10 +1280,12 @@
       return result;
     }
 
-    // If not active window, we need active_window start/end for scheduling wake
-    if (!m.is_active_window && m.active_window) {
-      if (!m.active_window.start || !m.active_window.end) {
-        result.reason = "incomplete_active_window";
+    // If not active window, we need either a complete active_window or a next_wake_at.
+    if (!m.is_active_window) {
+      var hasCompleteWindow = !!(m.active_window && m.active_window.start && m.active_window.end);
+      var hasNextWake = !!m.next_wake_at;
+      if (!hasCompleteWindow && !hasNextWake) {
+        result.reason = "missing_sleep_wake_meta";
         _log("meta_invalid", result);
         return result;
       }
@@ -1921,6 +2020,7 @@
   }
 
   function dayEngineApplyDayOver() {
+    const afterCopy = getAfterDayOverCopy();
     rt.dayOver = true;
     rt.activePeriodIndex = null;
     rt.activeStateType = "after";
@@ -1928,15 +2028,15 @@
     rt.activeToHM = null;
     rt.activeTargetHM = null;
     rt.activeTargetMs = null;
-    setTextIfChanged(dom.heroTitle, DISPLAY_COPY.afterTitle);
+    setTextIfChanged(dom.heroTitle, afterCopy.title);
     setTextIfChanged(dom.heroRange, "");
-    setTextIfChanged(dom.badgeKind, DISPLAY_COPY.afterBadge);
+    setTextIfChanged(dom.badgeKind, afterCopy.badge);
     countdownSeconds = null;
     hasActiveCountdown = false;
     progressRange = { start: null, end: null };
-    lastStateCoreSig = "after||" + DISPLAY_COPY.afterTitle + "||||";
+    lastStateCoreSig = "after||" + afterCopy.title + "||||";
     lastZeroHandledCoreSig = lastStateCoreSig;
-    try { renderCurrentChips("after", { label: DISPLAY_COPY.afterTitle, from: null, to: null }, null); } catch (e) {}
+    try { renderCurrentChips("after", { label: afterCopy.title, from: null, to: null }, null); } catch (e) {}
     try { renderNextLabel(null); } catch (e) {}
     try { renderPeriodClasses([]); } catch (e) {}
     return true;
@@ -2430,9 +2530,11 @@
   // ===== Day over + standby filter =====
   function computeDayOver(payload, baseMs) {
     const s = (payload && payload.state) || {};
-    const stType = safeText(s.type || "");
+    const stType = normalizeDisplayStateType(s.type || "");
+    const stateReason = getStateReason(s);
 
-    if (stType === "off") return true;
+    if (stType === "holiday" || stateReason === "holiday" || stateReason === "before_hours") return false;
+    if (stType === "off" || stType === "after" || stateReason === "after_hours") return true;
 
     if (Array.isArray(payload && payload.day_path) && payload.day_path.length) {
       const anyNotEnded = payload.day_path.some((x) => x && !isEnded(x.to, baseMs));
@@ -2735,12 +2837,12 @@
   };
 
   ["click", "touchstart", "keydown"].forEach(function (evt) {
-    document.addEventListener(evt, unlockBellAudio, { once: false, passive: true });
+    document.addEventListener(evt, unlockBellAudio, listenerOpts({ once: true, passive: true }));
   });
 
   // Also unlock when entering/exiting fullscreen (common first action on TVs)
   ["fullscreenchange", "webkitfullscreenchange"].forEach(function (evt) {
-    document.addEventListener(evt, unlockBellAudio);
+    document.addEventListener(evt, unlockBellAudio, listenerOpts({ once: true }));
   });
 
   /**
@@ -3171,6 +3273,7 @@
     const s = document.createElement("span");
     s.className = "chip" + (extraClass ? " " + extraClass : "");
     s.textContent = safeText(text || "—");
+    s.setAttribute("role", "listitem");
     return s;
   }
 
@@ -3182,11 +3285,11 @@
     const cls = safeText(cur["class"] || cur.class_name || cur.classroom || "");
     const periodTitle = stType === "period" ? formatPeriodTitle(cur) : "";
     const activity =
-      stType === "after" || stType === "off" || stType === "day"
+      stType === "after" || stType === "off" || stType === "holiday" || stType === "day"
         ? ""
         : getCurrentActivityLabel(stType, cur, st);
     const range =
-      stType === "after" || stType === "off" || stType === "day"
+      stType === "after" || stType === "off" || stType === "holiday" || stType === "day"
         ? "--:--"
         : fmtTimeRange(cur.from || st.from, cur.to || st.to);
 
@@ -3202,6 +3305,7 @@
       msg.style.opacity = "0.75";
       msg.style.padding = "10px 12px";
       msg.textContent = "لا توجد حصص حالية الآن";
+      msg.setAttribute("role", "status");
       dom.currentScheduleList.appendChild(msg);
       return;
     }
@@ -3238,10 +3342,12 @@
         const msg = document.createElement("div");
         msg.style.opacity = "0.75";
         msg.textContent = "لا يوجد جدول اليوم";
+        msg.setAttribute("role", "status");
         dom.miniSchedule.appendChild(msg);
       } else {
         shown.forEach((x) => {
           const box = document.createElement("div");
+          box.setAttribute("role", "listitem");
           box.style.flex = "0 0 auto";
           box.style.borderRadius = "14px";
           box.style.border = "1px solid rgba(255,255,255,0.10)";
@@ -3266,6 +3372,8 @@
           l.style.fontSize = "16px";
           l.style.lineHeight = "1";
           l.textContent = safeText(x.label || "—");
+
+          box.setAttribute("aria-label", "من " + safeText(toTimeStr(x.start)) + " إلى " + safeText(toTimeStr(x.end)) + "، " + safeText(x.label || "—"));
 
           box.appendChild(t);
           box.appendChild(l);
@@ -3493,6 +3601,7 @@
   function buildSlotItem({ clsName, subj, teacher, badgeText, badgeKind, showChip }) {
     const item = document.createElement("div");
     item.className = "slot-item";
+    item.setAttribute("role", "listitem");
 
     const top = document.createElement("div");
     top.className = "slot-top";
@@ -3537,6 +3646,14 @@
 
     item.appendChild(top);
     item.appendChild(teacherRow);
+
+    const summary = [
+      badgeText ? "الفترة " + safeText(badgeText) : "",
+      clsName ? "الفصل " + safeText(clsName) : "",
+      subj ? "المادة " + safeText(subj) : "",
+      teacher ? teacherLabelText() + " " + safeText(teacher) : "",
+    ].filter(Boolean).join("، ");
+    if (summary) item.setAttribute("aria-label", summary);
 
     return item;
   }
@@ -3768,7 +3885,8 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا يوجد حصص جارية الآن";
+        msg.textContent = !rt.isSchoolDay ? DISPLAY_COPY.holidayTitle : (rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا يوجد حصص جارية الآن");
+        msg.setAttribute("role", "status");
         return msg;
       }
 
@@ -3778,6 +3896,8 @@
       list.style.gap = "10px";
       list.style.paddingBottom = "10px";
       list.dataset.forceScroll = arr.length >= 4 ? "1" : "0";
+      list.setAttribute("role", "list");
+      list.setAttribute("aria-label", "الحصص الجارية");
 
       arr.forEach((x) => {
         x = x || {};
@@ -3821,7 +3941,8 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا توجد حصص انتظار";
+        msg.textContent = !rt.isSchoolDay ? DISPLAY_COPY.holidayTitle : (rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا توجد حصص انتظار");
+        msg.setAttribute("role", "status");
         return msg;
       }
 
@@ -3831,6 +3952,8 @@
       list.style.gap = "10px";
       list.style.paddingBottom = "10px";
       list.dataset.forceScroll = arr.length >= 4 ? "1" : "0";
+      list.setAttribute("role", "list");
+      list.setAttribute("aria-label", "حصص الانتظار");
 
       arr.forEach((x) => {
         x = x || {};
@@ -3943,9 +4066,11 @@
 
       const wrap = document.createElement("div");
       wrap.className = "honor-wrap";
+      wrap.setAttribute("role", "group");
+      wrap.setAttribute("aria-label", "متميز: " + safeText(name) + (reason ? "، سبب التكريم: " + safeText(reason) : ""));
 
       const img = document.createElement("img");
-      img.alt = name;
+      img.alt = "صورة المتميز " + safeText(name);
       img.loading = "lazy";
       img.crossOrigin = "anonymous";
       img.className = "honor-avatar";
@@ -4019,6 +4144,7 @@
       const msg = document.createElement("div");
       msg.className = "honor-empty-state";
       msg.textContent = "لا يوجد متميزون حالياً";
+      msg.setAttribute("role", "status");
       dom.exSlot.appendChild(msg);
       return;
     }
@@ -4060,6 +4186,12 @@
       "border border-white/10 backdrop-blur-md transition-all duration-300 " +
       "hover:border-white/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] " +
       "bg-gradient-to-r from-[#0f172a]/60 to-[#1e293b]/60 group overflow-hidden shadow-lg";
+    row.setAttribute("role", "listitem");
+    row.setAttribute("aria-label", [
+      teacher ? teacherLabelText() + " " + teacher : "",
+      dutyLabel ? "النوع " + dutyLabel : "",
+      location ? "الموقع " + location : "",
+    ].filter(Boolean).join("، "));
 
     // 1. Accent line on the right (RTL start)
     const accent = document.createElement("div");
@@ -4085,6 +4217,7 @@
     const avatarInner = document.createElement("span");
     avatarInner.textContent = teacher ? teacher.slice(0, 1) : "—";
     avatarInner.className = "drop-shadow-md opacity-90";
+    avatarInner.setAttribute("aria-hidden", "true");
     avatar.appendChild(avatarInner);
 
     // Meta (Name + Loc)
@@ -4108,6 +4241,7 @@
       const pin = document.createElement("span");
       pin.textContent = "📍";
       pin.className = "text-[1em] opacity-80";
+      pin.setAttribute("aria-hidden", "true");
       
       const txt = document.createElement("span");
       txt.textContent = location;
@@ -4140,6 +4274,7 @@
     const badgeIcon = document.createElement("span");
     badgeIcon.textContent = isSup ? "🛡️" : "⭐"; 
     badgeIcon.className = "opacity-90 grayscale-[0.2]"; 
+    badgeIcon.setAttribute("aria-hidden", "true");
     
     const badgeText = document.createElement("span");
     badgeText.textContent = dutyLabel;
@@ -4168,6 +4303,7 @@
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
         msg.textContent = "لا توجد تكليفات إشراف/مناوبة لليوم";
+        msg.setAttribute("role", "status");
         return msg;
       }
 
@@ -4178,6 +4314,8 @@
       wrap.style.paddingBottom = "12px";
       // نفس سلوك كرت الحصص الجارية
       wrap.dataset.forceScroll = list.length >= 4 ? "1" : "0";
+      wrap.setAttribute("role", "list");
+      wrap.setAttribute("aria-label", "تكليفات الإشراف والمناوبة");
 
       list.forEach((it) => {
         wrap.appendChild(buildDutyRow(it));
@@ -4291,7 +4429,9 @@
     tickClock(payload.date_info || null);
 
     const s = payload.state || {};
-    const stType = safeText(s.type || "");
+    const stType = normalizeDisplayStateType(s.type || "");
+    const stateReason = getStateReason(s);
+    const stateBadge = safeText(s.badge || "");
     const stateCurrent = s && typeof s === "object" ? s.current || null : null;
     const stateNext = s && typeof s === "object" ? s.next || null : null;
     const current = payload.current_period || stateCurrent || null;
@@ -4396,17 +4536,21 @@
       badge = "استراحة";
       title = safeText(s.label || "استراحة");
     } else if (stType === "before") {
-      badge = DISPLAY_COPY.beforeBadge;
+      badge = stateBadge || DISPLAY_COPY.beforeBadge;
       title = safeText(s.label || DISPLAY_COPY.beforeTitle);
     } else if (stType === "after") {
-      badge = DISPLAY_COPY.afterBadge;
+      badge = stateBadge || DISPLAY_COPY.afterBadge;
       title = safeText(s.label || DISPLAY_COPY.afterTitle);
+    } else if (stType === "holiday") {
+      badge = stateBadge || DISPLAY_COPY.holidayBadge;
+      title = safeText(s.label || DISPLAY_COPY.holidayTitle);
+      range = "--:--";
     } else if (stType === "day") {
       badge = "اليوم الدراسي";
       title = safeText(s.label || "اليوم الدراسي");
     } else if (stType === "off") {
-      badge = "عطلة";
-      title = safeText(s.label || "يوم إجازة");
+      badge = stateBadge || (stateReason === "after_hours" ? DISPLAY_COPY.afterHolidayBadge : "عطلة");
+      title = safeText(s.label || (stateReason === "after_hours" ? DISPLAY_COPY.afterHolidayTitle : DISPLAY_COPY.holidayTitle));
       range = "--:--";
     }
 
@@ -4559,7 +4703,13 @@
   let ctrl = null;
   let inflightStatus = null;
   let ctrlStatus = null;
-  const etagKey = "display_etag_" + (location.pathname || "/");
+  // ETag key scoped per token for SaaS multi-tenancy
+  function _etagKey() {
+    var t = (getToken() || "").toString().trim();
+    var base = "display_etag_" + (location.pathname || "/");
+    if (t) return base + ":" + encodeURIComponent(t).slice(0, 80);
+    return base;
+  }
 
   // Client-side request budget: prevents hammering the server with snapshot requests.
   // Tracks requests in a rolling 60-second window. If over budget, delays the request.
@@ -4579,10 +4729,26 @@
     return true;
   }
 
-  // Device ID (stable per browser/device)
-  // تحقق سريع: localStorage.getItem("school_display_device_id")
-  const deviceIdKey = "school_display_device_id";
+  // Device ID (stable per browser/device, scoped per token for SaaS multi-tenancy)
+  // تحقق سريع: localStorage.getItem("school_display_device_id_<token>")
+  function _deviceIdKey() {
+    var t = (getToken() || "").toString().trim();
+    if (t) return "school_display_device_id_" + encodeURIComponent(t).slice(0, 80);
+    return "school_display_device_id";
+  }
   let memDeviceId = "";
+
+  // migrate legacy global key → scoped key (one-time)
+  function _migrateDeviceId() {
+    try {
+      var scopedKey = _deviceIdKey();
+      if (scopedKey === "school_display_device_id") return; // no token yet
+      var existing = (localStorage.getItem(scopedKey) || "").trim();
+      if (existing) return; // already migrated
+      var legacy = (localStorage.getItem("school_display_device_id") || "").trim();
+      if (legacy) localStorage.setItem(scopedKey, legacy);
+    } catch (e) {}
+  }
 
   function fallbackDeviceId() {
     // No cookies. Prefer crypto, fall back to a random-ish stable value.
@@ -4609,13 +4775,15 @@
   function getOrCreateDeviceId() {
     if (memDeviceId) return memDeviceId;
     try {
-      const existing = (localStorage.getItem(deviceIdKey) || "").trim();
+      _migrateDeviceId();
+      var key = _deviceIdKey();
+      const existing = (localStorage.getItem(key) || "").trim();
       if (existing) {
         memDeviceId = existing;
         return memDeviceId;
       }
       const created = fallbackDeviceId();
-      localStorage.setItem(deviceIdKey, created);
+      localStorage.setItem(key, created);
       memDeviceId = created;
       return memDeviceId;
     } catch (e) {
@@ -4721,13 +4889,13 @@
         // So only enable 304 optimization after we've rendered at least one payload.
         const canUse304 = !!lastPayloadForFiltering;
         if (canUse304) {
-          const prev = localStorage.getItem(etagKey) || "";
+          const prev = localStorage.getItem(_etagKey()) || "";
           if (prev) headers["If-None-Match"] = prev;
         }
       } catch (e) {}
     } else {
       try {
-        localStorage.removeItem(etagKey);
+        localStorage.removeItem(_etagKey());
       } catch (e) {}
     }
 
@@ -4848,7 +5016,7 @@
       const et = r.headers && r.headers.get ? (r.headers.get("ETag") || "") : "";
       if (et) {
         try {
-          localStorage.setItem(etagKey, et);
+          localStorage.setItem(_etagKey(), et);
         } catch (e) {}
       }
 
@@ -5088,7 +5256,7 @@
         vis.sawChange = true;
         if (!document.hidden) vis.everVisible = true;
       },
-      { passive: true }
+      listenerOpts({ passive: true })
     );
   } catch (e) {}
 
@@ -5521,16 +5689,15 @@
   // Mode-based sleep/wake driven by validated server meta.
   //
   // Guarantees:
-  //  1. Zero HTTP requests while sleeping (WS stays alive for push).
-  //  2. 15-min named safety timer guards against drift / tab freeze.
-  //  3. WS invalidate wakes immediately (no jitter).
-  //  4. Scheduled wakes have per-device jitter (thundering herd prevention).
+  //  1. Zero HTTP requests while sleeping.
+  //  2. WebSocket is closed during sleep and reopened on wake.
+  //  3. Scheduled wakes use the authoritative server-provided next_wake_at.
+  //  4. WS invalidate wakes immediately only while the screen is awake.
   //  5. First page load always fetches (never sleeps before first payload).
   //  6. If meta validation fails, display stays active (safe default).
   // ===========================================================================
 
-  const SLEEP_WAKE_EARLY_MIN = 20;    // wake up 20 minutes before active window
-  const SLEEP_CHECK_MS = 15 * 60 * 1000; // safety re-check every 15 min
+  const SLEEP_CHECK_MS = 60 * 60 * 1000; // coarse local safety re-check every 60 min
 
   function _parseIsoToMs(iso) {
     if (!iso) return null;
@@ -5580,16 +5747,21 @@
       rt.activeWindowStartMs = null;
       rt.activeWindowEndMs = null;
     }
+    rt.nextWakeMs = _parseIsoToMs(meta.next_wake_at || null);
+    if (!rt.nextWakeMs && rt.activeWindowStartMs && !rt.isActiveWindow) {
+      rt.nextWakeMs = rt.activeWindowStartMs;
+    }
 
     // Determine sleep reason
-    var stateType = (state.type || "").toLowerCase();
+    var stateType = normalizeDisplayStateType(state.type || "");
+    var stateReason = getStateReason(state);
     var sleepReason = "";
 
     if (!rt.isSchoolDay) {
       sleepReason = "holiday";
-    } else if (!rt.isActiveWindow && stateType === "off") {
+    } else if (!rt.isActiveWindow && (stateType === "off" || stateReason === "before_hours" || stateReason === "after_hours")) {
       var now = nowMs();
-      if (rt.activeWindowStartMs && now < rt.activeWindowStartMs) {
+      if (stateReason === "before_hours" || (rt.activeWindowStartMs && now < rt.activeWindowStartMs)) {
         sleepReason = "before_hours";
       } else {
         sleepReason = "after_hours";
@@ -5601,6 +5773,25 @@
     } else if (rt.mode === "sleeping") {
       setMode("waking", "active_window_entered");
     }
+  }
+
+  function _closeWsForSleep(reason) {
+    clearNamedTimer("ws_reconnect");
+    clearNamedTimer("sleep_reconnect");
+    clearNamedTimer("ws_ping");
+    _stopWsHeartbeat("sleep_pause");
+
+    if (rt.ws) {
+      try { rt.ws.onopen = null; } catch (e) {}
+      try { rt.ws.onmessage = null; } catch (e) {}
+      try { rt.ws.onerror = null; } catch (e) {}
+      try { rt.ws.onclose = null; } catch (e) {}
+      try { rt.ws.close(1000, safeText(reason || "sleep_pause") || "sleep_pause"); } catch (e) {}
+    }
+
+    rt.ws = null;
+    rt.wsConnected = false;
+    _log("ws_sleep_paused", { reason: reason || "sleep_pause" });
   }
 
   /**
@@ -5629,17 +5820,11 @@
     clearNamedTimer("wake_chunk");
 
     var now = nowMs();
-    var wakeMs = null;
+    var wakeMs = Number(rt.nextWakeMs) || null;
 
-    if (reason === "before_hours" && rt.activeWindowStartMs) {
-      wakeMs = rt.activeWindowStartMs - (SLEEP_WAKE_EARLY_MIN * 60 * 1000);
-      if (wakeMs <= now) {
-        setMode("waking", "already_near_active");
-        return;
-      }
-    } else if (reason === "after_hours" || reason === "holiday") {
-      var midnight = _nextMidnightMs(now);
-      wakeMs = midnight + (5 * 60 * 1000);
+    if (wakeMs && wakeMs <= now) {
+      setMode("waking", "already_near_active");
+      return;
     }
 
     if (wakeMs && wakeMs > now) {
@@ -5714,10 +5899,9 @@
     if (rt.mode !== "sleeping") return;
 
     var now = nowMs();
+    var wakeTarget = Number(rt.nextWakeMs) || null;
 
-    // Check if we should be in active window now
-    if (rt.activeWindowStartMs) {
-      var wakeTarget = rt.activeWindowStartMs - (SLEEP_WAKE_EARLY_MIN * 60 * 1000);
+    if (wakeTarget) {
       if (now >= wakeTarget) {
         setMode("waking", "safety_check_near_active");
         return;
@@ -5727,23 +5911,6 @@
       clearNamedTimer("wake");
       clearNamedTimer("wake_chunk");
       _scheduleCappedWake(remaining);
-    }
-
-    // Holiday / after_hours: check midnight boundary
-    if (rt.sleepReason === "after_hours" || rt.sleepReason === "holiday") {
-      var midnight = _nextMidnightMs(now);
-      var wakeAtMidnight = midnight + (5 * 60 * 1000);
-      if (now >= wakeAtMidnight - 60000) {
-        setMode("waking", "safety_check_midnight");
-        return;
-      }
-    }
-
-    // WS degraded during sleep: schedule reconnect with jitter (improvement #1)
-    if (rt.wsEnabled && !rt.wsConnected) {
-      _log("ws_degraded_in_sleep", { reason: "ws_disconnected_during_sleep" });
-      // Don't reconnect immediately — use jittered timer to prevent storm
-      _scheduleSleepReconnect();
     }
 
     _log("safety_check_passed", { sleepReason: rt.sleepReason });
@@ -5846,11 +6013,37 @@
     }
   }
 
+  const WS_MAX_MESSAGE_CHARS = 12000;
+  const WS_MAX_MESSAGES_PER_WINDOW = 24;
+  const WS_MESSAGE_WINDOW_MS = 5000;
+  const _wsInboundTimestamps = [];
+
+  function allowInboundWsMessage(rawLen) {
+    var now = Date.now();
+    while (_wsInboundTimestamps.length > 0 && now - _wsInboundTimestamps[0] > WS_MESSAGE_WINDOW_MS) {
+      _wsInboundTimestamps.shift();
+    }
+    if (_wsInboundTimestamps.length >= WS_MAX_MESSAGES_PER_WINDOW) {
+      _log("ws_message_rate_limited", {
+        rawLen: Number(rawLen) || 0,
+        count: _wsInboundTimestamps.length,
+        windowMs: WS_MESSAGE_WINDOW_MS,
+      });
+      return false;
+    }
+    _wsInboundTimestamps.push(now);
+    return true;
+  }
+
   function initWebSocket() {
     if (isTerminalBlockedMode()) {
       _log("reconnect_blocked_due_to_binding_loss", _logContext({
         sourcePath: "initWebSocket",
       }));
+      return;
+    }
+    if (rt.mode === "sleeping") {
+      _log("ws_connect_skipped", { reason: "sleeping" });
       return;
     }
     if (!rt.wsEnabled) {
@@ -6007,7 +6200,19 @@
           return;
         }
         try {
-          var msg = JSON.parse(event.data);
+          var raw = typeof event.data === "string" ? event.data : "";
+          if (!raw) {
+            _log("ws_message_ignored", { reason: "non_string_payload" });
+            return;
+          }
+          if (raw.length > WS_MAX_MESSAGE_CHARS) {
+            _log("ws_message_ignored", { reason: "payload_too_large", rawLen: raw.length });
+            return;
+          }
+          if (!allowInboundWsMessage(raw.length)) return;
+
+          var msg = JSON.parse(raw);
+          if (!msg || typeof msg !== "object") return;
           
           if (msg.type === "pong") return;
 
@@ -6198,7 +6403,7 @@
         if (dutyScroller) dutyScroller.recalc();
       }, 160, "resize_debounce");
     },
-    { passive: true }
+    listenerOpts({ passive: true })
   );
 
   window.addEventListener(
@@ -6206,7 +6411,7 @@
     () => {
       scheduleFit(120);
     },
-    { passive: true }
+    listenerOpts({ passive: true })
   );
 
   window.addEventListener(
@@ -6214,11 +6419,11 @@
     () => {
       scheduleFit(0);
     },
-    { passive: true }
+    listenerOpts({ passive: true })
   );
 
-  document.addEventListener("fullscreenchange", () => scheduleFit(0));
-  document.addEventListener("webkitfullscreenchange", () => scheduleFit(0));
+  document.addEventListener("fullscreenchange", () => scheduleFit(0), listenerOpts());
+  document.addEventListener("webkitfullscreenchange", () => scheduleFit(0), listenerOpts());
 
   try {
     if (window.visualViewport) {
@@ -6227,14 +6432,14 @@
         () => {
           scheduleFit(80);
         },
-        { passive: true }
+        listenerOpts({ passive: true })
       );
       window.visualViewport.addEventListener(
         "scroll",
         () => {
           scheduleFit(80);
         },
-        { passive: true }
+        listenerOpts({ passive: true })
       );
     }
   } catch (e) {}
@@ -6242,6 +6447,14 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       if (isTerminalBlockedMode()) {
+        if (Date.now() >= (Number(rt.wsSuppressedUntilTs) || 0)) {
+          try {
+            window.location.reload();
+          } catch (e) {
+            window.location.href = window.location.href;
+          }
+          return;
+        }
         _log("visibility_resume_blocked_due_to_binding_loss", _logContext({
           sourcePath: "visibilitychange",
         }));
@@ -6266,18 +6479,41 @@
         scheduleNext(0.25);
       }
     }
-  });
+  }, listenerOpts());
 
   // ✅ CLOCK SYNC: عند focus على النافذة، نتحقق من التزامن
   // ⚠️ THROTTLED: محمي بـ cooldown لمنع الطلبات الزائدة
   window.addEventListener("focus", () => {
+    if (isTerminalBlockedMode()) {
+      if (Date.now() >= (Number(rt.wsSuppressedUntilTs) || 0)) {
+        try {
+          window.location.reload();
+        } catch (e) {
+          window.location.href = window.location.href;
+        }
+      }
+      return;
+    }
     detectClockDrift();
     requestReSyncIfNeeded(); // throttled request (skipped if sleeping or WS connected)
-  }, { passive: true });
+  }, listenerOpts({ passive: true }));
 
   window.addEventListener("online", function () {
-    if (isTerminalBlockedMode()) return;
+    if (isTerminalBlockedMode()) {
+      if (Date.now() >= (Number(rt.wsSuppressedUntilTs) || 0)) {
+        try {
+          window.location.reload();
+        } catch (e) {
+          window.location.href = window.location.href;
+        }
+      }
+      return;
+    }
     _log("browser_online", { mode: rt.mode, wsEnabled: rt.wsEnabled, wsConnected: rt.wsConnected });
+    if (rt.mode === "sleeping") {
+      try { sleepSafetyCheck(); } catch (e) {}
+      return;
+    }
     if (rt.wsEnabled && !rt.wsConnected) {
       clearNamedTimer("ws_reconnect");
       initWebSocket();
@@ -6285,27 +6521,27 @@
     if (rt.mode !== "ws-live") {
       scheduleNext(0.25);
     }
-  }, { passive: true });
+  }, listenerOpts({ passive: true }));
 
   window.addEventListener("offline", function () {
     _log("browser_offline", { mode: rt.mode, wsConnected: rt.wsConnected });
     if (rt.mode === "ws-live") {
       setMode("fallback-poll", "browser_offline");
     }
-  }, { passive: true });
+  }, listenerOpts({ passive: true }));
 
   // ===== Global errors =====
   window.addEventListener("error", (ev) => {
     ensureDebugOverlay();
     if (isDebug()) setDebugText("window error: " + safeText(ev && ev.message));
-  });
+  }, listenerOpts());
   window.addEventListener("unhandledrejection", (ev) => {
     ensureDebugOverlay();
     if (isDebug())
       setDebugText(
         "promise rej: " + safeText(ev && ev.reason && ev.reason.message ? ev.reason.message : ev.reason)
       );
-  });
+  }, listenerOpts());
 
   // ===== Boot =====
   document.addEventListener("DOMContentLoaded", () => {
@@ -6327,7 +6563,7 @@
         () => {
           scheduleFit(0);
         },
-        { passive: true, once: true }
+        listenerOpts({ passive: true, once: true })
       );
     } catch (e) {}
 
@@ -6388,5 +6624,11 @@
     })();
     
     scheduleNext(0.2);
-  });
+  }, listenerOpts({ once: true }));
+
+  try {
+    window.addEventListener("beforeunload", () => {
+      cleanupPageRuntime("beforeunload");
+    }, listenerOpts({ once: true }));
+  } catch (e) {}
 })();

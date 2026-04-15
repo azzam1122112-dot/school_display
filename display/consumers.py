@@ -161,6 +161,25 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         self.school_group_name = school_group_name(self.screen.school_id)
         self.token_group_name = token_group_name(str(token), hash_len=16)
 
+        # Per-school connection limit (SaaS protection)
+        try:
+            max_ws = int(getattr(settings, "WS_MAX_CONNECTIONS_PER_SCHOOL", 200) or 200)
+            school_ws_key = f"ws:school_conns:{self.screen.school_id}"
+            cache.add(school_ws_key, 0, timeout=86400)
+            current = cache.incr(school_ws_key)
+            if current > max_ws:
+                cache.decr(school_ws_key)
+                logger.warning(
+                    "WS connect rejected: school %s exceeded max connections (%d/%d)",
+                    self.screen.school_id, current, max_ws,
+                )
+                ws_metrics.connection_failed()
+                _ws_metric_incr("connect_rejected_limit")
+                await self.close(code=4429)
+                return
+        except Exception:
+            pass  # fail-open: don't block connections if counter fails
+
         # Join school group (required). If this fails, the connection is unusable.
         try:
             await self.channel_layer.group_add(
@@ -212,6 +231,16 @@ class DisplayConsumer(AsyncWebsocketConsumer):
     
     async def disconnect(self, close_code):
         """Leave school group on disconnect."""
+        # Decrement per-school connection counter
+        if self.screen:
+            try:
+                school_ws_key = f"ws:school_conns:{self.screen.school_id}"
+                val = cache.decr(school_ws_key)
+                if val < 0:
+                    cache.set(school_ws_key, 0, timeout=86400)
+            except Exception:
+                pass
+
         # Track disconnection
         ws_metrics.connection_closed(close_code)
         _ws_metric_incr("disconnect_total")

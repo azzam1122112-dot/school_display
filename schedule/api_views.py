@@ -1512,7 +1512,7 @@ def status(request, token: str | None = None):
             logger.warning("status: invalid_token path=%s", p)
         except Exception:
             pass
-        return JsonResponse({"detail": "invalid_token"}, status=403)
+        return JsonResponse({"detail": "access_denied", "message": "\u062a\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644"}, status=403)
 
     _metrics_incr("metrics:status:requests")
 
@@ -1549,8 +1549,8 @@ def status(request, token: str | None = None):
         except ScreenNotFoundError:
             resp = JsonResponse(
                 {
-                    "detail": "token_invalid",
-                    "message": "رمز الدخول غير صحيح أو غير نشط",
+                    "detail": "access_denied",
+                    "message": "\u062a\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644",
                 },
                 status=403,
             )
@@ -1571,7 +1571,7 @@ def status(request, token: str | None = None):
             resp = JsonResponse(
                 {
                     "detail": "screen_bound",
-                    "message": str(e),
+                    "message": "\u0647\u0630\u0647 \u0627\u0644\u0634\u0627\u0634\u0629 \u0645\u0631\u062a\u0628\u0637\u0629 \u0628\u062c\u0647\u0627\u0632 \u0622\u062e\u0631",
                 },
                 status=403,
             )
@@ -2666,6 +2666,14 @@ def _build_final_snapshot(
     s.setdefault("refresh_interval_sec", getattr(settings_obj, "refresh_interval_sec", 10) or 10)
     s.setdefault("standby_scroll_speed", getattr(settings_obj, "standby_scroll_speed", 0.8) or 0.8)
     s.setdefault("periods_scroll_speed", getattr(settings_obj, "periods_scroll_speed", 0.5) or 0.5)
+    s.setdefault("display_before_title", settings_obj.get_display_before_title())
+    s.setdefault("display_before_badge", settings_obj.get_display_before_badge())
+    s.setdefault("display_after_title", settings_obj.get_display_after_title())
+    s.setdefault("display_after_badge", settings_obj.get_display_after_badge())
+    s.setdefault("display_after_holiday_title", settings_obj.get_display_after_holiday_title())
+    s.setdefault("display_after_holiday_badge", settings_obj.get_display_after_holiday_badge())
+    s.setdefault("display_holiday_title", settings_obj.get_display_holiday_title())
+    s.setdefault("display_holiday_badge", settings_obj.get_display_holiday_badge())
 
     # ✅ لون شاشة العرض (اختياري)
     accent = getattr(settings_obj, "display_accent_color", None) or s.get("display_accent_color")
@@ -2782,11 +2790,12 @@ def _build_snapshot_payload(
         is_school_day = bool(meta.get("is_school_day"))
         st = (day_snap.get("state") or {}) if isinstance(day_snap, dict) else {}
         st_type = str(st.get("type") or "").strip().lower()
+        st_reason = str(st.get("reason") or "").strip().lower()
 
         base_refresh = int((day_snap.get("settings") or {}).get("refresh_interval_sec") or 3600)
         if not is_school_day:
             refresh = max(base_refresh, 3600)
-        elif st_type == "before":
+        elif st_type == "before" or st_reason == "before_hours":
             refresh = max(base_refresh, 60)
         else:
             refresh = max(base_refresh, 600)
@@ -2795,31 +2804,38 @@ def _build_snapshot_payload(
 
         if not is_school_day:
             snap["state"]["type"] = "NO_SCHEDULE_TODAY"
-            snap["state"]["label"] = "لا يوجد جدول اليوم"
+            snap["state"]["label"] = str(st.get("label") or "").strip() or settings_obj.get_display_holiday_title()
+            snap["state"]["badge"] = str(st.get("badge") or "").strip() or settings_obj.get_display_holiday_badge()
+            snap["state"]["reason"] = "holiday"
         else:
-            now_dt = None
-            active_window_meta = meta.get("active_window") or {}
-            active_start_dt = None
-            try:
-                now_dt = datetime.fromisoformat(str(day_snap.get("now") or snap.get("now") or "").strip())
-            except Exception:
-                now_dt = None
-            try:
-                active_start_dt = datetime.fromisoformat(str((active_window_meta or {}).get("start") or "").strip())
-            except Exception:
-                active_start_dt = None
-
             state_label = str(st.get("label") or "").strip()
-            is_before_hours = st_type == "before"
-            if not is_before_hours and st_type == "off" and now_dt is not None and active_start_dt is not None:
-                is_before_hours = now_dt < active_start_dt
+            state_badge = str(st.get("badge") or "").strip()
+            is_before_hours = st_type == "before" or st_reason == "before_hours"
+            if not is_before_hours and st_type == "off":
+                now_dt = None
+                active_window_meta = meta.get("active_window") or {}
+                active_start_dt = None
+                try:
+                    now_dt = datetime.fromisoformat(str(day_snap.get("now") or snap.get("now") or "").strip())
+                except Exception:
+                    now_dt = None
+                try:
+                    active_start_dt = datetime.fromisoformat(str((active_window_meta or {}).get("start") or "").strip())
+                except Exception:
+                    active_start_dt = None
+                if now_dt is not None and active_start_dt is not None and now_dt < active_start_dt:
+                    is_before_hours = True
 
             if is_before_hours:
                 snap["state"]["type"] = "BEFORE_SCHOOL"
                 snap["state"]["label"] = state_label or settings_obj.get_display_before_title()
+                snap["state"]["badge"] = state_badge or settings_obj.get_display_before_badge()
+                snap["state"]["reason"] = "before_hours"
             else:
                 snap["state"]["type"] = "OFF_HOURS"
                 snap["state"]["label"] = state_label or settings_obj.get_display_after_title()
+                snap["state"]["badge"] = state_badge or settings_obj.get_display_after_badge()
+                snap["state"]["reason"] = st_reason or "after_hours"
 
         try:
             snap["settings"]["refresh_interval_sec"] = int(refresh)
@@ -3080,8 +3096,8 @@ def snapshot(request, token: str | None = None):
             except ScreenNotFoundError:
                 resp = JsonResponse(
                     {
-                        "detail": "token_invalid",
-                        "message": "رمز الدخول غير صحيح أو غير نشط",
+                        "detail": "access_denied",
+                        "message": "\u062a\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644",
                     },
                     status=403,
                 )
@@ -3102,7 +3118,7 @@ def snapshot(request, token: str | None = None):
                 resp = JsonResponse(
                     {
                         "detail": "screen_bound",
-                        "message": str(e),
+                        "message": "\u0647\u0630\u0647 \u0627\u0644\u0634\u0627\u0634\u0629 \u0645\u0631\u062a\u0628\u0637\u0629 \u0628\u062c\u0647\u0627\u0632 \u0622\u062e\u0631",
                     },
                     status=403,
                 )

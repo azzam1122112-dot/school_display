@@ -8,10 +8,18 @@ from django.utils import timezone
 
 from schedule.models import (
     DEFAULT_DISPLAY_AFTER_BADGE,
+    DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE,
+    DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE,
     DEFAULT_DISPLAY_AFTER_TITLE,
     DEFAULT_DISPLAY_BEFORE_BADGE,
     DEFAULT_DISPLAY_BEFORE_TITLE,
+    DEFAULT_DISPLAY_HOLIDAY_BADGE,
+    DEFAULT_DISPLAY_HOLIDAY_TITLE,
+    WEEKDAYS,
 )
+
+
+WEEKDAY_LABELS = {value: label for value, label in WEEKDAYS}
 
 
 def _resolve_display_messages(settings) -> dict[str, str]:
@@ -29,6 +37,10 @@ def _resolve_display_messages(settings) -> dict[str, str]:
         "display_before_badge": (messages.get("before_badge") or getattr(settings, "display_before_badge", "") or DEFAULT_DISPLAY_BEFORE_BADGE).strip() or DEFAULT_DISPLAY_BEFORE_BADGE,
         "display_after_title": (messages.get("after_title") or getattr(settings, "display_after_title", "") or DEFAULT_DISPLAY_AFTER_TITLE).strip() or DEFAULT_DISPLAY_AFTER_TITLE,
         "display_after_badge": (messages.get("after_badge") or getattr(settings, "display_after_badge", "") or DEFAULT_DISPLAY_AFTER_BADGE).strip() or DEFAULT_DISPLAY_AFTER_BADGE,
+        "display_after_holiday_title": (messages.get("after_holiday_title") or getattr(settings, "display_after_holiday_title", "") or DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE).strip() or DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE,
+        "display_after_holiday_badge": (messages.get("after_holiday_badge") or getattr(settings, "display_after_holiday_badge", "") or DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE).strip() or DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE,
+        "display_holiday_title": (messages.get("holiday_title") or getattr(settings, "display_holiday_title", "") or DEFAULT_DISPLAY_HOLIDAY_TITLE).strip() or DEFAULT_DISPLAY_HOLIDAY_TITLE,
+        "display_holiday_badge": (messages.get("holiday_badge") or getattr(settings, "display_holiday_badge", "") or DEFAULT_DISPLAY_HOLIDAY_BADGE).strip() or DEFAULT_DISPLAY_HOLIDAY_BADGE,
     }
 
 
@@ -54,6 +66,157 @@ def _get_manager(obj, *names):
         if hasattr(m, "all"):
             return m
     return None
+
+
+def _active_weekdays(settings) -> set[int]:
+    day_qs = getattr(settings, "day_schedules", None)
+    if day_qs is None or not hasattr(day_qs, "filter"):
+        return set()
+
+    normalized = set()
+    try:
+        raw_values = day_qs.filter(is_active=True).values_list("weekday", flat=True)
+    except Exception:
+        raw_values = []
+
+    for raw in raw_values:
+        try:
+            weekday = int(raw)
+        except Exception:
+            continue
+        if weekday == 0:
+            normalized.add(7)
+        elif 1 <= weekday <= 7:
+            normalized.add(weekday)
+    return normalized
+
+
+def _load_active_days_for_weekday(day_qs, weekday: int, weekday_legacy: int | None = None):
+    if day_qs is None or not hasattr(day_qs, "filter"):
+        return [], weekday
+
+    days = list(day_qs.filter(weekday=weekday, is_active=True))
+    if not days and weekday_legacy is not None and weekday_legacy != weekday:
+        legacy_days = list(day_qs.filter(weekday=weekday_legacy, is_active=True))
+        if legacy_days:
+            return legacy_days, weekday_legacy
+
+    return days, weekday
+
+
+def _build_timeline_for_days(days, target_date, tz):
+    timeline = []
+
+    for day in days:
+        periods_m = _get_manager(day, "periods", "period_set")
+        breaks_m = _get_manager(day, "breaks", "break_set")
+
+        if periods_m:
+            for p in periods_m.select_related("subject", "teacher", "school_class").only(
+                "index", "starts_at", "ends_at",
+                "subject__id", "subject__name",
+                "teacher__id", "teacher__name",
+                "school_class__id", "school_class__name",
+            ).all():
+                if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
+                    continue
+
+                start = _to_aware_dt(target_date, p.starts_at, tz)
+                end = _to_aware_dt(target_date, p.ends_at, tz)
+                if end < start:
+                    continue
+
+                timeline.append({
+                    "kind": "period",
+                    "index": getattr(p, "index", None),
+                    "label": (p.subject.name if getattr(p, "subject", None) else "حصة"),
+                    "class": (p.school_class.name if getattr(p, "school_class", None) else None),
+                    "teacher": (p.teacher.name if getattr(p, "teacher", None) else None),
+                    "start": start,
+                    "end": end,
+                })
+
+        if breaks_m:
+            for b in breaks_m.all():
+                if not getattr(b, "starts_at", None):
+                    continue
+                start = _to_aware_dt(target_date, b.starts_at, tz)
+                dur = int(getattr(b, "duration_min", 0) or 0)
+                if dur <= 0:
+                    continue
+                end = start + timedelta(minutes=dur)
+                timeline.append({
+                    "kind": "break",
+                    "label": getattr(b, "label", None) or "استراحة",
+                    "start": start,
+                    "end": end,
+                })
+
+    return timeline
+
+
+def _active_window_bounds(timeline):
+    start_t = min(t["start"] for t in timeline)
+    end_t = max(t["end"] for t in timeline)
+    active_start = start_t - timedelta(minutes=30)
+    active_end = end_t + timedelta(minutes=15)
+    return start_t, end_t, active_start, active_end
+
+
+def _next_school_day_info(settings, start_date, tz, *, include_today: bool = False):
+    day_qs = getattr(settings, "day_schedules", None)
+    if day_qs is None or not hasattr(day_qs, "filter"):
+        return None
+
+    active_weekdays = _active_weekdays(settings)
+    if not active_weekdays:
+        return None
+
+    start_offset = 0 if include_today else 1
+    for days_ahead in range(start_offset, 15):
+        candidate = start_date + timedelta(days=days_ahead)
+        weekday = _normalize_weekday_for_db(candidate.weekday())
+        weekday_legacy = (candidate.weekday() + 1) % 7
+        if weekday not in active_weekdays and weekday_legacy not in active_weekdays:
+            continue
+
+        days, resolved_weekday = _load_active_days_for_weekday(day_qs, weekday, weekday_legacy)
+        if not days:
+            continue
+
+        timeline = _build_timeline_for_days(days, candidate, tz)
+        if not timeline:
+            continue
+
+        start_t, end_t, active_start, active_end = _active_window_bounds(timeline)
+        return {
+            "date": candidate.isoformat(),
+            "weekday": resolved_weekday,
+            "weekday_label": WEEKDAY_LABELS.get(resolved_weekday, ""),
+            "days_ahead": days_ahead,
+            "is_tomorrow": days_ahead == 1,
+            "first_start": start_t.isoformat(),
+            "last_end": end_t.isoformat(),
+            "active_start": active_start.isoformat(),
+            "active_end": active_end.isoformat(),
+        }
+
+    return None
+
+
+def _after_hours_copy(settings_payload: dict[str, str], next_school_day):
+    if next_school_day and int(next_school_day.get("days_ahead") or 0) == 1:
+        return {
+            "label": settings_payload["display_after_title"],
+            "badge": settings_payload["display_after_badge"],
+            "variant": "after_school_day",
+        }
+
+    return {
+        "label": settings_payload["display_after_holiday_title"],
+        "badge": settings_payload["display_after_holiday_badge"],
+        "variant": "before_holiday",
+    }
 
 
 def build_day_snapshot(settings, now=None):
@@ -104,24 +267,11 @@ def build_day_snapshot(settings, now=None):
         "periods_scroll_speed": float(getattr(settings, "periods_scroll_speed", 0.5) or 0.5),
     }
     settings_payload.update(_resolve_display_messages(settings))
+    next_school_day = _next_school_day_info(settings, today, tz, include_today=False)
 
     # الحصول على جدول اليوم (All Active Schedules for this weekday)
     day_qs = getattr(settings, "day_schedules", None)
-    days = []
-    if day_qs is not None and hasattr(day_qs, "filter"):
-        # We fetch ALL active schedules for this day, in case of multiple (e.g. shifts not merged in one DaySchedule)
-        # Note: Model constraint uq_ds_set_wd usually prevents duplicate (settings, weekday).
-        # But if the user removed the constraint or we have multiple settings...
-        # Let's assume there is only one DaySchedule per SchoolSettings per Weekday.
-        # But we must be careful if the user *switched* it recently.
-        days = list(day_qs.filter(weekday=weekday, is_active=True))
-
-        # Backward compatibility: if schedules were saved with legacy weekday indexing.
-        if not days and weekday_legacy != weekday:
-            legacy_days = list(day_qs.filter(weekday=weekday_legacy, is_active=True))
-            if legacy_days:
-                days = legacy_days
-                weekday = weekday_legacy
+    days, weekday = _load_active_days_for_weekday(day_qs, weekday, weekday_legacy)
 
     if not days:
         # Optimization: Strict stop on holidays (reduced to 15m to allow updates/wake-up)
@@ -134,9 +284,19 @@ def build_day_snapshot(settings, now=None):
                 "is_school_day": False,
                 "is_active_window": False,
                 "active_window": None,
+                "next_school_day": next_school_day,
+                "next_wake_at": (next_school_day or {}).get("active_start"),
             },
             "settings": settings_payload,
-            "state": {"type": "off", "label": "يوم إجازة", "from": None, "to": None, "remaining_seconds": None},
+            "state": {
+                "type": "off",
+                "label": settings_payload["display_holiday_title"],
+                "badge": settings_payload["display_holiday_badge"],
+                "reason": "holiday",
+                "from": None,
+                "to": None,
+                "remaining_seconds": None,
+            },
             "current_period": None,
             "next_period": None,
             "day_path": [],
@@ -145,63 +305,7 @@ def build_day_snapshot(settings, now=None):
             "excellence": {"items": []},
         }
 
-    # periods/breaks managers
-    timeline = []
-
-    for day in days:
-        periods_m = _get_manager(day, "periods", "period_set")
-        breaks_m = _get_manager(day, "breaks", "break_set")
-
-        if periods_m:
-            # Query optimization: select_related + only specific fields to reduce data transfer
-            for p in periods_m.select_related("subject", "teacher", "school_class").only(
-                # Period fields
-                "index", "starts_at", "ends_at",
-                # Related fields (subject)
-                "subject__id", "subject__name",
-                # Related fields (teacher)
-                "teacher__id", "teacher__name",
-                # Related fields (school_class)
-                "school_class__id", "school_class__name"
-            ).all():
-                # تجاهل أي صف بدون وقت صحيح
-                if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
-                    continue
-
-                start = _to_aware_dt(today, p.starts_at, tz)
-                end = _to_aware_dt(today, p.ends_at, tz)
-                
-                # Handle logical crossing of day (rare, but good for robust engine)
-                if end < start: 
-                   # Likely next day, e.g. 23:00 to 00:30. Ignore for dashboard simplicity or handle?
-                   # For schools, we assume it's same day. If end < start, maybe data error.
-                   continue 
-
-                timeline.append({
-                    "kind": "period",
-                    "index": getattr(p, "index", None),
-                    "label": (p.subject.name if getattr(p, "subject", None) else "حصة"),
-                    "class": (p.school_class.name if getattr(p, "school_class", None) else None),
-                    "teacher": (p.teacher.name if getattr(p, "teacher", None) else None),
-                    "start": start,
-                    "end": end,
-                })
-
-        if breaks_m:
-            for b in breaks_m.all():
-                if not getattr(b, "starts_at", None):
-                    continue
-                start = _to_aware_dt(today, b.starts_at, tz)
-                dur = int(getattr(b, "duration_min", 0) or 0)
-                if dur <= 0:
-                    continue
-                end = start + timedelta(minutes=dur)
-                timeline.append({
-                    "kind": "break",
-                    "label": getattr(b, "label", None) or "استراحة",
-                    "start": start,
-                    "end": end,
-                })
+    timeline = _build_timeline_for_days(days, today, tz)
 
     if not timeline:
         # Optimization: Strict stop if empty timeline (reduced to 15m)
@@ -214,9 +318,19 @@ def build_day_snapshot(settings, now=None):
                 "is_school_day": True,
                 "is_active_window": False,
                 "active_window": None,
+                "next_school_day": next_school_day,
+                "next_wake_at": (next_school_day or {}).get("active_start"),
             },
             "settings": settings_payload,
-            "state": {"type": "off", "label": "لا يوجد مسار زمني لليوم", "from": None, "to": None, "remaining_seconds": None},
+            "state": {
+                "type": "off",
+                "label": "لا يوجد مسار زمني لليوم",
+                "badge": "تنبيه",
+                "reason": "no_timeline",
+                "from": None,
+                "to": None,
+                "remaining_seconds": None,
+            },
             "current_period": None,
             "next_period": None,
             "day_path": [],
@@ -226,12 +340,7 @@ def build_day_snapshot(settings, now=None):
         }
 
     # === Optimization: Strict Active Window & Smart Wakeup ===
-    start_t = min(t["start"] for t in timeline)
-    end_t = max(t["end"] for t in timeline)
-
-    # Active Window: Start - 30m to End + 30m
-    active_start = start_t - timedelta(minutes=30)
-    active_end = end_t + timedelta(minutes=30)
+    start_t, end_t, active_start, active_end = _active_window_bounds(timeline)
     
     # ✅ Strict Off-Hours Logic
     if now < active_start:
@@ -251,11 +360,15 @@ def build_day_snapshot(settings, now=None):
                     "start": active_start.isoformat(),
                     "end": active_end.isoformat(),
                 },
+                "next_school_day": next_school_day,
+                "next_wake_at": active_start.isoformat(),
             },
             "settings": settings_payload,
             "state": {
                 "type": "off", 
                 "label": settings_payload["display_before_title"], 
+                "badge": settings_payload["display_before_badge"],
+                "reason": "before_hours",
                 "from": None, 
                 "to": None, 
                 "remaining_seconds": None
@@ -271,6 +384,7 @@ def build_day_snapshot(settings, now=None):
     elif now > active_end:
         # After Window: Sleep
         settings_payload["refresh_interval_sec"] = 900
+        after_copy = _after_hours_copy(settings_payload, next_school_day)
         return {
             "now": now.isoformat(),
             "meta": {
@@ -282,11 +396,16 @@ def build_day_snapshot(settings, now=None):
                     "start": active_start.isoformat(),
                     "end": active_end.isoformat(),
                 },
+                "next_school_day": next_school_day,
+                "next_wake_at": (next_school_day or {}).get("active_start"),
             },
             "settings": settings_payload,
             "state": {
                 "type": "off", 
-                "label": settings_payload["display_after_title"], 
+                "label": after_copy["label"], 
+                "badge": after_copy["badge"],
+                "reason": "after_hours",
+                "variant": after_copy["variant"],
                 "from": None, 
                 "to": None, 
                 "remaining_seconds": None
@@ -372,6 +491,8 @@ def build_day_snapshot(settings, now=None):
             state = {
                 "type": "before",
                 "label": settings_payload["display_before_title"],
+                "badge": settings_payload["display_before_badge"],
+                "reason": "before_hours",
                 "from": first["start"].strftime("%H:%M"),
                 "to": first["end"].strftime("%H:%M"),
                 "remaining_seconds": max(0, int((first["start"] - now).total_seconds())),
@@ -381,9 +502,13 @@ def build_day_snapshot(settings, now=None):
     else:
         # ✅ استخدم آخر نهاية فعلية (max end)
         last = max(timeline, key=lambda x: x["end"])
+        after_copy = _after_hours_copy(settings_payload, next_school_day)
         state = {
             "type": "after",
-            "label": settings_payload["display_after_title"],
+            "label": after_copy["label"],
+            "badge": after_copy["badge"],
+            "reason": "after_hours",
+            "variant": after_copy["variant"],
             "from": last["start"].strftime("%H:%M"),
             "to": last["end"].strftime("%H:%M"),
             "remaining_seconds": 0,
@@ -397,6 +522,8 @@ def build_day_snapshot(settings, now=None):
             "is_school_day": True,
             "is_active_window": is_active_window,
             "active_window": active_window_meta,
+            "next_school_day": next_school_day,
+            "next_wake_at": None,
         },
         "settings": settings_payload,
         "state": state,

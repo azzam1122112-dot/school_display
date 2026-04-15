@@ -1551,7 +1551,7 @@
   </div>
 
         <!-- Sound Enable Button (for TVs / no-interaction displays) -->
-        <button id="bellEnableBtn" title="تفعيل صوت الجرس"
+        <button id="bellEnableBtn" title="تفعيل صوت الجرس" aria-label="تفعيل صوت الجرس"
             onclick="if(window._unlockBellFromBtn)window._unlockBellFromBtn()"
             style="
                 position: fixed;
@@ -1591,7 +1591,7 @@
         </style>
 
         <!-- Fullscreen Toggle Button -->
-        <button id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة"
+        <button id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة" aria-label="تبديل وضع ملء الشاشة"
             style="
                 position: fixed;
                 bottom: 12px;
@@ -1669,7 +1669,7 @@
     <section id="boardMainColumn" class="col-span-12 lg:col-span-8 flex flex-col gap-5 min-h-0">
         
         <!-- Alert Card -->
-        <div class="glass-panel rounded-2xl p-0 flex flex-col overflow-hidden u-hidden" id="alertContainer"> <!-- JS toggles hidden class -->
+        <div class="glass-panel rounded-2xl p-0 flex flex-col overflow-hidden u-hidden" id="alertContainer" role="status" aria-live="polite" aria-atomic="true"> <!-- JS toggles hidden class -->
              <!-- Recreating structure for JS targetting: alertTitle, alertDetails -->
              <div class="border-b border-white/5 bg-red-500/10 p-3 px-5 flex items-center gap-3">
                 <span class="animate-pulse w-2 h-2 rounded-full bg-red-500"></span>
@@ -1742,7 +1742,7 @@
                         <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
                         النشاط الحالي
                     </div>
-                    <div id="currentScheduleList" class="flex flex-wrap gap-2 text-xl text-slate-200">
+                    <div id="currentScheduleList" class="flex flex-wrap gap-2 text-xl text-slate-200" role="list" aria-live="polite" aria-label="النشاط الحالي">
                         <span class="opacity-50">...</span>
                     </div>
                 </div>
@@ -1759,7 +1759,7 @@
                  </div>
 
                  <!-- Horizontal Scroll/List Container -->
-                 <div id="miniSchedule" class="flex gap-4 overflow-x-auto no-scrollbar mask-gradient-x py-2">
+                 <div id="miniSchedule" class="flex gap-4 overflow-x-auto no-scrollbar mask-gradient-x py-2" role="list" aria-label="مسار اليوم">
                      <span class="text-sm text-slate-500 italic px-4">جاري جلب الجدول...</span>
                  </div>
             </div>
@@ -1791,7 +1791,7 @@
              </div>
 
              <!-- Main Content Slot -->
-             <div id="exSlot" class="flex-1 flex items-center justify-center p-6 relative">
+             <div id="exSlot" class="flex-1 flex items-center justify-center p-6 relative" role="region" aria-live="polite" aria-label="محتوى لوحة الشرف">
                  <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent"></div>
                  <div class="honor-empty-state">جاري تحميل بيانات لوحة الشرف...</div>
              </div>
@@ -1837,7 +1837,7 @@
 
                  <!-- Viewport -->
                  <div class="absolute inset-0 overflow-hidden list-viewport">
-                     <div id="dutyTrack" class="track flex flex-col gap-3 p-6 pr-0">
+                     <div id="dutyTrack" class="track flex flex-col gap-3 p-6 pr-0" role="list" aria-label="قائمة الإشراف والمناوبة">
                          <div class="text-slate-500 animate-pulse font-medium px-4">جاري التحميل...</div>
                      </div>
                  </div>
@@ -1862,7 +1862,7 @@
             <div class="flex-1 relative overflow-hidden min-h-0">
                 <!-- Viewport for scroller. JS appends items to #periodClassesTrack -->
                 <div class="absolute inset-0 overflow-hidden list-viewport"> 
-                    <div id="periodClassesTrack" class="track flex flex-col gap-2 p-3"></div>
+                    <div id="periodClassesTrack" class="track flex flex-col gap-2 p-3" role="list" aria-label="قائمة الحصص الجارية"></div>
                 </div>
             </div>
         </div>
@@ -1879,7 +1879,7 @@
             
             <div class="flex-1 relative overflow-hidden min-h-0">
                 <div class="absolute inset-0 overflow-hidden standby-viewport">
-                    <div id="standbyTrack" class="track flex flex-col gap-2 p-3"></div>
+                    <div id="standbyTrack" class="track flex flex-col gap-2 p-3" role="list" aria-label="قائمة حصص الانتظار"></div>
                 </div>
             </div>
         </div>

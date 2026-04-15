@@ -27,6 +27,10 @@ class SchoolSettingsAdminForm(forms.ModelForm):
             "display_before_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
             "display_after_title": forms.TextInput(attrs={"style": "width: 40em;", "dir": "rtl"}),
             "display_after_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
+            "display_after_holiday_title": forms.TextInput(attrs={"style": "width: 40em;", "dir": "rtl"}),
+            "display_after_holiday_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
+            "display_holiday_title": forms.TextInput(attrs={"style": "width: 40em;", "dir": "rtl"}),
+            "display_holiday_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
         }
 
 
@@ -69,10 +73,15 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
                 "display_before_badge",
                 "display_after_title",
                 "display_after_badge",
+                "display_after_holiday_title",
+                "display_after_holiday_badge",
+                "display_holiday_title",
+                "display_holiday_badge",
             ),
             "description": (
                 "عدّل النصوص التي تظهر على شاشة العرض في حالتي ما قبل بداية اليوم الدراسي "
-                "وبعد انتهائه. هذه الحقول هي المصدر الصريح للنص الظاهر على الشاشة."
+                "وبعد انتهائه، وكذلك في حالتي ما بعد الدوام قبل الإجازة ويوم الإجازة نفسه. "
+                "هذه الحقول هي المصدر الصريح للنص الظاهر على الشاشة."
             ),
         }),
         ("رؤية الأقسام", {
@@ -110,7 +119,11 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
 
     @admin.display(description="ملخص النصوص")
     def display_messages_summary(self, obj):
-        return f"قبل: {obj.get_display_before_title()} | بعد: {obj.get_display_after_title()}"
+        return (
+            f"قبل: {obj.get_display_before_title()} | "
+            f"بعد: {obj.get_display_after_title()} | "
+            f"إجازة: {obj.get_display_holiday_title()}"
+        )
 
     @admin.display(description="معاينة النصوص الحالية")
     def display_messages_preview(self, obj):
@@ -119,12 +132,18 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
         return format_html(
             "<div style='line-height:1.9'>"
             "<strong>قبل بداية الدوام:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span><br>"
-            "<strong>بعد انتهاء الدوام:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span>"
+            "<strong>بعد انتهاء الدوام إذا كان الغد يومًا دراسيًا:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span><br>"
+            "<strong>بعد انتهاء الدوام إذا كان الغد إجازة:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span><br>"
+            "<strong>في يوم الإجازة:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span>"
             "</div>",
             obj.get_display_before_title(),
             obj.get_display_before_badge(),
             obj.get_display_after_title(),
             obj.get_display_after_badge(),
+            obj.get_display_after_holiday_title(),
+            obj.get_display_after_holiday_badge(),
+            obj.get_display_holiday_title(),
+            obj.get_display_holiday_badge(),
         )
 
 
