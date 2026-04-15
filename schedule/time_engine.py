@@ -6,6 +6,31 @@ from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 
+from schedule.models import (
+    DEFAULT_DISPLAY_AFTER_BADGE,
+    DEFAULT_DISPLAY_AFTER_TITLE,
+    DEFAULT_DISPLAY_BEFORE_BADGE,
+    DEFAULT_DISPLAY_BEFORE_TITLE,
+)
+
+
+def _resolve_display_messages(settings) -> dict[str, str]:
+    getter = getattr(settings, "get_display_messages", None)
+    if callable(getter):
+        try:
+            messages = getter() or {}
+        except Exception:
+            messages = {}
+    else:
+        messages = {}
+
+    return {
+        "display_before_title": (messages.get("before_title") or getattr(settings, "display_before_title", "") or DEFAULT_DISPLAY_BEFORE_TITLE).strip() or DEFAULT_DISPLAY_BEFORE_TITLE,
+        "display_before_badge": (messages.get("before_badge") or getattr(settings, "display_before_badge", "") or DEFAULT_DISPLAY_BEFORE_BADGE).strip() or DEFAULT_DISPLAY_BEFORE_BADGE,
+        "display_after_title": (messages.get("after_title") or getattr(settings, "display_after_title", "") or DEFAULT_DISPLAY_AFTER_TITLE).strip() or DEFAULT_DISPLAY_AFTER_TITLE,
+        "display_after_badge": (messages.get("after_badge") or getattr(settings, "display_after_badge", "") or DEFAULT_DISPLAY_AFTER_BADGE).strip() or DEFAULT_DISPLAY_AFTER_BADGE,
+    }
+
 
 def _normalize_weekday_for_db(py_weekday: int) -> int:
     """
@@ -78,6 +103,7 @@ def build_day_snapshot(settings, now=None):
         "standby_scroll_speed": float(getattr(settings, "standby_scroll_speed", 0.8) or 0.8),
         "periods_scroll_speed": float(getattr(settings, "periods_scroll_speed", 0.5) or 0.5),
     }
+    settings_payload.update(_resolve_display_messages(settings))
 
     # الحصول على جدول اليوم (All Active Schedules for this weekday)
     day_qs = getattr(settings, "day_schedules", None)
@@ -229,7 +255,7 @@ def build_day_snapshot(settings, now=None):
             "settings": settings_payload,
             "state": {
                 "type": "off", 
-                "label": "خارج وقت الدوام", 
+                "label": settings_payload["display_before_title"], 
                 "from": None, 
                 "to": None, 
                 "remaining_seconds": None
@@ -260,7 +286,7 @@ def build_day_snapshot(settings, now=None):
             "settings": settings_payload,
             "state": {
                 "type": "off", 
-                "label": "انتهى الدوام", 
+                "label": settings_payload["display_after_title"], 
                 "from": None, 
                 "to": None, 
                 "remaining_seconds": None
@@ -345,7 +371,7 @@ def build_day_snapshot(settings, now=None):
         if now < first["start"]:
             state = {
                 "type": "before",
-                "label": "قبل بداية اليوم الدراسي",
+                "label": settings_payload["display_before_title"],
                 "from": first["start"].strftime("%H:%M"),
                 "to": first["end"].strftime("%H:%M"),
                 "remaining_seconds": max(0, int((first["start"] - now).total_seconds())),
@@ -357,7 +383,7 @@ def build_day_snapshot(settings, now=None):
         last = max(timeline, key=lambda x: x["end"])
         state = {
             "type": "after",
-            "label": "انتهى اليوم الدراسي",
+            "label": settings_payload["display_after_title"],
             "from": last["start"].strftime("%H:%M"),
             "to": last["end"].strftime("%H:%M"),
             "remaining_seconds": 0,

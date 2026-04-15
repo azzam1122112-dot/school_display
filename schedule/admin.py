@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from django.contrib import admin
+from django import forms
+from django.utils.html import format_html
 
 from .models import (
     SchoolSettings,
@@ -16,13 +18,35 @@ from .models import (
 )
 
 
+class SchoolSettingsAdminForm(forms.ModelForm):
+    class Meta:
+        model = SchoolSettings
+        fields = "__all__"
+        widgets = {
+            "display_before_title": forms.TextInput(attrs={"style": "width: 40em;", "dir": "rtl"}),
+            "display_before_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
+            "display_after_title": forms.TextInput(attrs={"style": "width: 40em;", "dir": "rtl"}),
+            "display_after_badge": forms.TextInput(attrs={"style": "width: 20em;", "dir": "rtl"}),
+        }
+
+
 # ============================================================
 # School Settings
 # ============================================================
 
 @admin.register(SchoolSettings)
 class SchoolSettingsAdmin(admin.ModelAdmin):
-    list_display = ("name", "school", "theme", "featured_panel", "timezone_name", "refresh_interval_sec", "test_mode_weekday_override")
+    form = SchoolSettingsAdminForm
+    list_display = (
+        "name",
+        "school",
+        "theme",
+        "featured_panel",
+        "timezone_name",
+        "refresh_interval_sec",
+        "display_messages_summary",
+        "test_mode_weekday_override",
+    )
     list_filter = ("theme", "featured_panel", "timezone_name", "test_mode_weekday_override")
     search_fields = ("name", "school__name")
     autocomplete_fields = ("school",)
@@ -37,6 +61,19 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
         }),
         ("إعدادات العرض", {
             "fields": ("timezone_name", "refresh_interval_sec", "standby_scroll_speed", "periods_scroll_speed")
+        }),
+        ("نصوص شاشة العرض قبل وبعد الدوام", {
+            "fields": (
+                "display_messages_preview",
+                "display_before_title",
+                "display_before_badge",
+                "display_after_title",
+                "display_after_badge",
+            ),
+            "description": (
+                "عدّل النصوص التي تظهر على شاشة العرض في حالتي ما قبل بداية اليوم الدراسي "
+                "وبعد انتهائه. هذه الحقول هي المصدر الصريح للنص الظاهر على الشاشة."
+            ),
         }),
         ("رؤية الأقسام", {
             "fields": (
@@ -63,13 +100,32 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
     
     def get_readonly_fields(self, request, obj=None):
         # schedule_revision للقراءة فقط (يتحدث تلقائياً)
-        readonly = ["schedule_revision"]
+        readonly = ["schedule_revision", "display_messages_preview"]
         
         # test_mode_weekday_override للسوبر أدمن فقط
         if not request.user.is_superuser:
             readonly.append("test_mode_weekday_override")
         
         return readonly
+
+    @admin.display(description="ملخص النصوص")
+    def display_messages_summary(self, obj):
+        return f"قبل: {obj.get_display_before_title()} | بعد: {obj.get_display_after_title()}"
+
+    @admin.display(description="معاينة النصوص الحالية")
+    def display_messages_preview(self, obj):
+        if not obj:
+            return "احفظ الإعدادات أولاً ثم عدّل النصوص من هنا."
+        return format_html(
+            "<div style='line-height:1.9'>"
+            "<strong>قبل بداية الدوام:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span><br>"
+            "<strong>بعد انتهاء الدوام:</strong> {} <span style='color:#6b7280'>(الشارة: {})</span>"
+            "</div>",
+            obj.get_display_before_title(),
+            obj.get_display_before_badge(),
+            obj.get_display_after_title(),
+            obj.get_display_after_badge(),
+        )
 
 
 @admin.register(DutyAssignment)

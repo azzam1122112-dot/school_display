@@ -213,6 +213,60 @@ class DisplayApiAliasesTests(TestCase):
 
 
 class DisplaySnapshotPhase2Tests(TestCase):
+    def test_snapshot_before_hours_uses_configured_before_message(self):
+        cache.clear()
+        bundle = make_active_school_with_screen(max_screens=3)
+        self.assertIsNotNone(bundle.settings)
+
+        bundle.settings.display_before_title = "نص مخصص قبل بداية اليوم"
+        bundle.settings.display_before_badge = "صباح الخير"
+        bundle.settings.save(update_fields=["display_before_title", "display_before_badge"])
+
+        fake_snap = {
+            "now": "2026-04-15T05:00:00+03:00",
+            "meta": {
+                "date": "2026-04-15",
+                "weekday": 3,
+                "is_school_day": True,
+                "is_active_window": False,
+                "active_window": {
+                    "start": "2026-04-15T06:30:00+03:00",
+                    "end": "2026-04-15T15:00:00+03:00",
+                },
+            },
+            "settings": {
+                "refresh_interval_sec": 900,
+                "display_before_title": bundle.settings.get_display_before_title(),
+                "display_before_badge": bundle.settings.get_display_before_badge(),
+            },
+            "state": {
+                "type": "off",
+                "label": bundle.settings.get_display_before_title(),
+                "from": None,
+                "to": None,
+                "remaining_seconds": None,
+            },
+            "current_period": None,
+            "next_period": None,
+            "day_path": [],
+            "period_classes": [],
+            "standby": {"items": []},
+            "excellence": {"items": []},
+        }
+
+        with mock.patch("schedule.api_views.build_day_snapshot", return_value=fake_snap):
+            resp = self.client.get(
+                f"/api/display/snapshot/{bundle.screen.token}/?nocache=1",
+                **{"HTTP_X_DISPLAY_DEVICE": "devA"},
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual((body.get("state") or {}).get("type"), "BEFORE_SCHOOL")
+        self.assertEqual((body.get("state") or {}).get("label"), "نص مخصص قبل بداية اليوم")
+        self.assertEqual((body.get("settings") or {}).get("display_before_title"), "نص مخصص قبل بداية اليوم")
+        self.assertEqual((body.get("settings") or {}).get("display_before_badge"), "صباح الخير")
+
     def test_snapshot_reuses_cache_for_same_revision_without_rebuild(self):
         cache.clear()
         bundle = make_active_school_with_screen(max_screens=3)
@@ -440,7 +494,19 @@ class BuildDaySnapshotTimingTests(TestCase):
 
         settings = bundle.settings
         settings.timezone_name = "Asia/Riyadh"
-        settings.save(update_fields=["timezone_name"])
+        settings.display_before_title = "رسالة ترحيبية قبل الدوام"
+        settings.display_before_badge = "حيّاكم الله"
+        settings.display_after_title = "بارك الله في جهودكم اليوم"
+        settings.display_after_badge = "شكرا لكم"
+        settings.save(
+            update_fields=[
+                "timezone_name",
+                "display_before_title",
+                "display_before_badge",
+                "display_after_title",
+                "display_after_badge",
+            ]
+        )
 
         tz = ZoneInfo("Asia/Riyadh")
         before_start = datetime(2026, 3, 29, 7, 55, tzinfo=tz)
@@ -484,6 +550,9 @@ class BuildDaySnapshotTimingTests(TestCase):
         before = build_day_snapshot(settings, now=before_start)
         self.assertTrue(before["now"].endswith("+03:00"))
         self.assertEqual(before["state"]["type"], "before")
+        self.assertEqual(before["state"]["label"], "رسالة ترحيبية قبل الدوام")
+        self.assertEqual(before["settings"]["display_before_title"], "رسالة ترحيبية قبل الدوام")
+        self.assertEqual(before["settings"]["display_before_badge"], "حيّاكم الله")
         self.assertEqual(before["state"]["remaining_seconds"], 5 * 60)
         self.assertEqual(before["next_period"]["index"], 1)
         self.assertEqual(before["day_path"][0]["index"], 1)
@@ -511,4 +580,7 @@ class BuildDaySnapshotTimingTests(TestCase):
 
         after = build_day_snapshot(settings, now=datetime(2026, 3, 29, 9, 10, tzinfo=tz))
         self.assertEqual(after["state"]["type"], "after")
+        self.assertEqual(after["state"]["label"], "بارك الله في جهودكم اليوم")
+        self.assertEqual(after["settings"]["display_after_title"], "بارك الله في جهودكم اليوم")
+        self.assertEqual(after["settings"]["display_after_badge"], "شكرا لكم")
         self.assertEqual(after["state"]["remaining_seconds"], 0)

@@ -8,7 +8,7 @@ import os
 import re
 import socket
 import time
-from datetime import date
+from datetime import date, datetime
 from datetime import time as dt_time
 from typing import Iterable, Optional
 
@@ -2796,12 +2796,30 @@ def _build_snapshot_payload(
         if not is_school_day:
             snap["state"]["type"] = "NO_SCHEDULE_TODAY"
             snap["state"]["label"] = "لا يوجد جدول اليوم"
-        elif st_type == "before":
-            snap["state"]["type"] = "BEFORE_SCHOOL"
-            snap["state"]["label"] = "قبل بداية الدوام"
         else:
-            snap["state"]["type"] = "OFF_HOURS"
-            snap["state"]["label"] = "انتهى الدوام"
+            now_dt = None
+            active_window_meta = meta.get("active_window") or {}
+            active_start_dt = None
+            try:
+                now_dt = datetime.fromisoformat(str(day_snap.get("now") or snap.get("now") or "").strip())
+            except Exception:
+                now_dt = None
+            try:
+                active_start_dt = datetime.fromisoformat(str((active_window_meta or {}).get("start") or "").strip())
+            except Exception:
+                active_start_dt = None
+
+            state_label = str(st.get("label") or "").strip()
+            is_before_hours = st_type == "before"
+            if not is_before_hours and st_type == "off" and now_dt is not None and active_start_dt is not None:
+                is_before_hours = now_dt < active_start_dt
+
+            if is_before_hours:
+                snap["state"]["type"] = "BEFORE_SCHOOL"
+                snap["state"]["label"] = state_label or settings_obj.get_display_before_title()
+            else:
+                snap["state"]["type"] = "OFF_HOURS"
+                snap["state"]["label"] = state_label or settings_obj.get_display_after_title()
 
         try:
             snap["settings"]["refresh_interval_sec"] = int(refresh)

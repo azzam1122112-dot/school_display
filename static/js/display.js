@@ -466,6 +466,29 @@
     SCHOOL_TYPE: "",
   };
 
+  const DEFAULT_DISPLAY_COPY = {
+    beforeBadge: "أهلا بكم",
+    beforeTitle: "استعدوا لبداية يوم دراسي جميل",
+    afterBadge: "أحسنتم",
+    afterTitle: "أحسنتم اليوم، ونلقاكم غدا بإذن الله",
+    afterEmpty: "أحسنتم اليوم",
+  };
+
+  const DISPLAY_COPY = { ...DEFAULT_DISPLAY_COPY };
+
+  function applyDisplayCopySettings(settings) {
+    const nextBeforeBadge = safeText(settings.display_before_badge || DEFAULT_DISPLAY_COPY.beforeBadge);
+    const nextBeforeTitle = safeText(settings.display_before_title || DEFAULT_DISPLAY_COPY.beforeTitle);
+    const nextAfterBadge = safeText(settings.display_after_badge || DEFAULT_DISPLAY_COPY.afterBadge);
+    const nextAfterTitle = safeText(settings.display_after_title || DEFAULT_DISPLAY_COPY.afterTitle);
+
+    DISPLAY_COPY.beforeBadge = nextBeforeBadge || DEFAULT_DISPLAY_COPY.beforeBadge;
+    DISPLAY_COPY.beforeTitle = nextBeforeTitle || DEFAULT_DISPLAY_COPY.beforeTitle;
+    DISPLAY_COPY.afterBadge = nextAfterBadge || DEFAULT_DISPLAY_COPY.afterBadge;
+    DISPLAY_COPY.afterTitle = nextAfterTitle || DEFAULT_DISPLAY_COPY.afterTitle;
+    DISPLAY_COPY.afterEmpty = DISPLAY_COPY.afterBadge || DEFAULT_DISPLAY_COPY.afterEmpty;
+  }
+
   function teacherLabelText() {
     const t = (cfg.SCHOOL_TYPE || "").toString().trim().toLowerCase();
     if (t === "boys") return "المعلم";
@@ -1777,8 +1800,8 @@
       title = block.label || "استراحة";
       stateObj.label = title;
     } else if (stType === "before") {
-      badge = "انتظار";
-      title = "قبل بداية اليوم الدراسي";
+      badge = DISPLAY_COPY.beforeBadge;
+      title = DISPLAY_COPY.beforeTitle;
       stateObj.label = title;
       currentObj = null;
     }
@@ -1905,15 +1928,15 @@
     rt.activeToHM = null;
     rt.activeTargetHM = null;
     rt.activeTargetMs = null;
-    setTextIfChanged(dom.heroTitle, "انتهى الدوام");
+    setTextIfChanged(dom.heroTitle, DISPLAY_COPY.afterTitle);
     setTextIfChanged(dom.heroRange, "");
-    setTextIfChanged(dom.badgeKind, "انتهى الدوام");
+    setTextIfChanged(dom.badgeKind, DISPLAY_COPY.afterBadge);
     countdownSeconds = null;
     hasActiveCountdown = false;
     progressRange = { start: null, end: null };
-    lastStateCoreSig = "after||انتهى اليوم الدراسي||||";
+    lastStateCoreSig = "after||" + DISPLAY_COPY.afterTitle + "||||";
     lastZeroHandledCoreSig = lastStateCoreSig;
-    try { renderCurrentChips("after", { label: "انتهى اليوم الدراسي", from: null, to: null }, null); } catch (e) {}
+    try { renderCurrentChips("after", { label: DISPLAY_COPY.afterTitle, from: null, to: null }, null); } catch (e) {}
     try { renderNextLabel(null); } catch (e) {}
     try { renderPeriodClasses([]); } catch (e) {}
     return true;
@@ -2844,8 +2867,8 @@
         badge = "استراحة";
         title = nextTitle || safeText(nextP.label || "استراحة");
       } else if (stType === "before") {
-        badge = "انتظار";
-        title = "قبل بداية اليوم الدراسي";
+        badge = DISPLAY_COPY.beforeBadge;
+        title = DISPLAY_COPY.beforeTitle;
       }
 
       const range = fmtTimeRange(fromHM, toHM);
@@ -3745,7 +3768,7 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا يوجد حصص جارية الآن";
+        msg.textContent = rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا يوجد حصص جارية الآن";
         return msg;
       }
 
@@ -3798,7 +3821,7 @@
         msg.style.textAlign = "center";
         msg.style.opacity = "0.75";
         msg.style.padding = "30px 12px";
-        msg.textContent = rt.dayOver ? "انتهى الدوام" : "لا توجد حصص انتظار";
+        msg.textContent = rt.dayOver ? DISPLAY_COPY.afterEmpty : "لا توجد حصص انتظار";
         return msg;
       }
 
@@ -4222,6 +4245,8 @@
     const settings = payload.settings || {};
     const meta = payload.meta || {};
 
+    applyDisplayCopySettings(settings);
+
     // Persist schedule revision so /status?v=... remains authoritative.
     try {
       const rawRev = meta.schedule_revision ?? meta.scheduleRevision ?? meta.rev;
@@ -4371,11 +4396,11 @@
       badge = "استراحة";
       title = safeText(s.label || "استراحة");
     } else if (stType === "before") {
-      badge = "انتظار";
-      title = safeText(s.label || "انتظار");
+      badge = DISPLAY_COPY.beforeBadge;
+      title = safeText(s.label || DISPLAY_COPY.beforeTitle);
     } else if (stType === "after") {
-      badge = "انتهى الدوام";
-      title = safeText(s.label || "انتهى اليوم الدراسي");
+      badge = DISPLAY_COPY.afterBadge;
+      title = safeText(s.label || DISPLAY_COPY.afterTitle);
     } else if (stType === "day") {
       badge = "اليوم الدراسي";
       title = safeText(s.label || "اليوم الدراسي");

@@ -39,6 +39,17 @@ def _to_dt(t: time) -> datetime:
     return datetime.combine(date(2000, 1, 1), t)
 
 
+def _text_or_default(value: str | None, default: str) -> str:
+    value = (value or "").strip()
+    return value or default
+
+
+DEFAULT_DISPLAY_BEFORE_BADGE = "أهلا بكم"
+DEFAULT_DISPLAY_BEFORE_TITLE = "استعدوا لبداية يوم دراسي جميل"
+DEFAULT_DISPLAY_AFTER_BADGE = "أحسنتم"
+DEFAULT_DISPLAY_AFTER_TITLE = "أحسنتم اليوم، ونلقاكم غدا بإذن الله"
+
+
 # ============================================================
 # School Settings
 # ============================================================
@@ -139,6 +150,38 @@ class SchoolSettings(models.Model):
         validators=[MinValueValidator(0.05), MaxValueValidator(5.0)],
     )
 
+    display_before_title = models.CharField(
+        "عنوان الشاشة قبل بداية الدوام",
+        max_length=150,
+        blank=True,
+        default=DEFAULT_DISPLAY_BEFORE_TITLE,
+        help_text="يظهر كنص رئيسي في شاشة العرض قبل بداية أول حصة.",
+    )
+
+    display_before_badge = models.CharField(
+        "شارة الحالة قبل بداية الدوام",
+        max_length=40,
+        blank=True,
+        default=DEFAULT_DISPLAY_BEFORE_BADGE,
+        help_text="تظهر كشارة صغيرة أعلى بطاقة الحالة قبل بداية اليوم الدراسي.",
+    )
+
+    display_after_title = models.CharField(
+        "عنوان الشاشة بعد انتهاء الدوام",
+        max_length=150,
+        blank=True,
+        default=DEFAULT_DISPLAY_AFTER_TITLE,
+        help_text="يظهر كنص رئيسي في شاشة العرض بعد انتهاء آخر حصة.",
+    )
+
+    display_after_badge = models.CharField(
+        "شارة الحالة بعد انتهاء الدوام",
+        max_length=40,
+        blank=True,
+        default=DEFAULT_DISPLAY_AFTER_BADGE,
+        help_text="تظهر كشارة صغيرة أعلى بطاقة الحالة بعد انتهاء اليوم الدراسي.",
+    )
+
     display_accent_color = models.CharField(
         "لون شاشة العرض (اختياري)",
         max_length=7,
@@ -179,6 +222,26 @@ class SchoolSettings(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    def get_display_before_title(self) -> str:
+        return _text_or_default(getattr(self, "display_before_title", ""), DEFAULT_DISPLAY_BEFORE_TITLE)
+
+    def get_display_before_badge(self) -> str:
+        return _text_or_default(getattr(self, "display_before_badge", ""), DEFAULT_DISPLAY_BEFORE_BADGE)
+
+    def get_display_after_title(self) -> str:
+        return _text_or_default(getattr(self, "display_after_title", ""), DEFAULT_DISPLAY_AFTER_TITLE)
+
+    def get_display_after_badge(self) -> str:
+        return _text_or_default(getattr(self, "display_after_badge", ""), DEFAULT_DISPLAY_AFTER_BADGE)
+
+    def get_display_messages(self) -> dict[str, str]:
+        return {
+            "before_title": self.get_display_before_title(),
+            "before_badge": self.get_display_before_badge(),
+            "after_title": self.get_display_after_title(),
+            "after_badge": self.get_display_after_badge(),
+        }
 
 
 class DutyAssignment(models.Model):
