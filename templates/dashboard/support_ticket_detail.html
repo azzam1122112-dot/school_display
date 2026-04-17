@@ -1,6 +1,8 @@
 {% extends "dashboard/_base.html" %}
 
 {% block title %}تفاصيل التذكرة #{{ ticket.id }}{% endblock %}
+{% block page_title %}تذكرة #{{ ticket.id }}: {{ ticket.subject }}{% endblock %}
+{% block page_description %}عرض تفاصيل التذكرة والردود{% endblock %}
 
 {% block content %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -24,14 +26,14 @@
       <h4 class="font-bold text-slate-800">الردود والمناقشة</h4>
       
       {% for comment in ticket.comments.all %}
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 {% if comment.user.is_superuser %}border-l-4 border-l-blue-500{% endif %}">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 {% if comment.user.is_superuser %}border-l-4 border-l-indigo-500{% endif %}">
         <div class="flex justify-between items-start mb-2">
           <div class="flex items-center gap-2">
             <span class="font-bold text-slate-800">
               {% if comment.user == request.user %}أنت{% else %}الدعم الفني{% endif %}
             </span>
             {% if comment.user.is_superuser %}
-            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">دعم فني</span>
+            <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">دعم فني</span>
             {% endif %}
           </div>
           <span class="text-xs text-slate-500">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
@@ -55,7 +57,7 @@
         {% csrf_token %}
         <div class="space-y-4">
           {{ comment_form.message }}
-          <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-xl hover:bg-indigo-700 transition font-medium shadow-sm">
             إرسال الرد
           </button>
         </div>

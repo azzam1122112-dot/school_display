@@ -18,6 +18,7 @@ Security:
     - dk binding prevents multi-device access (respects DISPLAY_ALLOW_MULTI_DEVICE)
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -66,6 +67,14 @@ def _ws_metric_ttl_seconds() -> int:
     return 60 * 60 * 24
 
 
+def _ws_ping_interval_seconds() -> int:
+    try:
+        v = int(getattr(settings, "WS_PING_INTERVAL_SECONDS", 20) or 20)
+    except Exception:
+        v = 20
+    return max(10, min(120, v))
+
+
 def _ws_metric_incr(name: str) -> None:
     key = f"metrics:ws:{str(name or '').strip()}"
     try:
@@ -102,6 +111,38 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         self.token_group_name = None
         self.device_id = None
         self.token_value = None
+        self._server_ping_task = None
+
+    def _start_server_ping_task(self) -> None:
+        if self._server_ping_task and not self._server_ping_task.done():
+            return
+        self._server_ping_task = asyncio.create_task(self._server_ping_loop())
+
+    async def _stop_server_ping_task(self) -> None:
+        task = self._server_ping_task
+        self._server_ping_task = None
+        if not task:
+            return
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+
+    async def _server_ping_loop(self) -> None:
+        interval = _ws_ping_interval_seconds()
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await self.send(text_data=json.dumps({"type": "ping"}))
+                _ws_metric_incr("server_ping_sent")
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                _ws_metric_incr("server_ping_send_failed")
+                break
     
     async def connect(self):
         """
@@ -228,9 +269,12 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         
         # Log metrics periodically (every 5 minutes)
         ws_metrics.log_if_needed(interval_seconds=300)
+        self._start_server_ping_task()
     
     async def disconnect(self, close_code):
         """Leave school group on disconnect."""
+        await self._stop_server_ping_task()
+
         # Decrement per-school connection counter
         if self.screen:
             try:
@@ -295,6 +339,12 @@ class DisplayConsumer(AsyncWebsocketConsumer):
                 except Exception:
                     pass
                 await self.send(text_data=json.dumps({"type": "pong"}))
+            elif msg_type == "pong":
+                # Accept client pong as heartbeat as well.
+                try:
+                    ws_cluster_heartbeat(channel_name=self.channel_name)
+                except Exception:
+                    pass
             else:
                 logger.debug(f"WS received unknown message type: {msg_type}")
         except json.JSONDecodeError:

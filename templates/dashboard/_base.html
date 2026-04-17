@@ -6,200 +6,237 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}لوحة التحكم{% endblock %}</title>
 
-  <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-01-14">
+  <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-04-15b">
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
+    :root {
+      --sidebar-w: 272px;
+      --header-h: 64px;
+      --brand-1: #145a6a;
+      --brand-2: #b48b57;
+      --surface: #f7f2e9;
+    }
     [x-cloak] { display: none !important; }
-    html, body {
-      height: 100%;
-      font-family: 'Cairo', sans-serif;
-    }
+    html, body { height: 100%; font-family: 'Cairo', sans-serif; }
 
-    @keyframes toast-in {
-      from { transform: translateY(-10px) scale(0.98); opacity: 0; }
-      to { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    @keyframes toast-out {
-      from { transform: translateY(0) scale(1); opacity: 1; }
-      to { transform: translateY(-10px) scale(0.98); opacity: 0; }
-    }
-    .toast-in { animation: toast-in 220ms ease-out both; }
-    .toast-out { animation: toast-out 180ms ease-in both; }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-    .nav-item {
-      transition: all .3s ease;
+    /* ── Animations ── */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes toast-in { from { transform:translateY(-10px) scale(.98); opacity:0; } to { transform:translateY(0) scale(1); opacity:1; } }
+    @keyframes toast-out { from { transform:translateY(0) scale(1); opacity:1; } to { transform:translateY(-10px) scale(.98); opacity:0; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes pulse-soft { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+
+    .animate-fade-up { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both; }
+    .animate-slide-in { animation: slideInRight .4s cubic-bezier(.16,1,.3,1) both; }
+    .toast-in { animation: toast-in 280ms cubic-bezier(.16,1,.3,1) both; }
+    .toast-out { animation: toast-out 200ms ease-in both; }
+
+    /* ── Sidebar ── */
+    .sidebar-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; border-radius: 14px;
+      font-weight: 600; font-size: 13.5px;
+      color: #475569; transition: all .25s cubic-bezier(.4,0,.2,1);
       position: relative;
-      overflow: hidden;
     }
-    .nav-item::before {
-      content:"";
-      position:absolute;
-      top:0;
-      right:-100%;
-      width:100%;
-      height:100%;
-      background:linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
-      transition:right .5s;
+    .sidebar-link:hover {
+      background: #f1f5f9; color: #1e293b;
     }
-    .nav-item:hover::before {
-      right:100%;
+    .sidebar-link.active {
+      background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(79,70,229,.25), 0 1px 3px rgba(79,70,229,.1);
     }
-    .active-nav {
-      background: linear-gradient(135deg,#4f46e5,#7c3aed);
-      color:white;
-      box-shadow:0 4px 15px rgba(79,70,229,.3);
+    .sidebar-link.active .nav-icon { color: #fff; }
+    .sidebar-link .nav-icon {
+      width: 20px; height: 20px; flex-shrink: 0;
+      color: #94a3b8; transition: color .25s;
     }
+    .sidebar-link:hover .nav-icon { color: #6366f1; }
+
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: #94a3b8; padding: 16px 16px 6px;
+    }
+
+    /* ── Global Form Overrides ── */
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="url"], input[type="number"], input[type="date"],
+    input[type="time"], input[type="datetime-local"],
+    textarea, select {
+      border-radius: 12px !important;
+      border: 1.5px solid #e2e8f0 !important;
+      padding: 10px 14px !important;
+      font-size: 14px !important;
+      transition: all .2s ease !important;
+      background: #fff !important;
+      font-family: 'Cairo', sans-serif !important;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--brand-1) !important;
+      box-shadow: 0 0 0 3px rgba(79,70,229,.1) !important;
+      outline: none !important;
+    }
+    select {
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: left 12px center !important;
+      padding-left: 40px !important;
+    }
+
+    /* ── Mobile Overlay ── */
+    .mobile-overlay {
+      position: fixed; inset: 0; z-index: 45;
+      background: rgba(15,23,42,.4);
+      backdrop-filter: blur(4px);
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s;
+    }
+    .mobile-overlay.show { opacity: 1; pointer-events: auto; }
+
+    /* ── Utility ── */
+    .glass { background: rgba(255,255,255,.7); backdrop-filter: blur(12px); }
   </style>
+  <link rel="stylesheet" href="{% static 'css/dashboard-luxury.css' %}?v=2026-04-17a">
+  {% block extra_css %}{% endblock %}
 </head>
 
-<body class="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900" x-data="{ mobileMenuOpen: false }">
+<body class="dashboard-shell min-h-full bg-[#f1f5f9] text-slate-900" x-data="{ sidebarOpen: false }">
 
-<!-- ░░ Header ░░ -->
-<header class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-40 border-b border-slate-200/60 transition-all duration-200">
-  <div class="max-w-7xl mx-auto px-3 py-2 md:px-4 md:py-3 flex items-center justify-between">
+<div class="dashboard-ambient" aria-hidden="true">
+  <div class="dashboard-orb dashboard-orb--a"></div>
+  <div class="dashboard-orb dashboard-orb--b"></div>
+  <div class="dashboard-orb dashboard-orb--c"></div>
+</div>
 
-    <div class="flex items-center space-x-reverse space-x-2 md:space-x-3">
-      <!-- Mobile Menu Toggle -->
-      <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-1.5 rounded-lg bg-slate-100 text-slate-600">
-        <i class="fas fa-bars" x-show="!mobileMenuOpen"></i>
-        <i class="fas fa-times" x-show="mobileMenuOpen" x-cloak></i>
+<!-- ═══ HEADER ═══ -->
+<header class="dashboard-topbar fixed top-0 inset-x-0 z-40 h-16 glass border-b border-slate-200/60">
+  <div class="h-full max-w-[1440px] mx-auto px-4 lg:px-6 flex items-center justify-between">
+
+    <!-- Right: Logo + Brand -->
+    <div class="flex items-center gap-3">
+      <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
+        <svg x-show="!sidebarOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg x-show="sidebarOpen" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
 
       {% if request.user.is_authenticated and request.user.profile.school and request.user.profile.school.logo %}
-        <img src="{{ request.user.profile.school.logo.url }}"
-             class="h-8 w-8 md:h-10 md:w-10 rounded-xl border bg-white object-contain">
+        <img src="{{ request.user.profile.school.logo.url }}" class="h-9 w-9 rounded-xl border border-slate-200 bg-white object-contain shadow-sm">
       {% else %}
-        <div class="h-8 w-8 md:h-10 md:w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600
-                    flex justify-center items-center text-white font-bold text-sm md:text-lg">🏫</div>
+        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        </div>
       {% endif %}
 
-      <div>
-        <h1 class="text-lg md:text-2xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-          لوحة الإدارة
-        </h1>
-        <p class="text-[10px] md:text-xs text-slate-500 mt-0.5 md:mt-1">
-          {{ school_name|default:"مدرستنا" }}
-        </p>
+      <div class="hidden sm:block">
+        <h1 class="text-[15px] font-extrabold text-slate-800 leading-tight">لوحة التحكم</h1>
+        <p class="text-[11px] text-slate-400 font-medium">{{ school_name|default:"مدرستنا" }}</p>
       </div>
     </div>
 
-    <div class="flex items-center space-x-reverse space-x-4">
-
-      {# كرت "اشتراكي" الصغير في الهيدر #}
+    <!-- Left: Actions -->
+    <div class="flex items-center gap-2">
       {% with sub=request.school_subscription %}
         {% if sub %}
-          <div class="hidden md:flex flex-col items-end bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2 text-[11px] leading-snug shadow-sm">
-            <div class="flex items-center mb-1">
-              <span class="ml-1 text-xs">📦</span>
-              <span class="font-semibold text-slate-800">اشتراكي</span>
+          <div class="hidden xl:flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-2 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
             </div>
-            <div class="text-slate-700">
-              {% if sub.plan %}
-                <span class="font-semibold">{{ sub.plan.name }}</span>
-              {% endif %}
-            </div>
-            <div class="text-slate-500">
-              من {{ sub.starts_at|date:"Y-m-d" }}
-              {% if sub.ends_at %}
-                حتى {{ sub.ends_at|date:"Y-m-d" }}
-              {% else %}
-                – مفتوح المدة
-              {% endif %}
-            </div>
-            <div class="mt-1">
-              {% if sub.is_active %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
-                  نشط
-                </span>
-              {% else %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-semibold">
-                  غير فعال
-                </span>
-              {% endif %}
+            <div class="text-[11px] leading-snug">
+              <div class="font-bold text-slate-700">{% if sub.plan %}{{ sub.plan.name }}{% else %}اشتراك{% endif %}</div>
+              <div class="text-slate-400">
+                {% if sub.is_active %}
+                  <span class="text-emerald-600 font-semibold">نشط</span>
+                  {% if sub.days_left %} · {{ sub.days_left }} يوم{% endif %}
+                {% else %}
+                  <span class="text-rose-500 font-semibold">غير فعال</span>
+                {% endif %}
+              </div>
             </div>
           </div>
         {% endif %}
       {% endwith %}
 
-        <div class="bg-slate-100 px-3 py-1.5 rounded-full text-sm">
-          <span class="hidden sm:inline">مرحبًا،</span>
-          <span class="font-semibold">
-            {% if request.user.is_authenticated %}
-              {{ request.user.get_short_name|default:request.user.username }}
-            {% else %}
-              ضيف
-            {% endif %}
-          </span>
-        </div>
-        {% if request.user.is_authenticated and request.user.profile.schools.all|length > 1 %}
-        <div class="relative group">
-          <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm text-xs font-semibold focus:outline-none">
-            <span class="max-w-[80px] truncate">
-              {% if request.user.profile.active_school %}
-                {{ request.user.profile.active_school.name }}
+      {% if request.user.is_authenticated and request.user.profile.schools.all|length > 1 %}
+      <div class="relative" x-data="{ open: false }">
+        <button @click="open = !open" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm text-xs font-bold transition">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+          <span class="max-w-[100px] truncate">{{ request.user.profile.active_school.name|default:"اختر مدرسة" }}</span>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak x-transition
+             class="absolute left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+          {% for school in request.user.profile.schools.all %}
+            <a href="{% url 'dashboard:switch_school' school.id %}"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition {% if school == request.user.profile.active_school %}bg-indigo-50 text-indigo-700 font-bold{% endif %}">
+              {% if school == request.user.profile.active_school %}
+              <svg class="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
               {% else %}
-                اختر مدرسة
+              <span class="w-4"></span>
               {% endif %}
-            </span>
-            <svg class="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-transform duration-200 transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </button>
-          <div class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform scale-95 group-hover:scale-100">
-            {% for school in request.user.profile.schools.all %}
-              <a href="{% url 'dashboard:switch_school' school.id %}"
-                 class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 {% if school == request.user.profile.active_school %}font-semibold bg-slate-50{% endif %}">
-                {{ school.name }}
-                {% if school == request.user.profile.active_school %}<span class="ml-2 text-emerald-600">(نشطة)</span>{% endif %}
-              </a>
-            {% endfor %}
-          </div>
+              {{ school.name }}
+            </a>
+          {% endfor %}
         </div>
-        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <span class="text-xs font-bold text-slate-600">
+          {% if request.user.is_authenticated %}
+            {{ request.user.get_short_name|default:request.user.username }}
+          {% else %}
+            ضيف
+          {% endif %}
+        </span>
       </div>
 
       {% if request.user.is_authenticated %}
         <a href="{% url 'dashboard:logout' %}"
-           class="text-sm bg-gradient-to-r from-red-500 to-rose-600 text-white px-3 py-1.5 md:px-4 rounded-full
-                  hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-1">
-          <i class="fas fa-sign-out-alt"></i>
-          <span class="hidden md:inline">تسجيل الخروج</span>
+           class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          <span class="hidden md:inline">خروج</span>
         </a>
       {% endif %}
     </div>
   </div>
 </header>
 
-{# ░░ Banner تنبيه الاشتراك ░░ #}
+{# ═══ Subscription Warning Banner ═══ #}
 {% if request.user.is_authenticated %}
   {% with sub=request.school_subscription %}
     {% if sub and sub.is_active and sub.days_left and sub.days_left <= 10 %}
-      <div class="bg-gradient-to-r from-amber-500 to-rose-500 text-white">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
-            <span class="text-xl">⏰</span>
-            <div>
-              <div class="text-sm md:text-base font-semibold">
-                متبقّي {{ sub.days_left }} يوم{% if sub.days_left != 1 %}اً{% endif %} على انتهاء اشتراكك.
-              </div>
-              <div class="text-xs md:text-sm text-amber-50/90">
-                لضمان استمرار عمل لوحة العرض بدون انقطاع، يُفضّل تجديد الاشتراك مبكرًا.
-              </div>
-            </div>
+      <div class="fixed top-16 inset-x-0 z-30 bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-4 lg:px-6 py-2.5 flex flex-col md:flex-row items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="font-bold">متبقّي {{ sub.days_left }} يوم على انتهاء اشتراكك.</span>
+            <span class="hidden md:inline text-amber-100">جدّد مبكرًا لضمان استمرار العمل.</span>
           </div>
           <div class="flex items-center gap-2">
             <a href="https://wa.me/966537720207?text=%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83%20%D9%84%D9%88%D8%AD%D8%A9%20%D8%A7%D9%84%D8%B9%D8%B1%D8%B6"
                target="_blank"
-               class="inline-flex items-center px-3 py-1.5 rounded-full bg-white/10 border border-white/30 text-xs md:text-sm font-semibold hover:bg-white/20 transition">
-              <span class="ml-1">💬</span>
-              واتساب التجديد
+               class="inline-flex items-center px-3 py-1.5 rounded-lg bg-white/15 border border-white/25 text-xs font-bold hover:bg-white/25 transition">
+              <i class="fab fa-whatsapp ml-1"></i> واتساب التجديد
             </a>
-            <a href="mailto:xmansx1122@gmail.com?subject=%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83&body=%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83%20%D9%85%D8%AF%D8%B1%D8%B3%D8%AA%D9%86%D8%A7"
-               class="inline-flex items-center px-3 py-1.5 rounded-full bg-white text-rose-600 text-xs md:text-sm font-semibold hover:bg-amber-50 transition">
-              <span class="ml-1">📧</span>
-              مراسلة بالبريد
+            <a href="mailto:xmansx1122@gmail.com?subject=%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D8%A7%D8%B4%D8%AA%D8%B1%D8%A7%D9%83"
+               class="inline-flex items-center px-3 py-1.5 rounded-lg bg-white text-rose-600 text-xs font-bold hover:bg-rose-50 transition">
+              <i class="fas fa-envelope ml-1"></i> مراسلة بالبريد
             </a>
           </div>
         </div>
@@ -208,276 +245,207 @@
   {% endwith %}
 {% endif %}
 
-{# ░░ Toast Messages (احترافي/تبويب عائم) ░░ #}
+{# ═══ Toast Messages ═══ #}
 {% if messages %}
-  <div id="toastStack"
-       class="fixed top-20 right-4 z-50 space-y-3 w-[min(420px,calc(100vw-2rem))] pointer-events-none">
+  <div id="toastStack" class="fixed top-20 left-4 z-50 space-y-3 w-[min(400px,calc(100vw-2rem))] pointer-events-none">
     {% for m in messages %}
-      <div class="toast-in pointer-events-auto rounded-2xl border shadow-lg backdrop-blur-md bg-white/80 overflow-hidden"
-           data-toast
-           data-tags="{{ m.tags }}">
+      <div class="toast-in pointer-events-auto rounded-2xl shadow-xl border overflow-hidden glass"
+           data-toast data-tags="{{ m.tags }}">
         <div class="flex items-start gap-3 p-4 border-r-4
-          {% if m.tags == 'success' %} border-emerald-500
-          {% elif m.tags == 'error' %} border-rose-500
-          {% elif m.tags == 'warning' %} border-amber-500
-          {% else %} border-sky-500
-          {% endif %}">
-
-          <div class="mt-0.5">
+          {% if m.tags == 'success' %} border-emerald-500 bg-emerald-50/50
+          {% elif m.tags == 'error' %} border-rose-500 bg-rose-50/50
+          {% elif m.tags == 'warning' %} border-amber-500 bg-amber-50/50
+          {% else %} border-indigo-500 bg-indigo-50/50{% endif %}">
+          <div class="mt-0.5 flex-shrink-0">
             {% if m.tags == 'success' %}
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">✅</span>
+              <div class="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
             {% elif m.tags == 'error' %}
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700">❌</span>
+              <div class="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center"><svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg></div>
             {% elif m.tags == 'warning' %}
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700">⚠️</span>
+              <div class="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center"><svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01M12 3l9.66 16.59A1 1 0 0120.66 21H3.34a1 1 0 01-.86-1.41L12 3z"/></svg></div>
             {% else %}
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-700">ℹ️</span>
+              <div class="h-8 w-8 rounded-xl bg-indigo-100 flex items-center justify-center"><svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
             {% endif %}
           </div>
-
-          <div class="flex-1">
-            <div class="text-[13px] font-semibold text-slate-900">
-              {% if m.tags == 'success' %}تم بنجاح
-              {% elif m.tags == 'error' %}حدث خطأ
-              {% elif m.tags == 'warning' %}تنبيه
-              {% else %}معلومة
-              {% endif %}
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] font-bold text-slate-800">
+              {% if m.tags == 'success' %}تم بنجاح{% elif m.tags == 'error' %}حدث خطأ{% elif m.tags == 'warning' %}تنبيه{% else %}معلومة{% endif %}
             </div>
-            <div class="mt-1 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
-              {{ m }}
-            </div>
+            <div class="mt-0.5 text-sm text-slate-600 leading-relaxed">{{ m }}</div>
           </div>
-
-          <button type="button"
-                  class="ml-1 -mt-1 p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
-                  aria-label="إغلاق"
-                  data-toast-close>
-            <i class="fas fa-times"></i>
+          <button type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/80 transition" data-toast-close>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
       </div>
     {% endfor %}
   </div>
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const stack = document.getElementById('toastStack');
       if (!stack) return;
-
-      function dismissToast(el) {
-        if (!el || el.__dismissing) return;
-        el.__dismissing = true;
-        el.classList.remove('toast-in');
-        el.classList.add('toast-out');
-        window.setTimeout(() => el.remove(), 220);
+      function dismiss(el) {
+        if (!el || el.__d) return; el.__d = true;
+        el.classList.replace('toast-in','toast-out');
+        setTimeout(() => el.remove(), 220);
       }
-
-      stack.addEventListener('click', (e) => {
+      stack.addEventListener('click', e => {
         const btn = e.target.closest('[data-toast-close]');
-        if (!btn) return;
-        const toast = btn.closest('[data-toast]');
-        dismissToast(toast);
+        if (btn) dismiss(btn.closest('[data-toast]'));
       });
-
-      stack.querySelectorAll('[data-toast]').forEach((toast) => {
-        const tags = (toast.getAttribute('data-tags') || '').toLowerCase();
-        // النجاح/المعلومة تتلاشى تلقائياً؛ الخطأ يبقى حتى يُغلق.
-        const shouldAutoDismiss = !(tags.includes('error') || tags.includes('danger'));
-        if (shouldAutoDismiss) {
-          window.setTimeout(() => dismissToast(toast), 6500);
-        }
+      stack.querySelectorAll('[data-toast]').forEach(t => {
+        const tags = (t.getAttribute('data-tags')||'').toLowerCase();
+        if (!tags.includes('error') && !tags.includes('danger'))
+          setTimeout(() => dismiss(t), 5000);
       });
     });
   </script>
 {% endif %}
 
-<div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
+<!-- ═══ Mobile Sidebar Overlay ═══ -->
+<div class="mobile-overlay lg:hidden" :class="sidebarOpen && 'show'" @click="sidebarOpen = false"></div>
 
-  <!-- ░░ Nav Sidebar ░░ -->
-  <aside class="col-span-12 md:col-span-3 transition-all duration-300 ease-in-out" 
-         :class="mobileMenuOpen ? 'block opacity-100 translate-y-0' : 'hidden md:block opacity-100 translate-y-0'">
-    <nav class="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50 space-y-2">
+<!-- ═══ LAYOUT SHELL ═══ -->
+<div class="pt-16 min-h-screen flex">
 
-      <!-- Mobile Close Button -->
-      <div class="md:hidden flex justify-end mb-2">
-        <button @click="mobileMenuOpen = false" class="p-2 text-slate-500 hover:text-slate-700">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="dashboard-sidebar fixed top-16 right-0 bottom-0 w-[var(--sidebar-w)] bg-white border-l border-slate-200/80 z-50 overflow-y-auto
+                transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)]
+                lg:translate-x-0"
+         :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'">
 
-      <!-- Home -->
+    <div class="p-4 space-y-1">
+
+      <div class="sidebar-section-label">الرئيسية</div>
+
       <a href="{% url 'dashboard:index' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'index' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">📊</span>
-          <span class="font-medium">الصفحة الرئيسية</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+        <span>الصفحة الرئيسية</span>
       </a>
 
-      <!-- Subscription -->
       <a href="{% url 'dashboard:my_subscription' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'my_subscription' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">💳</span>
-          <span class="font-medium">اشتراكي</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'my_subscription' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        <span>اشتراكي</span>
       </a>
 
-      <!-- Settings -->
       <a href="{% url 'dashboard:settings' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'settings' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">⚙️</span>
-          <span class="font-medium">إعدادات المدرسة</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>إعدادات المدرسة</span>
       </a>
 
-      <!-- Screens -->
+      <a href="{% url 'dashboard:help_getting_started' %}"
+         class="sidebar-link {% if request.resolver_match.url_name == 'help_getting_started' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+        <span>دليل البدء</span>
+      </a>
+
+      <div class="sidebar-section-label">الجدول الدراسي</div>
+
       <a href="{% url 'dashboard:screen_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'screen_list' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🖥️</span>
-          <span class="font-medium">شاشات العرض</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'screen_list' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        <span>شاشات العرض</span>
       </a>
 
-      <!-- Days -->
       <a href="{% url 'dashboard:days_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'days_list' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">📅</span>
-          <span class="font-medium"> إدارة توقيت الححص و الأيام</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'days_list' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span>توقيت الحصص والأيام</span>
       </a>
 
-      <!-- Timetable -->
       <a href="{% url 'dashboard:timetable_day' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'timetable_day' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🗓️</span>
-          <span class="font-medium">إدارة الجدول اليومي</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'timetable_day' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <span>الجدول اليومي</span>
       </a>
 
-      <!-- Announcements -->
+      <div class="sidebar-section-label">المحتوى</div>
+
       <a href="{% url 'dashboard:ann_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'ann_list' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🔔</span>
-          <span class="font-medium">التنبيهات</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'ann_list' or request.resolver_match.url_name == 'ann_create' or request.resolver_match.url_name == 'ann_edit' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span>التنبيهات</span>
       </a>
 
-      <!-- Excellence -->
       <a href="{% url 'dashboard:exc_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'exc_list' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">⭐</span>
-          <span class="font-medium">قسم التميّز</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'exc_list' or request.resolver_match.url_name == 'exc_create' or request.resolver_match.url_name == 'exc_edit' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="none"/></svg>
+        <span>قسم التميّز</span>
       </a>
 
-      <!-- Duty / Supervision -->
       <a href="{% url 'dashboard:duty_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'duty_list' or request.resolver_match.url_name == 'duty_create' or request.resolver_match.url_name == 'duty_edit' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🛡️</span>
-          <span class="font-medium">الإشراف والمناوبة</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'duty_list' or request.resolver_match.url_name == 'duty_create' or request.resolver_match.url_name == 'duty_edit' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <span>الإشراف والمناوبة</span>
       </a>
 
-      <!-- Standby -->
       <a href="{% url 'dashboard:standby_list' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'standby_list' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">⏳</span>
-          <span class="font-medium">حصص الانتظار</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'standby_list' or request.resolver_match.url_name == 'standby_create' or request.resolver_match.url_name == 'standby_edit' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>حصص الانتظار</span>
       </a>
 
-      <!-- School Data -->
+      <div class="sidebar-section-label">البيانات</div>
+
       <a href="{% url 'dashboard:school_data' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'school_data' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🏫</span>
-          <span class="font-medium">ادارة الفصول والمواد و المعلمين</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'school_data' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        <span>الفصول والمواد والمعلمين</span>
       </a>
 
-      <!-- Support -->
       <a href="{% url 'dashboard:customer_support_tickets' %}"
-         class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'customer_support_tickets' %}active-nav{% else %}bg-white/80{% endif %}">
-        <div class="flex items-center">
-          <span class="ml-2 text-lg">🛟</span>
-          <span class="font-medium">الدعم الفني</span>
-        </div>
+         class="sidebar-link {% if request.resolver_match.url_name == 'customer_support_tickets' or request.resolver_match.url_name == 'support_ticket_detail' or request.resolver_match.url_name == 'support_ticket_form' %}active{% endif %}">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <span>الدعم الفني</span>
       </a>
 
-      <!-- SaaS System Staff (Superuser / Support) -->
       {% if is_system_staff %}
-        <div class="border-t border-slate-200 my-3"></div>
-        <div class="px-2 pb-1 text-[11px] font-semibold text-slate-500">
-          إدارة النظام (SaaS)
-        </div>
+        <div class="sidebar-section-label">إدارة النظام</div>
 
         <a href="{% url 'dashboard:system_admin_dashboard' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if request.resolver_match.url_name == 'system_admin_dashboard' %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🧩</span>
-            <span class="font-medium">لوحة إدارة النظام</span>
-          </div>
+           class="sidebar-link {% if request.resolver_match.url_name == 'system_admin_dashboard' %}active{% endif %}">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span>لوحة إدارة النظام</span>
         </a>
 
         <a href="{% url 'dashboard:system_screen_addons_list' %}"
-           class="nav-item block px-4 py-3 rounded-xl border transition-all
-               {% if 'system_screen_addon' in request.resolver_match.url_name %}active-nav{% else %}bg-white/80{% endif %}">
-          <div class="flex items-center">
-            <span class="ml-2 text-lg">🖥️</span>
-            <span class="font-medium">زيادات الشاشات</span>
-          </div>
+           class="sidebar-link {% if 'system_screen_addon' in request.resolver_match.url_name %}active{% endif %}">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          <span>زيادات الشاشات</span>
         </a>
       {% endif %}
-    </nav>
+    </div>
 
-    <div class="mt-6 text-center">
-      <div class="text-xs text-slate-500 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-4 shadow border border-white/50">
-        <div class="font-medium text-slate-700 mb-1">© {{ school_name|default:"مدرستنا" }}</div>
-        <div class="text-slate-500">نظام إدارة العرض المدرسي</div>
+    <!-- Sidebar Footer -->
+    <div class="p-4 mt-4 border-t border-slate-100">
+      <div class="text-center text-[10px] text-slate-400 font-medium leading-relaxed">
+        <div class="font-bold text-slate-500">{{ school_name|default:"مدرستنا" }}</div>
+        <div>نظام العرض المدرسي الذكي</div>
       </div>
     </div>
   </aside>
 
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="dashboard-main flex-1 lg:mr-[var(--sidebar-w)] transition-all duration-300">
+    <div class="dashboard-main-inner max-w-[1120px] mx-auto px-4 lg:px-8 py-6 animate-fade-up">
 
-  <!-- ░░ Main Content ░░ -->
-  <main class="col-span-12 md:col-span-9">
-
-    <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border overflow-hidden">
-
-      <div class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+      <!-- Page Header -->
+      <div class="dashboard-page-intro mb-6">
         <h2 class="text-xl font-bold text-slate-800">
           {% block page_title %}الصفحة الرئيسية{% endblock %}
         </h2>
-        <p class="text-slate-600 text-sm mt-1">
+        <p class="text-slate-500 text-sm mt-0.5">
           {% block page_description %}إدارة النظام والعناصر المختلفة{% endblock %}
         </p>
       </div>
 
-      <div class="p-6">
+      <!-- Content Area -->
+      <div class="animate-fade-up" style="animation-delay:.1s">
         {% block content %}
-        <p class="text-slate-600 text-center">مرحبًا بك في لوحة التحكم.</p>
+        <p class="text-slate-600 text-center py-12">مرحبًا بك في لوحة التحكم.</p>
         {% endblock %}
       </div>
 
@@ -485,5 +453,6 @@
   </main>
 </div>
 
+{% block extra_js %}{% endblock %}
 </body>
 </html>

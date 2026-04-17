@@ -10,6 +10,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
+from display.cache_utils import normalize_day_key
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,28 @@ def _metrics_incr(key: str) -> None:
                 pass
 
 
+def _metrics_add(key: str, delta: int) -> None:
+    try:
+        cache.incr(key, int(delta))
+    except Exception:
+        try:
+            cur = int(cache.get(key) or 0)
+            cache.set(key, cur + int(delta), timeout=60 * 60 * 24)
+        except Exception:
+            pass
+
+
+def _metrics_set_max(key: str, value: int) -> None:
+    try:
+        cur = cache.get(key)
+        cur_i = int(cur) if cur is not None else 0
+        v = int(value)
+        if v > cur_i:
+            cache.set(key, v, timeout=60 * 60 * 24)
+    except Exception:
+        pass
+
+
 def snapshot_async_build_enabled() -> bool:
     return bool(getattr(settings, "DISPLAY_SNAPSHOT_ASYNC_BUILD", _env_bool("DISPLAY_SNAPSHOT_ASYNC_BUILD", True)))
 
@@ -85,9 +108,30 @@ def _job_dedupe_ttl_seconds() -> int:
         getattr(
             settings,
             "DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL",
-            _env_int("DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL", 90, min_v=10, max_v=900),
+            _env_int("DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL", 30, min_v=5, max_v=300),
         )
-        or 90
+        or 30
+    )
+
+
+def _enqueue_debounce_seconds() -> int:
+    return int(
+        getattr(
+            settings,
+            "DISPLAY_SNAPSHOT_REBUILD_DEBOUNCE_SEC",
+            _env_int("DISPLAY_SNAPSHOT_REBUILD_DEBOUNCE_SEC", 3, min_v=2, max_v=5),
+        )
+        or 3
+    )
+
+
+def _require_worker_alive_for_enqueue() -> bool:
+    return bool(
+        getattr(
+            settings,
+            "DISPLAY_SNAPSHOT_REQUIRE_WORKER_ALIVE",
+            _env_bool("DISPLAY_SNAPSHOT_REQUIRE_WORKER_ALIVE", True),
+        )
     )
 
 
@@ -117,8 +161,12 @@ def _worker_heartbeat_key() -> str:
     return "display:snapshot:worker:heartbeat"
 
 
-def _job_dedupe_key(school_id: int, rev: int, day_key: str) -> str:
-    return f"display:snapshot:job:{int(school_id)}:{int(rev)}:{str(day_key).strip()[:32]}"
+def _job_dedupe_key(school_id: int, day_key: str) -> str:
+    return f"display:snapshot:job:{int(school_id)}:{normalize_day_key(day_key)}"
+
+
+def _enqueue_debounce_key(school_id: int, day_key: str) -> str:
+    return f"display:snapshot:enqueue:debounce:{int(school_id)}:{normalize_day_key(day_key)}"
 
 
 def _get_cache_redis_connection():
@@ -190,7 +238,7 @@ def snapshot_worker_status() -> dict[str, Any]:
 def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: str = "request_miss") -> dict[str, Any]:
     school_id = int(school_id or 0)
     rev = int(rev or 0)
-    day_key = str(day_key or "").strip()[:32]
+    day_key = normalize_day_key(day_key)
     if not school_id or not day_key:
         return {"queued": False, "reason": "invalid_payload"}
     if not snapshot_async_build_enabled():
@@ -198,11 +246,28 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
     if not snapshot_queue_available():
         return {"queued": False, "reason": "queue_unavailable"}
 
+    if _require_worker_alive_for_enqueue():
+        try:
+            worker_alive = bool(snapshot_worker_status().get("alive"))
+        except Exception:
+            worker_alive = False
+        if not worker_alive:
+            _metrics_incr("metrics:snapshot_queue:worker_unavailable")
+            return {"queued": False, "reason": "worker_unavailable"}
+
     conn = _get_cache_redis_connection()
     if conn is None:
         return {"queued": False, "reason": "redis_unavailable"}
 
-    dedupe_key = _job_dedupe_key(school_id, rev, day_key)
+    debounce_key = _enqueue_debounce_key(school_id, day_key)
+    try:
+        if not bool(cache.add(debounce_key, str(rev), timeout=_enqueue_debounce_seconds())):
+            _metrics_incr("metrics:snapshot_queue:debounced")
+            return {"queued": False, "debounced": True, "debounce_key": debounce_key}
+    except Exception:
+        pass
+
+    dedupe_key = _job_dedupe_key(school_id, day_key)
     payload = {
         "school_id": school_id,
         "rev": rev,
@@ -254,6 +319,18 @@ def dequeue_snapshot_build(*, block_timeout: int = 5) -> dict[str, Any] | None:
         payload = json.loads(raw or "{}")
         if isinstance(payload, dict):
             _metrics_incr("metrics:snapshot_queue:dequeued")
+            dequeued_at = time.time()
+            payload["_dequeued_at"] = dequeued_at
+
+            try:
+                queued_at = float(payload.get("queued_at") or 0.0)
+            except Exception:
+                queued_at = 0.0
+            if queued_at > 0:
+                queue_wait_ms = int(max(0.0, (dequeued_at - queued_at) * 1000.0))
+                payload["_queue_wait_ms"] = queue_wait_ms
+                _metrics_add("metrics:snapshot_queue:queue_wait_sum_ms", queue_wait_ms)
+                _metrics_set_max("metrics:snapshot_queue:queue_wait_max_ms", queue_wait_ms)
             return payload
     except Exception:
         _metrics_incr("metrics:snapshot_queue:decode_error")
@@ -309,7 +386,15 @@ def _store_materialized_snapshot(*, school_id: int, rev: int, day_key: str, snap
     return {"entry": entry, "ttl": ttl, "stale_ttl": stale_ttl, "steady_key": steady_key}
 
 
-def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, day_key: str | None = None, source: str = "worker") -> dict[str, Any]:
+def materialize_snapshot_for_school(
+    *,
+    school_id: int,
+    rev: int | None = None,
+    day_key: str | None = None,
+    queued_at: float | None = None,
+    dequeued_at: float | None = None,
+    source: str = "worker",
+) -> dict[str, Any]:
     from schedule import api_views as av
 
     school_id = int(school_id or 0)
@@ -330,9 +415,27 @@ def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, d
     target_rev = current_rev
     target_day_key = av._snapshot_cache_day_key(day_key)
 
+    queue_wait_ms = None
+    try:
+        queued_at_f = float(queued_at or 0.0)
+    except Exception:
+        queued_at_f = 0.0
+    try:
+        dequeued_at_f = float(dequeued_at or 0.0)
+    except Exception:
+        dequeued_at_f = 0.0
+    if queued_at_f > 0:
+        ref_dequeued = dequeued_at_f if dequeued_at_f > 0 else time.time()
+        queue_wait_ms = int(max(0.0, (ref_dequeued - queued_at_f) * 1000.0))
+        # Queue wait is normally measured at dequeue time. Record it here only
+        # for direct materialize calls that bypass dequeue_snapshot_build().
+        if dequeued_at_f <= 0:
+            _metrics_add("metrics:snapshot_queue:queue_wait_sum_ms", queue_wait_ms)
+            _metrics_set_max("metrics:snapshot_queue:queue_wait_max_ms", queue_wait_ms)
+
     lock_acquired = False
     try:
-        lock_acquired = bool(av._acquire_build_lock(school_id, target_rev))
+        lock_acquired = bool(av._acquire_build_lock(school_id, target_rev, day_key=target_day_key))
     except Exception:
         lock_acquired = True
 
@@ -384,14 +487,20 @@ def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, d
             day_key=target_day_key,
             snap=snap,
         )
+        process_ms = int((time.monotonic() - build_started) * 1000)
+        _metrics_add("metrics:snapshot_queue:process_sum_ms", process_ms)
+        _metrics_set_max("metrics:snapshot_queue:process_max_ms", process_ms)
+
         _metrics_incr("metrics:snapshot_queue:materialized")
         logger.info(
-            "snapshot_materialized school_id=%s requested_rev=%s built_rev=%s day_key=%s build_ms=%s source=%s ttl=%s stale_ttl=%s",
+            "snapshot_materialized school_id=%s requested_rev=%s built_rev=%s day_key=%s queue_wait_ms=%s build_ms=%s process_ms=%s source=%s ttl=%s stale_ttl=%s",
             school_id,
             int(rev or 0),
             target_rev,
             target_day_key,
+            int(queue_wait_ms or 0),
             int(build_ms),
+            int(process_ms),
             str(source or "worker"),
             int(store_info.get("ttl", 0) or 0),
             int(store_info.get("stale_ttl", 0) or 0),
@@ -402,7 +511,9 @@ def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, d
             "requested_rev": int(rev or 0),
             "built_rev": target_rev,
             "day_key": target_day_key,
+            "queue_wait_ms": int(queue_wait_ms or 0),
             "build_ms": int(build_ms),
+            "process_ms": int(process_ms),
             "ttl": int(store_info.get("ttl", 0) or 0),
             "stale_ttl": int(store_info.get("stale_ttl", 0) or 0),
         }
@@ -412,7 +523,7 @@ def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, d
         return {"ok": False, "reason": exc.__class__.__name__, "school_id": school_id}
     finally:
         try:
-            cache.delete(f"lock:snapshot:{int(school_id)}:{int(target_rev)}")
+            cache.delete(f"lock:snapshot:{int(school_id)}:day:{str(target_day_key)}")
         except Exception:
             pass
 
@@ -420,7 +531,17 @@ def materialize_snapshot_for_school(*, school_id: int, rev: int | None = None, d
 def complete_snapshot_job(job: dict[str, Any] | None) -> None:
     if not isinstance(job, dict):
         return
+
     try:
-        cache.delete(_job_dedupe_key(int(job.get("school_id") or 0), int(job.get("rev") or 0), str(job.get("day_key") or "")))
+        queued_at = float(job.get("queued_at") or 0.0)
+    except Exception:
+        queued_at = 0.0
+    if queued_at > 0:
+        e2e_ms = int(max(0.0, (time.time() - queued_at) * 1000.0))
+        _metrics_add("metrics:snapshot_queue:e2e_sum_ms", e2e_ms)
+        _metrics_set_max("metrics:snapshot_queue:e2e_max_ms", e2e_ms)
+
+    try:
+        cache.delete(_job_dedupe_key(int(job.get("school_id") or 0), str(job.get("day_key") or "")))
     except Exception:
         pass

@@ -2,17 +2,14 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}إضافة شاشة عرض جديدة للمدرسة{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-    <!-- رأس الصفحة -->
+    <!-- ملاحظة مهمة -->
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-800 mb-2">{{ title }}</h1>
-        <p class="text-slate-600">
-            إضافة شاشة عرض جديدة للمدرسة
-        </p>
-
-        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
             <div class="text-sm font-semibold text-slate-800">مهم قبل استخدام الرابط على التلفاز</div>
             <div class="mt-1 text-sm text-slate-600">
                 بعد إنشاء الشاشة وفتح رابطها على التلفاز لأول مرة، سيتم ربطها بهذا الجهاز تلقائيًا.
@@ -22,7 +19,7 @@
     </div>
 
     <!-- نموذج الشاشة -->
-    <form method="post" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <form method="post" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {% csrf_token %}
         
         <div class="p-6 space-y-6">
@@ -49,7 +46,7 @@
         <!-- أزرار الإجراءات -->
         <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
             <button type="submit" 
-                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all">
+                    class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all">
                 حفظ الشاشة
             </button>
             
@@ -65,12 +62,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const inputs = document.querySelectorAll('input[type="text"]');
     inputs.forEach(input => {
-        input.className = 'w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-slate-700';
+        input.className = 'w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white text-slate-700';
     });
     
     const checkbox = document.querySelector('input[type="checkbox"]');
     if (checkbox) {
-        checkbox.className = 'w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 focus:ring-2';
+        checkbox.className = 'w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 focus:ring-2';
     }
 });
 </script>

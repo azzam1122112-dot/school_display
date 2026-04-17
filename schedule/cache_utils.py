@@ -279,7 +279,15 @@ def invalidate_display_snapshot_cache_for_school_id(school_id: int) -> None:
             except Exception:
                 pass
             try:
+                cache.delete(f"snapshot:v9:school:{int(school_id)}:day:{str(d)}")
+            except Exception:
+                pass
+            try:
                 cache.delete(f"lock:snapshot:{int(school_id)}:{int(r)}:day:{str(d)}")
+            except Exception:
+                pass
+            try:
+                cache.delete(f"lock:snapshot:{int(school_id)}:day:{str(d)}")
             except Exception:
                 pass
             try:

@@ -35,17 +35,38 @@ from schedule.cache_utils import (
 logger = logging.getLogger(__name__)
 
 
+def _snapshot_ttl_floor_seconds() -> int:
+    # Keep origin snapshot bodies warm long enough to survive fleet poll intervals.
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_TTL_MIN_SECONDS", 300) or 300)
+    except Exception:
+        v = 300
+    return max(300, min(3600, v))
+
+
 def _stable_ttl_with_jitter(ttl: int, seed: str) -> int:
     try:
         ttl_i = int(ttl)
     except Exception:
-        return ttl
+        ttl_i = _snapshot_ttl_floor_seconds()
+
+    base_ttl = max(_snapshot_ttl_floor_seconds(), ttl_i)
+
+    try:
+        jitter = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_TTL_JITTER_SEC", 30) or 30)
+    except Exception:
+        jitter = 30
+    jitter = max(0, min(300, jitter))
+
+    if jitter <= 0:
+        return base_ttl
+
     try:
         h = int(hashlib.sha1(str(seed).encode("utf-8")).hexdigest(), 16)
-        delta = h % 5
+        delta = (h % ((jitter * 2) + 1)) - jitter
     except Exception:
         delta = 0
-    return max(1, ttl_i + delta)
+    return max(_snapshot_ttl_floor_seconds(), base_ttl + delta)
 
 
 def _cache_redis_url_configured() -> bool:
@@ -143,14 +164,14 @@ def _cache_backend_name() -> str:
 
 def _steady_cache_key_for_school_rev(school_id: int, rev: int, *, day_key: object | None = None) -> str:
     return (
-        f"snapshot:v8:school:{int(school_id)}:rev:{int(rev)}:"
+        f"snapshot:v9:school:{int(school_id)}:"
         f"day:{_snapshot_cache_day_key(day_key)}"
     )
 
 
 def _acquire_build_lock(school_id: int, rev: int, *, day_key: object | None = None) -> bool:
     lock_key = (
-        f"lock:snapshot:{int(school_id)}:{int(rev)}:"
+        f"lock:snapshot:{int(school_id)}:"
         f"day:{_snapshot_cache_day_key(day_key)}"
     )
     try:
@@ -179,6 +200,49 @@ def _get_stale_snapshot_fallback(school_id: int, *, day_key: object | None = Non
     return None
 
 
+def _snapshot_decision_log_interval_seconds() -> int:
+    try:
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_DECISION_LOG_INTERVAL_SEC", 30) or 30)
+    except Exception:
+        v = 30
+    return max(5, min(300, v))
+
+
+def _log_snapshot_cache_decision(
+    *,
+    school_id: int,
+    day_key: str,
+    cache_key: str,
+    cache_hit: bool,
+    cache_miss: bool,
+    rebuild_reason: str,
+) -> None:
+    reason = str(rebuild_reason or "none").strip().lower() or "none"
+    try:
+        interval = _snapshot_decision_log_interval_seconds()
+        throttle = (
+            f"log:snapshot_decision:{int(school_id)}:{str(day_key)}:"
+            f"{int(bool(cache_hit))}:{int(bool(cache_miss))}:{reason}:{int(interval)}"
+        )
+        if not bool(cache.add(throttle, "1", timeout=interval)):
+            return
+    except Exception:
+        pass
+
+    try:
+        logger.info(
+            "snapshot_cache_decision school_id=%s day_key=%s cache_hit=%s cache_miss=%s rebuild_reason=%s cache_key=%s",
+            int(school_id),
+            str(day_key),
+            int(bool(cache_hit)),
+            int(bool(cache_miss)),
+            reason,
+            cache_key,
+        )
+    except Exception:
+        pass
+
+
 def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object | None = None):
     """
     Returns: (cache_entry, cache_kind)
@@ -200,6 +264,14 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             _metrics_incr("metrics:snapshot_cache:steady_hit")
         except Exception:
             pass
+        _log_snapshot_cache_decision(
+            school_id=int(school_id),
+            day_key=normalized_day_key,
+            cache_key=key,
+            cache_hit=True,
+            cache_miss=False,
+            rebuild_reason="none",
+        )
         return entry, "HIT"
 
     try:
@@ -228,7 +300,7 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
         worker_alive = False
         inline_fallback = True
 
-    if async_enabled and queue_available:
+    if async_enabled and queue_available and worker_alive:
         _metrics_incr("metrics:snapshot_queue:requested")
         queue_result = enqueue_snapshot_build(
             school_id=int(school_id),
@@ -245,6 +317,14 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
         )
         if isinstance(waited_entry, dict) and isinstance(waited_entry.get("snap"), dict):
             _metrics_incr("metrics:snapshot_queue:served_after_wait")
+            _log_snapshot_cache_decision(
+                school_id=int(school_id),
+                day_key=normalized_day_key,
+                cache_key=key,
+                cache_hit=True,
+                cache_miss=False,
+                rebuild_reason="served_after_queue_wait",
+            )
             return waited_entry, "HIT"
 
         fallback = _get_stale_snapshot_fallback(school_id, day_key=normalized_day_key)
@@ -257,11 +337,20 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                 meta["cache"] = "STALE"
                 meta["cache_key"] = key
                 meta["revalidate"] = "queued"
+                meta["rebuild_reason"] = "queue_wait_timeout_stale"
             except Exception:
                 pass
+            _log_snapshot_cache_decision(
+                school_id=int(school_id),
+                day_key=normalized_day_key,
+                cache_key=key,
+                cache_hit=False,
+                cache_miss=True,
+                rebuild_reason="queue_wait_timeout_stale",
+            )
             return _snapshot_cache_entry(fallback), "STALE"
 
-        if queued_or_existing and worker_alive and not inline_fallback:
+        if queued_or_existing and not inline_fallback:
             _metrics_incr("metrics:snapshot_queue:building_payload")
             building = _fallback_building_payload(
                 school_id=int(school_id),
@@ -270,7 +359,17 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                 reason="queued_for_materialization",
                 refresh_interval_sec=3,
             )
+            _log_snapshot_cache_decision(
+                school_id=int(school_id),
+                day_key=normalized_day_key,
+                cache_key=key,
+                cache_hit=False,
+                cache_miss=True,
+                rebuild_reason="queued_async",
+            )
             return _snapshot_cache_entry(building), "QUEUED"
+    elif async_enabled and queue_available and not worker_alive:
+        _metrics_incr("metrics:snapshot_queue:worker_unavailable")
 
     if _acquire_build_lock(school_id, rev, day_key=normalized_day_key):
         try:
@@ -303,6 +402,7 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                 meta["cache_key"] = key
                 meta["cache_ttl"] = int(ttl)
                 meta["generated_at"] = timezone.now().isoformat()
+                meta["rebuild_reason"] = "request_miss"
             except Exception:
                 pass
 
@@ -311,7 +411,7 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             try:
                 cache.set(key, entry, timeout=ttl)
                 cache.set(
-                    _stale_snapshot_fallback_key(int(school_id), day_key=day_key),
+                    _stale_snapshot_fallback_key(int(school_id), day_key=normalized_day_key),
                     entry,
                     timeout=stale_ttl,
                 )
@@ -342,11 +442,20 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             except Exception:
                 pass
 
+            _log_snapshot_cache_decision(
+                school_id=int(school_id),
+                day_key=normalized_day_key,
+                cache_key=key,
+                cache_hit=False,
+                cache_miss=True,
+                rebuild_reason="request_miss",
+            )
+
             return entry, "MISS"
         finally:
             try:
                 cache.delete(
-                    f"lock:snapshot:{int(school_id)}:{int(rev)}:"
+                    f"lock:snapshot:{int(school_id)}:"
                     f"day:{normalized_day_key}"
                 )
             except Exception:
@@ -366,8 +475,17 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
                 fallback["meta"] = meta
             meta["cache"] = "STALE"
             meta["cache_key"] = key
+            meta["rebuild_reason"] = "build_lock_contention"
         except Exception:
             pass
+        _log_snapshot_cache_decision(
+            school_id=int(school_id),
+            day_key=normalized_day_key,
+            cache_key=key,
+            cache_hit=False,
+            cache_miss=True,
+            rebuild_reason="build_lock_contention_stale",
+        )
         return _snapshot_cache_entry(fallback), "STALE"
 
     # إذا لم نجد fallback، نبني مباشرة كحل أخير
@@ -381,8 +499,17 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             snap["meta"] = meta
         meta["cache"] = "BYPASS"
         meta["cache_key"] = key
+        meta["rebuild_reason"] = "build_lock_contention_no_stale"
     except Exception:
         pass
+    _log_snapshot_cache_decision(
+        school_id=int(school_id),
+        day_key=normalized_day_key,
+        cache_key=key,
+        cache_hit=False,
+        cache_miss=True,
+        rebuild_reason="build_lock_contention_no_stale",
+    )
     return _snapshot_cache_entry(snap), "BYPASS"
 
 def _log_steady_get(key: str, *, hit: bool, school_id: int | None, rev: int | None) -> None:
@@ -656,11 +783,19 @@ def metrics(request):
         "metrics:snapshot_queue:dequeued",
         "metrics:snapshot_queue:materialized",
         "metrics:snapshot_queue:error",
+        "metrics:snapshot_queue:debounced",
+        "metrics:snapshot_queue:worker_unavailable",
         "metrics:snapshot_queue:building_payload",
         "metrics:snapshot_queue:served_after_wait",
         "metrics:snapshot_queue:lock_busy",
         "metrics:snapshot_queue:already_materialized",
         "metrics:snapshot_queue:settings_missing",
+        "metrics:snapshot_queue:queue_wait_sum_ms",
+        "metrics:snapshot_queue:queue_wait_max_ms",
+        "metrics:snapshot_queue:process_sum_ms",
+        "metrics:snapshot_queue:process_max_ms",
+        "metrics:snapshot_queue:e2e_sum_ms",
+        "metrics:snapshot_queue:e2e_max_ms",
     ]
 
     try:
@@ -820,6 +955,32 @@ def metrics(request):
     except Exception:
         out["metrics:snapshot_cache:school_hit_ratio"] = 0.0
 
+    try:
+        queue_enqueued = int(out.get("metrics:snapshot_queue:enqueued", 0) or 0)
+        queue_dequeued = int(out.get("metrics:snapshot_queue:dequeued", 0) or 0)
+        queue_materialized = int(out.get("metrics:snapshot_queue:materialized", 0) or 0)
+        out["metrics:snapshot_queue:enqueue_dequeue_gap"] = max(0, queue_enqueued - queue_dequeued)
+        out["metrics:snapshot_queue:dequeue_materialize_gap"] = max(0, queue_dequeued - queue_materialized)
+    except Exception:
+        out["metrics:snapshot_queue:enqueue_dequeue_gap"] = 0
+        out["metrics:snapshot_queue:dequeue_materialize_gap"] = 0
+
+    try:
+        queue_dequeued = int(out.get("metrics:snapshot_queue:dequeued", 0) or 0)
+        queue_materialized = int(out.get("metrics:snapshot_queue:materialized", 0) or 0)
+
+        queue_wait_sum_ms = int(out.get("metrics:snapshot_queue:queue_wait_sum_ms", 0) or 0)
+        process_sum_ms = int(out.get("metrics:snapshot_queue:process_sum_ms", 0) or 0)
+        e2e_sum_ms = int(out.get("metrics:snapshot_queue:e2e_sum_ms", 0) or 0)
+
+        out["metrics:snapshot_queue:queue_wait_avg_ms"] = int(queue_wait_sum_ms / queue_dequeued) if queue_dequeued > 0 else 0
+        out["metrics:snapshot_queue:process_avg_ms"] = int(process_sum_ms / queue_materialized) if queue_materialized > 0 else 0
+        out["metrics:snapshot_queue:e2e_avg_ms"] = int(e2e_sum_ms / queue_dequeued) if queue_dequeued > 0 else 0
+    except Exception:
+        out["metrics:snapshot_queue:queue_wait_avg_ms"] = 0
+        out["metrics:snapshot_queue:process_avg_ms"] = 0
+        out["metrics:snapshot_queue:e2e_avg_ms"] = 0
+
     return JsonResponse(out, json_dumps_params={"ensure_ascii": False})
 
 
@@ -870,6 +1031,8 @@ def ws_metrics(request):
         shared_reconnect_total = _cache_int("metrics:ws:reconnect_total")
         shared_broadcasts_sent = _cache_int("metrics:ws:broadcast_sent")
         shared_broadcasts_failed = _cache_int("metrics:ws:broadcast_failed")
+        shared_server_ping_sent = _cache_int("metrics:ws:server_ping_sent")
+        shared_server_ping_send_failed = _cache_int("metrics:ws:server_ping_send_failed")
         for code in (1000, 1001, 1006, 1011, 1012, 1013, 4400, 4403, 4408, 4500, 4501):
             code_key = str(code)
             shared_code_total = _cache_int(f"metrics:ws:disconnect_code:{code_key}")
@@ -920,6 +1083,8 @@ def ws_metrics(request):
             "broadcasts_failed": broadcasts_failed,
             "broadcasts_sent_shared": shared_broadcasts_sent,
             "broadcasts_failed_shared": shared_broadcasts_failed,
+            "server_ping_sent_shared": shared_server_ping_sent,
+            "server_ping_send_failed_shared": shared_server_ping_send_failed,
             "broadcast_latency_avg_ms": round(avg_latency, 2),
             "scope": {
                 "connections_active": "instance",
@@ -987,6 +1152,14 @@ def _metrics_log_maybe() -> None:
         "metrics:snapshot_queue:dequeued",
         "metrics:snapshot_queue:materialized",
         "metrics:snapshot_queue:error",
+        "metrics:snapshot_queue:debounced",
+        "metrics:snapshot_queue:worker_unavailable",
+        "metrics:snapshot_queue:queue_wait_sum_ms",
+        "metrics:snapshot_queue:queue_wait_max_ms",
+        "metrics:snapshot_queue:process_sum_ms",
+        "metrics:snapshot_queue:process_max_ms",
+        "metrics:snapshot_queue:e2e_sum_ms",
+        "metrics:snapshot_queue:e2e_max_ms",
     ]
     try:
         vals = {k: (cache.get(k) or 0) for k in keys}
@@ -1004,9 +1177,20 @@ def _metrics_log_maybe() -> None:
     queue_dequeued = int(vals.get("metrics:snapshot_queue:dequeued", 0) or 0)
     queue_materialized = int(vals.get("metrics:snapshot_queue:materialized", 0) or 0)
     queue_errors = int(vals.get("metrics:snapshot_queue:error", 0) or 0)
+    queue_debounced = int(vals.get("metrics:snapshot_queue:debounced", 0) or 0)
+    queue_worker_unavailable = int(vals.get("metrics:snapshot_queue:worker_unavailable", 0) or 0)
+    queue_wait_sum_ms = int(vals.get("metrics:snapshot_queue:queue_wait_sum_ms", 0) or 0)
+    queue_wait_max_ms = int(vals.get("metrics:snapshot_queue:queue_wait_max_ms", 0) or 0)
+    queue_wait_avg_ms = int(queue_wait_sum_ms / queue_dequeued) if queue_dequeued > 0 else 0
+    queue_process_sum_ms = int(vals.get("metrics:snapshot_queue:process_sum_ms", 0) or 0)
+    queue_process_max_ms = int(vals.get("metrics:snapshot_queue:process_max_ms", 0) or 0)
+    queue_process_avg_ms = int(queue_process_sum_ms / queue_materialized) if queue_materialized > 0 else 0
+    queue_e2e_sum_ms = int(vals.get("metrics:snapshot_queue:e2e_sum_ms", 0) or 0)
+    queue_e2e_max_ms = int(vals.get("metrics:snapshot_queue:e2e_max_ms", 0) or 0)
+    queue_e2e_avg_ms = int(queue_e2e_sum_ms / queue_dequeued) if queue_dequeued > 0 else 0
 
     logger.info(
-        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s stale_fallback=%s build_lock_contention=%s build_count=%s build_avg_ms=%s build_max_ms=%s queue_enqueued=%s queue_deduped=%s queue_dequeued=%s queue_materialized=%s queue_errors=%s",
+        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s stale_fallback=%s build_lock_contention=%s build_count=%s build_avg_ms=%s build_max_ms=%s queue_enqueued=%s queue_deduped=%s queue_dequeued=%s queue_materialized=%s queue_errors=%s queue_debounced=%s queue_worker_unavailable=%s queue_wait_avg_ms=%s queue_wait_max_ms=%s queue_process_avg_ms=%s queue_process_max_ms=%s queue_e2e_avg_ms=%s queue_e2e_max_ms=%s",
         vals.get("metrics:snapshot_cache:token_hit", 0),
         vals.get("metrics:snapshot_cache:token_miss", 0),
         vals.get("metrics:snapshot_cache:school_hit", 0),
@@ -1023,6 +1207,14 @@ def _metrics_log_maybe() -> None:
         queue_dequeued,
         queue_materialized,
         queue_errors,
+        queue_debounced,
+        queue_worker_unavailable,
+        queue_wait_avg_ms,
+        queue_wait_max_ms,
+        queue_process_avg_ms,
+        queue_process_max_ms,
+        queue_e2e_avg_ms,
+        queue_e2e_max_ms,
     )
 
 
@@ -2693,7 +2885,21 @@ def _build_final_snapshot(
 
     # ✅ لو period_classes فاضية — نعبيها من ClassLesson
     if merge_real_data:
-        # ✅ لو period_classes فاضية — نعبيها من ClassLesson
+        try:
+            meta = snap.get("meta") or {}
+            weekday_raw = meta.get("weekday")
+            try:
+                weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
+            except Exception:
+                weekday = timezone.localdate().weekday() + 1
+
+            # Build map first so current-period classes can reuse the same query.
+            if not isinstance(snap.get("period_classes_map"), dict) or not snap.get("period_classes_map"):
+                snap["period_classes_map"] = _build_period_classes_map(settings_obj, weekday)
+        except Exception:
+            logger.exception("snapshot: failed to build period_classes_map")
+            weekday = timezone.localdate().weekday() + 1
+
         try:
             current = snap.get("current_period") or {}
             kind = None
@@ -2703,32 +2909,27 @@ def _build_final_snapshot(
                 kind = (snap.get("state") or {}).get("type")
 
             if kind == "period" and not snap.get("period_classes"):
-                meta = snap.get("meta") or {}
-                weekday_raw = meta.get("weekday")
-                try:
-                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
-                except Exception:
-                    weekday = timezone.localdate().weekday() + 1
-                period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
+                period_index = None
+                if isinstance(current, dict):
+                    try:
+                        period_index = int(current.get("index") or 0) or None
+                    except Exception:
+                        period_index = None
+                if not period_index:
+                    period_index = _infer_period_index(settings_obj, weekday, current if isinstance(current, dict) else None)
+
                 if period_index:
-                    snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
+                    period_map = snap.get("period_classes_map") if isinstance(snap.get("period_classes_map"), dict) else {}
+                    from_map = period_map.get(str(period_index)) if isinstance(period_map, dict) else None
+                    if isinstance(from_map, list):
+                        snap["period_classes"] = list(from_map)
+                    else:
+                        snap["period_classes"] = _build_period_classes(settings_obj, weekday, period_index)
+
                     if isinstance(snap.get("current_period"), dict) and _is_missing_index(snap["current_period"]):
                         snap["current_period"]["index"] = period_index
         except Exception:
             logger.exception("snapshot: failed to fill period_classes")
-
-        # ✅ تجهيز خريطة الحصص لكل اليوم لتحديث "حصص جارية" محليًا بدون انتظار snapshot جديد
-        try:
-            if not isinstance(snap.get("period_classes_map"), dict) or not snap.get("period_classes_map"):
-                meta = snap.get("meta") or {}
-                weekday_raw = meta.get("weekday")
-                try:
-                    weekday = int(weekday_raw) if weekday_raw not in (None, "") else (timezone.localdate().weekday() + 1)
-                except Exception:
-                    weekday = timezone.localdate().weekday() + 1
-                snap["period_classes_map"] = _build_period_classes_map(settings_obj, weekday)
-        except Exception:
-            logger.exception("snapshot: failed to build period_classes_map")
 
         # ✅ ضمان ظهور رقم الحصة للـ current و next
         try:
@@ -3145,21 +3346,13 @@ def snapshot(request, token: str | None = None):
             school_id_for_log = None
             try:
                 cached_map = cache.get(f"display:token_map:{token_hash}")
-                school_id_for_rev = None
                 if isinstance(cached_map, dict):
-                    school_id_for_rev = cached_map.get("school_id")
+                    school_id_for_log = cached_map.get("school_id")
                 else:
                     try:
-                        school_id_for_rev = int(cached_map) if cached_map else None
+                        school_id_for_log = int(cached_map) if cached_map else None
                     except Exception:
-                        school_id_for_rev = None
-
-                school_id_for_log = school_id_for_rev
-                if school_id_for_rev:
-                    current_rev = _get_schedule_revision_for_school_id(int(school_id_for_rev))
-                    cached_rev = cached_entry.get("rev")
-                    if cached_rev is not None and int(cached_rev) != int(current_rev):
-                        cached_entry = None
+                        school_id_for_log = None
             except Exception:
                 pass
 
@@ -3566,13 +3759,6 @@ def snapshot(request, token: str | None = None):
         tenant_cache_key = get_cache_key_rev(token_hash, school_id, rev)
         if tenant_cache_key != cache_key:
             cached_entry2 = None if force_nocache else cache.get(tenant_cache_key)
-            if isinstance(cached_entry2, dict) and isinstance(cached_entry2.get("snap"), dict) and isinstance(cached_entry2.get("etag"), str):
-                try:
-                    cached_rev2 = cached_entry2.get("rev")
-                    if cached_rev2 is not None and int(cached_rev2) != int(rev):
-                        cached_entry2 = None
-                except Exception:
-                    pass
 
             if isinstance(cached_entry2, dict) and isinstance(cached_entry2.get("snap"), dict) and isinstance(cached_entry2.get("etag"), str):
                 _metrics_incr("metrics:snapshot_cache:token_hit")

@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from schedule.models import (
+    Break,
     DEFAULT_DISPLAY_AFTER_BADGE,
     DEFAULT_DISPLAY_AFTER_HOLIDAY_BADGE,
     DEFAULT_DISPLAY_AFTER_HOLIDAY_TITLE,
@@ -15,6 +17,7 @@ from schedule.models import (
     DEFAULT_DISPLAY_BEFORE_TITLE,
     DEFAULT_DISPLAY_HOLIDAY_BADGE,
     DEFAULT_DISPLAY_HOLIDAY_TITLE,
+    Period,
     WEEKDAYS,
 )
 
@@ -68,7 +71,70 @@ def _get_manager(obj, *names):
     return None
 
 
-def _active_weekdays(settings) -> set[int]:
+def _build_active_days_index(settings) -> dict[int, list]:
+    day_qs = getattr(settings, "day_schedules", None)
+    if day_qs is None or not hasattr(day_qs, "filter"):
+        return {}
+
+    try:
+        day_qs = (
+            day_qs.filter(is_active=True)
+            .only("id", "settings_id", "weekday", "is_active", "periods_count")
+            .prefetch_related(
+                Prefetch(
+                    "periods",
+                    queryset=(
+                        Period.objects.select_related("subject", "teacher", "school_class")
+                        .only(
+                            "id",
+                            "day_id",
+                            "index",
+                            "starts_at",
+                            "ends_at",
+                            "subject__id",
+                            "subject__name",
+                            "teacher__id",
+                            "teacher__name",
+                            "school_class__id",
+                            "school_class__name",
+                        )
+                        .order_by("index", "starts_at")
+                    ),
+                ),
+                Prefetch(
+                    "breaks",
+                    queryset=Break.objects.only("id", "day_id", "label", "starts_at", "duration_min").order_by("starts_at"),
+                ),
+            )
+        )
+    except Exception:
+        day_qs = day_qs.filter(is_active=True)
+
+    out: dict[int, list] = {}
+    for day in day_qs:
+        try:
+            weekday = int(getattr(day, "weekday", 0) or 0)
+        except Exception:
+            continue
+        if weekday == 0:
+            weekday = 7
+        if 1 <= weekday <= 7:
+            out.setdefault(weekday, []).append(day)
+    return out
+
+
+def _active_weekdays(settings, active_days_index: dict[int, list] | None = None) -> set[int]:
+    if active_days_index is not None:
+        out: set[int] = set()
+        for raw in active_days_index.keys():
+            try:
+                weekday = int(raw)
+            except Exception:
+                continue
+            if 1 <= weekday <= 7:
+                out.add(weekday)
+        return out
+
     day_qs = getattr(settings, "day_schedules", None)
     if day_qs is None or not hasattr(day_qs, "filter"):
         return set()
@@ -91,7 +157,21 @@ def _active_weekdays(settings) -> set[int]:
     return normalized
 
 
-def _load_active_days_for_weekday(day_qs, weekday: int, weekday_legacy: int | None = None):
+def _load_active_days_for_weekday(
+    day_qs,
+    weekday: int,
+    weekday_legacy: int | None = None,
+    *,
+    active_days_index: dict[int, list] | None = None,
+):
+    if active_days_index is not None:
+        days = list(active_days_index.get(weekday) or [])
+        if not days and weekday_legacy is not None and weekday_legacy != weekday:
+            legacy_days = list(active_days_index.get(weekday_legacy) or [])
+            if legacy_days:
+                return legacy_days, weekday_legacy
+        return days, weekday
+
     if day_qs is None or not hasattr(day_qs, "filter"):
         return [], weekday
 
@@ -108,16 +188,30 @@ def _build_timeline_for_days(days, target_date, tz):
     timeline = []
 
     for day in days:
-        periods_m = _get_manager(day, "periods", "period_set")
-        breaks_m = _get_manager(day, "breaks", "break_set")
+        prefetched = getattr(day, "_prefetched_objects_cache", {}) or {}
+        prefetched_periods = prefetched.get("periods")
+        periods_iter = None
+        if prefetched_periods is not None:
+            periods_iter = prefetched_periods
+        else:
+            periods_m = _get_manager(day, "periods", "period_set")
+            if periods_m:
+                periods_iter = periods_m.select_related("subject", "teacher", "school_class").only(
+                    "id",
+                    "day_id",
+                    "index",
+                    "starts_at",
+                    "ends_at",
+                    "subject__id",
+                    "subject__name",
+                    "teacher__id",
+                    "teacher__name",
+                    "school_class__id",
+                    "school_class__name",
+                ).all()
 
-        if periods_m:
-            for p in periods_m.select_related("subject", "teacher", "school_class").only(
-                "index", "starts_at", "ends_at",
-                "subject__id", "subject__name",
-                "teacher__id", "teacher__name",
-                "school_class__id", "school_class__name",
-            ).all():
+        if periods_iter is not None:
+            for p in periods_iter:
                 if not getattr(p, "starts_at", None) or not getattr(p, "ends_at", None):
                     continue
 
@@ -136,8 +230,17 @@ def _build_timeline_for_days(days, target_date, tz):
                     "end": end,
                 })
 
-        if breaks_m:
-            for b in breaks_m.all():
+        prefetched_breaks = prefetched.get("breaks")
+        breaks_iter = None
+        if prefetched_breaks is not None:
+            breaks_iter = prefetched_breaks
+        else:
+            breaks_m = _get_manager(day, "breaks", "break_set")
+            if breaks_m:
+                breaks_iter = breaks_m.all()
+
+        if breaks_iter is not None:
+            for b in breaks_iter:
                 if not getattr(b, "starts_at", None):
                     continue
                 start = _to_aware_dt(target_date, b.starts_at, tz)
@@ -163,12 +266,12 @@ def _active_window_bounds(timeline):
     return start_t, end_t, active_start, active_end
 
 
-def _next_school_day_info(settings, start_date, tz, *, include_today: bool = False):
+def _next_school_day_info(settings, start_date, tz, *, include_today: bool = False, active_days_index: dict[int, list] | None = None):
     day_qs = getattr(settings, "day_schedules", None)
     if day_qs is None or not hasattr(day_qs, "filter"):
         return None
 
-    active_weekdays = _active_weekdays(settings)
+    active_weekdays = _active_weekdays(settings, active_days_index=active_days_index)
     if not active_weekdays:
         return None
 
@@ -180,7 +283,12 @@ def _next_school_day_info(settings, start_date, tz, *, include_today: bool = Fal
         if weekday not in active_weekdays and weekday_legacy not in active_weekdays:
             continue
 
-        days, resolved_weekday = _load_active_days_for_weekday(day_qs, weekday, weekday_legacy)
+        days, resolved_weekday = _load_active_days_for_weekday(
+            day_qs,
+            weekday,
+            weekday_legacy,
+            active_days_index=active_days_index,
+        )
         if not days:
             continue
 
@@ -267,11 +375,23 @@ def build_day_snapshot(settings, now=None):
         "periods_scroll_speed": float(getattr(settings, "periods_scroll_speed", 0.5) or 0.5),
     }
     settings_payload.update(_resolve_display_messages(settings))
-    next_school_day = _next_school_day_info(settings, today, tz, include_today=False)
+    active_days_index = _build_active_days_index(settings)
+    next_school_day = _next_school_day_info(
+        settings,
+        today,
+        tz,
+        include_today=False,
+        active_days_index=active_days_index,
+    )
 
     # الحصول على جدول اليوم (All Active Schedules for this weekday)
     day_qs = getattr(settings, "day_schedules", None)
-    days, weekday = _load_active_days_for_weekday(day_qs, weekday, weekday_legacy)
+    days, weekday = _load_active_days_for_weekday(
+        day_qs,
+        weekday,
+        weekday_legacy,
+        active_days_index=active_days_index,
+    )
 
     if not days:
         # Optimization: Strict stop on holidays (reduced to 15m to allow updates/wake-up)

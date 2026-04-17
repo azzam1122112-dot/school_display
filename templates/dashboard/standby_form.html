@@ -2,69 +2,30 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}{% if form.instance.pk %}تعديل حصة انتظار{% else %}إضافة حصة انتظار جديدة{% endif %}{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    <!-- رأس الصفحة -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-800 mb-2">{{ title }}</h1>
-                <p class="text-slate-600">
-                    {% if form.instance.pk %}
-                    تعديل حصة الانتظار
-                    {% else %}
-                    إضافة حصة انتظار جديدة إلى النظام
-                    {% endif %}
-                </p>
-            </div>
-            <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-                <div class="flex items-center space-x-2 space-x-reverse">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-blue-700 font-medium">حصة انتظار</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- شريط التوجيه -->
-        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
-            <div class="flex items-start space-x-3 space-x-reverse">
-                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div class="text-blue-700 text-sm">
-                    <p class="font-medium mb-1">معلومات هامة:</p>
-                    <p>حصة الانتظار تُظهر للمعلمين الحصص التي يمكنهم تعويضها في حالة غياب المعلم/ـة الأصلي.</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- نموذج حصة الانتظار -->
-    <form method="post" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <form method="post" class="dashboard-form-shell bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {% csrf_token %}
         
-        <!-- شريط العنوان -->
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+        <div class="dashboard-form-header bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4">
             <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">بيانات حصة الانتظار</h2>
-                        <p class="text-blue-100 text-sm">املأ البيانات المطلوبة بدقة</p>
+                        <h2 class="text-base font-bold text-white">بيانات حصة الانتظار</h2>
+                        <p class="text-indigo-200 text-xs">املأ البيانات المطلوبة</p>
                     </div>
                 </div>
-                <div class="bg-white/20 px-3 py-1 rounded-full">
-                    <span class="text-white text-sm font-medium">
-                        {% if form.instance.pk %}تعديل{% else %}جديد{% endif %}
-                    </span>
-                </div>
+                <span class="text-xs font-bold text-indigo-200 bg-white/15 px-3 py-1 rounded-full">{% if form.instance.pk %}تعديل{% else %}جديد{% endif %}</span>
             </div>
         </div>
 
@@ -215,7 +176,7 @@
             </div>
 
             <!-- معاينة سريعة -->
-            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div class="dashboard-preview-card bg-slate-50 rounded-xl p-4 border border-slate-200">
                 <h4 class="text-sm font-semibold text-slate-700 mb-3 flex items-center">
                     <svg class="w-4 h-4 text-slate-600 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>

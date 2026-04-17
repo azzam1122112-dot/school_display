@@ -77,7 +77,6 @@ class SchoolSettingsForm(forms.ModelForm):
     class Meta:
         model = SchoolSettings
         fields = [
-            "name",
             "featured_panel",
             "theme",
             "standby_scroll_speed",
@@ -183,6 +182,10 @@ class SchoolSettingsForm(forms.ModelForm):
         """
         instance: SchoolSettings = super().save(commit=False)
         logo_file = self.cleaned_data.get("logo")
+
+        # اسم المدرسة يُدار من موديل School نفسه ولا يُسمح بتعديله من لوحة المدرسة.
+        if getattr(instance, "school_id", None) and getattr(instance, "school", None):
+            instance.name = instance.school.name
 
         if logo_file and getattr(instance, "school_id", None):
             try:

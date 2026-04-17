@@ -84,7 +84,7 @@ services:
         value: "False"
 
       - key: DISPLAY_SNAPSHOT_ACTIVE_TTL
-        value: "30"
+        value: "45"
       - key: DISPLAY_SNAPSHOT_TTL_JITTER_SEC
         value: "10"
 
@@ -113,16 +113,15 @@ services:
       - key: DISPLAY_REQUIRE_REDIS_SPLIT
         value: "True"
       - key: DISPLAY_PUBLIC_BASE_URL
-        value: "https://school-display-p8ec.onrender.com"
+        value: "https://school-display.com"
+      - key: SITE_BASE_URL
+        value: "https://school-display.com"
 
       - key: ALLOWED_HOSTS
-        value: "school-display-p8ec.onrender.com,.onrender.com"
+        value: "school-display.com,www.school-display.com,school-display-p8ec.onrender.com,.onrender.com"
 
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://school-display-p8ec.onrender.com"
-
-      - key: TIME_ZONE
-        value: "Asia/Riyadh"
+        value: "https://school-display.com,https://www.school-display.com,https://school-display-p8ec.onrender.com"
 
       - key: WEB_CONCURRENCY
         value: "2"

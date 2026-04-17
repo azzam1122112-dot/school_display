@@ -1,0 +1,93 @@
+{% extends "dashboard/_base.html" %}
+
+{% block title %}دليل البدء{% endblock %}
+{% block page_title %}دليل البدء السريع{% endblock %}
+{% block page_description %}شرح خطوة بخطوة لاستخدام المنصة داخل المدرسة من أول شاشة عرض حتى تخصيص الثيم والكرت المميز.{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <section class="dashboard-onboarding-shell p-6 md:p-8 lg:p-10">
+        <div class="relative z-10 space-y-8">
+            <div class="dashboard-onboarding-hero">
+                <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-500 shadow-sm border border-slate-200">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    مسار الاستخدام الأساسي داخل لوحة المدرسة
+                </div>
+                <h2 class="mt-4 text-3xl md:text-4xl font-black text-slate-900">ابدأ تشغيل المنصة بخطوات واضحة ومدعومة بالصور</h2>
+                <p class="mt-3 text-sm md:text-base text-slate-500 leading-relaxed">
+                    هذا الدليل يجمع المسار العملي الكامل: إنشاء شاشة عرض، تجهيز الفصول والمواد والمعلمين، ضبط توقيت الحصص، ثم تخصيص لون الثيم والكرت المميز من الإعدادات.
+                </p>
+                </div>
+
+                <aside class="dashboard-onboarding-panel">
+                    <div class="flex items-center justify-between gap-3 text-xs text-white/70">
+                        <span>نسبة إكمال الأساسيات</span>
+                        <span>{{ setup_summary.completed_required }}/{{ setup_summary.total_required }}</span>
+                    </div>
+                    <div class="dashboard-onboarding-progress mt-3 h-2.5 bg-white/15">
+                        <span style="width: {{ setup_summary.progress_percent }}%;"></span>
+                    </div>
+                    <p class="mt-4 text-3xl font-black text-white">{{ setup_summary.progress_percent }}%</p>
+                    <p class="mt-1 text-sm font-bold text-white/95">مكتمل من إعدادات البداية</p>
+                    <p class="mt-3 text-xs leading-6 text-white/70">الخطوة التالية: {{ setup_summary.next_step_title }}</p>
+                </aside>
+            </div>
+
+            <div class="dashboard-onboarding-overview">
+                {% for step in setup_steps %}
+                    <div class="dashboard-onboarding-mini">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="dashboard-onboarding-step-no">{{ forloop.counter|stringformat:"02d" }}</span>
+                            <span class="dashboard-status-pill dashboard-status-pill--{{ step.status_tone }}">{{ step.status_label }}</span>
+                        </div>
+                        <h4 class="mt-4 text-base font-black text-slate-900">{{ step.title }}</h4>
+                        <p class="mt-1 text-xs leading-6 text-slate-500">{{ step.metric_label }}: {{ step.metric_value }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 gap-6">
+        {% for step in setup_steps %}
+            <section class="dashboard-guide-section p-6 md:p-7">
+                <div class="dashboard-guide-grid">
+                    <div class="dashboard-guide-content">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="dashboard-onboarding-step-no">{{ forloop.counter|stringformat:"02d" }}</span>
+                            <span class="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{{ step.eyebrow }}</span>
+                            <span class="dashboard-status-pill dashboard-status-pill--{{ step.status_tone }}">{{ step.status_label }}</span>
+                        </div>
+                        <h3 class="mt-3 text-2xl font-black text-slate-900">{{ step.title }}</h3>
+                        <p class="mt-2 text-sm text-slate-500 leading-7">{{ step.description }}</p>
+
+                        <div class="dashboard-guide-metric mt-4">
+                            <span class="text-slate-400">{{ step.metric_label }}</span>
+                            <span class="text-slate-900">{{ step.metric_value }}</span>
+                        </div>
+
+                        <ul class="dashboard-help-list mt-5 space-y-3 text-sm text-slate-600 leading-7">
+                            {% for tip in step.tips %}
+                                <li>{{ tip }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        <div class="mt-6 flex flex-wrap items-center gap-3">
+                            <a href="{{ step.cta_url }}" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition">
+                                <span>{{ step.cta_label }}</span>
+                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </a>
+                            <a href="{% url 'dashboard:index' %}" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">العودة للرئيسية</a>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-help-figure p-4">
+                        <img src="{{ step.image_url }}" alt="{{ step.title }}" class="rounded-2xl">
+                    </div>
+                </div>
+            </section>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

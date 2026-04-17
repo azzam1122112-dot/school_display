@@ -47,14 +47,24 @@ class Command(BaseCommand):
                 school_id = int(job.get("school_id") or 0)
                 rev = int(job.get("rev") or 0)
                 day_key = str(job.get("day_key") or "")
+                try:
+                    queued_at = float(job.get("queued_at") or 0.0)
+                except Exception:
+                    queued_at = 0.0
+                try:
+                    dequeued_at = float(job.get("_dequeued_at") or 0.0)
+                except Exception:
+                    dequeued_at = 0.0
                 result = materialize_snapshot_for_school(
                     school_id=school_id,
                     rev=rev,
                     day_key=day_key,
+                    queued_at=queued_at,
+                    dequeued_at=dequeued_at,
                     source="worker",
                 )
                 self.stdout.write(
-                    f"snapshot_worker_job school_id={school_id} requested_rev={rev} day_key={day_key} ok={int(bool(result.get('ok')))} result={result}"
+                    f"snapshot_worker_job school_id={school_id} requested_rev={rev} day_key={day_key} queue_wait_ms={int(result.get('queue_wait_ms') or 0)} process_ms={int(result.get('process_ms') or 0)} ok={int(bool(result.get('ok')))} result={result}"
                 )
             finally:
                 complete_snapshot_job(job)

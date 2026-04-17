@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -23,9 +25,27 @@ def _broadcast_invalidate_ws(school_id: int, revision: int) -> None:
     Called from transaction.on_commit() to ensure DB commit before notification.
     Only runs if DISPLAY_WS_ENABLED=True.
     """
-    from django.conf import settings
     if not getattr(settings, "DISPLAY_WS_ENABLED", False):
         return
+
+    try:
+        debounce_sec = int(getattr(settings, "DISPLAY_WS_INVALIDATE_DEBOUNCE_SEC", 3) or 3)
+    except Exception:
+        debounce_sec = 3
+    debounce_sec = max(2, min(5, debounce_sec))
+
+    try:
+        debounce_key = f"display:ws:invalidate:debounce:{int(school_id)}"
+        if not bool(cache.add(debounce_key, str(int(revision or 0)), timeout=debounce_sec)):
+            logger.info(
+                "WS broadcast debounced: school_id=%s revision=%s window=%ss",
+                int(school_id),
+                int(revision or 0),
+                int(debounce_sec),
+            )
+            return
+    except Exception:
+        pass
     
     try:
         from asgiref.sync import async_to_sync
@@ -101,7 +121,24 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
 
     def _enqueue_snapshot_materialization() -> None:
         try:
-            from schedule.snapshot_materializer import enqueue_snapshot_build
+            from schedule.snapshot_materializer import (
+                enqueue_snapshot_build,
+                snapshot_async_build_enabled,
+                snapshot_queue_available,
+                snapshot_worker_status,
+            )
+
+            if not bool(snapshot_async_build_enabled()) or not bool(snapshot_queue_available()):
+                return
+
+            worker_status = snapshot_worker_status()
+            if not bool(worker_status.get("alive")):
+                logger.warning(
+                    "snapshot_queue enqueue skipped: worker_unavailable school_id=%s rev=%s",
+                    school_id,
+                    int(new_rev or 0),
+                )
+                return
 
             enqueue_snapshot_build(
                 school_id=school_id,

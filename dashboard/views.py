@@ -33,6 +33,7 @@ from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, NoReverseMatch, get_resolver
+from django.templatetags.static import static as build_static_url
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -451,8 +452,9 @@ def _classes_qs_from_settings(settings_obj):
     وبعضها: settings.classes أو schoolclass_set
     نخليها مرنة حتى لا تتكسر الصفحات.
     """
+    SchoolClass = SchoolClassModel()
     if settings_obj is None:
-        return SchoolClassModel().objects.none()
+        return SchoolClass.objects.none()
 
     for preferred, fallback in (("school_classes", "schoolclass_set"), ("classes", "schoolclass_set")):
         mgr = _rev_manager(settings_obj, preferred, fallback)
@@ -462,12 +464,183 @@ def _classes_qs_from_settings(settings_obj):
             except Exception:
                 continue
 
-    # كحل أخير: حاول عبر موديل SchoolClass مباشرة
     try:
-        SchoolClass = SchoolClassModel()
         return SchoolClass.objects.filter(settings=settings_obj)
     except Exception:
-        return SchoolClassModel().objects.none()
+        return SchoolClass.objects.none()
+
+
+def _dashboard_help_image(step_key: str, fallback_path: str) -> str:
+    screenshot_dir = os.path.join("img", "dashboard-help", "real")
+    candidate_names = [
+        f"{step_key}.png",
+        f"{step_key}.webp",
+        f"{step_key}.jpg",
+        f"{step_key}.jpeg",
+    ]
+
+    search_roots: list[str] = []
+    for static_dir in getattr(dj_settings, "STATICFILES_DIRS", []) or []:
+        search_roots.append(str(static_dir))
+
+    base_static_dir = os.path.join(str(getattr(dj_settings, "BASE_DIR", "")), "static")
+    if base_static_dir:
+        search_roots.append(base_static_dir)
+
+    seen_roots: set[str] = set()
+    for root in search_roots:
+        normalized_root = os.path.normpath(root)
+        if normalized_root in seen_roots:
+            continue
+        seen_roots.add(normalized_root)
+
+        for filename in candidate_names:
+            abs_path = os.path.join(normalized_root, screenshot_dir, filename)
+            try:
+                if os.path.exists(abs_path):
+                    rel_path = "/".join(["img", "dashboard-help", "real", filename])
+                    return build_static_url(rel_path)
+            except Exception:
+                continue
+
+    return build_static_url(fallback_path)
+
+
+def _build_dashboard_onboarding_context(request, school, settings_obj=None):
+    SchoolSettings = SchoolSettingsModel()
+    Subject = SubjectModel()
+    Teacher = TeacherModel()
+    Period = PeriodModel()
+    DisplayScreen = DisplayScreenModel()
+
+    settings_obj = settings_obj or SchoolSettings.objects.filter(school=school).first()
+
+    screens_count = DisplayScreen.objects.filter(school=school).count()
+    classes_count = _classes_qs_from_settings(settings_obj).count() if settings_obj else 0
+    subjects_count = Subject.objects.filter(school=school).count()
+    teachers_count = Teacher.objects.filter(school=school).count()
+    periods_count = Period.objects.filter(day__settings__school=school).count()
+
+    theme_value = (getattr(settings_obj, "theme", "") or "").strip()
+    accent_value = (getattr(settings_obj, "display_accent_color", "") or "").strip()
+    featured_panel_value = (getattr(settings_obj, "featured_panel", "") or "").strip()
+    featured_panel_label = dict(getattr(SchoolSettings, "FEATURE_PANEL_CHOICES", [])).get(
+        featured_panel_value,
+        "لوحة الشرف",
+    )
+    settings_customized = bool(accent_value or (theme_value and theme_value != "default"))
+
+    def _step_status(is_complete: bool, *, optional: bool = False):
+        if is_complete:
+            return ("مكتمل", "emerald")
+        if optional:
+            return ("اختياري", "amber")
+        return ("ابدأ الآن", "slate")
+
+    screens_status, screens_tone = _step_status(screens_count > 0)
+    data_status, data_tone = _step_status(classes_count > 0 and subjects_count > 0 and teachers_count > 0)
+    schedule_status, schedule_tone = _step_status(periods_count > 0)
+    settings_status, settings_tone = _step_status(settings_customized, optional=True)
+
+    setup_steps = [
+        {
+            "key": "screens",
+            "title": "إنشاء شاشة عرض",
+            "eyebrow": "الخطوة 1",
+            "description": "أنشئ شاشة جديدة لتحصل على رابط التشغيل الذي ستفتحه على التلفاز أو الشاشة الذكية داخل المدرسة.",
+            "image_url": _dashboard_help_image("screens", "img/dashboard-help/create-screen.svg"),
+            "cta_url": reverse("dashboard:screen_list"),
+            "cta_label": "الذهاب إلى الشاشات",
+            "metric_value": str(screens_count),
+            "metric_label": "شاشة مسجلة",
+            "status_label": screens_status,
+            "status_tone": screens_tone,
+            "is_complete": screens_count > 0,
+            "required": True,
+            "tips": [
+                "اضغط على شاشة جديدة ثم احفظ الشاشة.",
+                "انسخ الرابط المختصر وافتحه على التلفاز.",
+                "إذا أردت نقلها لجهاز آخر استخدم فك ارتباط الجهاز أولاً.",
+            ],
+        },
+        {
+            "key": "school-data",
+            "title": "إدخال بيانات الفصول والمواد والمعلمين",
+            "eyebrow": "الخطوة 2",
+            "description": "جهّز البنية الأساسية للجدول بإضافة الفصول ثم المواد ثم المعلمين أو المعلمات من صفحة واحدة.",
+            "image_url": _dashboard_help_image("school-data", "img/dashboard-help/school-data.svg"),
+            "cta_url": reverse("dashboard:school_data"),
+            "cta_label": "إدارة بيانات المدرسة",
+            "metric_value": f"{classes_count}/{subjects_count}/{teachers_count}",
+            "metric_label": "فصول / مواد / معلمون",
+            "status_label": data_status,
+            "status_tone": data_tone,
+            "is_complete": classes_count > 0 and subjects_count > 0 and teachers_count > 0,
+            "required": True,
+            "tips": [
+                "ابدأ بالفصول لأن الجدول يعتمد عليها.",
+                "أضف المواد الرئيسية قبل توزيع الحصص اليومية.",
+                "أدخل المعلمين بنفس الأسماء التي تريد ظهورها على الشاشة.",
+            ],
+        },
+        {
+            "key": "schedule",
+            "title": "ضبط توقيت الحصص والأيام",
+            "eyebrow": "الخطوة 3",
+            "description": "حدد أيام الدراسة وأوقات بداية ونهاية الحصص، ثم افتح الجدول اليومي لتوزيع المادة والمعلم على كل حصة.",
+            "image_url": _dashboard_help_image("schedule", "img/dashboard-help/day-schedule.svg"),
+            "cta_url": reverse("dashboard:days_list"),
+            "cta_label": "ضبط الأيام والحصص",
+            "metric_value": str(periods_count),
+            "metric_label": "حصة مضبوطة",
+            "status_label": schedule_status,
+            "status_tone": schedule_tone,
+            "is_complete": periods_count > 0,
+            "required": True,
+            "tips": [
+                "فعّل الأيام الدراسية وألغِ أيام الإجازة.",
+                "من داخل كل يوم اضبط عدد الحصص والأوقات.",
+                "بعد ذلك افتح الجدول اليومي لإسناد المادة والمعلم لكل توقيت.",
+            ],
+        },
+        {
+            "key": "settings",
+            "title": "اختيار لون الثيم والكرت المميز",
+            "eyebrow": "إعداد إضافي",
+            "description": "من صفحة الإعدادات تستطيع تخصيص لون الثيم واختيار الكرت البارز في الشاشة بين لوحة التميز أو الإشراف والمناوبة.",
+            "image_url": _dashboard_help_image("settings", "img/dashboard-help/theme-settings.svg"),
+            "cta_url": reverse("dashboard:settings"),
+            "cta_label": "فتح الإعدادات",
+            "metric_value": featured_panel_label,
+            "metric_label": "الكرت الحالي",
+            "status_label": settings_status,
+            "status_tone": settings_tone,
+            "is_complete": settings_customized,
+            "required": False,
+            "tips": [
+                "اختر اللون الذي يناسب هوية المدرسة بصريًا.",
+                "حدد هل الكرت المميز هو التميز أو الإشراف والمناوبة.",
+                "أي تعديل هنا ينعكس مباشرة على شاشة العرض.",
+            ],
+        },
+    ]
+
+    required_steps = [step for step in setup_steps if step["required"]]
+    completed_required = sum(1 for step in required_steps if step["is_complete"])
+    total_required = len(required_steps)
+    progress_percent = int(round((completed_required / total_required) * 100)) if total_required else 0
+    next_step = next((step for step in required_steps if not step["is_complete"]), None)
+
+    return {
+        "setup_steps": setup_steps,
+        "setup_summary": {
+            "completed_required": completed_required,
+            "total_required": total_required,
+            "progress_percent": progress_percent,
+            "next_step_title": next_step["title"] if next_step else "تم تجهيز الأساسيات",
+            "guide_url": reverse("dashboard:help_getting_started"),
+        },
+    }
 
 
 def get_active_school_or_redirect(request):
@@ -660,10 +833,39 @@ def index(request):
     if SubModel is not None:
         subscription = SubModel.objects.filter(school=school).order_by("-starts_at", "-id").first()
 
+    onboarding_context = _build_dashboard_onboarding_context(request, school, settings_obj=settings_obj)
+
     return render(
         request,
         "dashboard/index.html",
-        {"stats": stats, "settings": settings_obj, "subscription": subscription},
+        {
+            "stats": stats,
+            "settings": settings_obj,
+            "subscription": subscription,
+            **onboarding_context,
+        },
+    )
+
+
+@manager_required
+def help_getting_started(request):
+    SchoolSettings = SchoolSettingsModel()
+
+    school, response = get_active_school_or_redirect(request)
+    if response:
+        return response
+
+    settings_obj = SchoolSettings.objects.filter(school=school).first()
+    onboarding_context = _build_dashboard_onboarding_context(request, school, settings_obj=settings_obj)
+
+    return render(
+        request,
+        "dashboard/help_getting_started.html",
+        {
+            "school": school,
+            "settings": settings_obj,
+            **onboarding_context,
+        },
     )
 
 
@@ -707,6 +909,7 @@ def select_school(request):
 # إعدادات المدرسة
 # ======================
 
+@never_cache
 @manager_required
 def school_settings(request):
     SchoolSettings = SchoolSettingsModel()
@@ -758,7 +961,15 @@ def school_settings(request):
     else:
         form = SchoolSettingsForm(instance=obj, user=request.user)
 
-    return render(request, "dashboard/settings.html", {"form": form, "display_preview_url": preview_url})
+    return render(
+        request,
+        "dashboard/settings.html",
+        {
+            "form": form,
+            "display_preview_url": preview_url,
+            "school": school,
+        },
+    )
 
 
 # ======================

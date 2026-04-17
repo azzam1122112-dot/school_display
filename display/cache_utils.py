@@ -51,17 +51,17 @@ class CacheKeys:
     def school_rev(self, school_id: int) -> str:
         return f"display:school:{int(school_id)}:rev"
 
-    # snapshot per school+rev+day
+    # snapshot per school+day (revision-agnostic key; revision remains in payload metadata)
     def snapshot(self, school_id: int, rev: int, day_key: str) -> str:
         return (
-            f"display:snap:v6:school:{int(school_id)}:rev:{int(rev)}:"
+            f"display:snap:v7:school:{int(school_id)}:"
             f"day:{normalize_day_key(day_key)}"
         )
 
     # short-lived snapshot used only during time-based transitions (countdown==0)
     def snapshot_transition(self, school_id: int, rev: int, day_key: str) -> str:
         return (
-            f"display:snap:v6:school:{int(school_id)}:rev:{int(rev)}:"
+            f"display:snap:v7:school:{int(school_id)}:"
             f"day:{normalize_day_key(day_key)}:transition"
         )
 
@@ -75,7 +75,7 @@ class CacheKeys:
     # lock key
     def snapshot_lock(self, school_id: int, rev: int, day_key: str) -> str:
         return (
-            f"display:lock:snap:school:{int(school_id)}:rev:{int(rev)}:"
+            f"display:lock:snap:school:{int(school_id)}:"
             f"day:{normalize_day_key(day_key)}"
         )
 

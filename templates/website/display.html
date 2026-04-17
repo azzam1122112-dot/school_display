@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-02-08-2">
+    <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-04-15b">
     <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2026-02-08-standby-chip-contrast-v2">
 
   <style>
@@ -1521,7 +1521,7 @@
   data-school-type="{% if school_type %}{{ school_type }}{% endif %}"
   data-media-prefix="{% if MEDIA_URL %}{{ MEDIA_URL }}{% else %}/media/{% endif %}"
   data-bell-sound-url="{% static 'sounds/bell.mp3' %}"
-  data-refresh="{% if refresh_interval_sec %}{{ refresh_interval_sec }}{% else %}10{% endif %}"
+    data-refresh="{% if refresh_interval_sec %}{{ refresh_interval_sec }}{% else %}30{% endif %}"
   data-standby="{% if standby_scroll_speed %}{{ standby_scroll_speed }}{% else %}0.8{% endif %}"
   data-periods-speed="{% if periods_scroll_speed %}{{ periods_scroll_speed }}{% else %}0.5{% endif %}"
     style="{% if display_accent_color %}--accent-main: {{ display_accent_color }};{% endif %}"

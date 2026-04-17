@@ -1,15 +1,24 @@
 {% extends "dashboard/_base.html" %}
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}إضافة أو تعديل حصة في الجدول الدراسي{% endblock %}
+
 {% block content %}
-<div class="card max-w-2xl mx-auto">
-  <div class="card-header font-bold text-lg">{{ title }}</div>
-  <div class="card-body">
-    <form method="post" class="space-y-4">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">حفظ</button>
-      <a href="{% url 'dashboard:lessons_list' %}" class="btn btn-secondary">إلغاء</a>
-    </form>
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4">
+      <h2 class="text-base font-bold text-white">{{ title }}</h2>
+    </div>
+    <div class="p-6">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
+          <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition shadow-sm">حفظ</button>
+          <a href="{% url 'dashboard:lessons_list' %}" class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">إلغاء</a>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

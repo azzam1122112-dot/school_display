@@ -455,7 +455,7 @@
 
   // ===== Config =====
   const cfg = {
-    REFRESH_EVERY: 20, // زيادة من 10 إلى 20 لتقليل الاستهلاك بنسبة 50%
+    REFRESH_EVERY: 30, // conservative default for large fleets; can be overridden from server
     WS_FALLBACK_POLL_EVERY: 180, // when WS is healthy, keep only a sparse safety poll
     STANDBY_SPEED: 0.8,
     PERIODS_SPEED: 0.5,
@@ -5446,8 +5446,8 @@
             // Tuned: max 20s during active window to catch period transitions quickly.
             const base = Math.max(2, basePollEverySec());
             const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
-            const minEvery = isActiveWin ? Math.min(8, Math.max(5, base)) : 60;
-            const maxEvery = isActiveWin ? 20 : 300;
+            const minEvery = isActiveWin ? Math.max(30, base) : 60;
+            const maxEvery = isActiveWin ? 60 : 300;
 
             const backoffFactor = isActiveWin ? 1.7 : 2.0;
 
@@ -5995,9 +5995,10 @@
       jitterMin = 0.9;
       jitterMax = 1.8;
     } else if (code === 1006 || code === 0) {
-      baseDelay = Math.min(30, 2 * Math.pow(1.8, exp));
-      jitterMin = 0.9;
-      jitterMax = 1.6;
+      // Abnormal closures are common on weak TV networks; retry gently to avoid loops.
+      baseDelay = Math.min(45, 4 * Math.pow(1.8, exp));
+      jitterMin = 1.0;
+      jitterMax = 1.9;
     } else {
       baseDelay = Math.min(60, Math.pow(2, Math.min(5, n - 1)));
     }
@@ -6189,7 +6190,7 @@
               _log("ws_ping_failed", { error: String(e) });
             }
           }
-        }, 30000, "ws_keepalive");
+        }, 20000, "ws_keepalive");
       };
       
       rt.ws.onmessage = function(event) {
@@ -6574,7 +6575,7 @@
       body.dataset.lite = lite ? "1" : "0";
     } catch (e) {}
 
-    cfg.REFRESH_EVERY = clamp(parseFloat(body.dataset.refresh || "10") || 10, 5, 120);
+    cfg.REFRESH_EVERY = clamp(parseFloat(body.dataset.refresh || "30") || 30, 5, 120);
     cfg.WS_FALLBACK_POLL_EVERY = clamp(parseFloat(body.dataset.wsFallbackPoll || "180") || 180, 30, 600);
     cfg.STANDBY_SPEED = normSpeed(body.dataset.standby || "0.8", 0.8);
     cfg.PERIODS_SPEED = normSpeed(body.dataset.periodsSpeed || "0.5", 0.5);

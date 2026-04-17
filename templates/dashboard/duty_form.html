@@ -2,31 +2,29 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_description %}إدارة تكليفات الإشراف والمناوبة التي تظهر في شاشة العرض{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-800 mb-2">{{ title }}</h1>
-                <p class="text-slate-600">إدارة تكليفات الإشراف والمناوبة التي تظهر في شاشة العرض</p>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+        <div class="flex items-center justify-end mb-6">
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
                 <div class="flex items-center space-x-2 space-x-reverse">
-                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v6c0 5-3 8-7 8s-7-3-7-8V7l7-4z"></path>
                     </svg>
-                    <span class="text-emerald-700 font-medium">إشراف/مناوبة</span>
+                    <span class="text-indigo-700 font-medium">إشراف/مناوبة</span>
                 </div>
             </div>
         </div>
 
-        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
             <div class="flex items-start space-x-3 space-x-reverse">
-                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <div class="text-blue-700 text-sm">
+                <div class="text-indigo-700 text-sm">
                     <p class="font-medium mb-1">ملاحظة:</p>
                     <p>تظهر هذه البيانات في شاشة العرض عندما يكون خيار “الكرت المميز” مضبوطًا على “لوحة الإشراف والمناوبة”.</p>
                 </div>
@@ -34,25 +32,23 @@
         </div>
     </div>
 
-    <form method="post" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <form method="post" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {% csrf_token %}
 
-        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
+        <div class="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4">
             <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v6c0 5-3 8-7 8s-7-3-7-8V7l7-4z"></path>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">بيانات التكليف</h2>
-                        <p class="text-emerald-100 text-sm">املأ البيانات المطلوبة بدقة</p>
+                        <h2 class="text-base font-bold text-white">بيانات التكليف</h2>
+                        <p class="text-indigo-200 text-xs">املأ البيانات المطلوبة</p>
                     </div>
                 </div>
-                <div class="bg-white/20 px-3 py-1 rounded-full">
-                    <span class="text-white text-sm font-medium">{% if form.instance.pk %}تعديل{% else %}جديد{% endif %}</span>
-                </div>
+                <span class="text-xs font-bold text-indigo-200 bg-white/15 px-3 py-1 rounded-full">{% if form.instance.pk %}تعديل{% else %}جديد{% endif %}</span>
             </div>
         </div>
 
@@ -112,7 +108,7 @@
 
             <div class="flex items-center justify-between pt-4 border-t border-slate-200">
                 <button type="submit"
-                        class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-200">
+                        class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
                     حفظ
                 </button>
                 <div class="flex items-center space-x-3 space-x-reverse">
