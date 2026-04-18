@@ -4,759 +4,2173 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    
-    <title>لوحة العرض الذكية للمدارس | تجربة مجانية 14 يوم</title>
-    <meta name="description" content="منصة إدارة شاشات المدارس: جدول حي، حصص انتظار، إعلانات وتكريم. كل الباقات بنفس المزايا والاختلاف فقط في عدد الشاشات.">
-    
-    <!-- Theme & Colors -->
-    <meta name="theme-color" content="#0f172a">
-    <meta name="color-scheme" content="light dark">
 
-    <!-- Fonts -->
+    <title>لوحة العرض الذكية للمدارس | منصة تشغيل الشاشة المدرسية باحتراف</title>
+    <meta name="description" content="صفحة تسويقية فاخرة لمنصة شاشة المدرسة الذكية: جدولة حية، انتظار، إعلانات، تكريم، وإدارة يومية متكاملة بنفس المزايا في كل الباقات.">
+
+    <meta name="theme-color" content="#07111f">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Changa:wght@500;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <style>
         :root {
-            /* 2026 Design System */
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --accent: #10b981;
-            
-            --bg-body: #f8fafc;
-            --bg-surface: #ffffff;
-            --bg-glass: rgba(255, 255, 255, 0.85);
-            
-            --text-main: #0f172a;
-            --text-sec: #475569;
-            --text-muted: #94a3b8;
-            
-            --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05);
-            --shadow-lg: 0 20px 40px -5px rgba(0,0,0,0.1);
-            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
-            
-            --radius-box: 24px;
-            --radius-btn: 16px;
+            --ink-950: #07111f;
+            --ink-900: #0d1c32;
+            --ink-800: #12304f;
+            --sand-50: #faf7f1;
+            --sand-100: #f3ece0;
+            --sand-200: #eadbc0;
+            --gold-400: #c99a48;
+            --gold-500: #b8852d;
+            --mint-400: #18a07d;
+            --mint-500: #0d8b6a;
+            --text-main: #0d1c32;
+            --text-soft: #516179;
+            --text-faint: #7e8aa0;
+            --line: rgba(7, 17, 31, 0.09);
+            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.72);
+            --shadow-sm: 0 12px 30px rgba(7, 17, 31, 0.06);
+            --shadow-md: 0 24px 60px rgba(7, 17, 31, 0.12);
+            --shadow-lg: 0 40px 100px rgba(7, 17, 31, 0.18);
+            --radius-lg: 32px;
+            --radius-md: 22px;
+            --radius-sm: 16px;
+            --container: 1240px;
         }
 
-        /* Global Reset */
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        html { scroll-behavior: smooth; font-size: 16px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
         body {
             font-family: 'Tajawal', sans-serif;
-            background: var(--bg-body);
             color: var(--text-main);
-            line-height: 1.6;
+            background:
+                radial-gradient(circle at top right, rgba(201, 154, 72, 0.14), transparent 34%),
+                radial-gradient(circle at left 20%, rgba(24, 160, 125, 0.12), transparent 28%),
+                linear-gradient(180deg, #fdfcf9 0%, #f5f1ea 42%, #fbfaf7 100%);
+            line-height: 1.65;
             overflow-x: hidden;
         }
 
-        /* Ambient Background */
-        .ambient-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: -1;
-            background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
-            background-image: 
-                radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
-                radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: auto;
+            pointer-events: none;
+            z-index: -2;
+            filter: blur(10px);
         }
 
-        /* Typography */
-        h1, h2, h3, h4 { font-weight: 900; line-height: 1.2; letter-spacing: -0.02em; }
-        .text-gradient {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        body::before {
+            top: 7%;
+            left: -80px;
+            width: 260px;
+            height: 260px;
+            background: rgba(24, 160, 125, 0.08);
+            border-radius: 50%;
         }
 
-        /* Layout Utilities */
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
-
-        /* ========= Header ========= */
-        header {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-            padding: 16px 0;
-            transition: all 0.3s ease;
-        }
-        header.scrolled {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 12px 0;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .nav-content { display: flex; align-items: center; justify-content: space-between; }
-        
-        .logo { 
-            display: flex; align-items: center; gap: 12px; 
-            text-decoration: none; color: var(--text-main); font-weight: 900; font-size: 1.2rem;
-        }
-        .logo-icon {
-            width: 42px; height: 42px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white; border-radius: 12px;
-            display: grid; place-items: center; font-size: 1.2rem;
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.25);
+        body::after {
+            top: 12%;
+            right: -110px;
+            width: 340px;
+            height: 340px;
+            background: rgba(201, 154, 72, 0.1);
+            border-radius: 50%;
         }
 
-        .nav-links { display: flex; gap: 32px; list-style: none; }
-        .nav-links a {
-            text-decoration: none; color: var(--text-sec); font-weight: 700;
-            transition: color 0.2s; font-size: 0.95rem;
+        img,
+        iframe {
+            max-width: 100%;
+            display: block;
         }
-        .nav-links a:hover { color: var(--primary); }
 
-        .nav-actions { display: flex; gap: 12px; align-items: center; }
-        
-        .btn-login {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 20px;
-            border-radius: 99px;
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        a {
+            color: inherit;
             text-decoration: none;
-            font-weight: 800; font-size: 0.95rem;
-            color: var(--text-sec);
-            background: rgba(255,255,255,0.5);
-            border: 1px solid rgba(0,0,0,0.08);
-            transition: 0.2s;
-        }
-        .btn-login:hover { background: white; color: var(--primary); border-color: var(--primary); }
-
-        .btn-primary {
-            background: var(--text-main); color: white;
-            padding: 10px 24px; border-radius: 99px;
-            text-decoration: none; font-weight: 800; font-size: 0.95rem;
-            transition: 0.2s; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
-            display: inline-flex; align-items: center; gap: 8px;
-            cursor: pointer;
-            border: none;
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2); }
-
-        /* ========= Hero Section ========= */
-        .hero { padding: 160px 0 80px; text-align: center; }
-        
-        .badge-new {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 6px 16px; border-radius: 99px;
-            background: #eff6ff; color: var(--primary-dark);
-            font-weight: 800; font-size: 0.85rem;
-            border: 1px solid #dbeafe; margin-bottom: 24px;
         }
 
-        .hero h1 {
-            font-size: clamp(2.5rem, 5vw, 4.5rem);
-            margin-bottom: 24px;
-            color: var(--text-main);
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Changa', sans-serif;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
         }
 
-        .hero p {
-            font-size: clamp(1.1rem, 2vw, 1.35rem);
-            color: var(--text-sec);
-            max-width: 700px; margin: 0 auto 40px;
-            font-weight: 500;
-        }
-        .hero-points {
-            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-            margin: -12px auto 28px; max-width: 860px;
-        }
-        .hero-points span {
-            background: white; border: 1px solid #e2e8f0; color: var(--text-sec);
-            border-radius: 999px; padding: 7px 14px; font-size: 0.85rem; font-weight: 700;
-            box-shadow: var(--shadow-sm);
+        .container {
+            width: min(calc(100% - 32px), var(--container));
+            margin: 0 auto;
         }
 
-        /* Mockup Container */
-        .mockup-wrapper {
-            margin-top: 60px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.4);
-            border: 1px solid rgba(255,255,255,0.6);
-            backdrop-filter: blur(12px);
-            border-radius: 32px;
-            box-shadow: 0 40px 80px -20px rgba(0,0,0,0.15);
-            max-width: 1000px;
-            margin-left: auto; margin-right: auto;
+        .section {
+            padding: 92px 0;
             position: relative;
         }
-        .mockup-screen {
-            background: #000;
-            border-radius: 24px; overflow: hidden;
-            aspect-ratio: 16/9;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
-        }
-        .mockup-screen iframe { width: 100%; height: 100%; border: none; }
 
-        /* ========= Features ========= */
-        .features { padding: 80px 0; }
-        .section-header { text-align: center; margin-bottom: 60px; }
-        .section-header h2 { font-size: 2.5rem; margin-bottom: 16px; }
-        
-        .bento-card {
-            background: white; border-radius: var(--radius-box);
-            padding: 32px;
-            border: 1px solid rgba(0,0,0,0.05);
-            box-shadow: var(--shadow-sm);
-            transition: 0.3s;
-            display: flex; flex-direction: column; align-items: flex-start;
+        .section-header {
+            display: grid;
+            gap: 14px;
+            margin-bottom: 34px;
+            text-align: center;
         }
-        .bento-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
-        
-        .icon-box {
-            width: 56px; height: 56px; border-radius: 16px;
-            background: #f1f5f9; color: var(--primary);
-            font-size: 1.5rem; display: grid; place-items: center;
-            margin-bottom: 24px; transition: 0.3s;
-        }
-        .bento-card:hover .icon-box { background: var(--primary); color: white; }
-        
-        .bento-card h3 { font-size: 1.25rem; margin-bottom: 12px; }
-        .bento-card p { color: var(--text-sec); font-size: 0.95rem; }
 
-        /* ========= Pricing ========= */
-        .pricing { padding: 80px 0; background: linear-gradient(to bottom, transparent, #eff6ff 100%); }
-        .pricing-note {
-            max-width: 860px;
-            margin: 18px auto 0;
-            padding: 12px 18px;
-            border-radius: 14px;
-            border: 1px solid #dbeafe;
-            background: #f8fbff;
-            color: #1e3a8a;
+        .section-header h2 {
+            font-size: clamp(2rem, 4vw, 3.3rem);
+        }
+
+        .section-header p {
+            max-width: 760px;
+            margin: 0 auto;
+            color: var(--text-soft);
+            font-size: 1.05rem;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            margin: 0 auto;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(184, 133, 45, 0.2);
+            color: var(--gold-500);
             font-size: 0.92rem;
-            font-weight: 700;
-        }
-        .pricing-cards { 
-            display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 40px; 
-            align-items: flex-start;
-        }
-        .price-card {
-            background: white; width: 100%; max-width: 320px;
-            padding: 32px; border-radius: 28px;
-            border: 1px solid rgba(0,0,0,0.06);
-            box-shadow: var(--shadow-sm);
-            text-align: center; position: relative;
-        }
-        .price-card.popular {
-            border: 2px solid var(--primary);
-            box-shadow: var(--shadow-glow);
-            transform: scale(1.05); z-index: 2;
-        }
-        .price-val { font-size: 3rem; font-weight: 900; color: var(--text-main); line-height: 1; margin: 20px 0 8px; }
-        .price-period { color: var(--text-muted); font-size: 0.9rem; font-weight: 700; margin-bottom: 24px; display: block; }
-        
-        .feature-list { list-style: none; text-align: right; margin-bottom: 32px; }
-        .feature-list li { margin-bottom: 12px; font-weight: 600; color: var(--text-sec); display: flex; gap: 10px; }
-        .feature-list i { color: var(--accent); }
-
-        .btn-full {
-            display: block; width: 100%; padding: 14px;
-            background: var(--text-main); color: white; text-decoration: none;
-            border-radius: 14px; font-weight: 800; cursor: pointer; border: none; font-size: 1rem;
-        }
-        .price-card.popular .btn-full { background: var(--primary); }
-
-        /* ========= Steps ========= */
-        .steps { padding: 60px 0 20px; }
-        .step-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 18px;
-            margin-top: 24px;
-        }
-        .step-card {
-            background: white;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            border-radius: 20px;
-            padding: 22px;
+            font-weight: 800;
             box-shadow: var(--shadow-sm);
         }
-        .step-number {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: #eff6ff;
-            color: var(--primary-dark);
-            display: grid;
-            place-items: center;
-            font-weight: 900;
-            margin-bottom: 12px;
-        }
-        .step-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
-        .step-card p { color: var(--text-sec); font-size: 0.92rem; }
 
-        /* ========= FAQ ========= */
-        .faq { padding: 40px 0 30px; }
-        .faq-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 16px;
-            margin-top: 26px;
+        .surface-card {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: var(--shadow-md);
+            backdrop-filter: blur(18px);
         }
-        .faq-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 18px;
-        }
-        .faq-item h3 { font-size: 1rem; margin-bottom: 8px; }
-        .faq-item p { color: var(--text-sec); font-size: 0.9rem; }
 
-        /* ========= CTA Strip ========= */
-        .cta-strip { padding: 20px 0 20px; }
-        .cta-strip-card {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: white;
-            border-radius: 24px;
-            padding: 24px;
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 18px 0;
+            transition: padding 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        header.scrolled {
+            padding: 10px 0;
+            background: rgba(250, 247, 241, 0.78);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 10px 40px rgba(7, 17, 31, 0.08);
+        }
+
+        .nav-shell {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 18px;
-            flex-wrap: wrap;
+            gap: 24px;
+            padding: 12px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.62);
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow-sm);
         }
-        .cta-strip-card h3 { font-size: 1.5rem; margin-bottom: 6px; }
-        .cta-strip-card p { color: #cbd5e1; font-size: 0.95rem; }
 
-        /* ========= Request Modal ========= */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(8px);
-            z-index: 2000; opacity: 0; pointer-events: none;
-            transition: 0.3s;
-            display: grid; place-items: center; padding: 20px;
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+            font-weight: 900;
         }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
-        
-        .modal-card {
-            background: white; width: 100%; max-width: 500px;
-            padding: 32px; border-radius: 32px;
+
+        .logo-mark {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            color: var(--white);
+            background: linear-gradient(145deg, var(--ink-900), var(--ink-800));
+            box-shadow: 0 14px 30px rgba(13, 28, 50, 0.24);
+        }
+
+        .logo-copy {
+            display: grid;
+            gap: 2px;
+        }
+
+        .logo-copy strong {
+            font-size: 1.02rem;
+        }
+
+        .logo-copy span {
+            font-size: 0.77rem;
+            color: var(--text-faint);
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 26px;
+            list-style: none;
+            color: var(--text-soft);
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a {
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--ink-950);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn,
+        .btn-outline,
+        .btn-soft {
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 13px 22px;
+            border-radius: 999px;
+            font-weight: 900;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn {
+            color: var(--white);
+            background: linear-gradient(135deg, var(--ink-950), var(--ink-800));
+            box-shadow: 0 16px 32px rgba(13, 28, 50, 0.18);
+        }
+
+        .btn:hover,
+        .btn-outline:hover,
+        .btn-soft:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            color: var(--ink-950);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(13, 28, 50, 0.12);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-soft {
+            color: var(--mint-500);
+            background: rgba(24, 160, 125, 0.1);
+            border: 1px solid rgba(24, 160, 125, 0.14);
+        }
+
+        .hero {
+            padding: 34px 0 72px;
+        }
+
+        .hero-shell {
+            position: relative;
+            overflow: hidden;
+            border-radius: 42px;
+            padding: 34px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.54)),
+                linear-gradient(135deg, rgba(201, 154, 72, 0.08), rgba(24, 160, 125, 0.08));
+            border: 1px solid rgba(255, 255, 255, 0.85);
             box-shadow: var(--shadow-lg);
-            transform: translateY(20px); transition: 0.3s;
+        }
+
+        .hero-shell::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(90deg, transparent 0 94%, rgba(13, 28, 50, 0.05) 94% 95%, transparent 95% 100%),
+                linear-gradient(transparent 0 94%, rgba(13, 28, 50, 0.05) 94% 95%, transparent 95% 100%);
+            background-size: 140px 140px;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(390px, 0.98fr);
+            gap: 36px;
+            align-items: center;
+        }
+
+        .hero-copy {
+            display: grid;
+            gap: 24px;
+        }
+
+        .hero-copy .eyebrow {
+            margin: 0;
+        }
+
+        .hero-copy h1 {
+            font-size: clamp(2.8rem, 5vw, 5rem);
+            color: var(--ink-950);
+        }
+
+        .hero-copy h1 span {
+            color: var(--gold-500);
+            display: block;
+        }
+
+        .hero-copy p {
+            max-width: 640px;
+            color: var(--text-soft);
+            font-size: 1.14rem;
+        }
+
+        .hero-points {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .hero-point {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hero-point i {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(201, 154, 72, 0.12);
+            color: var(--gold-500);
+            flex-shrink: 0;
+        }
+
+        .hero-point strong {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.98rem;
+        }
+
+        .hero-point span {
+            color: var(--text-soft);
+            font-size: 0.93rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .hero-meta-item {
+            padding: 12px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+            min-width: 150px;
+        }
+
+        .hero-meta-item strong {
+            display: block;
+            font-size: 1.15rem;
+            color: var(--ink-950);
+        }
+
+        .hero-meta-item span {
+            color: var(--text-soft);
+            font-size: 0.9rem;
+        }
+
+        .hero-visual {
+            position: relative;
+            min-height: 620px;
+        }
+
+        .visual-stack {
+            position: relative;
+            height: 100%;
+        }
+
+        .floating-pill {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: rgba(7, 17, 31, 0.92);
+            color: white;
+            box-shadow: 0 18px 40px rgba(7, 17, 31, 0.25);
+            font-weight: 800;
+        }
+
+        .display-frame {
+            position: absolute;
+            inset: 62px 10px 0 34px;
+            padding: 16px;
+            border-radius: 34px;
+            background: linear-gradient(135deg, #0a1324, #173253);
+            box-shadow: 0 34px 70px rgba(7, 17, 31, 0.3);
+        }
+
+        .display-screen {
+            height: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #e7f2ff 0%, #fff7eb 100%);
             position: relative;
         }
-        .modal-overlay.active .modal-card { transform: translateY(0); }
 
-        .modal-header { margin-bottom: 24px; text-align: right; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; }
-        .modal-close { position: absolute; top: 24px; left: 24px; background: #f1f5f9; width: 36px; height: 36px; border-radius: 10px; border:none; color: var(--text-sec); cursor: pointer; font-size: 1.1rem; }
-        .modal-close:hover { background: #e2e8f0; color: var(--text-main); }
-
-        .form-group { margin-bottom: 16px; text-align: right; }
-        .form-label { display: block; margin-bottom: 8px; font-weight: 700; color: var(--text-sec); font-size: 0.9rem; }
-        
-        .form-input, .form-select {
-            width: 100%; padding: 12px 16px;
-            border: 2px solid #e2e8f0; border-radius: 12px;
-            font-family: inherit; font-size: 1rem;
-            transition: 0.2s; background: #f8fafc;
-        }
-        .form-input:focus, .form-select:focus {
-            border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        .screen-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 20px 12px;
+            background: linear-gradient(90deg, rgba(13, 28, 50, 0.96), rgba(18, 48, 79, 0.9));
+            color: white;
         }
 
-        .radio-group { display: flex; gap: 16px; }
+        .screen-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+        }
+
+        .screen-brand i {
+            width: 36px;
+            height: 36px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: rgba(201, 154, 72, 0.22);
+            color: #f9d58a;
+        }
+
+        .screen-live {
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(24, 160, 125, 0.16);
+            color: #b3f2dd;
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
+
+        .screen-body {
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .screen-highlight {
+            border-radius: 22px;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 248, 236, 0.98));
+            border: 1px solid rgba(184, 133, 45, 0.16);
+            box-shadow: 0 14px 28px rgba(13, 28, 50, 0.08);
+            display: grid;
+            gap: 12px;
+        }
+
+        .screen-highlight small,
+        .screen-mini-card small,
+        .ops-card small {
+            color: var(--text-faint);
+            font-weight: 800;
+        }
+
+        .screen-highlight h3 {
+            font-size: 1.55rem;
+        }
+
+        .countdown-bar {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: #d8e4f0;
+            overflow: hidden;
+        }
+
+        .countdown-bar span {
+            display: block;
+            width: 68%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--gold-400), #e6c685);
+        }
+
+        .screen-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 14px;
+        }
+
+        .screen-mini-card {
+            padding: 16px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(13, 28, 50, 0.08);
+            box-shadow: 0 12px 24px rgba(13, 28, 50, 0.06);
+            display: grid;
+            gap: 10px;
+        }
+
+        .mini-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mini-row strong {
+            font-size: 0.95rem;
+        }
+
+        .mini-badge {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(24, 160, 125, 0.11);
+            color: var(--mint-500);
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        .ops-card,
+        .video-card,
+        .support-card {
+            position: absolute;
+            border-radius: 24px;
+            padding: 18px;
+        }
+
+        .ops-card {
+            top: 122px;
+            left: 0;
+            width: 210px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(13, 28, 50, 0.08);
+            box-shadow: 0 24px 40px rgba(13, 28, 50, 0.14);
+            display: grid;
+            gap: 12px;
+        }
+
+        .ops-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .ops-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-soft);
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+
+        .ops-item i {
+            color: var(--gold-500);
+        }
+
+        .support-card {
+            right: 18px;
+            bottom: 24px;
+            width: 215px;
+            background: linear-gradient(145deg, rgba(24, 160, 125, 0.95), rgba(13, 139, 106, 0.96));
+            color: white;
+            box-shadow: 0 28px 50px rgba(13, 139, 106, 0.24);
+            display: grid;
+            gap: 8px;
+        }
+
+        .support-card strong {
+            font-size: 1.15rem;
+        }
+
+        .video-card {
+            left: 36px;
+            right: 64px;
+            bottom: -18px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 22px 50px rgba(13, 28, 50, 0.15);
+        }
+
+        .video-card iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+            border-radius: 16px;
+        }
+
+        .marquee-strip {
+            margin-top: 30px;
+            border-radius: 26px;
+            padding: 20px 24px;
+            background: rgba(7, 17, 31, 0.9);
+            color: white;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .marquee-strip p {
+            color: rgba(255, 255, 255, 0.72);
+            margin-top: 8px;
+        }
+
+        .marquee-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .marquee-list span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .trust-grid,
+        .benefit-grid,
+        .capability-grid,
+        .journey-grid,
+        .faq-grid,
+        .pricing-grid,
+        .story-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .trust-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .trust-card {
+            padding: 24px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .trust-card strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+            font-family: 'Changa', sans-serif;
+        }
+
+        .trust-card p {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+        }
+
+        .story-grid {
+            grid-template-columns: 0.95fr 1.05fr;
+            align-items: stretch;
+        }
+
+        .story-panel,
+        .story-stack,
+        .benefit-card,
+        .capability-card,
+        .journey-card,
+        .faq-item,
+        .price-card,
+        .cta-panel,
+        .footer-shell {
+            border-radius: 30px;
+        }
+
+        .story-panel {
+            padding: 34px;
+            background: linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(243, 236, 224, 0.78));
+            border: 1px solid rgba(184, 133, 45, 0.14);
+            box-shadow: var(--shadow-md);
+            display: grid;
+            gap: 22px;
+        }
+
+        .story-panel p,
+        .story-bullets li,
+        .benefit-card p,
+        .capability-card p,
+        .journey-card p,
+        .faq-item p,
+        .price-card p,
+        .cta-panel p,
+        .footer-col p,
+        .footer-links a {
+            color: var(--text-soft);
+        }
+
+        .story-bullets {
+            list-style: none;
+            display: grid;
+            gap: 14px;
+        }
+
+        .story-bullets li {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            font-weight: 700;
+        }
+
+        .story-bullets i {
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(201, 154, 72, 0.12);
+            color: var(--gold-500);
+            flex-shrink: 0;
+        }
+
+        .story-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .story-highlight {
+            padding: 28px;
+            min-height: 220px;
+            background: linear-gradient(140deg, var(--ink-950), var(--ink-800));
+            color: white;
+            box-shadow: var(--shadow-lg);
+            display: grid;
+            gap: 18px;
+        }
+
+        .story-highlight p {
+            color: rgba(255, 255, 255, 0.76);
+        }
+
+        .story-quote {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(13, 28, 50, 0.08);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 16px;
+        }
+
+        .story-quote strong {
+            font-size: 1.05rem;
+        }
+
+        .benefit-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .benefit-card {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 16px;
+        }
+
+        .benefit-card i,
+        .capability-card i,
+        .journey-card i,
+        .faq-item i {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            font-size: 1.15rem;
+        }
+
+        .benefit-card i {
+            color: var(--ink-950);
+            background: rgba(201, 154, 72, 0.14);
+        }
+
+        .benefit-card strong,
+        .capability-card strong,
+        .journey-card strong,
+        .faq-item h3,
+        .price-card h3,
+        .cta-panel h2,
+        .footer-col h4 {
+            font-size: 1.24rem;
+        }
+
+        .capability-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .capability-card {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 16px;
+        }
+
+        .capability-card i {
+            background: rgba(24, 160, 125, 0.12);
+            color: var(--mint-500);
+        }
+
+        .journey-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .journey-card {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            display: grid;
+            gap: 16px;
+        }
+
+        .journey-card::before {
+            content: attr(data-step);
+            position: absolute;
+            top: 22px;
+            left: 22px;
+            font-family: 'Changa', sans-serif;
+            font-size: 2.2rem;
+            color: rgba(13, 28, 50, 0.08);
+        }
+
+        .journey-card i {
+            background: rgba(13, 28, 50, 0.08);
+            color: var(--ink-800);
+        }
+
+        .journey-note {
+            margin-top: 22px;
+            padding: 20px 22px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(13, 28, 50, 0.96), rgba(18, 48, 79, 0.92));
+            color: white;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 22px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-md);
+        }
+
+        .journey-note p {
+            color: rgba(255, 255, 255, 0.76);
+        }
+
+        .pricing-section {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.36) 0%, rgba(243, 236, 224, 0.58) 100%);
+        }
+
+        .pricing-head {
+            display: grid;
+            gap: 16px;
+            justify-items: center;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .pricing-note {
+            max-width: 860px;
+            padding: 15px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(184, 133, 45, 0.18);
+            box-shadow: var(--shadow-sm);
+            color: var(--ink-900);
+            font-weight: 800;
+        }
+
+        .plan-switch {
+            display: inline-flex;
+            gap: 4px;
+            padding: 5px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(13, 28, 50, 0.08);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .plan-switch button {
+            padding: 10px 22px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-weight: 900;
+            background: transparent;
+            color: var(--text-soft);
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .pricing-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .price-card {
+            position: relative;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(13, 28, 50, 0.07);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 18px;
+        }
+
+        .price-card.popular {
+            background: linear-gradient(180deg, rgba(13, 28, 50, 0.98), rgba(18, 48, 79, 0.96));
+            color: white;
+            box-shadow: 0 36px 70px rgba(13, 28, 50, 0.28);
+            transform: translateY(-10px);
+        }
+
+        .price-card.popular p,
+        .price-card.popular .feature-list li,
+        .price-card.popular .price-period,
+        .price-card.popular .plan-meta,
+        .price-card.popular .feature-note {
+            color: rgba(255, 255, 255, 0.74);
+        }
+
+        .plan-badge {
+            width: fit-content;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 900;
+            background: rgba(184, 133, 45, 0.12);
+            color: var(--gold-500);
+        }
+
+        .price-card.popular .plan-badge {
+            background: rgba(201, 154, 72, 0.18);
+            color: #f8d79a;
+        }
+
+        .plan-meta {
+            font-size: 0.95rem;
+            color: var(--text-soft);
+            font-weight: 700;
+        }
+
+        .price-val,
+        .price-val-static {
+            font-family: 'Changa', sans-serif;
+            font-size: 3.2rem;
+            line-height: 1;
+        }
+
+        .price-period {
+            color: var(--text-faint);
+            font-weight: 800;
+        }
+
+        .feature-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .feature-list li {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            color: var(--text-soft);
+            font-weight: 700;
+        }
+
+        .feature-list i {
+            color: var(--mint-500);
+            margin-top: 3px;
+        }
+
+        .price-card.popular .feature-list i {
+            color: #7ef1ce;
+        }
+
+        .feature-note {
+            font-size: 0.92rem;
+            color: var(--text-faint);
+        }
+
+        .btn-block {
+            width: 100%;
+            border-radius: 18px;
+            padding: 15px 20px;
+        }
+
+        .faq-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .faq-item {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(13, 28, 50, 0.06);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 16px;
+        }
+
+        .faq-item i {
+            color: var(--gold-500);
+            background: rgba(201, 154, 72, 0.12);
+        }
+
+        .cta-panel {
+            padding: 38px;
+            background:
+                linear-gradient(140deg, rgba(7, 17, 31, 0.98), rgba(13, 28, 50, 0.96)),
+                linear-gradient(135deg, rgba(201, 154, 72, 0.18), transparent);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .cta-panel p {
+            color: rgba(255, 255, 255, 0.74);
+            max-width: 700px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            background: rgba(7, 17, 31, 0.56);
+            backdrop-filter: blur(12px);
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            width: min(100%, 560px);
+            padding: 30px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.86);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            transform: translateY(18px) scale(0.98);
+            transition: transform 0.25s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 14px;
+            background: rgba(13, 28, 50, 0.06);
+            color: var(--text-soft);
+            cursor: pointer;
+        }
+
+        .modal-header {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 22px;
+            padding-left: 52px;
+        }
+
+        .modal-header p {
+            color: var(--text-soft);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 800;
+            color: var(--text-soft);
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(13, 28, 50, 0.12);
+            background: #fcfbf8;
+            color: var(--text-main);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            border-color: rgba(184, 133, 45, 0.5);
+            box-shadow: 0 0 0 4px rgba(201, 154, 72, 0.12);
+            background: white;
+            outline: none;
+        }
+
+        .radio-group {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
         .radio-label {
-            flex: 1; position: relative; cursor: pointer;
+            cursor: pointer;
+            position: relative;
         }
-        .radio-label input { position: absolute; opacity: 0; }
+
+        .radio-label input {
+            position: absolute;
+            opacity: 0;
+        }
+
         .radio-tile {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;
-            font-weight: 700; color: var(--text-sec); transition: 0.2s;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(13, 28, 50, 0.1);
+            background: #fcfbf8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            color: var(--text-soft);
+            transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
         }
+
         .radio-label input:checked + .radio-tile {
-            border-color: var(--primary); color: var(--primary); background: #eff6ff;
+            border-color: rgba(24, 160, 125, 0.38);
+            color: var(--mint-500);
+            background: rgba(24, 160, 125, 0.08);
         }
 
-        /* ========= Footer ========= */
-        footer { background: white; border-top: 1px solid #e2e8f0; padding: 60px 0 20px; margin-top: 80px; }
-        .footer-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; margin-bottom: 40px; }
-        .footer-link { display: block; color: var(--text-sec); text-decoration: none; margin-bottom: 12px; font-weight: 600; }
-        .footer-link:hover { color: var(--primary); }
-        .copyright { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding-top: 20px; border-top: 1px solid #f1f5f9; }
+        footer {
+            padding: 0 0 34px;
+        }
 
-        /* ========= Mobile Responsive ========= */
+        .footer-shell {
+            padding: 32px;
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(13, 28, 50, 0.07);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.85fr 0.85fr;
+            gap: 26px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(13, 28, 50, 0.08);
+        }
+
+        .footer-col {
+            display: grid;
+            gap: 14px;
+        }
+
+        .footer-links {
+            display: grid;
+            gap: 10px;
+        }
+
+        .footer-links a {
+            font-weight: 700;
+        }
+
+        .footer-links a:hover {
+            color: var(--ink-950);
+        }
+
+        .copyright {
+            padding-top: 20px;
+            color: var(--text-faint);
+            text-align: center;
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+
+        .mobile-cta {
+            display: none;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 1180px) {
+            .hero-grid,
+            .story-grid,
+            .trust-grid,
+            .journey-grid,
+            .benefit-grid,
+            .capability-grid,
+            .pricing-grid,
+            .footer-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-visual {
+                min-height: 700px;
+            }
+
+            .display-frame {
+                inset: 66px 34px 0;
+            }
+
+            .ops-card {
+                top: auto;
+                bottom: 156px;
+                left: 18px;
+            }
+
+            .video-card {
+                left: 54px;
+                right: 54px;
+            }
+
+            .marquee-strip {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 900px) {
-            .nav-links { display: none; }
-            .hero-title { font-size: 3rem; }
+            .nav-links {
+                display: none;
+            }
+
+            .nav-shell {
+                border-radius: 24px;
+                padding: 12px 14px;
+            }
+
+            .hero-shell {
+                padding: 22px;
+                border-radius: 30px;
+            }
+
+            .hero-points,
+            .trust-grid,
+            .benefit-grid,
+            .capability-grid,
+            .journey-grid,
+            .pricing-grid,
+            .faq-grid,
+            .footer-grid,
+            .story-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-visual {
+                min-height: 650px;
+            }
+
+            .display-frame {
+                inset: 68px 8px 140px;
+            }
+
+            .ops-card {
+                width: 200px;
+                bottom: 178px;
+            }
+
+            .support-card {
+                width: 190px;
+                right: 0;
+            }
+
+            .cta-panel {
+                padding: 28px;
+            }
         }
 
-        @media (max-width: 768px) {
-            .container { padding: 0 16px; }
-            header { padding: 12px 0; }
-            
-            /* Clean Mobile Header */
-            .nav-content { display: flex; justify-content: space-between; position: relative; }
-            /* Center Logo on mobile */
-            .logo { position: absolute; left: 50%; transform: translateX(-50%); }
-            .logo-icon { width: 36px; height: 36px; font-size: 1rem; }
-            .logo span { font-size: 1rem; display: none; } 
-
-            .nav-actions { margin-right: auto; }
-            .nav-actions .btn-login span { display: none; }
-            .nav-actions .btn-login { 
-                padding: 0; 
-                width: 45px; 
-                height: 45px; 
-                justify-content: center; 
-                border-radius: 50%; 
-                background: white; 
-                color: var(--primary);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                border: 1px solid rgba(0,0,0,0.05);
-                font-size: 1.2rem;
-            }
-            .nav-actions .btn-primary {
-                padding: 10px 14px;
-                font-size: 0.8rem;
-                box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        @media (max-width: 720px) {
+            .section {
+                padding: 70px 0;
             }
 
-            .nav-content { justify-content: center; }
-            .nav-actions { position: absolute; left: 0; margin: 0; }
-            
-            .hero { padding: 120px 0 40px; }
-            .hero h1 { font-size: 2.2rem; margin-bottom: 16px; }
-            .hero p { font-size: 1rem; margin-bottom: 24px; padding: 0 10px; }
-            
-            .mockup-wrapper { margin-top: 40px; border-radius: 20px; padding: 6px; }
-            .mockup-screen { border-radius: 16px; }
+            .container {
+                width: min(calc(100% - 24px), var(--container));
+            }
 
-            .grid-3 { grid-template-columns: 1fr; gap: 16px; }
-            .bento-card { padding: 24px; }
+            header {
+                padding: 12px 0;
+            }
 
-            .price-card.popular { transform: none; border-width: 1px; }
+            .nav-shell {
+                gap: 10px;
+            }
 
-            .modal-card { padding: 24px; border-radius: 24px; max-width: 100%; top: auto; bottom: 0; margin: 0; transform: translateY(100%); border-radius: 24px 24px 0 0; }
-            .modal-overlay.active .modal-card { transform: translateY(0); }
-            .modal-overlay { align-items: flex-end; padding: 0; }
+            .logo-copy span,
+            .nav-actions .btn-outline span {
+                display: none;
+            }
+
+            .logo-copy strong {
+                font-size: 0.92rem;
+            }
+
+            .nav-actions {
+                gap: 8px;
+            }
+
+            .nav-actions .btn,
+            .nav-actions .btn-outline {
+                padding: 11px 14px;
+            }
+
+            .hero {
+                padding: 18px 0 48px;
+            }
+
+            .hero-copy h1 {
+                font-size: 2.45rem;
+            }
+
+            .hero-copy p {
+                font-size: 1rem;
+            }
+
+            .hero-points {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-actions,
+            .hero-meta {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .hero-actions .btn,
+            .hero-actions .btn-outline,
+            .hero-actions .btn-soft {
+                width: 100%;
+            }
+
+            .hero-visual {
+                min-height: 610px;
+            }
+
+            .floating-pill {
+                top: 8px;
+                right: 8px;
+                font-size: 0.78rem;
+                padding: 10px 12px;
+            }
+
+            .display-frame {
+                inset: 58px 0 184px;
+                border-radius: 24px;
+                padding: 10px;
+            }
+
+            .display-screen,
+            .video-card,
+            .story-panel,
+            .story-highlight,
+            .story-quote,
+            .benefit-card,
+            .capability-card,
+            .journey-card,
+            .faq-item,
+            .price-card,
+            .footer-shell,
+            .cta-panel,
+            .modal-card {
+                border-radius: 24px;
+            }
+
+            .screen-topbar {
+                padding: 14px 14px 10px;
+            }
+
+            .screen-body {
+                padding: 12px;
+            }
+
+            .screen-highlight h3 {
+                font-size: 1.18rem;
+            }
+
+            .screen-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ops-card,
+            .support-card {
+                position: absolute;
+                width: auto;
+                left: 0;
+                right: 0;
+            }
+
+            .ops-card {
+                top: auto;
+                bottom: 124px;
+                padding: 14px;
+            }
+
+            .support-card {
+                bottom: 58px;
+                padding: 14px;
+            }
+
+            .video-card {
+                left: 8px;
+                right: 8px;
+                bottom: -30px;
+            }
+
+            .marquee-strip {
+                margin-top: 58px;
+                padding: 18px;
+                border-radius: 22px;
+            }
+
+            .price-card.popular {
+                transform: none;
+            }
+
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-overlay {
+                align-items: end;
+                padding: 0;
+            }
+
+            .modal-card {
+                width: 100%;
+                padding: 26px 18px;
+                border-radius: 24px 24px 0 0;
+                transform: translateY(100%);
+            }
+
+            .modal-overlay.active .modal-card {
+                transform: translateY(0);
+            }
+
+            .footer-shell {
+                padding: 24px 18px 88px;
+            }
+
+            .mobile-cta {
+                position: fixed;
+                right: 12px;
+                left: 12px;
+                bottom: 12px;
+                z-index: 1100;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 12px 14px;
+                border-radius: 22px;
+                background: rgba(7, 17, 31, 0.94);
+                color: white;
+                box-shadow: 0 24px 50px rgba(7, 17, 31, 0.28);
+            }
+
+            .mobile-cta small {
+                color: rgba(255, 255, 255, 0.68);
+                display: block;
+            }
+
+            .mobile-cta .btn {
+                padding: 11px 16px;
+                background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
+                box-shadow: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+
+            .reveal {
+                opacity: 1;
+                transform: none;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="ambient-bg"></div>
-
     {% url 'dashboard:login' as login_url %}
 
-    <!-- Professional Header -->
     <header id="header">
-        <div class="container nav-content">
-            <!-- Logo -->
-            <a href="#" class="logo">
-                <div class="logo-icon"><i class="fa-solid fa-layer-group"></i></div>
-                <span>لوحة العرض الذكية</span>
-            </a>
-
-            <!-- Desktop Nav -->
-            <ul class="nav-links">
-                <li><a href="#features">المميزات</a></li>
-                <li><a href="#demo">كيف يعمل</a></li>
-                <li><a href="#steps">خطوات البدء</a></li>
-                <li><a href="#pricing">الأسعار</a></li>
-                <li><a href="#faq">الأسئلة</a></li>
-            </ul>
-
-            <!-- Actions -->
-            <div class="nav-actions">
-                {% if login_url %}
-                <a href="{{ login_url }}" class="btn-login" title="دخول النظام">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                    <span>دخول النظام</span>
+        <div class="container">
+            <div class="nav-shell">
+                <a href="#top" class="logo" aria-label="العودة إلى أعلى الصفحة">
+                    <div class="logo-mark"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="logo-copy">
+                        <strong>لوحة العرض الذكية</strong>
+                        <span>حل بصري راق للمدارس الحديثة</span>
+                    </div>
                 </a>
-                {% endif %}
-                <button onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')" class="btn-primary">ابدأ التجربة <i class="fa-solid fa-arrow-left"></i></button>
+
+                <ul class="nav-links">
+                    <li><a href="#why">لماذا نحن</a></li>
+                    <li><a href="#features">المزايا</a></li>
+                    <li><a href="#journey">آلية البدء</a></li>
+                    <li><a href="#pricing">الباقات</a></li>
+                    <li><a href="#faq">الأسئلة</a></li>
+                </ul>
+
+                <div class="nav-actions">
+                    {% if login_url %}
+                    <a href="{{ login_url }}" class="btn-outline" title="دخول النظام">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span>دخول النظام</span>
+                    </a>
+                    {% endif %}
+                    <button class="btn" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">
+                        ابدأ التجربة
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="badge-new">
-                <i class="fa-solid fa-bolt"></i> تجربة مجانية 14 يوم
-            </div>
-            
-            <h1>
-                حوّل شاشة مدرستك إلى <br> 
-                <span class="text-gradient">لوحة عرض ذكية مُدارة بالكامل</span>
-            </h1>
-            
-            <p>
-                جدولة حية، حصص انتظار، إعلانات، وتكريم في لوحة واحدة سهلة.
-                ابدأ بسرعة، وتحكم من الجوال، مع نفس المزايا في كل الباقات.
-            </p>
-            <div class="hero-points">
-                <span>نفس المزايا في كل الباقات</span>
-                <span>الاختلاف فقط عدد الشاشات</span>
-                <span>تفعيل سريع ودعم فني مستمر</span>
-            </div>
+    <main id="top">
+        <section class="hero">
+            <div class="container">
+                <div class="hero-shell reveal">
+                    <div class="hero-grid">
+                        <div class="hero-copy">
+                            <div class="eyebrow">
+                                <i class="fa-solid fa-crown"></i>
+                                تجربة مجانية 14 يوم بكل المزايا
+                            </div>
 
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <button onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')" class="btn-primary" style="padding: 14px 32px; font-size: 1.1rem; border-radius: 99px;">
-                    ابدأ التجربة المجانية
-                </button>
-                <div onclick="document.getElementById('demo').scrollIntoView()" class="btn-login" style="padding: 14px 32px; font-size: 1.1rem; background: white; cursor: pointer;">
-                    <i class="fa-solid fa-play"></i> عرض توضيحي
-                </div>
-            </div>
+                            <h1>
+                                حوّل شاشة مدرستك إلى
+                                <span>واجهة احترافية تصنع الانطباع يومياً</span>
+                            </h1>
 
-            <!-- 3D Mockup Container -->
-            <div class="mockup-wrapper" id="demo">
-                <div class="mockup-screen">
-                     <iframe
-                        src="https://www.youtube-nocookie.com/embed/9XoiP6vPu-Y?rel=0&modestbranding=1&controls=1"
-                        title="School Display"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen>
-                    </iframe>
-                </div>
-            </div>
-        </div>
-    </section>
+                            <p>
+                                منصة واحدة تدير الجدول المباشر، حصص الانتظار، الإعلانات، التكريم، المناوبات، والرسائل اليومية في شاشة أنيقة تتحدث تلقائياً وتمنح المدرسة حضوراً تنظيمياً يليق باسمها.
+                            </p>
 
-    <!-- Features Grid -->
-    <section class="features" id="features">
-        <div class="container">
-            <div class="section-header">
-                <h2>كل ما تحتاجه لإدارة شاشة المدرسة</h2>
-                <p style="color:var(--text-sec)">منصة واحدة تجمع التشغيل اليومي والعرض المباشر بدون تعقيد</p>
-            </div>
+                            <div class="hero-points">
+                                <div class="hero-point">
+                                    <i class="fa-solid fa-clock"></i>
+                                    <div>
+                                        <strong>تشغيل سريع بدون تعقيد</strong>
+                                        <span>نبدأ معك من الطلب حتى تفعيل الشاشة الأولى بخطوات واضحة وسريعة.</span>
+                                    </div>
+                                </div>
+                                <div class="hero-point">
+                                    <i class="fa-solid fa-mobile-screen-button"></i>
+                                    <div>
+                                        <strong>إدارة كاملة من الجوال</strong>
+                                        <span>تحكم في المحتوى والظهور اليومي من أي مكان بدون الحاجة لجهاز ثابت.</span>
+                                    </div>
+                                </div>
+                                <div class="hero-point">
+                                    <i class="fa-solid fa-display"></i>
+                                    <div>
+                                        <strong>كل الباقات بنفس القوة</strong>
+                                        <span>نفس النظام الكامل للجميع، والاختلاف فقط في عدد الشاشات التي تحتاجها المدرسة.</span>
+                                    </div>
+                                </div>
+                                <div class="hero-point">
+                                    <i class="fa-solid fa-headset"></i>
+                                    <div>
+                                        <strong>دعم فني يفهم البيئة المدرسية</strong>
+                                        <span>مساندة مستمرة أثناء التهيئة والتشغيل حتى تستفيد المدرسة من الشاشة فعلياً.</span>
+                                    </div>
+                                </div>
+                            </div>
 
-            <div class="grid-3">
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-regular fa-calendar-alt"></i></div>
-                    <h3>الجدول المدرسي الحي</h3>
-                    <p>يعرض الحصة الحالية تلقائياً ويحدث نفسه مع كل جرس. لا حاجة لتغيير الجدول يدوياً.</p>
-                </div>
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-user-clock"></i></div>
-                    <h3>حصص الانتظار</h3>
-                    <p>اربط النظام بحسابك وسيقوم بعرض حصص الانتظار للمعلمين والطلاب بشكل فوري.</p>
-                </div>
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-medal"></i></div>
-                    <h3>التكريم ولوحات الشرف</h3>
-                    <p>كرم طلابك ومعلميك بطريقة مبتكرة. قوالب جاهزة للوحات الشرف والمناسبات.</p>
-                </div>
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-bullhorn"></i></div>
-                    <h3>الإعلانات المدرسية</h3>
-                    <p>انشر أخبار المدرسة، مواعيد الاختبارات، والفعاليات بضغطة زر واحدة.</p>
-                </div>
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-mobile-screen"></i></div>
-                    <h3>تحكم من جوالك</h3>
-                    <p>لوحة تحكم كاملة تعمل على الجوال، الآيباد، أو الكمبيوتر. أنت المدير أينما كنت.</p>
-                </div>
-                <div class="bento-card">
-                    <div class="icon-box"><i class="fa-solid fa-clipboard-user"></i></div>
-                    <h3>لوحة الإشراف والمناوبة</h3>
-                    <p>إدارة مناوبات الإشراف والاصطفاف والفسح بشكل منظم، مع عرض المناوبين تلقائياً على الشاشة.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+                            <div class="hero-actions">
+                                <button class="btn" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">
+                                    ابدأ التجربة المجانية
+                                </button>
+                                <button class="btn-outline" data-scroll="#demo-video">
+                                    شاهد العرض التوضيحي
+                                    <i class="fa-solid fa-play"></i>
+                                </button>
+                                <a class="btn-soft" href="https://wa.me/966537720207" target="_blank" rel="noreferrer">
+                                    واتساب مباشر
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                            </div>
 
-    <!-- Start Steps -->
-    <section class="steps" id="steps">
-        <div class="container">
-            <div class="section-header" style="margin-bottom: 20px;">
-                <h2>كيف تبدأ خلال دقائق</h2>
-                <p style="color:var(--text-sec)">خطوات واضحة من التجربة إلى التشغيل الفعلي في المدرسة</p>
-            </div>
-            <div class="step-grid">
-                <div class="step-card">
-                    <div class="step-number">1</div>
-                    <h3>اطلب التجربة المجانية</h3>
-                    <p>أرسل بيانات المدرسة عبر النموذج، ونبدأ معك مباشرة بدون أي التزام مالي.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">2</div>
-                    <h3>نفعّل شاشة المدرسة</h3>
-                    <p>تفعيل سريع مع إعداد الهوية المدرسية وربط الشاشة الأولى لتبدأ العرض فوراً.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">3</div>
-                    <h3>اختر عدد الشاشات المناسب</h3>
-                    <p>كل الباقات بنفس المزايا، وتختار فقط عدد الشاشات حسب احتياج المدرسة.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+                            <div class="hero-meta">
+                                <div class="hero-meta-item">
+                                    <strong>14 يوم</strong>
+                                    <span>تجربة مجانية بكامل الخصائص</span>
+                                </div>
+                                <div class="hero-meta-item">
+                                    <strong>نفس المزايا</strong>
+                                    <span>بدون نسخ مخففة أو باقات ناقصة</span>
+                                </div>
+                                <div class="hero-meta-item">
+                                    <strong>تحكم لحظي</strong>
+                                    <span>تحديثات مباشرة لمحتوى الشاشة</span>
+                                </div>
+                            </div>
+                        </div>
 
-    <!-- Pricing -->
-    <section class="pricing" id="pricing">
-        <div class="container">
-            <div class="section-header">
-                <h2>اختر عدد الشاشات المناسب</h2>
-                <p style="color:var(--text-sec)">كل الباقات بنفس المزايا تماماً، والفرق فقط في عدد الشاشات</p>
-                <div class="pricing-note">
-                    ملاحظة مهمة: لا توجد مميزات مخفية أو محجوبة بين الباقات. نفس النظام الكامل للجميع.
-                </div>
-                
-                <!-- Toggle -->
-                <div style="background: white; display: inline-flex; padding: 4px; border-radius: 99px; margin-top: 20px; border: 1px solid #e2e8f0;">
-                    <button onclick="switchPlan('6')" id="btn6" style="padding: 8px 24px; border-radius: 99px; border: none; background: transparent; font-weight: 700; cursor: pointer; color: var(--text-sec);">6 أشهر</button>
-                    <button onclick="switchPlan('12')" id="btn12" style="padding: 8px 24px; border-radius: 99px; border: none; background: var(--text-main); font-weight: 700; cursor: pointer; color: white;">سنة كاملة (توفير)</button>
-                </div>
-            </div>
+                        <div class="hero-visual">
+                            <div class="visual-stack">
+                                <div class="floating-pill">
+                                    <i class="fa-solid fa-signal"></i>
+                                    تشغيل حي طوال اليوم الدراسي
+                                </div>
 
-            <div class="pricing-cards">
-                <!-- Card 0 (Free Trial) -->
-                <div class="price-card" style="border-color: var(--accent);">
-                    <div style="background:var(--accent); color:white; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; display: inline-block; font-weight: 800; margin-bottom: 12px;">مجاناً</div>
-                    <h3>التجربة المجانية</h3>
-                    <div class="price-val-static" style="font-size: 3rem; font-weight: 900; color: var(--text-main); line-height: 1; margin: 20px 0 8px;">0</div>
-                    <span class="price-period">ريال سعودي / 14 يوم</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> بدون رسوم مسبقة</li>
-                        <li><i class="fa-solid fa-check"></i> تفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> شاشة واحدة للتجربة</li>
-                    </ul>
-                    <button onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')" class="btn-full" style="background:var(--accent); color:white; border:none; cursor:pointer;">ابدأ التجربة</button>
-                </div>
+                                <div class="display-frame">
+                                    <div class="display-screen">
+                                        <div class="screen-topbar">
+                                            <div class="screen-brand">
+                                                <i class="fa-solid fa-school"></i>
+                                                <div>
+                                                    <strong>شاشة المدرسة الذكية</strong>
+                                                    <small>الإدارة اليومية في عرض واحد</small>
+                                                </div>
+                                            </div>
+                                            <div class="screen-live">بث مباشر</div>
+                                        </div>
 
-                <!-- Card 1 -->
-                <div class="price-card">
-                    <h3>شاشة واحدة</h3>
-                    <!-- UPDATED PRICES -->
-                    <div class="price-val" data-p6="460" data-p12="720">720</div>
-                    <span class="price-period">ريال سعودي / سنوياً</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
-                        <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> عدد الشاشات: 1</li>
-                    </ul>
-                    <button onclick="openOrderModal('شاشة واحدة', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">اطلب هذه الباقة</button>
-                </div>
+                                        <div class="screen-body">
+                                            <div class="screen-highlight">
+                                                <small>الحصة الحالية</small>
+                                                <h3>اللغة العربية - الصف الثالث متوسط</h3>
+                                                <div class="mini-row">
+                                                    <span>المعلم المكلف</span>
+                                                    <strong>أ. خالد العتيبي</strong>
+                                                </div>
+                                                <div class="countdown-bar"><span></span></div>
+                                                <div class="mini-row">
+                                                    <span>المتبقي حتى الجرس</span>
+                                                    <strong>12 دقيقة</strong>
+                                                </div>
+                                            </div>
 
-                <!-- Card 2 -->
-                <div class="price-card">
-                    <h3>شاشتان</h3>
-                    <!-- UPDATED PRICES -->
-                    <div class="price-val" data-p6="760" data-p12="1320">1320</div>
-                    <span class="price-period">ريال سعودي / سنوياً</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
-                        <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> عدد الشاشات: 2</li>
-                    </ul>
-                    <button onclick="openOrderModal('شاشتان', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">اطلب هذه الباقة</button>
+                                            <div class="screen-grid">
+                                                <div class="screen-mini-card">
+                                                    <small>لوحة اليوم</small>
+                                                    <div class="mini-row">
+                                                        <strong>حصص الانتظار</strong>
+                                                        <span class="mini-badge">محدثة الآن</span>
+                                                    </div>
+                                                    <div class="mini-row">
+                                                        <span>الأولى</span>
+                                                        <strong>معمل الحاسب</strong>
+                                                    </div>
+                                                    <div class="mini-row">
+                                                        <span>الثالثة</span>
+                                                        <strong>قاعة 12</strong>
+                                                    </div>
+                                                </div>
+
+                                                <div class="screen-mini-card">
+                                                    <small>إعلان المدرسة</small>
+                                                    <strong>غداً تكريم الطلاب المتميزين بعد الطابور</strong>
+                                                    <span class="mini-badge">خبر عاجل</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ops-card surface-card">
+                                    <small>ما الذي يظهر على الشاشة؟</small>
+                                    <div class="ops-list">
+                                        <div class="ops-item"><i class="fa-solid fa-check"></i> جدول حي يتبدل تلقائياً</div>
+                                        <div class="ops-item"><i class="fa-solid fa-check"></i> مناوبات وإشراف وفسح</div>
+                                        <div class="ops-item"><i class="fa-solid fa-check"></i> تكريم وصور وإنجازات</div>
+                                        <div class="ops-item"><i class="fa-solid fa-check"></i> تنبيهات ورسائل يومية</div>
+                                    </div>
+                                </div>
+
+                                <div class="support-card">
+                                    <small>قيمة تسويقية حقيقية</small>
+                                    <strong>الشاشة لا تعرض معلومات فقط</strong>
+                                    <span>بل تنقل صورة المدرسة ككيان منظم، حديث، ومهتم بالتفاصيل أمام الطلاب والزوار.</span>
+                                </div>
+
+                                <div class="video-card surface-card" id="demo-video">
+                                    <iframe
+                                        src="https://www.youtube-nocookie.com/embed/9XoiP6vPu-Y?rel=0&modestbranding=1&controls=1"
+                                        title="عرض توضيحي لنظام لوحة العرض الذكية"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowfullscreen>
+                                    </iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Card 3 (Popular) -->
-                <div class="price-card popular">
-                    <div style="background:var(--accent); color:white; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; display: inline-block; font-weight: 800; margin-bottom: 12px;">الأكثر طلباً</div>
-                    <h3>3 شاشات</h3>
-                    <!-- UPDATED PRICES -->
-                    <div class="price-val" data-p6="1020" data-p12="1800">1800</div>
-                    <span class="price-period">ريال سعودي / سنوياً</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
-                        <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> عدد الشاشات: 3</li>
-                    </ul>
-                    <button onclick="openOrderModal('3 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:var(--primary); color:white; border:none; cursor:pointer;">اطلب هذه الباقة</button>
-                </div>
-
-                <!-- Card 4 -->
-                <div class="price-card">
-                    <h3>4 شاشات</h3>
-                    <!-- UPDATED PRICES -->
-                    <div class="price-val" data-p6="1240" data-p12="2200">2200</div>
-                    <span class="price-period">ريال سعودي / سنوياً</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
-                        <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> عدد الشاشات: 4</li>
-                    </ul>
-                    <button onclick="openOrderModal('4 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">اطلب هذه الباقة</button>
-                </div>
-
-                <!-- Card 5 -->
-                <div class="price-card">
-                    <h3>5 شاشات</h3>
-                    <!-- UPDATED PRICES -->
-                    <div class="price-val" data-p6="1400" data-p12="2500">2500</div>
-                    <span class="price-period">ريال سعودي / سنوياً</span>
-                    <ul class="feature-list">
-                        <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
-                        <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
-                        <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
-                        <li><i class="fa-solid fa-check"></i> عدد الشاشات: 5</li>
-                    </ul>
-                    <button onclick="openOrderModal('5 شاشات', currentPeriod, getCurrentPrice(this))" class="btn-full" style="background:#f1f5f9; color:var(--text-main); border:none; cursor:pointer;">اطلب هذه الباقة</button>
+                <div class="marquee-strip reveal">
+                    <div>
+                        <strong>مصمم لمدارس تريد أن تبدو مرتبة، حديثة، وسريعة الاستجابة.</strong>
+                        <p>بدلاً من شاشة صامتة أو محتوى يتأخر تحديثه، تحصل المدرسة على لوحة عرض تبني الثقة، توضح اليوم الدراسي، وتبرز الإنجاز بأسلوب أنيق.</p>
+                    </div>
+                    <div class="marquee-list">
+                        <span><i class="fa-solid fa-star"></i> انطباع أول أقوى</span>
+                        <span><i class="fa-solid fa-bolt"></i> إدارة يومية أسرع</span>
+                        <span><i class="fa-solid fa-medal"></i> إبراز هوية المدرسة</span>
+                        <span><i class="fa-solid fa-laptop-mobile"></i> تشغيل من أي جهاز</span>
+                    </div>
                 </div>
             </div>
-            
-            <p style="text-align: center; margin-top: 32px; color: var(--text-sec); font-size: 0.9rem;">
-                <i class="fa-brands fa-whatsapp"></i> تحتاج أكثر من 5 شاشات؟ تواصل معنا لباقة مخصصة بنفس المزايا
-            </p>
-        </div>
-    </section>
+        </section>
 
-    <!-- FAQ -->
-    <section class="faq" id="faq">
-        <div class="container">
-            <div class="section-header" style="margin-bottom: 18px;">
-                <h2>الأسئلة الشائعة</h2>
-                <p style="color:var(--text-sec)">إجابات سريعة قبل بدء التجربة</p>
-            </div>
-            <div class="faq-grid">
-                <div class="faq-item">
-                    <h3>هل تختلف المزايا بين الباقات؟</h3>
-                    <p>لا. جميع الباقات بنفس المزايا بالكامل، والاختلاف فقط في عدد الشاشات.</p>
+        <section class="section" id="why">
+            <div class="container">
+                <div class="section-header reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-gem"></i> لماذا نحن</div>
+                    <h2>لأننا لا نبيع شاشة إضافية, بل نبيع صورة مدرسة متقنة</h2>
+                    <p>المنتج الجيد في البيئة المدرسية ليس مجرد ميزة تقنية. القيمة الحقيقية تظهر عندما يشعر الزائر والطالب والمعلم أن كل شيء منظم، واضح، واحترافي منذ اللحظة الأولى.</p>
                 </div>
-                <div class="faq-item">
-                    <h3>كم يستغرق تفعيل النظام؟</h3>
-                    <p>عادة يتم التفعيل بسرعة بعد استلام الطلب، ثم نساعدكم في إعداد الشاشة الأولى.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>هل يمكن الترقية لاحقاً؟</h3>
-                    <p>نعم، يمكن الانتقال إلى عدد شاشات أكبر في أي وقت حسب احتياج المدرسة.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>هل التجربة المجانية تشمل المزايا كاملة؟</h3>
-                    <p>نعم، التجربة تتيح نفس مزايا النظام حتى تستطيع المدرسة تقييمه قبل الاشتراك.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Final CTA -->
-    <section class="cta-strip">
-        <div class="container">
-            <div class="cta-strip-card">
-                <div>
-                    <h3>جاهزين لبدء التجربة؟</h3>
-                    <p>ابدأ الآن مجاناً لمدة 14 يوم، ثم اختر فقط عدد الشاشات المناسب لمدرستك.</p>
-                </div>
-                <button onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')" class="btn-primary" style="padding: 14px 30px;">
-                    ابدأ التجربة المجانية
-                </button>
-            </div>
-        </div>
-    </section>
+                <div class="story-grid">
+                    <div class="story-panel reveal">
+                        <h3>ما الذي تكسبه الإدارة فعلياً؟</h3>
+                        <p>بدلاً من متابعة الرسائل المتفرقة، والتحديث اليدوي، والأسئلة المتكررة عن الحصة الحالية أو المناوبة أو الإعلان الجديد، تصبح الشاشة نقطة اتصال مركزية تنقل المعلومة بدقة وهدوء وأناقة.</p>
+                        <ul class="story-bullets">
+                            <li><i class="fa-solid fa-eye"></i><span>مشهد بصري يرفع قيمة المدرسة أمام أولياء الأمور والزوار والجهات الرسمية.</span></li>
+                            <li><i class="fa-solid fa-diagram-project"></i><span>توحيد الرسائل اليومية بدل الاعتماد على اجتهادات متفرقة أو تحديثات متأخرة.</span></li>
+                            <li><i class="fa-solid fa-shield-heart"></i><span>منصة مستقرة وبسيطة تقلل الفوضى التشغيلية وتمنح الفريق الإداري راحة أكبر.</span></li>
+                        </ul>
+                    </div>
 
-    <!-- Modal Form -->
+                    <div class="story-stack">
+                        <div class="story-highlight reveal">
+                            <small>قبل وبعد</small>
+                            <h3>من شاشة عادية لا تُلاحظ... إلى واجهة مدرسية تبقى في الذهن</h3>
+                            <p>المحتوى المهم يظهر في لحظته: الحصة الحالية، جدول الانتظار، أخبار المدرسة، التكريم، والرسائل اليومية. كل ذلك داخل قالب بصري أنيق يعطي المدرسة حضوراً مؤسسياً متماسكاً.</p>
+                        </div>
+
+                        <div class="story-quote reveal">
+                            <small>للإدارة والقيادة المدرسية</small>
+                            <strong>إذا كانت المدرسة تستثمر في جودة التجربة التعليمية، فمن الطبيعي أن يظهر ذلك بصرياً في شاشاتها أيضاً.</strong>
+                            <p>هذه المنصة مناسبة للمدارس التي تريد تشغيل المحتوى اليومي بسهولة، مع شكل عرض يوازي قيمة المدرسة واهتمامها بالتفاصيل.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <div class="trust-grid">
+                    <div class="trust-card reveal">
+                        <strong>وضوح لحظي</strong>
+                        <p>الطالب والمعلم والزائر يرون المعلومة الصحيحة في الوقت الصحيح بدون انتظار أو سؤال إضافي.</p>
+                    </div>
+                    <div class="trust-card reveal">
+                        <strong>صورة أكثر فخامة</strong>
+                        <p>هوية عرض راقية تجعل الشاشة جزءاً من شخصية المدرسة وليس مجرد جهاز في الممر.</p>
+                    </div>
+                    <div class="trust-card reveal">
+                        <strong>إدارة أخف</strong>
+                        <p>بدل تحديثات مشتتة، لوحة واحدة تختصر التشغيل اليومي وتخفف الضغط على الفريق الإداري.</p>
+                    </div>
+                    <div class="trust-card reveal">
+                        <strong>مرونة في التوسع</strong>
+                        <p>يمكن البدء بشاشة واحدة ثم زيادة عدد الشاشات لاحقاً بدون تغيير في المزايا أو التعقيد.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="features">
+            <div class="container">
+                <div class="section-header reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> المزايا الأساسية</div>
+                    <h2>كل ما تحتاجه المدرسة في منصة عرض واحدة</h2>
+                    <p>المحتوى الأكاديمي والتنظيمي والتكريمي في تجربة موحدة وسهلة الإدارة، مع تصميم بصري يليق بالعرض على شاشة المدرسة طوال اليوم.</p>
+                </div>
+
+                <div class="capability-grid">
+                    <div class="capability-card reveal">
+                        <i class="fa-regular fa-calendar-days"></i>
+                        <strong>الجدول المدرسي الحي</strong>
+                        <p>عرض تلقائي للحصة الحالية والقادمة مع تحديث مستمر، حتى تبقى الشاشة متزامنة مع سير اليوم الدراسي دون تدخل يدوي.</p>
+                    </div>
+                    <div class="capability-card reveal">
+                        <i class="fa-solid fa-user-clock"></i>
+                        <strong>حصص الانتظار</strong>
+                        <p>إظهار الاحتياج والبدائل بسرعة ووضوح، بما يساعد الإدارة والمعلمين على التعامل مع التغييرات بدون ارتباك.</p>
+                    </div>
+                    <div class="capability-card reveal">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <strong>إعلانات ورسائل يومية</strong>
+                        <p>مرر الأخبار والتنبيهات والفعاليات المدرسية بطريقة مرتبة وواضحة بدلاً من الرسائل المبعثرة أو التذكير الشفهي.</p>
+                    </div>
+                    <div class="capability-card reveal">
+                        <i class="fa-solid fa-medal"></i>
+                        <strong>تكريم ولوحات شرف</strong>
+                        <p>اعرض أسماء وصور المتميزين والإنجازات بأسلوب راق يعزز الدافعية ويمنح التكريم قيمة بصرية أعلى.</p>
+                    </div>
+                    <div class="capability-card reveal">
+                        <i class="fa-solid fa-clipboard-user"></i>
+                        <strong>مناوبات وإشراف</strong>
+                        <p>لوحة منظمة للمناوبات والاصطفاف والفسح لتقليل الالتباس ورفع جاهزية الطاقم في الفترات الحساسة.</p>
+                    </div>
+                    <div class="capability-card reveal">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                        <strong>إدارة من أي مكان</strong>
+                        <p>تحكم بالمحتوى من الجوال أو الجهاز اللوحي أو الحاسب، دون الحاجة للتواجد أمام الشاشة أو الاعتماد على شخص واحد.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <div class="section-header reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-chart-line"></i> أثر مباشر على التشغيل</div>
+                    <h2>فوائد يلاحظها الفريق من اليوم الأول</h2>
+                    <p>عندما تصبح الشاشة جزءاً من النظام اليومي، تقل الأسئلة المتكررة، يزيد وضوح الرسائل، وتتحسن جودة المشهد داخل المدرسة.</p>
+                </div>
+
+                <div class="benefit-grid">
+                    <div class="benefit-card reveal">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                        <strong>أقل وقت ضائع في المتابعة</strong>
+                        <p>عرض مركزي للمعلومة يخفف الاعتماد على التواصل اليدوي، ويجعل المعلومات اليومية في مكان مرئي للجميع.</p>
+                    </div>
+                    <div class="benefit-card reveal">
+                        <i class="fa-solid fa-building-shield"></i>
+                        <strong>هيبة وانضباط بصري</strong>
+                        <p>الزائر يرى مدرسة واضحة ومتماسكة، والطالب يشعر أن اليوم الدراسي منظم والرسائل تصل باحتراف.</p>
+                    </div>
+                    <div class="benefit-card reveal">
+                        <i class="fa-solid fa-users-gear"></i>
+                        <strong>تنسيق أفضل بين الإدارة والطاقم</strong>
+                        <p>المحتوى الظاهر يوحد التوقعات ويقلل اختلاف المعلومة بين المعلمين والمشرفين والطلاب أثناء اليوم الدراسي.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="journey">
+            <div class="container">
+                <div class="section-header reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-route"></i> آلية البدء</div>
+                    <h2>ابدأ خلال وقت قصير, وانتقل من التجربة إلى التشغيل الفعلي بثقة</h2>
+                    <p>المسار واضح ومباشر. لا تحتاج المدرسة إلى مشروع تقني معقد حتى تحصل على شاشة احترافية تعمل فعلاً وتضيف قيمة يومية.</p>
+                </div>
+
+                <div class="journey-grid">
+                    <div class="journey-card reveal" data-step="1">
+                        <i class="fa-solid fa-file-signature"></i>
+                        <strong>أرسل الطلب</strong>
+                        <p>املأ النموذج ببيانات المدرسة، ونراجع الاحتياج المناسب بسرعة ونبدأ معك مباشرة.</p>
+                    </div>
+                    <div class="journey-card reveal" data-step="2">
+                        <i class="fa-solid fa-sliders"></i>
+                        <strong>تهيئة أول شاشة</strong>
+                        <p>نجهز هوية العرض ونفعّل الشاشة الأولى لتشاهد المدرسة النتيجة الفعلية بدل الوعود النظرية.</p>
+                    </div>
+                    <div class="journey-card reveal" data-step="3">
+                        <i class="fa-solid fa-display"></i>
+                        <strong>تجربة كاملة بكل الخصائص</strong>
+                        <p>التجربة المجانية ليست نسخة محدودة. ستختبر النظام كما هو، وتقيّم ملاءمته قبل الاشتراك.</p>
+                    </div>
+                    <div class="journey-card reveal" data-step="4">
+                        <i class="fa-solid fa-arrow-up-right-dots"></i>
+                        <strong>اختر عدد الشاشات</strong>
+                        <p>بعد نجاح التجربة، تختار فقط عدد الشاشات المناسب، مع بقاء جميع المزايا نفسها في كل باقة.</p>
+                    </div>
+                </div>
+
+                <div class="journey-note reveal">
+                    <div>
+                        <strong>ميزة مهمة للإدارة</strong>
+                        <p>لا توجد قفزات سعرية بسبب حجب الخصائص. القيمة ثابتة، والتوسع يتم فقط بحسب عدد الشاشات.</p>
+                    </div>
+                    <button class="btn" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">اطلب التجربة الآن</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="section pricing-section" id="pricing">
+            <div class="container">
+                <div class="pricing-head reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-tags"></i> الباقات</div>
+                    <h2>اختر عدد الشاشات المناسب للمدرسة</h2>
+                    <p>نفس النظام، نفس المزايا، نفس الجودة. الفرق الوحيد هو عدد الشاشات التي تريد تشغيلها داخل المدرسة أو عبر أكثر من موقع.</p>
+                    <div class="pricing-note">
+                        لا توجد مزايا مخفية أو نسخة أقل جودة في الباقات الأقل. المدرسة تحصل على كامل المنصة، ثم تحدد فقط حجم التوسع الذي تحتاجه.
+                    </div>
+
+                    <div class="plan-switch">
+                        <button onclick="switchPlan('6')" id="btn6">6 أشهر</button>
+                        <button onclick="switchPlan('12')" id="btn12" style="background: var(--ink-950); color: white;">سنة كاملة</button>
+                    </div>
+                </div>
+
+                <div class="pricing-grid">
+                    <div class="price-card reveal" style="border-color: rgba(24, 160, 125, 0.22);">
+                        <div class="plan-badge" style="background: rgba(24, 160, 125, 0.12); color: var(--mint-500);">مجاناً</div>
+                        <h3>التجربة المجانية</h3>
+                        <p class="plan-meta">للتأكد من ملاءمة النظام قبل قرار الاشتراك</p>
+                        <div class="price-val-static">0</div>
+                        <span class="price-period">ريال سعودي / 14 يوم</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> شاشة واحدة للتجربة</li>
+                            <li><i class="fa-solid fa-check"></i> تفعيل سريع ومتابعة أولية</li>
+                            <li><i class="fa-solid fa-check"></i> بدون رسوم مسبقة</li>
+                        </ul>
+                        <p class="feature-note">أفضل خيار للمدارس التي تريد رؤية الأثر عملياً قبل الاشتراك.</p>
+                        <button class="btn btn-block" style="background: linear-gradient(135deg, var(--mint-400), var(--mint-500));" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">ابدأ التجربة</button>
+                    </div>
+
+                    <div class="price-card reveal">
+                        <div class="plan-badge">تشغيل أساسي احترافي</div>
+                        <h3>شاشة واحدة</h3>
+                        <p class="plan-meta">لبداية مركزة في مدخل المدرسة أو الموقع الأهم</p>
+                        <div class="price-val" data-p6="460" data-p12="720">720</div>
+                        <span class="price-period">ريال سعودي / سنوياً</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
+                            <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
+                            <li><i class="fa-solid fa-check"></i> عدد الشاشات: 1</li>
+                        </ul>
+                        <p class="feature-note">مثالية للمدارس التي تريد نقطة عرض رئيسية تظهر اليوم الدراسي بصورة احترافية.</p>
+                        <button class="btn-outline btn-block" onclick="openOrderModal('شاشة واحدة', currentPeriod, getCurrentPrice(this))">اطلب هذه الباقة</button>
+                    </div>
+
+                    <div class="price-card reveal">
+                        <div class="plan-badge">تغطية أفضل للحركة</div>
+                        <h3>شاشتان</h3>
+                        <p class="plan-meta">لتوزيع العرض بين مدخل المدرسة ومنطقة نشاط أو انتظار</p>
+                        <div class="price-val" data-p6="760" data-p12="1320">1320</div>
+                        <span class="price-period">ريال سعودي / سنوياً</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
+                            <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
+                            <li><i class="fa-solid fa-check"></i> عدد الشاشات: 2</li>
+                        </ul>
+                        <p class="feature-note">مناسبة عندما تريد الإدارة حضوراً بصرياً أقوى في أكثر من مساحة داخل المدرسة.</p>
+                        <button class="btn-outline btn-block" onclick="openOrderModal('شاشتان', currentPeriod, getCurrentPrice(this))">اطلب هذه الباقة</button>
+                    </div>
+
+                    <div class="price-card popular reveal">
+                        <div class="plan-badge">الأكثر طلباً</div>
+                        <h3>3 شاشات</h3>
+                        <p class="plan-meta">توزيع متوازن بين المداخل والممرات والمواقع الحيوية</p>
+                        <div class="price-val" data-p6="1020" data-p12="1800">1800</div>
+                        <span class="price-period">ريال سعودي / سنوياً</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
+                            <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
+                            <li><i class="fa-solid fa-check"></i> عدد الشاشات: 3</li>
+                        </ul>
+                        <p class="feature-note">الخيار الأنسب للمدارس التي تريد حضوراً بصرياً واضحاً ومنظماً في أكثر من نقطة مؤثرة.</p>
+                        <button class="btn btn-block" style="background: linear-gradient(135deg, var(--gold-400), var(--gold-500));" onclick="openOrderModal('3 شاشات', currentPeriod, getCurrentPrice(this))">اطلب هذه الباقة</button>
+                    </div>
+
+                    <div class="price-card reveal">
+                        <div class="plan-badge">تغطية أوسع</div>
+                        <h3>4 شاشات</h3>
+                        <p class="plan-meta">مناسب للمدارس الأكبر أو التي تريد توزيعاً أفضل للمحتوى</p>
+                        <div class="price-val" data-p6="1240" data-p12="2200">2200</div>
+                        <span class="price-period">ريال سعودي / سنوياً</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
+                            <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
+                            <li><i class="fa-solid fa-check"></i> عدد الشاشات: 4</li>
+                        </ul>
+                        <p class="feature-note">يعطي تغطية متقدمة للمناطق المختلفة مع بقاء الإدارة مركزية وسهلة.</p>
+                        <button class="btn-outline btn-block" onclick="openOrderModal('4 شاشات', currentPeriod, getCurrentPrice(this))">اطلب هذه الباقة</button>
+                    </div>
+
+                    <div class="price-card reveal">
+                        <div class="plan-badge">حضور مؤسسي كامل</div>
+                        <h3>5 شاشات</h3>
+                        <p class="plan-meta">للمدارس التي تريد تجربة عرض قوية وممتدة على نطاق أوسع</p>
+                        <div class="price-val" data-p6="1400" data-p12="2500">2500</div>
+                        <span class="price-period">ريال سعودي / سنوياً</span>
+                        <ul class="feature-list">
+                            <li><i class="fa-solid fa-check"></i> جميع مزايا النظام كاملة</li>
+                            <li><i class="fa-solid fa-check"></i> لوحة تحكم وإدارة محتوى</li>
+                            <li><i class="fa-solid fa-check"></i> دعم فني وتفعيل سريع</li>
+                            <li><i class="fa-solid fa-check"></i> عدد الشاشات: 5</li>
+                        </ul>
+                        <p class="feature-note">مثالية عند الرغبة في حضور بصري موحّد في أكثر من مبنى أو مساحة تشغيلية.</p>
+                        <button class="btn-outline btn-block" onclick="openOrderModal('5 شاشات', currentPeriod, getCurrentPrice(this))">اطلب هذه الباقة</button>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 26px; margin-bottom: 0;">
+                    <p><i class="fa-brands fa-whatsapp"></i> تحتاج أكثر من 5 شاشات؟ نوفر عرضاً مخصصاً بنفس المزايا الكاملة وفق احتياج المدرسة.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="faq">
+            <div class="container">
+                <div class="section-header reveal">
+                    <div class="eyebrow"><i class="fa-solid fa-circle-question"></i> الأسئلة الشائعة</div>
+                    <h2>إجابات سريعة قبل اتخاذ القرار</h2>
+                    <p>الهدف أن تكون الصورة واضحة تماماً: ما الذي ستحصل عليه المدرسة، وكيف تبدأ، وما الفرق الحقيقي بين الباقات.</p>
+                </div>
+
+                <div class="faq-grid">
+                    <div class="faq-item reveal">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <h3>هل تختلف المزايا بين الباقات؟</h3>
+                        <p>لا. جميع الباقات تمنح نفس مزايا النظام بالكامل. الاختلاف الوحيد هو عدد الشاشات التي تعمل عليها المدرسة.</p>
+                    </div>
+                    <div class="faq-item reveal">
+                        <i class="fa-solid fa-stopwatch"></i>
+                        <h3>كم يستغرق التفعيل؟</h3>
+                        <p>يتم البدء بسرعة بعد استلام الطلب، ثم ننسق معكم تفعيل الشاشة الأولى وإعداد العرض المناسب لهوية المدرسة.</p>
+                    </div>
+                    <div class="faq-item reveal">
+                        <i class="fa-solid fa-arrow-up-right-dots"></i>
+                        <h3>هل يمكن زيادة عدد الشاشات لاحقاً؟</h3>
+                        <p>نعم. يمكن البدء بعدد محدود ثم التوسع لاحقاً بحسب حاجة المدرسة، بدون تغيير في أسلوب العمل أو المزايا.</p>
+                    </div>
+                    <div class="faq-item reveal">
+                        <i class="fa-solid fa-gift"></i>
+                        <h3>هل التجربة المجانية محدودة؟</h3>
+                        <p>لا. التجربة المجانية تمنح المدرسة نفس تجربة النظام الحقيقية حتى يتم التقييم على أساس واضح وواقعي.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <div class="cta-panel reveal">
+                    <div>
+                        <h2>إذا كانت المدرسة تهتم بتجربة الطالب والانطباع المؤسسي, فهذه الشاشة جزء من الصورة</h2>
+                        <p>ابدأ مجاناً لمدة 14 يوم، اختبر التشغيل الكامل على أرض الواقع، ثم اختر عدد الشاشات المناسب لمدرستك بعد أن ترى النتيجة بنفسك.</p>
+                    </div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <button class="btn" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">ابدأ التجربة المجانية</button>
+                        <a class="btn-outline" href="https://wa.me/966537720207" target="_blank" rel="noreferrer">تواصل واتساب</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
     <div class="modal-overlay" id="orderModal">
         <div class="modal-card">
-            <button class="modal-close" onclick="closeOrderModal()"><i class="fa-solid fa-times"></i></button>
-            
+            <button class="modal-close" onclick="closeOrderModal()" aria-label="إغلاق النموذج"><i class="fa-solid fa-xmark"></i></button>
+
             <div class="modal-header">
                 <h2 id="modalTitle">طلب تجربة أو اشتراك</h2>
-                <p style="color:var(--text-sec); font-size:0.9rem; margin-top:4px;" id="modalSubtitle">املأ البيانات وسنخدمك مباشرة عبر واتساب</p>
+                <p id="modalSubtitle">املأ البيانات وسنخدمك مباشرة عبر واتساب</p>
             </div>
 
             <form onsubmit="submitToWhatsapp(event)">
@@ -765,7 +2179,7 @@
                 <input type="hidden" id="p_price">
 
                 <div class="form-group">
-                    <label class="form-label">اسم المدرسة</label>
+                    <label class="form-label" for="schoolName">اسم المدرسة</label>
                     <input type="text" id="schoolName" class="form-input" placeholder="مثال: ثانوية الملك عبدالله" required>
                 </div>
 
@@ -778,171 +2192,229 @@
                         </label>
                         <label class="radio-label">
                             <input type="radio" name="schoolType" value="بنات">
-                            <div class="radio-tile"><i class="fa-solid fa-user-graduate" style="color:#ec4899"></i> بنات</div>
+                            <div class="radio-tile"><i class="fa-solid fa-user-graduate" style="color:#d14d86"></i> بنات</div>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">المدينة</label>
+                    <label class="form-label" for="city">المدينة</label>
                     <input type="text" id="city" class="form-input" placeholder="الرياض، جدة..." required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">اسم المسؤول</label>
+                    <label class="form-label" for="contactName">اسم المسؤول</label>
                     <input type="text" id="contactName" class="form-input" placeholder="الاسم الثلاثي" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">الجوال / واتس اب</label>
+                    <label class="form-label" for="mobile">الجوال / واتساب</label>
                     <input type="tel" id="mobile" class="form-input" placeholder="05XXXXXXXXX" required pattern="[0-9]*">
                 </div>
 
-                <button type="submit" class="btn-full" style="background:var(--primary); color:white; margin-top:24px; border:none; cursor:pointer;">
-                    <i class="fa-brands fa-whatsapp"></i> إرسال الطلب
+                <button type="submit" class="btn btn-block" style="border-radius:18px; margin-top: 8px; background: linear-gradient(135deg, var(--mint-400), var(--mint-500));">
+                    <i class="fa-brands fa-whatsapp"></i>
+                    إرسال الطلب
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer>
         <div class="container">
-            <div class="footer-cols">
-                <div>
-                    <div class="logo" style="margin-bottom: 16px;">
-                        <i class="fa-solid fa-layer-group" style="color:var(--primary)"></i>
-                        <span>لوحة العرض الذكية</span>
+            <div class="footer-shell reveal">
+                <div class="footer-grid">
+                    <div class="footer-col">
+                        <div class="logo" style="pointer-events:none;">
+                            <div class="logo-mark"><i class="fa-solid fa-layer-group"></i></div>
+                            <div class="logo-copy">
+                                <strong>لوحة العرض الذكية</strong>
+                                <span>منصة عرض تليق بالمدارس الطموحة</span>
+                            </div>
+                        </div>
+                        <p>نصمم تجربة عرض مدرسية تجعل المعلومات اليومية أوضح، والانطباع المؤسسي أقوى، والإدارة أكثر راحة في التشغيل والمتابعة.</p>
                     </div>
-                    <p style="color:var(--text-sec); font-size: 0.95rem;">
-                        نساعد المدارس على بناء بيئة تعليمية محفزة من خلال التقنية الذكية والتصاميم العصرية.
-                    </p>
+
+                    <div class="footer-col">
+                        <h4>روابط سريعة</h4>
+                        <div class="footer-links">
+                            <a href="#why">لماذا نحن</a>
+                            <a href="#features">المزايا</a>
+                            <a href="#journey">آلية البدء</a>
+                            <a href="#pricing">الباقات</a>
+                            <a href="#faq">الأسئلة الشائعة</a>
+                            {% if login_url %}<a href="{{ login_url }}">دخول النظام</a>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="footer-col">
+                        <h4>تواصل مباشر</h4>
+                        <div class="footer-links">
+                            <a href="https://wa.me/966537720207" target="_blank" rel="noreferrer" style="direction:ltr; text-align:right;">+966 53 772 0207</a>
+                            <a href="mailto:info@schooldisplay.com">info@schooldisplay.com</a>
+                            <a href="#pricing">اطلب باقة مناسبة</a>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <h4>روابط هامة</h4>
-                    <a href="#features" class="footer-link">المميزات</a>
-                    <a href="#steps" class="footer-link">خطوات البدء</a>
-                    <a href="#pricing" class="footer-link">باقات الأسعار</a>
-                    <a href="#faq" class="footer-link">الأسئلة الشائعة</a>
-                    {% if login_url %}<a href="{{ login_url }}" class="footer-link">دخول النظام</a>{% endif %}
-                </div>
-                <div>
-                    <h4>اتصل بنا</h4>
-                    <a href="https://wa.me/966537720207" class="footer-link" style="direction: ltr; text-align: right;"><i class="fa-brands fa-whatsapp"></i> +966 53 772 0207</a>
-                    <a href="mailto:info@schooldisplay.com" class="footer-link"><i class="fa-regular fa-envelope"></i> تواصل عبر البريد</a>
-                </div>
-            </div>
-            <div class="copyright">
-                © 2026 جميع الحقوق محفوظة - لوحة العرض الذكية
+
+                <div class="copyright">© 2026 جميع الحقوق محفوظة - لوحة العرض الذكية</div>
             </div>
         </div>
     </footer>
 
-    <script>
-        let currentPeriod = '12'; // Default is year
+    <div class="mobile-cta">
+        <div>
+            <strong>تجربة مجانية 14 يوم</strong>
+            <small>ابدأ الآن بكل المزايا</small>
+        </div>
+        <button class="btn" onclick="openOrderModal('تجربة مجانية', '14 يوم', '0')">ابدأ</button>
+    </div>
 
-        // Header Scroll Effect
+    <script>
+        let currentPeriod = '12';
+
+        const header = document.getElementById('header');
+        const modal = document.getElementById('orderModal');
+        const revealElements = document.querySelectorAll('.reveal');
+
         window.addEventListener('scroll', () => {
-            const header = document.getElementById('header');
-            if (window.scrollY > 50) header.classList.add('scrolled');
-            else header.classList.remove('scrolled');
+            if (window.scrollY > 24) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
         });
 
-        // Pricing Switcher
+        document.querySelectorAll('[data-scroll]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const target = document.querySelector(button.getAttribute('data-scroll'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        });
+
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.14 });
+
+            revealElements.forEach((element) => observer.observe(element));
+        } else {
+            revealElements.forEach((element) => element.classList.add('visible'));
+        }
+
         function switchPlan(period) {
             currentPeriod = period;
             const btn6 = document.getElementById('btn6');
             const btn12 = document.getElementById('btn12');
             const vals = document.querySelectorAll('.price-val');
-            
+
             if (period === '12') {
-                btn12.style.background = 'var(--text-main)'; btn12.style.color = 'white';
-                btn6.style.background = 'transparent'; btn6.style.color = 'var(--text-sec)';
-                vals.forEach(el => {
-                    el.innerText = el.getAttribute('data-p12');
-                    el.nextElementSibling.innerText = 'ريال سعودي / سنوياً';
+                btn12.style.background = 'var(--ink-950)';
+                btn12.style.color = 'white';
+                btn6.style.background = 'transparent';
+                btn6.style.color = 'var(--text-soft)';
+
+                vals.forEach((element) => {
+                    element.innerText = element.getAttribute('data-p12');
+                    element.nextElementSibling.innerText = 'ريال سعودي / سنوياً';
                 });
             } else {
-                btn6.style.background = 'var(--text-main)'; btn6.style.color = 'white';
-                btn12.style.background = 'transparent'; btn12.style.color = 'var(--text-sec)';
-                vals.forEach(el => {
-                    el.innerText = el.getAttribute('data-p6');
-                    el.nextElementSibling.innerText = 'ريال سعودي / 6 أشهر';
+                btn6.style.background = 'var(--ink-950)';
+                btn6.style.color = 'white';
+                btn12.style.background = 'transparent';
+                btn12.style.color = 'var(--text-soft)';
+
+                vals.forEach((element) => {
+                    element.innerText = element.getAttribute('data-p6');
+                    element.nextElementSibling.innerText = 'ريال سعودي / 6 أشهر';
                 });
             }
         }
 
-        // Helper to get current displayed price from button's container
-        function getCurrentPrice(btnElement) {
-            const card = btnElement.closest('.price-card');
-            const valEl = card.querySelector('.price-val');
-            return valEl ? valEl.innerText : '0';
+        function getCurrentPrice(buttonElement) {
+            const card = buttonElement.closest('.price-card');
+            const priceElement = card ? card.querySelector('.price-val') : null;
+            return priceElement ? priceElement.innerText : '0';
         }
-
-        // Modal Logic
-        const modal = document.getElementById('orderModal');
 
         function openOrderModal(plan, period, price) {
             document.getElementById('p_plan').value = plan;
-            
+
             let periodText = period;
             if (period === '12') periodText = 'سنة كاملة';
             if (period === '6') periodText = '6 أشهر';
+
             document.getElementById('p_period').value = periodText;
             document.getElementById('p_price').value = price;
 
             if (plan.includes('تجربة')) {
                 document.getElementById('modalTitle').innerText = 'طلب تجربة مجانية';
-                document.getElementById('modalSubtitle').innerText = 'جميع مزايا النظام مجاناً لمدة 14 يوم';
+                document.getElementById('modalSubtitle').innerText = 'جميع مزايا النظام مجاناً لمدة 14 يوم حتى ترى القيمة الحقيقية بنفسك';
             } else {
                 document.getElementById('modalTitle').innerText = 'طلب اشتراك جديد';
-                document.getElementById('modalSubtitle').innerText = `باقة ${plan} (${periodText}) — نفس المزايا الكاملة بسعر ${price} ريال`;
+                document.getElementById('modalSubtitle').innerText = `باقة ${plan} - ${periodText} - بسعر ${price} ريال`;
             }
 
             modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeOrderModal() {
             modal.classList.remove('active');
+            document.body.style.overflow = '';
         }
 
-        // Close on click outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeOrderModal();
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeOrderModal();
+            }
         });
 
-        function submitToWhatsapp(e) {
-            e.preventDefault();
-            
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && modal.classList.contains('active')) {
+                closeOrderModal();
+            }
+        });
+
+        function submitToWhatsapp(event) {
+            event.preventDefault();
+
             const school = document.getElementById('schoolName').value;
             const type = document.querySelector('input[name="schoolType"]:checked').value;
             const city = document.getElementById('city').value;
             const name = document.getElementById('contactName').value;
-            const mobile = document.getElementById('mobile').value;
-            
+            const mobileNumber = document.getElementById('mobile').value;
             const plan = document.getElementById('p_plan').value;
             const period = document.getElementById('p_period').value;
             const price = document.getElementById('p_price').value;
 
-            let msg = `السلام عليكم، أرغب ب${plan.includes('تجربة') ? 'تجربة النظام' : 'الاشتراك في النظام'}.\n\n`;
-            msg += `📄 *بيانات الطلب:*\n`;
-            msg += `- المدرسة: ${school} (${type})\n`;
-            msg += `- المدينة: ${city}\n`;
-            msg += `- المسؤول: ${name}\n`;
-            msg += `- الجوال: ${mobile}\n\n`;
-            
-            if (!plan.includes('تجربة')) {
-                msg += `📊 *تفاصيل الباقة:*\n`;
-                msg += `- الباقة: ${plan}\n`;
-                msg += `- المدة: ${period}\n`;
-                msg += `- السعر: ${price} ريال\n`;
-                msg += `- المزايا: نفس المزايا الكاملة (الفرق فقط عدد الشاشات)\n`;
+            let message = `السلام عليكم، أرغب ب${plan.includes('تجربة') ? 'تجربة النظام' : 'الاشتراك في النظام'} بشكل رسمي.\n\n`;
+            message += '📄 *بيانات الطلب:*\n';
+            message += `- المدرسة: ${school} (${type})\n`;
+            message += `- المدينة: ${city}\n`;
+            message += `- المسؤول: ${name}\n`;
+            message += `- الجوال: ${mobileNumber}\n\n`;
+
+            if (plan.includes('تجربة')) {
+                message += '🎁 *نوع الطلب:* تجربة مجانية لمدة 14 يوم\n';
+                message += '- المطلوب: تفعيل التجربة بكامل المزايا\n';
+                message += '- الهدف: تقييم النظام على أرض الواقع قبل الاشتراك';
             } else {
-                msg += `🎁 *نوع الطلب:* تجربة مجانية (14 يوم)\n`;
-                msg += `- المزايا: جميع مزايا النظام كاملة`;
+                message += '📊 *تفاصيل الباقة:*\n';
+                message += `- الباقة: ${plan}\n`;
+                message += `- المدة: ${period}\n`;
+                message += `- السعر: ${price} ريال\n`;
+                message += '- المزايا: نفس المزايا الكاملة، والاختلاف فقط في عدد الشاشات';
             }
 
-            const url = `https://wa.me/966537720207?text=${encodeURIComponent(msg)}`;
+            const url = `https://wa.me/966537720207?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
             closeOrderModal();
         }

@@ -433,6 +433,23 @@ def _build_day_autofill_seed(day) -> dict[str, Any]:
 def _get_or_create_profile(user):
     Profile = UserProfileModel()
     profile, _created = Profile.objects.get_or_create(user=user)
+
+    if getattr(user, "is_superuser", False):
+        School = SchoolModel()
+        all_school_ids = list(School.objects.order_by("id").values_list("id", flat=True))
+        current_school_ids = set(profile.schools.values_list("id", flat=True))
+
+        missing_school_ids = [school_id for school_id in all_school_ids if school_id not in current_school_ids]
+        if missing_school_ids:
+            profile.schools.add(*School.objects.filter(id__in=missing_school_ids))
+
+        if all_school_ids and profile.active_school_id not in all_school_ids:
+            profile.active_school_id = all_school_ids[0]
+            profile.save(update_fields=["active_school"])
+        elif not all_school_ids and profile.active_school_id is not None:
+            profile.active_school = None
+            profile.save(update_fields=["active_school"])
+
     return profile
 
 
@@ -2444,8 +2461,18 @@ def _admin_school_form_class():
 @login_required
 def switch_school(request, school_id):
     profile = _get_or_create_profile(request.user)
+    School = SchoolModel()
+
     try:
-        school = profile.schools.get(pk=school_id)
+        if getattr(request.user, "is_superuser", False):
+            school = School.objects.get(pk=school_id)
+            if not profile.schools.filter(pk=school.pk).exists():
+                profile.schools.add(school)
+        else:
+            school = profile.schools.get(pk=school_id)
+    except School.DoesNotExist:
+        messages.error(request, "المدرسة غير موجودة أو ليس لديك صلاحية الوصول إليها.")
+        return redirect("dashboard:index")
     except Exception:
         messages.error(request, "المدرسة غير موجودة أو ليس لديك صلاحية الوصول إليها.")
         return redirect("dashboard:index")
