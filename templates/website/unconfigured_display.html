@@ -52,6 +52,7 @@
         html {
             scroll-behavior: smooth;
             font-size: 16px;
+            overflow-x: clip;
         }
 
         body {
@@ -63,6 +64,34 @@
                 linear-gradient(180deg, #fdfcf9 0%, #f5f1ea 42%, #fbfaf7 100%);
             line-height: 1.65;
             overflow-x: hidden;
+        }
+
+        main,
+        section,
+        header,
+        footer,
+        .container,
+        .hero-shell,
+        .nav-shell,
+        .price-card,
+        .cta-panel,
+        .modal-card,
+        .footer-shell {
+            min-width: 0;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        p,
+        a,
+        button,
+        strong,
+        span,
+        small,
+        li {
+            overflow-wrap: anywhere;
         }
 
         body::before,
@@ -253,6 +282,8 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            min-width: 0;
+            flex-shrink: 0;
         }
 
         .btn,
@@ -269,6 +300,7 @@
             font-weight: 900;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
             white-space: nowrap;
+            min-width: 0;
         }
 
         .btn {
@@ -328,7 +360,7 @@
             position: relative;
             z-index: 1;
             display: grid;
-            grid-template-columns: minmax(0, 1.02fr) minmax(390px, 0.98fr);
+            grid-template-columns: minmax(0, 1.02fr) minmax(min(390px, 100%), 0.98fr);
             gap: 36px;
             align-items: center;
         }
@@ -953,6 +985,7 @@
 
         .plan-switch {
             display: inline-flex;
+            max-width: 100%;
             gap: 4px;
             padding: 5px;
             border-radius: 999px;
@@ -962,6 +995,7 @@
         }
 
         .plan-switch button {
+            min-width: 0;
             padding: 10px 22px;
             border-radius: 999px;
             border: none;
@@ -1126,6 +1160,7 @@
 
         .modal-card {
             width: min(100%, 560px);
+            max-width: calc(100vw - 24px);
             padding: 30px;
             border-radius: 30px;
             background: rgba(255, 255, 255, 0.96);
@@ -1381,6 +1416,10 @@
         }
 
         @media (max-width: 720px) {
+            body {
+                padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+            }
+
             .section {
                 padding: 52px 0;
             }
@@ -1396,6 +1435,7 @@
             .nav-shell {
                 gap: 8px;
                 padding: 10px 12px;
+                align-items: center;
             }
 
             .logo-mark {
@@ -1411,6 +1451,11 @@
 
             .logo-copy strong {
                 font-size: 0.88rem;
+            }
+
+            .logo {
+                gap: 8px;
+                min-width: 0;
             }
 
             .nav-actions {
@@ -1779,7 +1824,7 @@
                 position: fixed;
                 right: 10px;
                 left: 10px;
-                bottom: 10px;
+                bottom: calc(10px + env(safe-area-inset-bottom, 0px));
                 z-index: 1100;
                 display: flex;
                 align-items: center;
@@ -1881,7 +1926,7 @@
             }
 
             .plan-switch button {
-                padding: 8px 16px;
+                padding: 8px 12px;
                 font-size: 0.85rem;
             }
 
@@ -1912,6 +1957,82 @@
 
             .footer-grid {
                 gap: 16px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .container {
+                width: calc(100% - 12px);
+            }
+
+            .nav-shell {
+                padding: 8px;
+                gap: 6px;
+            }
+
+            .logo-copy {
+                display: none;
+            }
+
+            .nav-actions .btn-outline {
+                width: 36px;
+                height: 36px;
+                padding: 0;
+                border-radius: 12px;
+            }
+
+            .nav-actions .btn {
+                padding: 9px 10px;
+                font-size: 0.76rem;
+                gap: 6px;
+            }
+
+            .hero-shell,
+            .price-card,
+            .story-panel,
+            .benefit-card,
+            .capability-card,
+            .journey-card,
+            .faq-item,
+            .cta-panel,
+            .footer-shell {
+                padding: 14px;
+            }
+
+            .hero-copy h1 {
+                font-size: 1.38rem;
+            }
+
+            .hero-actions .btn,
+            .hero-actions .btn-outline,
+            .hero-actions .btn-soft,
+            .cta-panel .btn,
+            .cta-panel .btn-outline {
+                white-space: normal;
+                min-height: 44px;
+            }
+
+            .screen-live,
+            .mini-badge,
+            .plan-badge {
+                white-space: normal;
+            }
+
+            .plan-switch {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                width: 100%;
+            }
+
+            .mobile-cta {
+                right: 6px;
+                left: 6px;
+                padding: 10px;
+                border-radius: 16px;
+            }
+
+            .mobile-cta .btn {
+                padding: 10px 12px;
             }
         }
 

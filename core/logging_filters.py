@@ -4,14 +4,17 @@ import logging
 
 
 class SnapshotRequestNoiseFilter(logging.Filter):
-    """Suppress noisy django.request warnings for snapshot polling.
+    """Suppress noisy low-value django.request warnings for display endpoints.
 
     We intentionally keep snapshot endpoints public-but-device-bound.
     External scanners/bots may hit these endpoints without required headers,
     producing expected 403/429 responses that would otherwise clutter logs.
     """
 
-    SNAPSHOT_PREFIX = "/api/display/snapshot/"
+    DISPLAY_PREFIXES = (
+        "/api/display/snapshot/",
+        "/api/display/status/",
+    )
     _NOISY_PREFIXES = (
         "Forbidden:",
         "Too Many Requests:",
@@ -29,7 +32,7 @@ class SnapshotRequestNoiseFilter(logging.Filter):
             # Typical formats:
             # - "Forbidden: /api/display/snapshot/<token>/"
             # - "Too Many Requests: /api/display/snapshot/<token>/"
-            if self.SNAPSHOT_PREFIX in msg:
+            if any(prefix in msg for prefix in self.DISPLAY_PREFIXES):
                 return False
 
             return True

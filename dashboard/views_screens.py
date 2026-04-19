@@ -351,6 +351,7 @@ def screen_refresh_now(
                     "type": "broadcast_invalidate",
                     "school_id": int(school_id),
                     "revision": int(revision or 0),
+                    "reason": "manual_refresh",
                 },
             )
         except Exception:

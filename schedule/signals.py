@@ -57,13 +57,16 @@ def _broadcast_invalidate_ws(school_id: int, revision: int) -> None:
         
         group_name = school_group_name(school_id)
         
-        # Broadcast to all clients in school group
+        # Broadcast to all clients in school group. The consumer emits the
+        # push-first client event `snapshot_refresh`; older clients that still
+        # understand `invalidate` are no longer the target path.
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
                 "type": "broadcast_invalidate",  # maps to DisplayConsumer.broadcast_invalidate
                 "school_id": school_id,
                 "revision": revision,
+                "reason": "content_changed",
             }
         )
         

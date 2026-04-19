@@ -612,6 +612,8 @@
     wsEverConnected: false,
     wsSuppressedUntilTs: 0,
     wsOpenedAt: 0, // timestamp of last ws.onopen — used for fetch dedup cooldown
+    wsLastMessageAt: 0,
+    wsHeartbeatTimeoutMs: 75000,
 
     // Sleep/Wake
     sleepReason: "", // "before_hours" | "after_hours" | "holiday"
@@ -1282,7 +1284,7 @@
         reason: reason,
       });
       if (!_timers["poll"]) {
-        scheduleNext(0.3);
+        scheduleNext(getFallbackPollDelay());
       }
     }
   }
@@ -1423,23 +1425,22 @@
   // ===========================================================================
   // ===== Improvement #2: Adaptive Fallback Polling ===========================
   // ===========================================================================
-  // When WS fails and mode is fallback-poll, polling starts fast (20s) then
+  // When WS fails and mode is fallback-poll, polling starts sparse then
   // gradually slows to reduce server load. Resets on WS recovery or successful
   // data fetch that restores confidence.
   //
   // Tier rationale:
-  //   Level 0: 20s  — immediate responsiveness after WS loss
-  //   Level 1: 45s  — still responsive, first cooldown
-  //   Level 2: 90s  — moderate pace for sustained outage
-  //   Level 3: 180s — 3 minutes, significant load reduction
-  //   Level 4: 300s — 5 minutes, steady state for long outages
+  //   Level 0: 60s  — rare fallback only after WS loss
+  //   Level 1: 90s  — first cooldown
+  //   Level 2: 180s — 3 minutes, significant load reduction
+  //   Level 3: 300s — 5 minutes, steady state for long outages
   //
   // At 30K screens:
-  //   Level 0 (20s) → 1500 req/s — only during first ~20s
-  //   Level 4 (300s) → 100 req/s — sustainable steady state
+  //   Level 0 (60s) → 500 req/s during outage
+  //   Level 3 (300s) → 100 req/s steady state
   // ===========================================================================
 
-  var _FALLBACK_TIERS = [20, 45, 90, 180, 300]; // seconds per level
+  var _FALLBACK_TIERS = [60, 90, 180, 300]; // seconds per level
 
   function getFallbackPollDelay() {
     var level = Math.min(rt.fallbackLevel, _FALLBACK_TIERS.length - 1);
@@ -1544,26 +1545,31 @@
   // ===========================================================================
   // ===== WS-Live Heartbeat System ============================================
   // ===========================================================================
-  // When in ws-live mode, polling is STOPPED. Instead, a sparse heartbeat
-  // performs a lightweight /status check at long intervals as a safety net.
+  // When in ws-live mode, polling is STOPPED. Heartbeat is WS-only: server
+  // heartbeat frames and client ping/pong detect dead sockets without HTTP.
   //
   // Guarantees:
   //   1. Heartbeat timer ("ws_heartbeat") is independent of poll timer ("poll").
   //   2. Only runs when rt.mode === "ws-live".
-  //   3. If heartbeat finds fetch_required → one-shot snapshot fetch → resume heartbeat.
+  //   3. If the socket goes silent, close it and let fallback-poll take over.
   //   4. Entering any mode other than ws-live stops heartbeat immediately.
   //   5. No fast polling (8-20s) can occur during ws-live.
   // ===========================================================================
 
   // --- forceReason allowlist: only these values may bypass mode gates ---
-  var _ALLOWED_FORCE_REASONS = { "ws_invalidate": 1, "wake": 1, "heartbeat_fetch": 1 };
+  var _ALLOWED_FORCE_REASONS = { "ws_invalidate": 1, "wake": 1 };
 
   function _isAllowedForceReason(reason) {
     return !!(reason && _ALLOWED_FORCE_REASONS[reason]);
   }
 
-  var _WS_HEARTBEAT_SEC = 300; // 5-minute heartbeat in ws-live
+  var _WS_HEARTBEAT_SEC = 30; // local stale-socket monitor, not an HTTP poll
   var _heartbeatGen = 0; // generation counter — invalidates stale callbacks
+
+  function _markWsHeartbeatSeen(kind) {
+    rt.wsLastMessageAt = Date.now();
+    if (kind) _log("ws_heartbeat_seen", { kind: kind });
+  }
 
   function _startWsHeartbeat(reason) {
     if (isTerminalBlockedMode()) {
@@ -1617,54 +1623,33 @@
       return;
     }
 
-    // Dedup guard: skip if a fetch or snapshot is already in-flight / scheduled
-    if (isFetching || _timers["poll"] || _timers["ws_snapshot"]) {
-      var skipReason = isFetching ? "fetch_inflight" : (_timers["poll"] ? "poll_pending" : "ws_snapshot_pending");
-      _log("heartbeat_tick_deferred", { reason: skipReason, mode: rt.mode });
-      // Re-arm heartbeat so we check again later
-      _startWsHeartbeat("tick_deferred");
+    var gen = _heartbeatGen;
+    var wsOpen = false;
+    try { wsOpen = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN); } catch (e) {}
+    var ageMs = Date.now() - (Number(rt.wsLastMessageAt || rt.wsOpenedAt) || Date.now());
+
+    _log("heartbeat_tick", {
+      mode: rt.mode,
+      wsConnected: rt.wsConnected,
+      wsOpen: wsOpen,
+      ageMs: ageMs,
+      gen: gen,
+    });
+
+    if (!wsOpen || ageMs > rt.wsHeartbeatTimeoutMs) {
+      _log("ws_heartbeat_timeout", { ageMs: ageMs, timeoutMs: rt.wsHeartbeatTimeoutMs, wsOpen: wsOpen });
+      try {
+        if (rt.ws) rt.ws.close(4000, "heartbeat_timeout");
+      } catch (e) {
+        rt.wsConnected = false;
+        setMode("fallback-poll", "heartbeat_timeout");
+      }
       return;
     }
 
-    // Capture generation — stale callbacks from before a WS reconnect will bail
-    var gen = _heartbeatGen;
-    _log("heartbeat_tick", { mode: rt.mode, wsConnected: rt.wsConnected, gen: gen });
-
-    // Lightweight status check
-    safeFetchStatus().then(function (st) {
-      // Stale callback guard: generation changed (WS reconnected / heartbeat restarted)
-      if (gen !== _heartbeatGen) {
-        _log("heartbeat_tick_stale", { expectedGen: gen, currentGen: _heartbeatGen });
-        return;
-      }
-      if (rt.mode !== "ws-live") return; // mode changed during fetch
-
-      if (st && st.reload === true) {
-        try { window.location.reload(); } catch (e) {}
-        return;
-      }
-      if (st && st.fetch_required) {
-        // Double-check: another fetch might have been scheduled while we awaited
-        if (isFetching || _timers["poll"] || _timers["ws_snapshot"]) {
-          _log("heartbeat_fetch_skipped", { reason: "concurrent_activity" });
-          _startWsHeartbeat("tick_concurrent_skip");
-          return;
-        }
-        _log("heartbeat_fetch_required", { gen: gen });
-        rt.forceFetchSnapshot = true;
-        // One-shot fetch via forced scheduleNext
-        scheduleNext(0.1, "heartbeat_fetch");
-      } else {
-        _log("heartbeat_completed", { fetchRequired: false, gen: gen });
-        // Reschedule heartbeat (NOT a poll)
-        _startWsHeartbeat("tick_continue");
-      }
-    }).catch(function () {
-      if (gen !== _heartbeatGen) return; // stale
-      if (rt.mode === "ws-live") {
-        _startWsHeartbeat("tick_error_retry");
-      }
-    });
+    if (gen === _heartbeatGen && rt.mode === "ws-live") {
+      _startWsHeartbeat("tick_continue");
+    }
   }
 
   function maybeLogPollState(activeWindow, nextPollSec) {
@@ -5178,6 +5163,7 @@
       Accept: "application/json",
       "X-Display-Token": token || "",
       "X-Display-Device": deviceId,
+      "X-Display-Fallback": rt.wsConnected ? "0" : "1",
     };
 
     // Intentionally do NOT send If-None-Match for /status.
@@ -6229,6 +6215,7 @@
         rt.wsEverConnected = true;
         rt.wsSuppressedUntilTs = 0;
         rt.wsOpenedAt = Date.now(); // cooldown reference for fetch dedup
+        rt.wsLastMessageAt = rt.wsOpenedAt;
 
         _log("ws_connected", { mode: rt.mode, openedAt: rt.wsOpenedAt });
         _log("ws_reconnect_succeeded", { mode: rt.mode });
@@ -6297,8 +6284,20 @@
 
           var msg = JSON.parse(raw);
           if (!msg || typeof msg !== "object") return;
+          _markWsHeartbeatSeen(safeText(msg.type || "message"));
           
-          if (msg.type === "pong") return;
+          if (msg.type === "pong" || msg.type === "heartbeat") {
+            return;
+          }
+
+          if (msg.type === "ping") {
+            try {
+              if (rt.ws && rt.ws.readyState === WebSocket.OPEN) {
+                rt.ws.send(JSON.stringify({ type: "pong" }));
+              }
+            } catch (e) {}
+            return;
+          }
 
           var wsBinding = isBindingConflictWsMessage(msg);
           if (wsBinding.matched) {
@@ -6321,12 +6320,12 @@
             return;
           }
           
-          if (msg.type === "invalidate") {
+          if (msg.type === "snapshot_refresh" || msg.type === "invalidate") {
             var newRev = parseInt(msg.revision, 10);
             if (isNaN(newRev)) return;
             
             _log("ws_revision_received", { revision: newRev, mode: rt.mode });
-            _log("ws_invalidate", { revision: newRev });
+            _log("ws_snapshot_refresh", { revision: newRev, eventType: msg.type, reason: safeText(msg.reason || "") });
             
             rt.pendingRev = newRev;
             rt.forceFetchSnapshot = true;
@@ -6344,6 +6343,20 @@
               scheduleWsSnapshotRefresh(newRev);
             } else {
               _log("ws_invalidate_deferred", { reason: "fetch_in_progress" });
+            }
+            return;
+          }
+
+          if (msg.type === "patch") {
+            _markWsHeartbeatSeen("patch");
+            _log("ws_patch", { revision: msg.revision || null });
+            if (msg.revision !== undefined && msg.revision !== null) {
+              var patchRev = parseInt(msg.revision, 10);
+              if (!isNaN(patchRev) && patchRev > Number(rt.scheduleRevision || 0)) {
+                rt.pendingRev = patchRev;
+                rt.forceFetchSnapshot = true;
+                scheduleWsSnapshotRefresh(patchRev);
+              }
             }
           }
         } catch (e) {
@@ -6366,6 +6379,7 @@
           return;
         }
         rt.wsConnected = false;
+        rt.ws = null;
         clearNamedTimer("ws_ping");
         _stopWsHeartbeat("ws_closed"); // stop heartbeat — mode transition starts poll
         
@@ -6405,7 +6419,7 @@
             setMode("fallback-poll", "ws_auth_failure");
           }
           if (!_timers["poll"]) {
-            scheduleNext(1);
+            scheduleNext(getFallbackPollDelay());
           }
           return;
         }
@@ -6692,21 +6706,8 @@
 
     renderAlert("جاري التحميل…", "يتم الآن جلب البيانات من الخادم.");
     
-    // ✅ FIX: جلب التوقيت من السيرفر فوراً عند التحميل لتقليل القفزة
-    // نستدعي /status أو /snapshot مباشرة للحصول على X-Server-Time-MS
-    (async function syncTimeOnBoot() {
-      try {
-        // إذا لم يكن لدينا offset محفوظ، نجلبه فوراً
-        const savedOffset = localStorage.getItem("serverOffsetMs");
-        if (!savedOffset || savedOffset === "0") {
-          // استدعاء سريع للحصول على التوقيت
-          await safeFetchStatus();
-        }
-      } catch (e) {
-        // ignore - سيتم المحاولة مرة أخرى في refreshLoop
-      }
-    })();
-    
+    // Push-first bootstrap: the first HTTP request is the full snapshot. After
+    // that, WS drives freshness and /status is reserved for WS outage fallback.
     scheduleNext(0.2);
   }, listenerOpts({ once: true }));
 

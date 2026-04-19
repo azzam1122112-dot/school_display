@@ -100,7 +100,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
     Lifecycle:
         1. connect() → validate token + bind device → join school group
         2. receive() → handle ping/pong keepalive
-        3. broadcast_invalidate() → send {type: "invalidate", revision: X}
+        3. broadcast_invalidate() → send {type: "snapshot_refresh", revision: X}
         4. disconnect() → leave group
     """
     
@@ -136,7 +136,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         while True:
             await asyncio.sleep(interval)
             try:
-                await self.send(text_data=json.dumps({"type": "ping"}))
+                await self.send(text_data=json.dumps({"type": "heartbeat"}))
                 _ws_metric_incr("server_ping_sent")
             except asyncio.CancelledError:
                 raise
@@ -365,7 +365,7 @@ class DisplayConsumer(AsyncWebsocketConsumer):
         
         Sends to client:
         {
-            "type": "invalidate",
+            "type": "snapshot_refresh",
             "revision": 123
         }
         """
@@ -380,24 +380,25 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             )
             return
         
-        # Send invalidate message to client
+        # Send snapshot refresh message to client
         start_time = time.time()
         try:
             await self.send(text_data=json.dumps({
-                "type": "invalidate",
-                "revision": revision
+                "type": "snapshot_refresh",
+                "revision": revision,
+                "reason": event.get("reason") or "content_changed",
             }))
             
             # Track successful broadcast
             latency_ms = (time.time() - start_time) * 1000
             ws_metrics.broadcast_sent(latency_ms)
             _ws_metric_incr("broadcast_sent")
-            _ws_metric_incr("invalidate_total")
+            _ws_metric_incr("snapshot_refresh_total")
 
             screen_id = int(self.screen.id) if self.screen else 0
-            if _should_log_ws_event("invalidate", screen_id=screen_id):
+            if _should_log_ws_event("snapshot_refresh", screen_id=screen_id):
                 logger.info(
-                    f"WS sent invalidate: screen {self.screen.id if self.screen else '?'} "
+                    f"WS sent snapshot_refresh: screen {self.screen.id if self.screen else '?'} "
                     f"school {school_id} revision {revision} latency {latency_ms:.1f}ms"
                 )
         except Exception as e:
@@ -426,3 +427,33 @@ class DisplayConsumer(AsyncWebsocketConsumer):
             _ws_metric_incr("broadcast_failed")
             logger.exception(f"WS reload send failed: {e}")
 
+    async def broadcast_patch(self, event):
+        """Forward a small patch event to connected displays.
+
+        Current dashboard changes mostly need a fresh cached snapshot, but keeping
+        this handler gives the event flow a clear extension point for cheap UI
+        patches without a full page reload.
+        """
+        school_id = event.get("school_id")
+        if self.screen and school_id and int(school_id) != int(self.screen.school_id):
+            return
+
+        payload = event.get("patch")
+        if not isinstance(payload, dict):
+            payload = {}
+
+        start_time = time.time()
+        try:
+            await self.send(text_data=json.dumps({
+                "type": "patch",
+                "revision": event.get("revision"),
+                "patch": payload,
+            }))
+            latency_ms = (time.time() - start_time) * 1000
+            ws_metrics.broadcast_sent(latency_ms)
+            _ws_metric_incr("broadcast_sent")
+            _ws_metric_incr("patch_total")
+        except Exception as e:
+            ws_metrics.broadcast_failed()
+            _ws_metric_incr("broadcast_failed")
+            logger.exception(f"WS patch send failed: {e}")

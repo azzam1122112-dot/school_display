@@ -762,6 +762,7 @@ def metrics(request):
         "metrics:status:rev_cache_hit",
         "metrics:status:rev_db",
         "metrics:status:rev_none",
+        "metrics:status:fallback_poll",
 
         # Snapshot cache counters
         "metrics:snapshot_cache:token_hit",
@@ -1031,6 +1032,8 @@ def ws_metrics(request):
         shared_reconnect_total = _cache_int("metrics:ws:reconnect_total")
         shared_broadcasts_sent = _cache_int("metrics:ws:broadcast_sent")
         shared_broadcasts_failed = _cache_int("metrics:ws:broadcast_failed")
+        shared_snapshot_refresh = _cache_int("metrics:ws:snapshot_refresh_total")
+        shared_patch_total = _cache_int("metrics:ws:patch_total")
         shared_server_ping_sent = _cache_int("metrics:ws:server_ping_sent")
         shared_server_ping_send_failed = _cache_int("metrics:ws:server_ping_send_failed")
         for code in (1000, 1001, 1006, 1011, 1012, 1013, 4400, 4403, 4408, 4500, 4501):
@@ -1083,6 +1086,8 @@ def ws_metrics(request):
             "broadcasts_failed": broadcasts_failed,
             "broadcasts_sent_shared": shared_broadcasts_sent,
             "broadcasts_failed_shared": shared_broadcasts_failed,
+            "snapshot_refresh_sent_shared": shared_snapshot_refresh,
+            "patch_sent_shared": shared_patch_total,
             "server_ping_sent_shared": shared_server_ping_sent,
             "server_ping_send_failed_shared": shared_server_ping_send_failed,
             "broadcast_latency_avg_ms": round(avg_latency, 2),
@@ -1707,6 +1712,8 @@ def status(request, token: str | None = None):
         return JsonResponse({"detail": "access_denied", "message": "\u062a\u0639\u0630\u0631 \u0627\u0644\u0648\u0635\u0648\u0644"}, status=403)
 
     _metrics_incr("metrics:status:requests")
+    if (request.headers.get("X-Display-Fallback") or "").strip().lower() in {"1", "true", "yes"}:
+        _metrics_incr("metrics:status:fallback_poll")
 
     token_hash = _sha256(token_value)
     school_id = None
