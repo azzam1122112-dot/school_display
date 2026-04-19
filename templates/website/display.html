@@ -10,7 +10,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- ✅ تحسين: 4 أوزان فقط بدلاً من 7 (توفير ~100KB + طلبات HTTP أقل) -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700;800&display=swap" rel="stylesheet"></noscript>
 
     <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}?v=2026-04-15b">
     <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2026-02-08-standby-chip-contrast-v2">
@@ -156,8 +158,8 @@
     .glass-panel {
       /* ✅ Translucent background to let the theme color show through */
       background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(12px); 
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(8px); 
+      -webkit-backdrop-filter: blur(8px);
       /* Thin crisp border */
       border: 1px solid rgba(255, 255, 255, 0.1);
       /* Soft large shadow for depth */
@@ -630,8 +632,8 @@
         aside .glass-panel:nth-child(1) {
             /* Enhanced glass background */
             background: rgba(15, 23, 42, 0.75) !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
             border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
                         0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
@@ -679,8 +681,8 @@
         aside .glass-panel:nth-child(2) {
             /* Enhanced glass background */
             background: rgba(15, 23, 42, 0.75) !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
             border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
                         0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
@@ -789,8 +791,8 @@
         #exCard {
             /* Translucent background with theme color */
             background: rgba(15, 23, 42, 0.75) !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
             border: 1px solid var(--mesh1, rgba(99,102,241,0.3)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
                         0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
@@ -859,8 +861,8 @@
         #dutyCard {
             /* Enhanced glass background */
             background: rgba(15, 23, 42, 0.75) !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
             border: 1px solid var(--mesh1, rgba(99,102,241,0.2)) !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
                         0 0 0 1px var(--mesh2, rgba(99,102,241,0.1)) inset,
@@ -1059,8 +1061,8 @@
             --board-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
             --board-tint-1: var(--mesh1, rgba(99, 102, 241, 0.18));
             --board-tint-2: var(--mesh2, rgba(99, 102, 241, 0.12));
-            --board-glass-blur: 12px;
-            --board-glass-sat: 120%;
+            --board-glass-blur: 8px;
+            --board-glass-sat: 110%;
             --board-accent-border: var(--accent-main, #6366f1);
         }
 
@@ -1473,6 +1475,45 @@
             animation: none !important;
             transition: none !important;
             filter: none !important;
+        }
+
+        /* ✅ تحسينات أداء إضافية لوضع Lite */
+        body[data-lite="1"] .glass-panel,
+        body[data-lite="1"] #exCard,
+        body[data-lite="1"] #dutyCard {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        body[data-lite="1"] .glass-panel::before,
+        body[data-lite="1"] .glass-panel::after,
+        body[data-lite="1"] #exCard::before,
+        body[data-lite="1"] #exCard::after,
+        body[data-lite="1"] #dutyCard::before,
+        body[data-lite="1"] #dutyCard::after,
+        body[data-lite="1"] aside .glass-panel::before,
+        body[data-lite="1"] aside .glass-panel::after {
+            display: none !important;
+        }
+
+        body[data-lite="1"] .slot-item:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        body[data-lite="1"] header .glass-panel {
+            background: var(--board-surface-strong) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        /* ✅ contain: تحسين rendering performance لجميع الأوضاع */
+        .glass-panel {
+            contain: layout style paint;
+        }
+        .slot-item {
+            contain: layout style;
         }
 
         body[data-lite="1"] #fullscreenBtn {

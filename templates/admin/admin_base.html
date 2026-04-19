@@ -64,7 +64,7 @@
 
   {% if not hide_admin_sidebar %}
   <!-- Overlay for mobile sidebar -->
-  <div x-show="sidebarOpen"
+  <div id="adminSidebarOverlay" x-show="sidebarOpen"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
@@ -76,13 +76,13 @@
        x-cloak></div>
 
   <!-- الشريط الجانبي -->
-  <aside :class="sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'"
+  <aside id="adminSidebar" :class="sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'"
          class="fixed lg:static inset-y-0 right-0 w-80 bg-gradient-to-b from-white to-slate-50 shadow-xl border-l border-slate-200/50 flex flex-col z-50 transition-transform duration-300 ease-in-out">
     
     <!-- رأس الشريط الجانبي -->
     <div class="p-6 border-b border-slate-200 relative">
       <!-- Close button for mobile -->
-      <button @click="sidebarOpen = false" class="lg:hidden absolute left-4 top-6 text-slate-400 hover:text-slate-600">
+      <button id="adminSidebarCloseBtn" type="button" @click="sidebarOpen = false" class="lg:hidden absolute left-4 top-6 text-slate-400 hover:text-slate-600">
         <i class="fas fa-times text-xl"></i>
       </button>
       <div class="flex items-center gap-3">
@@ -169,7 +169,7 @@
         <div class="flex items-center gap-3 md:gap-4">
           <!-- Mobile Menu Toggle -->
           {% if not hide_admin_sidebar %}
-          <button @click="sidebarOpen = true" class="lg:hidden p-1.5 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-600">
+          <button id="adminSidebarOpenBtn" type="button" @click="sidebarOpen = true" class="lg:hidden p-1.5 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-600">
             <i class="fas fa-bars text-lg"></i>
           </button>
           {% endif %}
@@ -285,6 +285,62 @@
           l.classList.remove('sidebar-link-active');
         });
         this.classList.add('sidebar-link-active');
+      });
+    });
+
+    // Fallback in case AlpineJS fails to load (for restricted/offline environments).
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.Alpine) return;
+
+      const sidebar = document.getElementById('adminSidebar');
+      const overlay = document.getElementById('adminSidebarOverlay');
+      const openBtn = document.getElementById('adminSidebarOpenBtn');
+      const closeBtn = document.getElementById('adminSidebarCloseBtn');
+
+      if (!sidebar || !overlay) return;
+
+      const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+
+      function setSidebarOpen(open) {
+        if (isDesktop()) {
+          sidebar.classList.remove('translate-x-full');
+          sidebar.classList.add('translate-x-0');
+          overlay.style.display = 'none';
+          return;
+        }
+
+        if (open) {
+          sidebar.classList.remove('translate-x-full');
+          sidebar.classList.add('translate-x-0');
+          overlay.style.display = 'block';
+        } else {
+          sidebar.classList.remove('translate-x-0');
+          sidebar.classList.add('translate-x-full');
+          overlay.style.display = 'none';
+        }
+      }
+
+      overlay.removeAttribute('x-cloak');
+      setSidebarOpen(false);
+
+      if (openBtn) {
+        openBtn.addEventListener('click', function() {
+          setSidebarOpen(true);
+        });
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+          setSidebarOpen(false);
+        });
+      }
+
+      overlay.addEventListener('click', function() {
+        setSidebarOpen(false);
+      });
+
+      window.addEventListener('resize', function() {
+        setSidebarOpen(false);
       });
     });
   </script>

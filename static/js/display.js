@@ -65,6 +65,7 @@
       if (v === "0" || v === "false" || v === "no") return false;
     } catch (e) {}
 
+    // ✅ كشف شاشات التلفاز الذكية بناءً على User Agent
     try {
       const ua = String(navigator.userAgent || "").toLowerCase();
       if (
@@ -72,13 +73,25 @@
         ua.includes("hbbtv") ||
         ua.includes("tizen") ||
         ua.includes("web0s") ||
-        ua.includes("netcast")
+        ua.includes("webos") ||
+        ua.includes("netcast") ||
+        ua.includes("viera") ||
+        ua.includes("nettv") ||
+        ua.includes("philipstv") ||
+        ua.includes("googletv") ||
+        ua.includes("crkey") ||
+        ua.includes("firetv") ||
+        ua.includes("aftm") ||
+        ua.includes("aftt") ||
+        ua.includes("roku") ||
+        ua.includes("vidaa") ||
+        ua.includes("saphi")
       ) {
         return true;
       }
     } catch (e) {}
 
-    // Conservative heuristics for older/low-end devices
+    // ✅ كشف الأجهزة الضعيفة بناءً على عدد الأنوية والذاكرة
     try {
       const hc = Number(navigator.hardwareConcurrency || 0);
       if (hc && hc <= 2) return true;
@@ -87,6 +100,24 @@
     try {
       const mem = Number(navigator.deviceMemory || 0);
       if (mem && mem <= 2) return true;
+    } catch (e) {}
+
+    // ✅ كشف الشاشات الكبيرة مع معالج ضعيف (تلفازات بـ 4 أنوية لكن GPU ضعيف)
+    try {
+      const sw = Number(window.screen && window.screen.width || 0);
+      const sh = Number(window.screen && window.screen.height || 0);
+      const hc = Number(navigator.hardwareConcurrency || 0);
+      const mem = Number(navigator.deviceMemory || 0);
+      // شاشة كبيرة (1080p+) مع أقل من 4GB ذاكرة → غالباً تلفاز
+      if (sw >= 1920 && sh >= 1080 && mem > 0 && mem <= 4) return true;
+      // شاشة كبيرة مع 4 أنوية فقط وبدون ماوس → غالباً تلفاز
+      if (sw >= 1920 && sh >= 1080 && hc > 0 && hc <= 4) {
+        try {
+          // لا يوجد pointer دقيق = ليس حاسوب عادي
+          if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
+          if (window.matchMedia && !window.matchMedia("(hover: hover)").matches) return true;
+        } catch (e) {}
+      }
     } catch (e) {}
 
     return false;
@@ -3534,14 +3565,28 @@
     }
 
     function loop(ts) {
+      // ✅ إيقاف حلقة RAF تماماً إذا كان التاب مخفي بدلاً من الاستمرار
       if (document.hidden) {
-        st.raf = requestAnimationFrame(loop);
+        st.running = false;
+        st.raf = null;
+        st.lastTs = 0;
+        return;
+      }
+
+      // ✅ إيقاف RAF إذا لم يعد هناك حاجة للتمرير
+      if (!st.running) {
+        st.raf = null;
         return;
       }
 
       if (!st.lastTs) st.lastTs = ts;
       let dt = ts - st.lastTs;
-      if (minFrameMs > 0 && dt < minFrameMs) {
+      // ✅ في وضع Lite: تحديد 30fps بدلاً من 60fps لتوفير موارد CPU
+      var effectiveMinFrame = minFrameMs;
+      if (effectiveMinFrame <= 0 && document.body && document.body.dataset.lite === "1") {
+        effectiveMinFrame = 33; // ~30fps
+      }
+      if (effectiveMinFrame > 0 && dt < effectiveMinFrame) {
         st.raf = requestAnimationFrame(loop);
         return;
       }
@@ -4019,6 +4064,33 @@
     );
   }
 
+  // ✅ Cache لصور لوحة الشرف - تحميل مسبق للصورة التالية
+  const _exImageCache = new Map();
+  const _EX_CACHE_MAX = 10;
+
+  function _preloadExImage(idx) {
+    if (!exList.length) return;
+    const nextIdx = (idx + exList.length) % exList.length;
+    const e = exList[nextIdx] || {};
+    const student = e.student || {};
+    const teacher = e.teacher || {};
+    const rawSrc =
+      e.image_src || e.photo_url || e.image_url || e.photo || e.image || e.avatar ||
+      student.photo_url || student.image_url || student.photo || student.image ||
+      teacher.photo_url || teacher.image_url || teacher.photo || teacher.image;
+    const src = resolveImageURL(rawSrc);
+    if (!src || _exImageCache.has(src)) return;
+    // تنظيف الكاش إذا وصل للحد
+    if (_exImageCache.size >= _EX_CACHE_MAX) {
+      const first = _exImageCache.keys().next().value;
+      _exImageCache.delete(first);
+    }
+    var preImg = new Image();
+    preImg.crossOrigin = "anonymous";
+    preImg.src = src;
+    _exImageCache.set(src, preImg);
+  }
+
   function showExcellence(i) {
     if (!exList.length || !dom.exSlot) return;
 
@@ -4071,7 +4143,7 @@
 
       const img = document.createElement("img");
       img.alt = "صورة المتميز " + safeText(name);
-      img.loading = "lazy";
+      img.loading = "eager";
       img.crossOrigin = "anonymous";
       img.className = "honor-avatar";
       
@@ -4109,6 +4181,9 @@
 
       dom.exSlot.appendChild(wrap);
       dom.exSlot.style.opacity = "1";
+
+      // ✅ تحميل مسبق للصورة التالية أثناء عرض الحالية
+      try { _preloadExImage(exPtr + 1); } catch (e) {}
     }, 220);
   }
 
@@ -4609,25 +4684,30 @@
 
   // ===== Ticker 1s =====
   let tickerId = null;
+  let _tickCount = 0; // ✅ عداد لتوزيع العمليات الثقيلة على فترات مختلفة
   function startTicker() {
     if (tickerId) return;
     tickerId = setInterval(() => {
-      // ✅ CLOCK DRIFT DETECTION: فحص تغييرات التوقيت كل ثانية
-      // ⚠️ ZERO COST: هذا الفحص محلي بالكامل، لا يرسل أي request
-      if (detectClockDrift()) {
-        // ✅ THROTTLED RE-SYNC: طلب واحد فقط كل 5 ثوانٍ
-        requestReSyncIfNeeded();
+      _tickCount++;
+      
+      // ✅ CLOCK DRIFT DETECTION: فحص تغييرات التوقيت كل 3 ثوانٍ بدلاً من كل ثانية
+      if (_tickCount % 3 === 0) {
+        if (detectClockDrift()) {
+          requestReSyncIfNeeded();
+        }
       }
       
       tickClock();
 
-      // Keep period/break/before transitions driven by local synchronized time
-      // even if the visual countdown gets stuck at 00:00.
-      try { dayEngineSyncToLocalNow(); } catch (e) {}
+      // ✅ Keep period/break/before transitions — كل 2 ثانية بدلاً من كل ثانية
+      if (_tickCount % 2 === 0) {
+        try { dayEngineSyncToLocalNow(); } catch (e) {}
+      }
 
-      // Ring by actual timetable boundary crossings (local synchronized clock),
-      // independent from countdown rendering or delayed UI state updates.
-      try { tickBoundaryBell(); } catch (e) {}
+      // ✅ Bell boundary check — كل 2 ثانية (الأفضلية للتواني الفردية)
+      if (_tickCount % 2 === 1) {
+        try { tickBoundaryBell(); } catch (e) {}
+      }
 
       if (hasActiveCountdown && typeof countdownSeconds === "number") {
         const prev = countdownSeconds;

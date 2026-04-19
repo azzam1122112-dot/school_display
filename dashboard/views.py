@@ -71,6 +71,8 @@ logger = logging.getLogger(__name__)
 
 from schedule.cache_utils import (
     bump_schedule_revision_for_school_id,
+    bump_schedule_revision_for_school_id_debounced,
+    get_schedule_revision_for_school_id,
     invalidate_display_snapshot_cache_for_school_id,
 )
 
@@ -136,16 +138,31 @@ def _safe_reverse(name: str, *, kwargs: dict | None = None, fallback: str | None
 
 def _invalidate_display_cache(school):
     """
-    Helper: Bump schedule revision & invalidate display cache after any data change.
+    Helper: Bump schedule revision, invalidate display cache, and broadcast
+    WebSocket invalidation after any data change.
     Call this after saving/deleting lessons, announcements, excellence, standby, etc.
     """
     try:
-        school_id = getattr(school, 'id', None)
-        if school_id:
-            bump_schedule_revision_for_school_id(school_id)
-            invalidate_display_snapshot_cache_for_school_id(school_id)
+        school_id = int(getattr(school, 'id', 0) or 0)
+        if not school_id:
+            return
+
+        did_bump = bump_schedule_revision_for_school_id_debounced(school_id=school_id)
+        invalidate_display_snapshot_cache_for_school_id(school_id)
+
+        if did_bump:
+            new_rev = get_schedule_revision_for_school_id(school_id) or 0
+            try:
+                from schedule.signals import _broadcast_invalidate_ws
+                transaction.on_commit(
+                    lambda _sid=school_id, _rev=new_rev: _broadcast_invalidate_ws(_sid, _rev)
+                )
+            except Exception:
+                logger.warning(
+                    "WS broadcast import/schedule failed for school_id=%s", school_id
+                )
     except Exception:
-        pass
+        logger.exception("_invalidate_display_cache failed for school=%s", school)
 
 
 # ======================
@@ -963,14 +980,8 @@ def school_settings(request):
         if form.is_valid():
             form.save()
             
-            # ✅ Invalidate display cache so TV updates immediately
-            try:
-                school_id = getattr(obj.school, 'id', None) or getattr(school, 'id', None)
-                if school_id:
-                    bump_schedule_revision_for_school_id(school_id)
-                    invalidate_display_snapshot_cache_for_school_id(school_id)
-            except Exception:
-                pass
+            # ✅ Invalidate display cache + WS broadcast so TV updates immediately
+            _invalidate_display_cache(obj.school or school)
             
             messages.success(request, "تم حفظ إعدادات المدرسة.")
             return redirect("dashboard:settings")
@@ -1099,14 +1110,8 @@ def day_edit(request, weekday: int):
             p_formset.save()
             b_formset.save()
             
-            # ✅ Invalidate display cache
-            try:
-                school_id = getattr(school, 'id', None)
-                if school_id:
-                    bump_schedule_revision_for_school_id(school_id)
-                    invalidate_display_snapshot_cache_for_school_id(school_id)
-            except Exception:
-                pass
+            # ✅ Invalidate display cache + WS broadcast
+            _invalidate_display_cache(school)
             
             messages.success(request, "تم حفظ جدول اليوم بنجاح.")
             return redirect("dashboard:days_list")
@@ -1230,14 +1235,8 @@ def day_autofill(request, weekday: int):
 
             cursor += gap
 
-        # ✅ Invalidate display cache
-        try:
-            school_id = getattr(school, 'id', None)
-            if school_id:
-                bump_schedule_revision_for_school_id(school_id)
-                invalidate_display_snapshot_cache_for_school_id(school_id)
-        except Exception:
-            pass
+        # ✅ Invalidate display cache + WS broadcast
+        _invalidate_display_cache(school)
 
         messages.success(request, "تمت التعبئة التلقائية للجدول.")
         return redirect("dashboard:day_edit", weekday=weekday)
@@ -1271,14 +1270,8 @@ def day_toggle(request, weekday: int):
     day.is_active = not bool(getattr(day, "is_active", True))
     day.save(update_fields=["is_active"])
 
-    # ✅ Invalidate display cache
-    try:
-        school_id = getattr(school, 'id', None)
-        if school_id:
-            bump_schedule_revision_for_school_id(school_id)
-            invalidate_display_snapshot_cache_for_school_id(school_id)
-    except Exception:
-        pass
+    # ✅ Invalidate display cache + WS broadcast
+    _invalidate_display_cache(school)
 
     status = "تفعيل" if day.is_active else "تعطيل"
     messages.success(request, f"تم {status} يوم {WEEKDAY_MAP.get(weekday, str(weekday))}.")

@@ -107,6 +107,25 @@
     }
     .mobile-overlay.show { opacity: 1; pointer-events: auto; }
 
+    .dashboard-toast-stack {
+      position: fixed;
+      top: calc(var(--header-h) + 16px);
+      left: 1rem;
+      right: 1rem;
+      width: auto;
+      max-width: min(460px, calc(100vw - 2rem));
+      z-index: 80;
+      pointer-events: none;
+    }
+
+    @media (min-width: 1024px) {
+      .dashboard-toast-stack {
+        left: auto;
+        right: calc(var(--sidebar-w) + 1rem);
+        max-width: min(460px, calc(100vw - var(--sidebar-w) - 2rem));
+      }
+    }
+
     /* ── Utility ── */
     .glass { background: rgba(255,255,255,.7); backdrop-filter: blur(12px); }
   </style>
@@ -128,7 +147,7 @@
 
     <!-- Right: Logo + Brand -->
     <div class="flex items-center gap-3">
-      <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
+      <button id="dashboardSidebarToggleBtn" type="button" @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
         <svg x-show="!sidebarOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         <svg x-show="sidebarOpen" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -171,15 +190,16 @@
       {% endwith %}
 
       {% if request.user.is_authenticated and request.user.profile.schools.all|length > 1 %}
-      <div class="relative" x-data="{ open: false }">
-        <button @click="open = !open" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm text-xs font-bold transition">
+      <div id="schoolSwitcher" class="relative" x-data="{ open: false }">
+        <button id="schoolSwitcherBtn" type="button" @click="open = !open" aria-expanded="false" aria-controls="schoolSwitcherMenu" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm text-xs font-bold transition">
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
           <span class="max-w-[100px] truncate">{{ request.user.profile.active_school.name|default:"اختر مدرسة" }}</span>
         </button>
-        <div x-show="open" @click.away="open = false" x-cloak x-transition
-             class="absolute left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+        <div id="schoolSwitcherMenu" x-show="open" @click.away="open = false" x-cloak x-transition
+             class="absolute left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 origin-top-left">
           {% for school in request.user.profile.schools.all %}
             <a href="{% url 'dashboard:switch_school' school.id %}"
+               @click="open = false"
                class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition {% if school == request.user.profile.active_school %}bg-indigo-50 text-indigo-700 font-bold{% endif %}">
               {% if school == request.user.profile.active_school %}
               <svg class="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
@@ -247,7 +267,7 @@
 
 {# ═══ Toast Messages ═══ #}
 {% if messages %}
-  <div id="toastStack" class="fixed top-20 left-4 z-50 space-y-3 w-[min(400px,calc(100vw-2rem))] pointer-events-none">
+  <div id="toastStack" class="dashboard-toast-stack space-y-3">
     {% for m in messages %}
       <div class="toast-in pointer-events-auto rounded-2xl shadow-xl border overflow-hidden glass"
            data-toast data-tags="{{ m.tags }}">
@@ -303,13 +323,13 @@
 {% endif %}
 
 <!-- ═══ Mobile Sidebar Overlay ═══ -->
-<div class="mobile-overlay lg:hidden" :class="sidebarOpen && 'show'" @click="sidebarOpen = false"></div>
+<div id="dashboardMobileOverlay" class="mobile-overlay lg:hidden" :class="sidebarOpen && 'show'" @click="sidebarOpen = false"></div>
 
 <!-- ═══ LAYOUT SHELL ═══ -->
 <div class="pt-16 min-h-screen flex">
 
   <!-- ═══ SIDEBAR ═══ -->
-  <aside class="dashboard-sidebar fixed top-16 right-0 bottom-0 w-[var(--sidebar-w)] bg-white border-l border-slate-200/80 z-50 overflow-y-auto
+  <aside id="dashboardSidebar" class="dashboard-sidebar fixed top-16 right-0 bottom-0 w-[var(--sidebar-w)] bg-white border-l border-slate-200/80 z-50 overflow-y-auto
                 transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)]
                 lg:translate-x-0"
          :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'">
@@ -454,5 +474,119 @@
 </div>
 
 {% block extra_js %}{% endblock %}
+<script>
+  // Fallback for environments where AlpineJS is unavailable.
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Alpine) return;
+
+    const sidebar = document.getElementById('dashboardSidebar');
+    const overlay = document.getElementById('dashboardMobileOverlay');
+    const sidebarToggleBtn = document.getElementById('dashboardSidebarToggleBtn');
+
+    const switcherRoot = document.getElementById('schoolSwitcher');
+    const switcherBtn = document.getElementById('schoolSwitcherBtn');
+    const switcherMenu = document.getElementById('schoolSwitcherMenu');
+
+    const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+
+    function setSidebarOpen(open) {
+      if (!sidebar || !overlay) return;
+
+      if (isDesktop()) {
+        sidebar.classList.remove('translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        overlay.classList.remove('show');
+        return;
+      }
+
+      if (open) {
+        sidebar.classList.remove('translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        overlay.classList.add('show');
+      } else {
+        sidebar.classList.remove('translate-x-0');
+        sidebar.classList.add('translate-x-full');
+        overlay.classList.remove('show');
+      }
+    }
+
+    function setSchoolSwitcherOpen(open) {
+      if (!switcherMenu || !switcherBtn) return;
+      switcherBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+      if (open) {
+        switcherMenu.style.display = 'block';
+        requestAnimationFrame(function () {
+          switcherMenu.style.opacity = '1';
+          switcherMenu.style.transform = 'translateY(0)';
+        });
+        return;
+      }
+
+      switcherMenu.style.opacity = '0';
+      switcherMenu.style.transform = 'translateY(-6px)';
+      window.setTimeout(function () {
+        if (switcherBtn.getAttribute('aria-expanded') === 'false') {
+          switcherMenu.style.display = 'none';
+        }
+      }, 130);
+    }
+
+    if (switcherMenu) {
+      switcherMenu.removeAttribute('x-cloak');
+      switcherMenu.style.transition = 'opacity 140ms ease, transform 140ms ease';
+      switcherMenu.style.transformOrigin = 'top left';
+      switcherMenu.style.opacity = '0';
+      switcherMenu.style.transform = 'translateY(-6px)';
+      setSchoolSwitcherOpen(false);
+      switcherMenu.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          setSchoolSwitcherOpen(false);
+        });
+      });
+    }
+
+    if (switcherBtn) {
+      switcherBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const isOpen = switcherMenu && switcherMenu.style.display === 'block';
+        setSchoolSwitcherOpen(!isOpen);
+      });
+    }
+
+    document.addEventListener('click', function (event) {
+      if (!switcherRoot || !switcherMenu) return;
+      if (!switcherRoot.contains(event.target)) {
+        setSchoolSwitcherOpen(false);
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        setSchoolSwitcherOpen(false);
+      }
+    });
+
+    if (sidebarToggleBtn) {
+      sidebarToggleBtn.addEventListener('click', function () {
+        const open = sidebar ? !sidebar.classList.contains('translate-x-0') : false;
+        setSidebarOpen(open);
+      });
+    }
+
+    if (overlay) {
+      overlay.addEventListener('click', function () {
+        setSidebarOpen(false);
+      });
+    }
+
+    setSidebarOpen(false);
+
+    window.addEventListener('resize', function () {
+      setSidebarOpen(false);
+    });
+  });
+</script>
 </body>
 </html>
