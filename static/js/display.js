@@ -123,6 +123,9 @@
     return false;
   }
 
+  // ===== Compat: nullish-coalesce helper (TV browsers < Chrome 80) =====
+  function _nc(a, b) { return (a !== null && a !== undefined) ? a : b; }
+
   // ===== DOM =====
   const dom = {};
   function bindDom() {
@@ -2421,18 +2424,18 @@
   function getPeriodIndex(periodObj) {
     if (!periodObj || typeof periodObj !== "object") return null;
     const raw =
-      periodObj.index ??
-      periodObj.period_index ??
-      periodObj.current_period_index ??
-      periodObj.current_idx ??
-      periodObj.idx ??
-      periodObj.period ??
-      periodObj.period_no ??
-      periodObj.current_period_no ??
-      periodObj.period_number ??
-      periodObj.periodNum ??
-      periodObj.slot_index ??
-      periodObj.order;
+      _nc(periodObj.index,
+      _nc(periodObj.period_index,
+      _nc(periodObj.current_period_index,
+      _nc(periodObj.current_idx,
+      _nc(periodObj.idx,
+      _nc(periodObj.period,
+      _nc(periodObj.period_no,
+      _nc(periodObj.current_period_no,
+      _nc(periodObj.period_number,
+      _nc(periodObj.periodNum,
+      _nc(periodObj.slot_index,
+      periodObj.order)))))))))));
 
     if (raw === null || raw === undefined || raw === "") return null;
     
@@ -4462,7 +4465,7 @@
 
     // Persist schedule revision so /status?v=... remains authoritative.
     try {
-      const rawRev = meta.schedule_revision ?? meta.scheduleRevision ?? meta.rev;
+      const rawRev = _nc(meta.schedule_revision, _nc(meta.scheduleRevision, meta.rev));
       const n = parseInt(String(rawRev), 10);
       if (!isNaN(n) && n >= 0) {
         rt.scheduleRevision = n;

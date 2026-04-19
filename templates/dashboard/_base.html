@@ -190,27 +190,30 @@
       {% endwith %}
 
       {% if request.user.is_authenticated and request.user.profile.schools.all|length > 1 %}
-      <div id="schoolSwitcher" class="relative" x-data="{ open: false }">
-        <button id="schoolSwitcherBtn" type="button" @click="open = !open" aria-expanded="false" aria-controls="schoolSwitcherMenu" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm text-xs font-bold transition">
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
-          <span class="max-w-[100px] truncate">{{ request.user.profile.active_school.name|default:"اختر مدرسة" }}</span>
-        </button>
-        <div id="schoolSwitcherMenu" x-show="open" @click.away="open = false" x-cloak x-transition
-             class="absolute left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 origin-top-left">
+      <form id="schoolSwitcherForm"
+            method="post"
+            action="{% url 'dashboard:switch_school' %}"
+            class="flex items-center gap-1 rounded-xl bg-white border border-slate-200 shadow-sm px-2 py-1">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <label for="schoolSwitcherSelect" class="sr-only">تبديل المدرسة</label>
+        <select id="schoolSwitcherSelect"
+                name="school_id"
+                class="!h-9 !w-40 md:!w-48 !rounded-lg !border-0 !bg-transparent !py-1 !pl-8 !pr-2 !text-xs !font-bold !text-slate-700 !shadow-none focus:!ring-0"
+                aria-label="تبديل المدرسة">
           {% for school in request.user.profile.schools.all %}
-            <a href="{% url 'dashboard:switch_school' school.id %}?next={{ request.get_full_path|urlencode }}"
-               @click="open = false"
-               class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition {% if school == request.user.profile.active_school %}bg-indigo-50 text-indigo-700 font-bold{% endif %}">
-              {% if school == request.user.profile.active_school %}
-              <svg class="w-4 h-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-              {% else %}
-              <span class="w-4"></span>
-              {% endif %}
+            <option value="{{ school.id }}" {% if school == request.user.profile.active_school %}selected{% endif %}>
               {{ school.name }}
-            </a>
+            </option>
           {% endfor %}
-        </div>
-      </div>
+        </select>
+        <button type="submit"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                title="تطبيق المدرسة المحددة"
+                aria-label="تطبيق المدرسة المحددة">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7"/></svg>
+        </button>
+      </form>
       {% endif %}
 
       <div class="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
@@ -483,10 +486,6 @@
     const overlay = document.getElementById('dashboardMobileOverlay');
     const sidebarToggleBtn = document.getElementById('dashboardSidebarToggleBtn');
 
-    const switcherRoot = document.getElementById('schoolSwitcher');
-    const switcherBtn = document.getElementById('schoolSwitcherBtn');
-    const switcherMenu = document.getElementById('schoolSwitcherMenu');
-
     const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
 
     function setSidebarOpen(open) {
@@ -510,64 +509,6 @@
       }
     }
 
-    function setSchoolSwitcherOpen(open) {
-      if (!switcherMenu || !switcherBtn) return;
-      switcherBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-      if (open) {
-        switcherMenu.style.display = 'block';
-        requestAnimationFrame(function () {
-          switcherMenu.style.opacity = '1';
-          switcherMenu.style.transform = 'translateY(0)';
-        });
-        return;
-      }
-
-      switcherMenu.style.opacity = '0';
-      switcherMenu.style.transform = 'translateY(-6px)';
-      window.setTimeout(function () {
-        if (switcherBtn.getAttribute('aria-expanded') === 'false') {
-          switcherMenu.style.display = 'none';
-        }
-      }, 130);
-    }
-
-    if (switcherMenu) {
-      switcherMenu.removeAttribute('x-cloak');
-      switcherMenu.style.transition = 'opacity 140ms ease, transform 140ms ease';
-      switcherMenu.style.transformOrigin = 'top left';
-      switcherMenu.style.opacity = '0';
-      switcherMenu.style.transform = 'translateY(-6px)';
-      setSchoolSwitcherOpen(false);
-      switcherMenu.querySelectorAll('a').forEach(function (link) {
-        link.addEventListener('click', function () {
-          setSchoolSwitcherOpen(false);
-        });
-      });
-    }
-
-    if (switcherBtn) {
-      switcherBtn.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        const isOpen = switcherMenu && switcherMenu.style.display === 'block';
-        setSchoolSwitcherOpen(!isOpen);
-      });
-    }
-
-    document.addEventListener('click', function (event) {
-      if (!switcherRoot || !switcherMenu) return;
-      if (!switcherRoot.contains(event.target)) {
-        setSchoolSwitcherOpen(false);
-      }
-    });
-
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') {
-        setSchoolSwitcherOpen(false);
-      }
-    });
-
     if (sidebarToggleBtn) {
       sidebarToggleBtn.addEventListener('click', function () {
         const open = sidebar ? !sidebar.classList.contains('translate-x-0') : false;
@@ -585,6 +526,19 @@
 
     window.addEventListener('resize', function () {
       setSidebarOpen(false);
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const schoolSwitcherForm = document.getElementById('schoolSwitcherForm');
+    const schoolSwitcherSelect = document.getElementById('schoolSwitcherSelect');
+    if (!schoolSwitcherForm || !schoolSwitcherSelect) return;
+
+    const initialValue = schoolSwitcherSelect.value;
+    schoolSwitcherSelect.addEventListener('change', function () {
+      if (schoolSwitcherSelect.value && schoolSwitcherSelect.value !== initialValue) {
+        schoolSwitcherForm.submit();
+      }
     });
   });
 </script>

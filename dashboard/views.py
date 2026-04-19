@@ -2452,17 +2452,24 @@ def _admin_school_form_class():
 
 
 @login_required
-def switch_school(request, school_id):
+def switch_school(request, school_id=None):
     profile = _get_or_create_profile(request.user)
     School = SchoolModel()
+    selected_school_id = school_id or request.POST.get("school_id") or request.GET.get("school_id")
+
+    try:
+        selected_school_id = int(selected_school_id)
+    except (TypeError, ValueError):
+        messages.error(request, "اختر مدرسة صحيحة للتبديل إليها.")
+        return redirect(_safe_next_url(request, default_name="dashboard:index"))
 
     try:
         if getattr(request.user, "is_superuser", False):
-            school = School.objects.get(pk=school_id)
+            school = School.objects.get(pk=selected_school_id)
             if not profile.schools.filter(pk=school.pk).exists():
                 profile.schools.add(school)
         else:
-            school = profile.schools.get(pk=school_id)
+            school = profile.schools.get(pk=selected_school_id)
     except School.DoesNotExist:
         messages.error(request, "المدرسة غير موجودة أو ليس لديك صلاحية الوصول إليها.")
         return redirect("dashboard:index")
@@ -2472,6 +2479,8 @@ def switch_school(request, school_id):
 
     profile.active_school = school
     profile.save(update_fields=["active_school"])
+    request.school = school
+    request.session.pop("sub_blocked_once", None)
     messages.success(request, f"تم التبديل إلى مدرسة: {school.name}")
     return redirect(_safe_next_url(request, default_name="dashboard:index"))
 

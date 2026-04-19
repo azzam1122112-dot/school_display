@@ -1382,19 +1382,26 @@
 
         @media (max-width: 720px) {
             .section {
-                padding: 70px 0;
+                padding: 52px 0;
             }
 
             .container {
-                width: min(calc(100% - 24px), var(--container));
+                width: min(calc(100% - 20px), var(--container));
             }
 
             header {
-                padding: 12px 0;
+                padding: 10px 0;
             }
 
             .nav-shell {
-                gap: 10px;
+                gap: 8px;
+                padding: 10px 12px;
+            }
+
+            .logo-mark {
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
             }
 
             .logo-copy span,
@@ -1403,32 +1410,57 @@
             }
 
             .logo-copy strong {
-                font-size: 0.92rem;
+                font-size: 0.88rem;
             }
 
             .nav-actions {
-                gap: 8px;
+                gap: 6px;
             }
 
             .nav-actions .btn,
             .nav-actions .btn-outline {
-                padding: 11px 14px;
+                padding: 10px 12px;
+                font-size: 0.85rem;
             }
 
             .hero {
-                padding: 18px 0 48px;
+                padding: 14px 0 32px;
+            }
+
+            .hero-shell {
+                padding: 18px;
+                border-radius: 24px;
             }
 
             .hero-copy h1 {
-                font-size: 2.45rem;
+                font-size: 1.85rem;
             }
 
             .hero-copy p {
-                font-size: 1rem;
+                font-size: 0.95rem;
             }
 
             .hero-points {
                 grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .hero-point {
+                padding: 14px;
+            }
+
+            .hero-point i {
+                width: 34px;
+                height: 34px;
+                border-radius: 10px;
+            }
+
+            .hero-point strong {
+                font-size: 0.92rem;
+            }
+
+            .hero-point span {
+                font-size: 0.85rem;
             }
 
             .hero-actions,
@@ -1441,90 +1473,259 @@
             .hero-actions .btn-outline,
             .hero-actions .btn-soft {
                 width: 100%;
+                justify-content: center;
+            }
+
+            .hero-meta-item {
+                min-width: unset;
+                padding: 10px 14px;
             }
 
             .hero-visual {
-                min-height: 610px;
+                position: relative;
+                min-height: auto;
+                margin-top: 20px;
+            }
+
+            .visual-stack {
+                position: relative;
+                height: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
             }
 
             .floating-pill {
-                top: 8px;
-                right: 8px;
-                font-size: 0.78rem;
-                padding: 10px 12px;
+                position: static;
+                align-self: flex-start;
+                font-size: 0.8rem;
+                padding: 10px 14px;
             }
 
             .display-frame {
-                inset: 58px 0 184px;
-                border-radius: 24px;
+                position: relative;
+                inset: unset;
+                border-radius: 20px;
                 padding: 10px;
             }
 
-            .display-screen,
-            .video-card,
-            .story-panel,
-            .story-highlight,
-            .story-quote,
-            .benefit-card,
-            .capability-card,
-            .journey-card,
-            .faq-item,
-            .price-card,
-            .footer-shell,
-            .cta-panel,
-            .modal-card {
-                border-radius: 24px;
+            .display-screen {
+                border-radius: 16px;
             }
 
             .screen-topbar {
-                padding: 14px 14px 10px;
+                padding: 12px 12px 8px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .screen-brand strong {
+                font-size: 0.85rem;
+            }
+
+            .screen-brand small {
+                font-size: 0.72rem;
+            }
+
+            .screen-brand i {
+                width: 30px;
+                height: 30px;
+                border-radius: 10px;
             }
 
             .screen-body {
-                padding: 12px;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .screen-highlight {
+                padding: 14px;
+                border-radius: 16px;
+                gap: 8px;
             }
 
             .screen-highlight h3 {
-                font-size: 1.18rem;
+                font-size: 1rem;
             }
 
             .screen-grid {
                 grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .screen-mini-card {
+                padding: 12px;
+                border-radius: 14px;
             }
 
             .ops-card,
             .support-card {
-                position: absolute;
-                width: auto;
-                left: 0;
-                right: 0;
+                position: relative;
+                inset: unset;
+                width: 100%;
+                border-radius: 20px;
             }
 
             .ops-card {
-                top: auto;
-                bottom: 124px;
-                padding: 14px;
+                padding: 16px;
             }
 
             .support-card {
-                bottom: 58px;
-                padding: 14px;
+                padding: 16px;
             }
 
             .video-card {
-                left: 8px;
-                right: 8px;
-                bottom: -30px;
+                position: relative;
+                inset: unset;
+                border-radius: 20px;
+                padding: 10px;
             }
 
             .marquee-strip {
-                margin-top: 58px;
-                padding: 18px;
+                margin-top: 28px;
+                padding: 16px;
+                border-radius: 20px;
+                gap: 14px;
+            }
+
+            .marquee-strip strong {
+                font-size: 0.95rem;
+            }
+
+            .marquee-strip p {
+                font-size: 0.88rem;
+            }
+
+            .marquee-list {
+                justify-content: flex-start;
+            }
+
+            .marquee-list span {
+                font-size: 0.82rem;
+                padding: 8px 12px;
+            }
+
+            .section-header h2 {
+                font-size: 1.55rem;
+            }
+
+            .section-header p {
+                font-size: 0.92rem;
+            }
+
+            .eyebrow {
+                font-size: 0.82rem;
+                padding: 6px 12px;
+            }
+
+            .story-panel {
+                padding: 22px;
+            }
+
+            .story-highlight {
+                min-height: auto;
+                padding: 22px;
+            }
+
+            .story-highlight h3 {
+                font-size: 1.2rem;
+            }
+
+            .story-quote {
+                padding: 22px;
+            }
+
+            .trust-card {
+                padding: 20px;
                 border-radius: 22px;
+            }
+
+            .benefit-card,
+            .capability-card,
+            .journey-card,
+            .faq-item {
+                padding: 22px;
+                border-radius: 22px;
+            }
+
+            .benefit-card i,
+            .capability-card i,
+            .journey-card i,
+            .faq-item i {
+                width: 44px;
+                height: 44px;
+                border-radius: 14px;
+            }
+
+            .benefit-card strong,
+            .capability-card strong,
+            .journey-card strong,
+            .faq-item h3 {
+                font-size: 1.08rem;
+            }
+
+            .benefit-card p,
+            .capability-card p,
+            .journey-card p,
+            .faq-item p {
+                font-size: 0.9rem;
+            }
+
+            .journey-note {
+                padding: 18px;
+                border-radius: 18px;
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .journey-note .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .pricing-head h2 {
+                font-size: 1.5rem;
+            }
+
+            .pricing-note {
+                font-size: 0.88rem;
+                padding: 14px;
+            }
+
+            .price-card {
+                padding: 24px;
+                border-radius: 24px;
             }
 
             .price-card.popular {
                 transform: none;
+            }
+
+            .price-val,
+            .price-val-static {
+                font-size: 2.6rem;
+            }
+
+            .cta-panel {
+                padding: 24px;
+                flex-direction: column;
+                text-align: center;
+                border-radius: 24px;
+            }
+
+            .cta-panel h2 {
+                font-size: 1.35rem;
+            }
+
+            .cta-panel div:last-child {
+                width: 100%;
+            }
+
+            .cta-panel .btn,
+            .cta-panel .btn-outline {
+                width: 100%;
+                justify-content: center;
             }
 
             .radio-group {
@@ -1538,7 +1739,9 @@
 
             .modal-card {
                 width: 100%;
-                padding: 26px 18px;
+                max-height: 92vh;
+                overflow-y: auto;
+                padding: 24px 18px;
                 border-radius: 24px 24px 0 0;
                 transform: translateY(100%);
             }
@@ -1547,36 +1750,168 @@
                 transform: translateY(0);
             }
 
+            .modal-header {
+                padding-left: 48px;
+            }
+
+            .modal-header h2 {
+                font-size: 1.2rem;
+            }
+
             .footer-shell {
-                padding: 24px 18px 88px;
+                padding: 22px 16px 88px;
+                border-radius: 22px;
+            }
+
+            .footer-grid {
+                gap: 20px;
+            }
+
+            .footer-col h4 {
+                font-size: 1.05rem;
+            }
+
+            .copyright {
+                font-size: 0.82rem;
             }
 
             .mobile-cta {
                 position: fixed;
-                right: 12px;
-                left: 12px;
-                bottom: 12px;
+                right: 10px;
+                left: 10px;
+                bottom: 10px;
                 z-index: 1100;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 10px;
                 padding: 12px 14px;
-                border-radius: 22px;
+                border-radius: 20px;
                 background: rgba(7, 17, 31, 0.94);
                 color: white;
                 box-shadow: 0 24px 50px rgba(7, 17, 31, 0.28);
             }
 
+            .mobile-cta strong {
+                font-size: 0.9rem;
+            }
+
             .mobile-cta small {
                 color: rgba(255, 255, 255, 0.68);
                 display: block;
+                font-size: 0.78rem;
             }
 
             .mobile-cta .btn {
                 padding: 11px 16px;
                 background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
                 box-shadow: none;
+                flex-shrink: 0;
+            }
+        }
+
+        /* Very small phones (< 420px) */
+        @media (max-width: 420px) {
+            .container {
+                width: calc(100% - 16px);
+            }
+
+            .hero-shell {
+                padding: 14px;
+                border-radius: 20px;
+            }
+
+            .hero-copy h1 {
+                font-size: 1.55rem;
+            }
+
+            .hero-copy p {
+                font-size: 0.9rem;
+            }
+
+            .hero-point {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .hero-point strong {
+                font-size: 0.88rem;
+            }
+
+            .hero-point span {
+                font-size: 0.82rem;
+            }
+
+            .btn, .btn-outline, .btn-soft {
+                padding: 12px 16px;
+                font-size: 0.88rem;
+            }
+
+            .section {
+                padding: 40px 0;
+            }
+
+            .section-header h2 {
+                font-size: 1.35rem;
+            }
+
+            .display-frame {
+                padding: 8px;
+            }
+
+            .screen-topbar {
+                padding: 10px 10px 8px;
+            }
+
+            .screen-body {
+                padding: 8px;
+            }
+
+            .screen-highlight {
+                padding: 12px;
+            }
+
+            .screen-highlight h3 {
+                font-size: 0.92rem;
+            }
+
+            .price-val,
+            .price-val-static {
+                font-size: 2.2rem;
+            }
+
+            .plan-switch button {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+
+            .nav-shell {
+                padding: 8px 10px;
+                border-radius: 18px;
+            }
+
+            .logo-mark {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+            }
+
+            .logo-copy strong {
+                font-size: 0.82rem;
+            }
+
+            .nav-actions .btn,
+            .nav-actions .btn-outline {
+                padding: 9px 10px;
+                font-size: 0.8rem;
+            }
+
+            .cta-panel h2 {
+                font-size: 1.2rem;
+            }
+
+            .footer-grid {
+                gap: 16px;
             }
         }
 

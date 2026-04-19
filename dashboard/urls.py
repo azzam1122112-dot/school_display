@@ -13,6 +13,7 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
         path("subscription/invoices/<int:pk>/", views.subscription_invoice_view, name="subscription_invoice_view"),
     path("password/", views.change_password, name="change_password"),
+    path("switch-school/", views.switch_school, name="switch_school"),
     path("switch-school/<int:school_id>/", views.switch_school, name="switch_school"),
     path("", views.index, name="index"),
     path("select-school/", views.select_school, name="select_school"),
