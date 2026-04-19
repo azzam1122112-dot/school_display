@@ -112,6 +112,7 @@ class SupportDashboardOnlyMiddleware:
         "dashboard:login",
         "dashboard:logout",
         "dashboard:change_password",
+        "dashboard:switch_school",
     }
 
     FORBIDDEN_VIEW_NAMES = {
