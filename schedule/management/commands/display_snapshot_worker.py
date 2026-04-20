@@ -47,6 +47,11 @@ class Command(BaseCommand):
                 school_id = int(job.get("school_id") or 0)
                 rev = int(job.get("rev") or 0)
                 day_key = str(job.get("day_key") or "")
+                if job.get("_skip_complete"):
+                    self.stdout.write(
+                        f"snapshot_worker_job school_id={school_id} requested_rev={rev} day_key={day_key} queue_wait_ms=0 process_ms=0 ok=1 result={{'ok': True, 'reason': '{job.get('_skip_reason') or 'skipped'}'}}"
+                    )
+                    continue
                 try:
                     queued_at = float(job.get("queued_at") or 0.0)
                 except Exception:

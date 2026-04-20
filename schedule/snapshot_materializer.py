@@ -107,21 +107,43 @@ def _job_dedupe_ttl_seconds() -> int:
     return int(
         getattr(
             settings,
-            "DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL",
-            _env_int("DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL", 30, min_v=5, max_v=300),
+            "DISPLAY_SNAPSHOT_PENDING_TTL_SEC",
+            _env_int(
+                "DISPLAY_SNAPSHOT_PENDING_TTL_SEC",
+                _env_int("DISPLAY_SNAPSHOT_JOB_DEDUPE_TTL", 30, min_v=5, max_v=300),
+                min_v=5,
+                max_v=600,
+            ),
         )
         or 30
     )
 
 
 def _enqueue_debounce_seconds() -> int:
+    value = getattr(
+        settings,
+        "DISPLAY_SNAPSHOT_DEBOUNCE_SEC",
+        _env_int(
+            "DISPLAY_SNAPSHOT_DEBOUNCE_SEC",
+            _env_int("DISPLAY_SNAPSHOT_REBUILD_DEBOUNCE_SEC", 3, min_v=0, max_v=60),
+            min_v=0,
+            max_v=60,
+        ),
+    )
+    try:
+        return max(0, min(60, int(value)))
+    except Exception:
+        return 3
+
+
+def _latest_rev_ttl_seconds() -> int:
     return int(
         getattr(
             settings,
-            "DISPLAY_SNAPSHOT_REBUILD_DEBOUNCE_SEC",
-            _env_int("DISPLAY_SNAPSHOT_REBUILD_DEBOUNCE_SEC", 3, min_v=2, max_v=5),
+            "DISPLAY_SNAPSHOT_LATEST_REV_TTL_SEC",
+            _env_int("DISPLAY_SNAPSHOT_LATEST_REV_TTL_SEC", 120, min_v=30, max_v=3600),
         )
-        or 3
+        or 120
     )
 
 
@@ -162,11 +184,23 @@ def _worker_heartbeat_key() -> str:
 
 
 def _job_dedupe_key(school_id: int, day_key: str) -> str:
-    return f"display:snapshot:job:{int(school_id)}:{normalize_day_key(day_key)}"
+    return _pending_job_key(school_id, day_key)
 
 
 def _enqueue_debounce_key(school_id: int, day_key: str) -> str:
     return f"display:snapshot:enqueue:debounce:{int(school_id)}:{normalize_day_key(day_key)}"
+
+
+def _pending_job_key(school_id: int, day_key: str) -> str:
+    return f"display:snapshot:queue:pending:{int(school_id)}:{normalize_day_key(day_key)}"
+
+
+def _latest_rev_key(school_id: int, day_key: str) -> str:
+    return f"display:snapshot:queue:latest_rev:{int(school_id)}:{normalize_day_key(day_key)}"
+
+
+def _materialized_rev_key(school_id: int, day_key: str) -> str:
+    return f"display:snapshot:materialized_rev:{int(school_id)}:{normalize_day_key(day_key)}"
 
 
 def _get_cache_redis_connection():
@@ -178,7 +212,97 @@ def _get_cache_redis_connection():
         return None
 
 
+def _get_queue_redis_connection():
+    url = str(getattr(settings, "REDIS_CHANNELS_URL", "") or "").strip()
+    if url:
+        try:
+            import redis  # type: ignore
+
+            return redis.Redis.from_url(
+                url,
+                socket_connect_timeout=2,
+                socket_timeout=2,
+                retry_on_timeout=True,
+                health_check_interval=30,
+            )
+        except Exception:
+            logger.exception("snapshot_queue channels redis connection failed")
+
+    return _get_cache_redis_connection()
+
+
+def _redis_get_int(conn, key: str) -> int | None:
+    try:
+        raw = conn.get(key)
+        if raw is None:
+            return None
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        return int(raw)
+    except Exception:
+        return None
+
+
+def _redis_set_latest_revision(conn, key: str, rev: int, ttl: int) -> tuple[int, bool]:
+    rev = int(rev or 0)
+    ttl = int(ttl or 120)
+    script = """
+local cur = redis.call('GET', KEYS[1])
+local cur_i = tonumber(cur or '0') or 0
+local next_i = tonumber(ARGV[1]) or 0
+if next_i >= cur_i then
+  redis.call('SET', KEYS[1], tostring(next_i), 'EX', tonumber(ARGV[2]))
+  return {cur_i, next_i}
+end
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+return {cur_i, cur_i}
+"""
+    try:
+        result = conn.eval(script, 1, key, int(rev), int(ttl))
+        previous = int(result[0] or 0) if isinstance(result, (list, tuple)) else 0
+        latest = int(result[1] or rev) if isinstance(result, (list, tuple)) else rev
+        return latest, bool(previous and latest > previous)
+    except Exception:
+        previous = _redis_get_int(conn, key) or 0
+        latest = max(int(previous), int(rev))
+        try:
+            conn.set(key, str(latest), ex=ttl)
+        except Exception:
+            pass
+        return latest, bool(previous and latest > previous)
+
+
+def _redis_delete_if_value(conn, key: str, expected: str) -> bool:
+    script = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
+    try:
+        return bool(conn.eval(script, 1, key, str(expected)))
+    except Exception:
+        try:
+            raw = conn.get(key)
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8")
+            if str(raw or "") == str(expected):
+                return bool(conn.delete(key))
+        except Exception:
+            pass
+    return False
+
+
+def _job_not_before(payload: dict[str, Any]) -> float:
+    try:
+        return float(payload.get("not_before") or 0.0)
+    except Exception:
+        return 0.0
+
+
 def snapshot_queue_available() -> bool:
+    if str(getattr(settings, "REDIS_CHANNELS_URL", "") or "").strip():
+        return True
     try:
         cfg = getattr(settings, "CACHES", {}).get("default", {}) or {}
         backend = str(cfg.get("BACKEND", "") or "").lower()
@@ -219,7 +343,7 @@ def snapshot_worker_status() -> dict[str, Any]:
     alive = bool(age_sec is not None and age_sec <= float(worker_heartbeat_ttl_seconds()))
 
     queue_depth = None
-    conn = _get_cache_redis_connection()
+    conn = _get_queue_redis_connection()
     if conn is not None:
         try:
             queue_depth = int(conn.llen(_queue_name()) or 0)
@@ -255,42 +379,81 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
             _metrics_incr("metrics:snapshot_queue:worker_unavailable")
             return {"queued": False, "reason": "worker_unavailable"}
 
-    conn = _get_cache_redis_connection()
+    conn = _get_queue_redis_connection()
     if conn is None:
         return {"queued": False, "reason": "redis_unavailable"}
 
+    latest_key = _latest_rev_key(school_id, day_key)
+    pending_key = _pending_job_key(school_id, day_key)
     debounce_key = _enqueue_debounce_key(school_id, day_key)
+    latest_rev = rev
+    latest_replaced = False
     try:
-        if not bool(cache.add(debounce_key, str(rev), timeout=_enqueue_debounce_seconds())):
+        latest_rev, latest_replaced = _redis_set_latest_revision(
+            conn,
+            latest_key,
+            rev,
+            _latest_rev_ttl_seconds(),
+        )
+        if latest_replaced:
+            _metrics_incr("metrics:snapshot_queue:latest_revision_replaced")
+    except Exception:
+        latest_rev = rev
+
+    debounced = False
+    try:
+        debounce_sec = max(0, int(_enqueue_debounce_seconds()))
+        if debounce_sec > 0 and not bool(conn.set(debounce_key, str(latest_rev), nx=True, ex=debounce_sec)):
+            debounced = True
             _metrics_incr("metrics:snapshot_queue:debounced")
-            return {"queued": False, "debounced": True, "debounce_key": debounce_key}
     except Exception:
         pass
 
-    dedupe_key = _job_dedupe_key(school_id, day_key)
+    dedupe_key = pending_key
+    now = time.time()
+    job_id = uuid.uuid4().hex
     payload = {
         "school_id": school_id,
         "rev": rev,
         "day_key": day_key,
         "reason": str(reason or "request_miss"),
-        "queued_at": time.time(),
-        "job_id": uuid.uuid4().hex,
+        "queued_at": now,
+        "not_before": now + max(0, int(_enqueue_debounce_seconds())),
+        "job_id": job_id,
+        "latest_rev_key": latest_key,
+        "pending_key": pending_key,
     }
 
     try:
-        if not bool(cache.add(dedupe_key, json.dumps(payload, ensure_ascii=False), timeout=_job_dedupe_ttl_seconds())):
+        if not bool(conn.set(dedupe_key, job_id, nx=True, ex=_job_dedupe_ttl_seconds())):
             _metrics_incr("metrics:snapshot_queue:deduped")
-            return {"queued": False, "duplicate": True, "dedupe_key": dedupe_key}
+            if int(latest_rev or 0) > int(rev or 0) or latest_replaced:
+                _metrics_incr("metrics:snapshot_queue:coalesced")
+            return {
+                "queued": False,
+                "duplicate": True,
+                "deduped": True,
+                "debounced": debounced,
+                "coalesced": bool(latest_replaced),
+                "latest_rev": int(latest_rev or 0),
+                "dedupe_key": dedupe_key,
+            }
     except Exception:
         pass
 
     try:
         conn.rpush(_queue_name(), json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
         _metrics_incr("metrics:snapshot_queue:enqueued")
-        return {"queued": True, "dedupe_key": dedupe_key, "job": payload}
+        return {
+            "queued": True,
+            "dedupe_key": dedupe_key,
+            "latest_rev": int(latest_rev or 0),
+            "debounced": debounced,
+            "job": payload,
+        }
     except Exception as exc:
         try:
-            cache.delete(dedupe_key)
+            _redis_delete_if_value(conn, dedupe_key, job_id)
         except Exception:
             pass
         _metrics_incr("metrics:snapshot_queue:enqueue_error")
@@ -301,7 +464,7 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
 def dequeue_snapshot_build(*, block_timeout: int = 5) -> dict[str, Any] | None:
     if not snapshot_queue_available():
         return None
-    conn = _get_cache_redis_connection()
+    conn = _get_queue_redis_connection()
     if conn is None:
         return None
 
@@ -318,6 +481,68 @@ def dequeue_snapshot_build(*, block_timeout: int = 5) -> dict[str, Any] | None:
             raw = raw.decode("utf-8")
         payload = json.loads(raw or "{}")
         if isinstance(payload, dict):
+            school_id = int(payload.get("school_id") or 0)
+            day_key = normalize_day_key(str(payload.get("day_key") or ""))
+            job_id = str(payload.get("job_id") or "")
+            pending_key = str(payload.get("pending_key") or _pending_job_key(school_id, day_key))
+
+            try:
+                pending_job_id = conn.get(pending_key)
+                if isinstance(pending_job_id, bytes):
+                    pending_job_id = pending_job_id.decode("utf-8")
+                if pending_job_id and job_id and str(pending_job_id) != job_id:
+                    _metrics_incr("metrics:snapshot_queue:outdated_job_dropped")
+                    logger.info(
+                        "snapshot_queue outdated_job_dropped school_id=%s job_rev=%s day_key=%s job_id=%s pending_job_id=%s",
+                        school_id,
+                        int(payload.get("rev") or 0),
+                        day_key,
+                        job_id,
+                        str(pending_job_id),
+                    )
+                    return None
+            except Exception:
+                pass
+
+            not_before = _job_not_before(payload)
+            now = time.time()
+            if not_before > now:
+                try:
+                    payload["_debounce_requeues"] = int(payload.get("_debounce_requeues") or 0) + 1
+                    conn.rpush(_queue_name(), json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+                except Exception:
+                    pass
+                return None
+
+            latest_rev = _redis_get_int(conn, _latest_rev_key(school_id, day_key))
+            try:
+                job_rev = int(payload.get("rev") or 0)
+            except Exception:
+                job_rev = 0
+            if latest_rev is not None and latest_rev > job_rev:
+                payload["_coalesced_from_rev"] = job_rev
+                payload["rev"] = int(latest_rev)
+                _metrics_incr("metrics:snapshot_queue:coalesced")
+                logger.info(
+                    "snapshot_queue coalesced school_id=%s day_key=%s from_rev=%s latest_rev=%s",
+                    school_id,
+                    day_key,
+                    job_rev,
+                    int(latest_rev),
+                )
+
+            built_rev = _redis_get_int(conn, _materialized_rev_key(school_id, day_key))
+            try:
+                target_rev = int(payload.get("rev") or 0)
+            except Exception:
+                target_rev = 0
+            if built_rev is not None and target_rev > 0 and built_rev >= target_rev:
+                _metrics_incr("metrics:snapshot_queue:queue_skipped_outdated")
+                _metrics_incr("metrics:snapshot_queue:outdated_job_dropped")
+                payload["_skip_complete"] = True
+                payload["_skip_reason"] = "already_materialized_latest"
+                return payload
+
             _metrics_incr("metrics:snapshot_queue:dequeued")
             dequeued_at = time.time()
             payload["_dequeued_at"] = dequeued_at
@@ -372,6 +597,12 @@ def _store_materialized_snapshot(*, school_id: int, rev: int, day_key: str, snap
     steady_key = av._steady_cache_key_for_school_rev(int(school_id), int(rev), day_key=day_key)
     cache.set(steady_key, entry, timeout=ttl)
     cache.set(av._stale_snapshot_fallback_key(int(school_id), day_key=day_key), entry, timeout=stale_ttl)
+    try:
+        conn = _get_queue_redis_connection()
+        if conn is not None:
+            conn.set(_materialized_rev_key(int(school_id), str(day_key)), int(rev), ex=_latest_rev_ttl_seconds())
+    except Exception:
+        pass
 
     try:
         from display.cache_utils import keys as display_keys
@@ -412,8 +643,19 @@ def materialize_snapshot_for_school(
         pass
 
     current_rev = int(getattr(settings_obj, "schedule_revision", 0) or 0)
-    target_rev = current_rev
     target_day_key = av._snapshot_cache_day_key(day_key)
+    requested_rev = int(rev or 0)
+    latest_rev = None
+    try:
+        conn = _get_queue_redis_connection()
+        if conn is not None:
+            latest_rev = _redis_get_int(conn, _latest_rev_key(school_id, target_day_key))
+    except Exception:
+        latest_rev = None
+    target_rev = max(current_rev, requested_rev, int(latest_rev or 0))
+
+    if latest_rev is not None and latest_rev > requested_rev:
+        _metrics_incr("metrics:snapshot_queue:coalesced")
 
     queue_wait_ms = None
     try:
@@ -450,9 +692,35 @@ def materialize_snapshot_for_school(
         }
 
     try:
-        entry_existing = av._snapshot_cache_entry_from_cached(
-            cache.get(av._steady_cache_key_for_school_rev(school_id, target_rev, day_key=target_day_key))
-        )
+        steady_key = av._steady_cache_key_for_school_rev(school_id, target_rev, day_key=target_day_key)
+        entry_existing = av._snapshot_cache_entry_from_cached(cache.get(steady_key))
+        built_rev_existing = None
+        try:
+            conn = _get_queue_redis_connection()
+            if conn is not None:
+                built_rev_existing = _redis_get_int(conn, _materialized_rev_key(school_id, target_day_key))
+        except Exception:
+            built_rev_existing = None
+        if built_rev_existing is None and isinstance(entry_existing, dict):
+            try:
+                snap_existing = entry_existing.get("snap") or {}
+                meta_existing = snap_existing.get("meta") if isinstance(snap_existing, dict) else {}
+                built_rev_existing = int((meta_existing or {}).get("schedule_revision") or 0)
+            except Exception:
+                built_rev_existing = None
+
+        if built_rev_existing is not None and built_rev_existing >= target_rev:
+            _metrics_incr("metrics:snapshot_queue:queue_skipped_outdated")
+            return {
+                "ok": True,
+                "reason": "already_materialized_latest",
+                "school_id": school_id,
+                "requested_rev": requested_rev,
+                "built_rev": int(built_rev_existing),
+                "day_key": target_day_key,
+                "queue_wait_ms": int(queue_wait_ms or 0),
+            }
+
         if isinstance(entry_existing, dict) and isinstance(entry_existing.get("snap"), dict):
             _metrics_incr("metrics:snapshot_queue:already_materialized")
             return {
@@ -460,6 +728,8 @@ def materialize_snapshot_for_school(
                 "reason": "already_materialized",
                 "school_id": school_id,
                 "rev": target_rev,
+                "requested_rev": requested_rev,
+                "built_rev": target_rev,
                 "day_key": target_day_key,
             }
 
@@ -477,6 +747,7 @@ def materialize_snapshot_for_school(
             meta["cache"] = "MISS"
             meta["materialized"] = True
             meta["materialized_source"] = str(source or "worker")
+            meta["schedule_revision"] = int(target_rev)
             meta["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         except Exception:
             pass
@@ -495,7 +766,7 @@ def materialize_snapshot_for_school(
         logger.info(
             "snapshot_materialized school_id=%s requested_rev=%s built_rev=%s day_key=%s queue_wait_ms=%s build_ms=%s process_ms=%s source=%s ttl=%s stale_ttl=%s",
             school_id,
-            int(rev or 0),
+            requested_rev,
             target_rev,
             target_day_key,
             int(queue_wait_ms or 0),
@@ -508,8 +779,9 @@ def materialize_snapshot_for_school(
         return {
             "ok": True,
             "school_id": school_id,
-            "requested_rev": int(rev or 0),
+            "requested_rev": requested_rev,
             "built_rev": target_rev,
+            "latest_rev": int(latest_rev or target_rev),
             "day_key": target_day_key,
             "queue_wait_ms": int(queue_wait_ms or 0),
             "build_ms": int(build_ms),
@@ -542,6 +814,12 @@ def complete_snapshot_job(job: dict[str, Any] | None) -> None:
         _metrics_set_max("metrics:snapshot_queue:e2e_max_ms", e2e_ms)
 
     try:
-        cache.delete(_job_dedupe_key(int(job.get("school_id") or 0), str(job.get("day_key") or "")))
+        conn = _get_queue_redis_connection()
+        if conn is not None:
+            _redis_delete_if_value(
+                conn,
+                _pending_job_key(int(job.get("school_id") or 0), str(job.get("day_key") or "")),
+                str(job.get("job_id") or ""),
+            )
     except Exception:
         pass

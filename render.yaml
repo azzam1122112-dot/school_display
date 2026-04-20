@@ -155,6 +155,12 @@ services:
         value: "20"
       - key: CACHE_REDIS_MAX_CONNECTIONS
         value: "20"
+      - key: DISPLAY_SNAPSHOT_DEBOUNCE_SEC
+        value: "3"
+      - key: DISPLAY_SNAPSHOT_PENDING_TTL_SEC
+        value: "30"
+      - key: DISPLAY_SNAPSHOT_LATEST_REV_TTL_SEC
+        value: "120"
 
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

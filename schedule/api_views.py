@@ -313,7 +313,13 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
             day_key=normalized_day_key,
             reason="request_miss",
         )
-        queued_or_existing = bool(queue_result.get("queued") or queue_result.get("duplicate"))
+        queued_or_existing = bool(
+            queue_result.get("queued")
+            or queue_result.get("duplicate")
+            or queue_result.get("deduped")
+            or queue_result.get("debounced")
+            or queue_result.get("coalesced")
+        )
 
         waited_entry = wait_for_materialized_snapshot(
             school_id=int(school_id),
@@ -786,10 +792,14 @@ def metrics(request):
         "metrics:snapshot_queue:requested",
         "metrics:snapshot_queue:enqueued",
         "metrics:snapshot_queue:deduped",
+        "metrics:snapshot_queue:coalesced",
         "metrics:snapshot_queue:dequeued",
         "metrics:snapshot_queue:materialized",
         "metrics:snapshot_queue:error",
         "metrics:snapshot_queue:debounced",
+        "metrics:snapshot_queue:latest_revision_replaced",
+        "metrics:snapshot_queue:queue_skipped_outdated",
+        "metrics:snapshot_queue:outdated_job_dropped",
         "metrics:snapshot_queue:worker_unavailable",
         "metrics:snapshot_queue:building_payload",
         "metrics:snapshot_queue:served_after_wait",
@@ -1161,10 +1171,14 @@ def _metrics_log_maybe() -> None:
         "metrics:snapshot_cache:build_max_ms",
         "metrics:snapshot_queue:enqueued",
         "metrics:snapshot_queue:deduped",
+        "metrics:snapshot_queue:coalesced",
         "metrics:snapshot_queue:dequeued",
         "metrics:snapshot_queue:materialized",
         "metrics:snapshot_queue:error",
         "metrics:snapshot_queue:debounced",
+        "metrics:snapshot_queue:latest_revision_replaced",
+        "metrics:snapshot_queue:queue_skipped_outdated",
+        "metrics:snapshot_queue:outdated_job_dropped",
         "metrics:snapshot_queue:worker_unavailable",
         "metrics:snapshot_queue:queue_wait_sum_ms",
         "metrics:snapshot_queue:queue_wait_max_ms",
@@ -1186,10 +1200,14 @@ def _metrics_log_maybe() -> None:
     build_lock_contention = int(vals.get("metrics:snapshot_cache:build_lock_contention", 0) or 0)
     queue_enqueued = int(vals.get("metrics:snapshot_queue:enqueued", 0) or 0)
     queue_deduped = int(vals.get("metrics:snapshot_queue:deduped", 0) or 0)
+    queue_coalesced = int(vals.get("metrics:snapshot_queue:coalesced", 0) or 0)
     queue_dequeued = int(vals.get("metrics:snapshot_queue:dequeued", 0) or 0)
     queue_materialized = int(vals.get("metrics:snapshot_queue:materialized", 0) or 0)
     queue_errors = int(vals.get("metrics:snapshot_queue:error", 0) or 0)
     queue_debounced = int(vals.get("metrics:snapshot_queue:debounced", 0) or 0)
+    queue_latest_revision_replaced = int(vals.get("metrics:snapshot_queue:latest_revision_replaced", 0) or 0)
+    queue_skipped_outdated = int(vals.get("metrics:snapshot_queue:queue_skipped_outdated", 0) or 0)
+    queue_outdated_job_dropped = int(vals.get("metrics:snapshot_queue:outdated_job_dropped", 0) or 0)
     queue_worker_unavailable = int(vals.get("metrics:snapshot_queue:worker_unavailable", 0) or 0)
     queue_wait_sum_ms = int(vals.get("metrics:snapshot_queue:queue_wait_sum_ms", 0) or 0)
     queue_wait_max_ms = int(vals.get("metrics:snapshot_queue:queue_wait_max_ms", 0) or 0)
@@ -1202,7 +1220,7 @@ def _metrics_log_maybe() -> None:
     queue_e2e_avg_ms = int(queue_e2e_sum_ms / queue_dequeued) if queue_dequeued > 0 else 0
 
     logger.info(
-        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s stale_fallback=%s build_lock_contention=%s build_count=%s build_avg_ms=%s build_max_ms=%s queue_enqueued=%s queue_deduped=%s queue_dequeued=%s queue_materialized=%s queue_errors=%s queue_debounced=%s queue_worker_unavailable=%s queue_wait_avg_ms=%s queue_wait_max_ms=%s queue_process_avg_ms=%s queue_process_max_ms=%s queue_e2e_avg_ms=%s queue_e2e_max_ms=%s",
+        "snapshot_cache metrics token_hit=%s token_miss=%s school_hit=%s school_miss=%s steady_hit=%s steady_miss=%s stale_fallback=%s build_lock_contention=%s build_count=%s build_avg_ms=%s build_max_ms=%s queue_enqueued=%s queue_deduped=%s queue_coalesced=%s queue_dequeued=%s queue_materialized=%s queue_errors=%s queue_debounced=%s latest_revision_replaced=%s queue_skipped_outdated=%s outdated_job_dropped=%s queue_worker_unavailable=%s queue_wait_avg_ms=%s queue_wait_max_ms=%s queue_process_avg_ms=%s queue_process_max_ms=%s queue_e2e_avg_ms=%s queue_e2e_max_ms=%s",
         vals.get("metrics:snapshot_cache:token_hit", 0),
         vals.get("metrics:snapshot_cache:token_miss", 0),
         vals.get("metrics:snapshot_cache:school_hit", 0),
@@ -1216,10 +1234,14 @@ def _metrics_log_maybe() -> None:
         build_max_ms,
         queue_enqueued,
         queue_deduped,
+        queue_coalesced,
         queue_dequeued,
         queue_materialized,
         queue_errors,
         queue_debounced,
+        queue_latest_revision_replaced,
+        queue_skipped_outdated,
+        queue_outdated_job_dropped,
         queue_worker_unavailable,
         queue_wait_avg_ms,
         queue_wait_max_ms,
