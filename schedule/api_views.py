@@ -307,12 +307,44 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
 
     if async_enabled and queue_available and worker_alive:
         _metrics_incr("metrics:snapshot_queue:requested")
+        logger.info(
+            "snapshot_queue api_enqueue_attempt school_id=%s rev=%s day_key=%s reason=%s async_enabled=%s queue_available=%s worker_alive=%s",
+            int(school_id),
+            int(rev),
+            normalized_day_key,
+            "request_miss",
+            async_enabled,
+            queue_available,
+            worker_alive,
+        )
         queue_result = enqueue_snapshot_build(
             school_id=int(school_id),
             rev=int(rev),
             day_key=normalized_day_key,
             reason="request_miss",
         )
+        try:
+            job = queue_result.get("job") if isinstance(queue_result, dict) else None
+            job_id = job.get("job_id") if isinstance(job, dict) else None
+            logger.info(
+                "snapshot_queue api_enqueue_result school_id=%s rev=%s result_queued=%s result_reason=%s deduped=%s debounced=%s coalesced=%s latest_rev=%s job_id=%s",
+                int(school_id),
+                int(rev),
+                queue_result.get("queued") if isinstance(queue_result, dict) else None,
+                queue_result.get("reason") if isinstance(queue_result, dict) else None,
+                queue_result.get("deduped") if isinstance(queue_result, dict) else None,
+                queue_result.get("debounced") if isinstance(queue_result, dict) else None,
+                queue_result.get("coalesced") if isinstance(queue_result, dict) else None,
+                queue_result.get("latest_rev") if isinstance(queue_result, dict) else None,
+                job_id,
+            )
+        except Exception:
+            logger.info(
+                "snapshot_queue api_enqueue_result school_id=%s rev=%s result=%s",
+                int(school_id),
+                int(rev),
+                queue_result,
+            )
         queued_or_existing = bool(
             queue_result.get("queued")
             or queue_result.get("duplicate")

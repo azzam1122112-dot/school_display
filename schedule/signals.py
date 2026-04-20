@@ -131,7 +131,28 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
                 snapshot_worker_status,
             )
 
-            if not bool(snapshot_async_build_enabled()) or not bool(snapshot_queue_available()):
+            async_enabled = bool(snapshot_async_build_enabled())
+            queue_available = bool(snapshot_queue_available())
+            logger.info(
+                "snapshot_queue signal_check school_id=%s rev=%s async_enabled=%s queue_available=%s reason=%s model=%s",
+                school_id,
+                int(new_rev or 0),
+                async_enabled,
+                queue_available,
+                reason,
+                model_label,
+            )
+
+            if not async_enabled or not queue_available:
+                logger.info(
+                    "snapshot_queue enqueue_skipped school_id=%s rev=%s async_enabled=%s queue_available=%s reason=%s model=%s",
+                    school_id,
+                    int(new_rev or 0),
+                    async_enabled,
+                    queue_available,
+                    reason,
+                    model_label,
+                )
                 return
 
             worker_status = snapshot_worker_status()
@@ -143,13 +164,56 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
                 )
                 return
 
-            enqueue_snapshot_build(
+            day_key = timezone.localdate().isoformat()
+            logger.info(
+                "snapshot_queue enqueue_attempt school_id=%s rev=%s day_key=%s reason=%s source=signal model=%s",
+                school_id,
+                int(new_rev or 0),
+                day_key,
+                "signal_revision_bump",
+                model_label,
+            )
+            queue_result = enqueue_snapshot_build(
                 school_id=school_id,
                 rev=int(new_rev),
-                day_key=timezone.localdate().isoformat(),
+                day_key=day_key,
                 reason="signal_revision_bump",
             )
+            try:
+                job = queue_result.get("job") if isinstance(queue_result, dict) else None
+                job_id = job.get("job_id") if isinstance(job, dict) else None
+                logger.info(
+                    "snapshot_queue enqueue_result school_id=%s rev=%s result_queued=%s result_reason=%s deduped=%s debounced=%s coalesced=%s latest_rev=%s job_id=%s source=signal",
+                    school_id,
+                    int(new_rev or 0),
+                    queue_result.get("queued") if isinstance(queue_result, dict) else None,
+                    queue_result.get("reason") if isinstance(queue_result, dict) else None,
+                    queue_result.get("deduped") if isinstance(queue_result, dict) else None,
+                    queue_result.get("debounced") if isinstance(queue_result, dict) else None,
+                    queue_result.get("coalesced") if isinstance(queue_result, dict) else None,
+                    queue_result.get("latest_rev") if isinstance(queue_result, dict) else None,
+                    job_id,
+                )
+            except Exception:
+                logger.info(
+                    "snapshot_queue enqueue_result school_id=%s rev=%s result=%s source=signal",
+                    school_id,
+                    int(new_rev or 0),
+                    queue_result,
+                )
         except Exception:
+            try:
+                failed_day_key = timezone.localdate().isoformat()
+            except Exception:
+                failed_day_key = ""
+            logger.error(
+                "snapshot_queue enqueue_failed school_id=%s rev=%s day_key=%s reason=%s model=%s source=signal",
+                school_id,
+                int(new_rev or 0),
+                failed_day_key,
+                reason,
+                model_label,
+            )
             logger.exception("snapshot_queue enqueue failed school_id=%s rev=%s", school_id, new_rev)
 
     # Broadcast to WebSocket clients (after transaction commits)
