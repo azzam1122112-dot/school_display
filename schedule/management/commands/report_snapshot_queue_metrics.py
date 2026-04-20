@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 SNAPSHOT_QUEUE_METRIC_KEYS = [
     "metrics:snapshot_queue:coalesced",
+    "metrics:snapshot_queue:deduped",
+    "metrics:snapshot_queue:debounced",
     "metrics:snapshot_queue:latest_revision_replaced",
     "metrics:snapshot_queue:queue_skipped_outdated",
     "metrics:snapshot_queue:outdated_job_dropped",
@@ -66,12 +68,14 @@ class Command(BaseCommand):
         enqueued = int(metrics.get("enqueued", 0) or 0)
         materialized = int(metrics.get("materialized", 0) or 0)
         coalesced = int(metrics.get("coalesced", 0) or 0)
+        deduped = int(metrics.get("deduped", 0) or 0)
+        debounced = int(metrics.get("debounced", 0) or 0)
         latest_revision_replaced = int(metrics.get("latest_revision_replaced", 0) or 0)
         queue_skipped_outdated = int(metrics.get("queue_skipped_outdated", 0) or 0)
         outdated_job_dropped = int(metrics.get("outdated_job_dropped", 0) or 0)
 
         efficiency = _percent(materialized, enqueued)
-        coalescing_ratio = _percent(coalesced + latest_revision_replaced, enqueued)
+        coalescing_ratio = _percent(coalesced + latest_revision_replaced, enqueued + deduped + debounced)
         drop_ratio = _percent(outdated_job_dropped + queue_skipped_outdated, enqueued)
 
         self.stdout.write("Snapshot Queue Metrics")
@@ -83,6 +87,8 @@ class Command(BaseCommand):
         self.stdout.write(f"materialized: {materialized}")
         self.stdout.write("")
         self.stdout.write(f"coalesced: {coalesced}")
+        self.stdout.write(f"deduped: {deduped}")
+        self.stdout.write(f"debounced: {debounced}")
         self.stdout.write(f"latest_revision_replaced: {latest_revision_replaced}")
         self.stdout.write(f"queue_skipped_outdated: {queue_skipped_outdated}")
         self.stdout.write(f"outdated_job_dropped: {outdated_job_dropped}")

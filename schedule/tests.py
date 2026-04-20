@@ -90,6 +90,24 @@ class SnapshotQueueCoalescingTests(SimpleTestCase):
         self.assertEqual(job["rev"], 1083)
         self.assertEqual(job["_coalesced_from_rev"], 1080)
 
+    @override_settings(DISPLAY_SNAPSHOT_DEBOUNCE_SEC=3)
+    def test_enqueue_debounce_skips_second_job_but_updates_latest_revision(self):
+        first = sm.enqueue_snapshot_build(school_id=1, rev=1080, day_key="2026-04-20")
+        second = sm.enqueue_snapshot_build(school_id=1, rev=1081, day_key="2026-04-20")
+
+        self.assertTrue(first["queued"])
+        self.assertEqual(first["reason"], "queued")
+        self.assertFalse(first["debounced"])
+        self.assertFalse(first["deduped"])
+        self.assertFalse(first["coalesced"])
+        self.assertFalse(second["queued"])
+        self.assertEqual(second["reason"], "debounced")
+        self.assertTrue(second["debounced"])
+        self.assertFalse(second["deduped"])
+        self.assertTrue(second["coalesced"])
+        self.assertEqual(self.redis.llen(sm._queue_name()), 1)
+        self.assertEqual(self.redis.get(sm._latest_rev_key(1, "2026-04-20")), "1081")
+
     def test_already_materialized_latest_job_is_marked_skippable(self):
         sm.enqueue_snapshot_build(school_id=1, rev=1080, day_key="2026-04-20")
         self.redis.set(sm._materialized_rev_key(1, "2026-04-20"), "1081")

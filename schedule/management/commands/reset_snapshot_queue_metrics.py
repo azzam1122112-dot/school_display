@@ -6,6 +6,8 @@ from django.core.management.base import BaseCommand, CommandError
 
 SNAPSHOT_QUEUE_METRIC_KEYS = [
     "metrics:snapshot_queue:coalesced",
+    "metrics:snapshot_queue:deduped",
+    "metrics:snapshot_queue:debounced",
     "metrics:snapshot_queue:latest_revision_replaced",
     "metrics:snapshot_queue:queue_skipped_outdated",
     "metrics:snapshot_queue:outdated_job_dropped",

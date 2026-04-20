@@ -188,7 +188,7 @@ def _job_dedupe_key(school_id: int, day_key: str) -> str:
 
 
 def _enqueue_debounce_key(school_id: int, day_key: str) -> str:
-    return f"display:snapshot:enqueue:debounce:{int(school_id)}:{normalize_day_key(day_key)}"
+    return f"display:snapshot:debounce:{int(school_id)}:{normalize_day_key(day_key)}"
 
 
 def _pending_job_key(school_id: int, day_key: str) -> str:
@@ -196,7 +196,7 @@ def _pending_job_key(school_id: int, day_key: str) -> str:
 
 
 def _latest_rev_key(school_id: int, day_key: str) -> str:
-    return f"display:snapshot:queue:latest_rev:{int(school_id)}:{normalize_day_key(day_key)}"
+    return f"display:snapshot:latest_rev:{int(school_id)}:{normalize_day_key(day_key)}"
 
 
 def _materialized_rev_key(school_id: int, day_key: str) -> str:
@@ -364,11 +364,11 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
     rev = int(rev or 0)
     day_key = normalize_day_key(day_key)
     if not school_id or not day_key:
-        return {"queued": False, "reason": "invalid_payload"}
+        return {"queued": False, "reason": "invalid_payload", "debounced": False, "coalesced": False, "deduped": False}
     if not snapshot_async_build_enabled():
-        return {"queued": False, "reason": "async_disabled"}
+        return {"queued": False, "reason": "async_disabled", "debounced": False, "coalesced": False, "deduped": False}
     if not snapshot_queue_available():
-        return {"queued": False, "reason": "queue_unavailable"}
+        return {"queued": False, "reason": "queue_unavailable", "debounced": False, "coalesced": False, "deduped": False}
 
     if _require_worker_alive_for_enqueue():
         try:
@@ -377,11 +377,11 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
             worker_alive = False
         if not worker_alive:
             _metrics_incr("metrics:snapshot_queue:worker_unavailable")
-            return {"queued": False, "reason": "worker_unavailable"}
+            return {"queued": False, "reason": "worker_unavailable", "debounced": False, "coalesced": False, "deduped": False}
 
     conn = _get_queue_redis_connection()
     if conn is None:
-        return {"queued": False, "reason": "redis_unavailable"}
+        return {"queued": False, "reason": "redis_unavailable", "debounced": False, "coalesced": False, "deduped": False}
 
     latest_key = _latest_rev_key(school_id, day_key)
     pending_key = _pending_job_key(school_id, day_key)
@@ -400,18 +400,32 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
     except Exception:
         latest_rev = rev
 
-    debounced = False
-    try:
-        debounce_sec = max(0, int(_enqueue_debounce_seconds()))
-        if debounce_sec > 0 and not bool(conn.set(debounce_key, str(latest_rev), nx=True, ex=debounce_sec)):
-            debounced = True
-            _metrics_incr("metrics:snapshot_queue:debounced")
-    except Exception:
-        pass
-
+    coalesced = bool(latest_replaced or int(latest_rev or 0) > int(rev or 0))
+    debounce_sec = max(0, int(_enqueue_debounce_seconds()))
     dedupe_key = pending_key
     now = time.time()
     job_id = uuid.uuid4().hex
+
+    debounced = False
+    try:
+        if debounce_sec > 0 and not bool(conn.set(debounce_key, str(latest_rev), nx=True, ex=debounce_sec)):
+            debounced = True
+            _metrics_incr("metrics:snapshot_queue:debounced")
+            if coalesced:
+                _metrics_incr("metrics:snapshot_queue:coalesced")
+            return {
+                "queued": False,
+                "reason": "debounced",
+                "debounced": True,
+                "coalesced": coalesced,
+                "deduped": False,
+                "latest_rev": int(latest_rev or 0),
+                "dedupe_key": dedupe_key,
+                "debounce_key": debounce_key,
+            }
+    except Exception:
+        pass
+
     payload = {
         "school_id": school_id,
         "rev": rev,
@@ -427,16 +441,18 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
     try:
         if not bool(conn.set(dedupe_key, job_id, nx=True, ex=_job_dedupe_ttl_seconds())):
             _metrics_incr("metrics:snapshot_queue:deduped")
-            if int(latest_rev or 0) > int(rev or 0) or latest_replaced:
+            if coalesced:
                 _metrics_incr("metrics:snapshot_queue:coalesced")
             return {
                 "queued": False,
+                "reason": "deduped",
                 "duplicate": True,
                 "deduped": True,
                 "debounced": debounced,
-                "coalesced": bool(latest_replaced),
+                "coalesced": coalesced,
                 "latest_rev": int(latest_rev or 0),
                 "dedupe_key": dedupe_key,
+                "debounce_key": debounce_key,
             }
     except Exception:
         pass
@@ -446,9 +462,13 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
         _metrics_incr("metrics:snapshot_queue:enqueued")
         return {
             "queued": True,
+            "reason": "queued",
+            "deduped": False,
+            "debounced": False,
+            "coalesced": False,
             "dedupe_key": dedupe_key,
+            "debounce_key": debounce_key,
             "latest_rev": int(latest_rev or 0),
-            "debounced": debounced,
             "job": payload,
         }
     except Exception as exc:
@@ -458,7 +478,14 @@ def enqueue_snapshot_build(*, school_id: int, rev: int, day_key: str, reason: st
             pass
         _metrics_incr("metrics:snapshot_queue:enqueue_error")
         logger.exception("snapshot_queue enqueue failed school_id=%s rev=%s day_key=%s", school_id, rev, day_key)
-        return {"queued": False, "reason": exc.__class__.__name__}
+        return {
+            "queued": False,
+            "reason": exc.__class__.__name__,
+            "deduped": False,
+            "debounced": False,
+            "coalesced": coalesced,
+            "latest_rev": int(latest_rev or 0),
+        }
 
 
 def dequeue_snapshot_build(*, block_timeout: int = 5) -> dict[str, Any] | None:
