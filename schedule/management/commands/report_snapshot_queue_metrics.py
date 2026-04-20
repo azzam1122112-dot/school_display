@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 
-from django.conf import settings
+from django.core.cache import cache
+from django.core.cache import caches
 from django.core.management.base import BaseCommand, CommandError
-
-import redis
 
 
 logger = logging.getLogger(__name__)
@@ -21,17 +20,12 @@ SNAPSHOT_QUEUE_METRIC_KEYS = [
 ]
 
 
-def _queue_redis():
-    redis_url = str(getattr(settings, "REDIS_CHANNELS_URL", "") or "").strip()
-    if not redis_url:
-        raise CommandError("REDIS_CHANNELS_URL is not configured.")
-    return redis.Redis.from_url(
-        redis_url,
-        socket_connect_timeout=2,
-        socket_timeout=2,
-        retry_on_timeout=True,
-        health_check_interval=30,
-    )
+def _cache_backend_name() -> str:
+    try:
+        backend = caches["default"]
+        return f"{backend.__class__.__module__}.{backend.__class__.__name__}"
+    except Exception:
+        return f"{cache.__class__.__module__}.{cache.__class__.__name__}"
 
 
 def _metric_name(key: str) -> str:
@@ -56,18 +50,17 @@ def _percent(numerator: int, denominator: int) -> int:
 
 
 class Command(BaseCommand):
-    help = "Report snapshot queue diagnostic metrics from the queue Redis."
+    help = "Report snapshot queue diagnostic metrics from the Django cache backend."
 
     def handle(self, *args, **options):
-        conn = _queue_redis()
         try:
-            raw_values = conn.mget(SNAPSHOT_QUEUE_METRIC_KEYS)
+            raw_values = cache.get_many(SNAPSHOT_QUEUE_METRIC_KEYS)
         except Exception as exc:
             raise CommandError(f"Failed to read snapshot queue metrics: {exc.__class__.__name__}") from exc
 
         metrics = {
-            _metric_name(key): _to_int(value)
-            for key, value in zip(SNAPSHOT_QUEUE_METRIC_KEYS, raw_values)
+            _metric_name(key): _to_int(raw_values.get(key))
+            for key in SNAPSHOT_QUEUE_METRIC_KEYS
         }
 
         enqueued = int(metrics.get("enqueued", 0) or 0)
@@ -83,6 +76,7 @@ class Command(BaseCommand):
 
         self.stdout.write("Snapshot Queue Metrics")
         self.stdout.write("----------------------")
+        self.stdout.write(f"source: django cache default ({_cache_backend_name()})")
         self.stdout.write("")
         self.stdout.write(f"enqueued: {enqueued}")
         self.stdout.write(f"dequeued: {metrics.get('dequeued', 0)}")
