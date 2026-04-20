@@ -33,12 +33,12 @@ services:
       fi
 
       # IMPORTANT:
-      # - If CACHE_REDIS_URL / REDIS_URL is missing, Django falls back to LocMemCache (per-process).
+      # - If REDIS_CACHE_URL / CACHE_REDIS_URL / REDIS_URL is missing, Django cannot use shared cache.
       # - With multiple gunicorn workers, that breaks cache coherence and causes repeated snapshot_build/cache=MISS.
       WORKERS=${WEB_CONCURRENCY:-2}
-      EFFECTIVE_CACHE_REDIS_URL="${CACHE_REDIS_URL:-$REDIS_URL}"
+      EFFECTIVE_CACHE_REDIS_URL="${REDIS_CACHE_URL:-${CACHE_REDIS_URL:-$REDIS_URL}}"
       if [ -z "$EFFECTIVE_CACHE_REDIS_URL" ]; then
-        echo "[WARN] CACHE_REDIS_URL/REDIS_URL is not set; forcing WORKERS=1 to avoid per-process cache misses."
+        echo "[WARN] REDIS_CACHE_URL/CACHE_REDIS_URL/REDIS_URL is not set; forcing WORKERS=1 to avoid per-process cache misses."
         WORKERS=1
       fi
 
@@ -129,6 +129,16 @@ services:
       - key: REDIS_URL
         fromService:
           name: school-display-redis
+          type: redis
+          property: connectionString
+      - key: REDIS_CACHE_URL
+        fromService:
+          name: school-display-redis
+          type: redis
+          property: connectionString
+      - key: REDIS_CHANNELS_URL
+        fromService:
+          name: school-display-channels-redis
           type: redis
           property: connectionString
       - key: CACHE_REDIS_URL

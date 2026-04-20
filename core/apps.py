@@ -71,7 +71,14 @@ class CoreConfig(AppConfig):
             logger.info(
                 "cache_backend backend=%s redis_url_configured=%s caches_default=%s",
                 backend_name,
-                bool(os.getenv("REDIS_URL", "").strip()),
+                bool(
+                    os.getenv("REDIS_CACHE_URL", "").strip()
+                    or os.getenv("REDIS_CHANNELS_URL", "").strip()
+                    or os.getenv("CACHE_REDIS_URL", "").strip()
+                    or os.getenv("CHANNELS_REDIS_URL", "").strip()
+                    or os.getenv("CHANNEL_REDIS_URL", "").strip()
+                    or os.getenv("REDIS_URL", "").strip()
+                ),
                 default_cfg,
             )
         except Exception:

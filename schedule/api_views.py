@@ -76,7 +76,11 @@ def _cache_redis_url_configured() -> bool:
     except Exception:
         pass
     try:
-        return bool(os.getenv("CACHE_REDIS_URL", "").strip() or os.getenv("REDIS_URL", "").strip())
+        return bool(
+            os.getenv("REDIS_CACHE_URL", "").strip()
+            or os.getenv("CACHE_REDIS_URL", "").strip()
+            or os.getenv("REDIS_URL", "").strip()
+        )
     except Exception:
         return False
 
@@ -89,7 +93,8 @@ def _channels_redis_url_configured() -> bool:
         pass
     try:
         return bool(
-            os.getenv("CHANNELS_REDIS_URL", "").strip()
+            os.getenv("REDIS_CHANNELS_URL", "").strip()
+            or os.getenv("CHANNELS_REDIS_URL", "").strip()
             or os.getenv("CHANNEL_REDIS_URL", "").strip()
             or os.getenv("REDIS_URL", "").strip()
         )
@@ -812,6 +817,8 @@ def metrics(request):
         "cache_backend": backend_name,
         "redis_url_configured": bool(
             os.getenv("REDIS_URL", "").strip()
+            or os.getenv("REDIS_CACHE_URL", "").strip()
+            or os.getenv("REDIS_CHANNELS_URL", "").strip()
             or os.getenv("CACHE_REDIS_URL", "").strip()
             or os.getenv("CHANNELS_REDIS_URL", "").strip()
             or os.getenv("CHANNEL_REDIS_URL", "").strip()

@@ -44,7 +44,15 @@ class Command(BaseCommand):
         except Exception:
             backend_name = "unknown"
 
-        self.stdout.write(f"redis_url_configured={bool(os.getenv('REDIS_URL', '').strip())}")
+        redis_url_configured = bool(
+            os.getenv("REDIS_CACHE_URL", "").strip()
+            or os.getenv("REDIS_CHANNELS_URL", "").strip()
+            or os.getenv("CACHE_REDIS_URL", "").strip()
+            or os.getenv("CHANNELS_REDIS_URL", "").strip()
+            or os.getenv("CHANNEL_REDIS_URL", "").strip()
+            or os.getenv("REDIS_URL", "").strip()
+        )
+        self.stdout.write(f"redis_url_configured={redis_url_configured}")
         self.stdout.write(f"cache_backend={backend_name}")
         self.stdout.write(f"settings.CACHES['default']={default_cfg}")
         try:
