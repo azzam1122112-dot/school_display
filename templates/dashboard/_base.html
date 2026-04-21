@@ -128,8 +128,89 @@
 
     /* ── Utility ── */
     .glass { background: rgba(255,255,255,.7); backdrop-filter: blur(12px); }
+
+    .dashboard-layout-shell {
+      min-height: 100vh;
+      padding-top: var(--header-h);
+      display: flex;
+    }
+
+    .dashboard-main {
+      overflow-x: hidden;
+    }
+
+    .dashboard-content {
+      min-width: 0;
+    }
+
+    .dashboard-table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    .dashboard-table-scroll > table {
+      width: max-content;
+      min-width: 100%;
+    }
+
+    .dashboard-topbar-actions {
+      min-width: 0;
+    }
+
+    @media (max-width: 1023px) {
+      :root {
+        --sidebar-w: min(86vw, 292px);
+      }
+
+      .dashboard-main-inner {
+        padding-inline: 0.95rem;
+      }
+    }
+
+    @media (max-width: 767px) {
+      :root {
+        --header-h: 56px;
+      }
+
+      .dashboard-topbar {
+        height: var(--header-h);
+      }
+
+      .dashboard-topbar-inner {
+        padding-inline: 0.55rem;
+      }
+
+      .dashboard-topbar-brand {
+        gap: 0.45rem;
+      }
+
+      #schoolSwitcherForm {
+        max-width: 10.5rem;
+        padding: 0.2rem 0.3rem;
+      }
+
+      #schoolSwitcherSelect {
+        width: 6.7rem !important;
+        font-size: 11px !important;
+        padding-right: 0.25rem !important;
+        padding-left: 1.55rem !important;
+      }
+
+      .dashboard-logout-btn {
+        padding: 0.42rem 0.5rem !important;
+        border-radius: 0.7rem !important;
+      }
+
+      .dashboard-main-inner {
+        padding-inline: 0.75rem;
+      }
+
+    }
   </style>
-  <link rel="stylesheet" href="{% static 'css/dashboard-luxury.css' %}?v=2026-04-17a">
+  <link rel="stylesheet" href="{% static 'css/dashboard-luxury.css' %}?v=2026-04-21a">
   {% block extra_css %}{% endblock %}
 </head>
 
@@ -143,10 +224,10 @@
 
 <!-- ═══ HEADER ═══ -->
 <header class="dashboard-topbar fixed top-0 inset-x-0 z-40 h-16 glass border-b border-slate-200/60">
-  <div class="h-full max-w-[1440px] mx-auto px-4 lg:px-6 flex items-center justify-between">
+  <div class="dashboard-topbar-inner h-full max-w-[1440px] mx-auto px-4 lg:px-6 flex items-center justify-between">
 
     <!-- Right: Logo + Brand -->
-    <div class="flex items-center gap-3">
+    <div class="dashboard-topbar-brand flex items-center gap-3">
       <button id="dashboardSidebarToggleBtn" type="button" @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
         <svg x-show="!sidebarOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         <svg x-show="sidebarOpen" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -167,7 +248,7 @@
     </div>
 
     <!-- Left: Actions -->
-    <div class="flex items-center gap-2">
+    <div class="dashboard-topbar-actions flex items-center gap-2">
       {% with sub=request.school_subscription %}
         {% if sub %}
           <div class="hidden xl:flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-2 shadow-sm">
@@ -230,8 +311,8 @@
       </div>
 
       {% if request.user.is_authenticated %}
-        <a href="{% url 'dashboard:logout' %}"
-           class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all">
+          <a href="{% url 'dashboard:logout' %}"
+            class="dashboard-logout-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span class="hidden md:inline">خروج</span>
         </a>
@@ -329,10 +410,10 @@
 <div id="dashboardMobileOverlay" class="mobile-overlay lg:hidden" :class="sidebarOpen && 'show'" @click="sidebarOpen = false"></div>
 
 <!-- ═══ LAYOUT SHELL ═══ -->
-<div class="pt-16 min-h-screen flex">
+<div class="dashboard-layout-shell min-h-screen flex">
 
   <!-- ═══ SIDEBAR ═══ -->
-  <aside id="dashboardSidebar" class="dashboard-sidebar fixed top-16 right-0 bottom-0 w-[var(--sidebar-w)] bg-white border-l border-slate-200/80 z-50 overflow-y-auto
+  <aside id="dashboardSidebar" style="top: var(--header-h);" class="dashboard-sidebar fixed right-0 bottom-0 w-[var(--sidebar-w)] bg-white border-l border-slate-200/80 z-50 overflow-y-auto
                 transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)]
                 lg:translate-x-0"
          :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'">
@@ -466,7 +547,7 @@
       </div>
 
       <!-- Content Area -->
-      <div class="animate-fade-up" style="animation-delay:.1s">
+      <div class="dashboard-content animate-fade-up" style="animation-delay:.1s">
         {% block content %}
         <p class="text-slate-600 text-center py-12">مرحبًا بك في لوحة التحكم.</p>
         {% endblock %}
@@ -526,6 +607,20 @@
 
     window.addEventListener('resize', function () {
       setSidebarOpen(false);
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.dashboard-main table').forEach(function (table) {
+      if (table.closest('.dashboard-table-scroll')) return;
+
+      const parent = table.parentElement;
+      if (!parent) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'dashboard-table-scroll';
+      parent.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
     });
   });
 

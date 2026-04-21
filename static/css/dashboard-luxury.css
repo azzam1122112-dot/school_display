@@ -1040,3 +1040,150 @@
     border-radius: 24px;
   }
 }
+
+/* ---------------------------------
+   Compact responsive layer
+   --------------------------------- */
+.dashboard-shell .dashboard-main-inner {
+  font-size: 0.93rem;
+}
+
+.dashboard-shell .dashboard-main :is(p, li, label, td, th, input, select, textarea, button, a, span) {
+  line-height: 1.42;
+}
+
+.dashboard-shell .dashboard-main .dashboard-metric-card,
+.dashboard-shell .dashboard-main .dashboard-mini-card,
+.dashboard-shell .dashboard-main .dashboard-section-card,
+.dashboard-shell .dashboard-main .dashboard-table-shell,
+.dashboard-shell .dashboard-main .dashboard-form-shell,
+.dashboard-shell .dashboard-main .dashboard-screen-card,
+.dashboard-shell .dashboard-main .dashboard-help-banner,
+.dashboard-shell .dashboard-main .dashboard-info-band,
+.dashboard-shell .dashboard-main .dashboard-guide-section,
+.dashboard-shell .dashboard-main .dashboard-onboarding-card {
+  box-shadow: 0 10px 22px rgba(23, 48, 66, 0.08) !important;
+}
+
+@media (max-width: 1023px) {
+  .dashboard-shell .dashboard-main-inner {
+    max-width: 100%;
+    font-size: 0.89rem;
+  }
+
+  .dashboard-shell .dashboard-page-intro h2 {
+    font-size: 1.06rem;
+  }
+
+  .dashboard-shell .dashboard-page-intro p {
+    font-size: 0.74rem;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-toolbar {
+    gap: 0.55rem;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-mini-card,
+  .dashboard-shell .dashboard-main .dashboard-metric-card,
+  .dashboard-shell .dashboard-main .dashboard-section-card,
+  .dashboard-shell .dashboard-main .dashboard-table-shell,
+  .dashboard-shell .dashboard-main .dashboard-form-shell,
+  .dashboard-shell .dashboard-main .dashboard-screen-card,
+  .dashboard-shell .dashboard-main .dashboard-help-banner,
+  .dashboard-shell .dashboard-main .dashboard-info-band,
+  .dashboard-shell .dashboard-main .dashboard-guide-section,
+  .dashboard-shell .dashboard-main .dashboard-onboarding-card {
+    border-radius: 16px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-shell .dashboard-main-inner {
+    font-size: 0.84rem;
+    padding-bottom: 0.95rem;
+  }
+
+  .dashboard-shell .dashboard-page-intro {
+    padding: 0.72rem 0.8rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 0.75rem;
+  }
+
+  .dashboard-shell .dashboard-page-intro h2 {
+    font-size: 0.95rem !important;
+  }
+
+  .dashboard-shell .dashboard-page-intro p {
+    font-size: 0.67rem !important;
+    margin-top: 0.2rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-toolbar {
+    gap: 0.42rem;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-toolbar a,
+  .dashboard-shell .dashboard-main .dashboard-toolbar button,
+  .dashboard-shell .dashboard-main .dashboard-toolbar .inline-flex {
+    min-height: 33px;
+    padding: 0.38rem 0.62rem !important;
+    border-radius: 0.72rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-mini-card,
+  .dashboard-shell .dashboard-main .dashboard-metric-card,
+  .dashboard-shell .dashboard-main .dashboard-section-card,
+  .dashboard-shell .dashboard-main .dashboard-table-shell,
+  .dashboard-shell .dashboard-main .dashboard-form-shell,
+  .dashboard-shell .dashboard-main .dashboard-screen-card,
+  .dashboard-shell .dashboard-main .dashboard-help-banner,
+  .dashboard-shell .dashboard-main .dashboard-info-band,
+  .dashboard-shell .dashboard-main .dashboard-guide-section,
+  .dashboard-shell .dashboard-main .dashboard-onboarding-card {
+    border-radius: 14px !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-mini-card,
+  .dashboard-shell .dashboard-main .dashboard-metric-card,
+  .dashboard-shell .dashboard-main .dashboard-section-card,
+  .dashboard-shell .dashboard-main .dashboard-help-banner,
+  .dashboard-shell .dashboard-main .dashboard-info-band,
+  .dashboard-shell .dashboard-main .dashboard-guide-section,
+  .dashboard-shell .dashboard-main .dashboard-onboarding-card,
+  .dashboard-shell .dashboard-main .dashboard-onboarding-panel,
+  .dashboard-shell .dashboard-main .dashboard-onboarding-media {
+    padding: 0.75rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-form-shell .p-8,
+  .dashboard-shell .dashboard-main .dashboard-form-shell .p-6,
+  .dashboard-shell .dashboard-main .dashboard-screen-card .p-6,
+  .dashboard-shell .dashboard-main .dashboard-screen-card .p-5 {
+    padding: 0.75rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-screen-card h3,
+  .dashboard-shell .dashboard-main .dashboard-help-banner h3,
+  .dashboard-shell .dashboard-main .dashboard-guide-section h3 {
+    font-size: 0.9rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-screen-card .w-14,
+  .dashboard-shell .dashboard-main .dashboard-screen-card .h-14 {
+    width: 2.45rem !important;
+    height: 2.45rem !important;
+    border-radius: 0.82rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-screen-card .w-7,
+  .dashboard-shell .dashboard-main .dashboard-screen-card .h-7 {
+    width: 1.08rem !important;
+    height: 1.08rem !important;
+  }
+
+  .dashboard-shell .dashboard-main .dashboard-table-scroll {
+    margin-inline: -0.12rem;
+    padding-bottom: 0.14rem;
+  }
+}
