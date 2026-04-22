@@ -7,79 +7,338 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-5">
 
-  <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm">
-    <div class="flex items-center justify-between gap-4">
-      <div class="flex items-start gap-4">
-        <div class="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-2xl">🖥️</div>
-        <div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">{{ title }}</h1>
-          <p class="text-slate-600 mt-1 text-sm md:text-base leading-relaxed">
-            التسعير التلقائي: 1=25، 2=40، 3=55 وفوق 3 +15 لكل شاشة. السنوي×10، نصف سنوي×5.
-          </p>
-        </div>
+  {# ─── Header ─── #}
+  <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm flex items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="h-11 w-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">🖥️</div>
+      <div>
+        <h1 class="text-xl font-extrabold text-slate-900 leading-tight">{{ title }}</h1>
+        <p class="text-xs text-slate-500 mt-0.5">التسعير التلقائي: 1=25، 2=40، 3=55 وفوق 3 +15 لكل شاشة. السنوي×10، نصف سنوي×5.</p>
       </div>
-
-      <a href="{% url 'dashboard:system_screen_addons_list' %}"
-         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold
-                bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
-        <span class="text-base">↩</span>
-        <span>العودة للقائمة</span>
-      </a>
     </div>
+    <a href="{% url 'dashboard:system_screen_addons_list' %}"
+       class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm shrink-0 transition">
+      <span>↩</span> العودة
+    </a>
   </div>
 
-  <div class="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-100">
-      <p class="text-sm font-extrabold text-slate-900">بيانات الزيادة</p>
-      <p class="text-xs text-slate-500 mt-1">لو اخترت (تلقائي شرائح) سيحسب النظام السعر تلقائيًا عند الحفظ.</p>
+  {# ─── Errors ─── #}
+  {% if form.non_field_errors %}
+  <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+    <p class="font-bold mb-1">تعذّر الحفظ</p>
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" novalidate id="addonForm">
+    {% csrf_token %}
+
+    {# ─── Section 1: Subscription + Screens ─── #}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4">
+      <div class="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+        <span class="text-base">🏫</span>
+        <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wide">بيانات الاشتراك</span>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {# Subscription #}
+        <div class="space-y-1">
+          <label for="{{ form.subscription.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.subscription.label }}</label>
+          {{ form.subscription }}
+          {% if form.subscription.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.subscription.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Screens added #}
+        <div class="space-y-1">
+          <label for="{{ form.screens_added.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.screens_added.label }}</label>
+          {{ form.screens_added }}
+          {% if form.screens_added.help_text %}<p class="text-[11px] text-slate-400">{{ form.screens_added.help_text }}</p>{% endif %}
+          {% if form.screens_added.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.screens_added.errors.0 }}</p>{% endif %}
+        </div>
+
+      </div>
     </div>
 
-    <form method="post" class="p-6 space-y-6" novalidate>
-      {% csrf_token %}
-
-      {% if form.non_field_errors %}
-      <div class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-        <div class="font-extrabold mb-1">تعذّر الحفظ</div>
-        {% for error in form.non_field_errors %}
-          <p class="leading-relaxed">{{ error }}</p>
-        {% endfor %}
+    {# ─── Section 2: Pricing ─── #}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4">
+      <div class="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+        <span class="text-base">💰</span>
+        <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wide">التسعير</span>
       </div>
-      {% endif %}
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">
-          {% for field in form %}
-            <div class="space-y-1.5 {% if field.name == 'notes' %}md:col-span-2{% endif %}">
-              <label class="block text-xs font-extrabold text-slate-700">{{ field.label }}</label>
-              <div>
-                {{ field }}
-              </div>
-              {% if field.help_text %}
-                <p class="text-[11px] text-slate-400">{{ field.help_text }}</p>
-              {% endif %}
-              {% if field.errors %}
-                <p class="text-xs text-rose-600">{{ field.errors.0 }}</p>
-              {% endif %}
+        {# Pricing cycle #}
+        <div class="space-y-1">
+          <label for="{{ form.pricing_cycle.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.pricing_cycle.label }}</label>
+          {{ form.pricing_cycle }}
+          {% if form.pricing_cycle.help_text %}<p class="text-[11px] text-slate-400">{{ form.pricing_cycle.help_text }}</p>{% endif %}
+          {% if form.pricing_cycle.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.pricing_cycle.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Pricing strategy #}
+        <div class="space-y-1">
+          <label for="{{ form.pricing_strategy.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.pricing_strategy.label }}</label>
+          {{ form.pricing_strategy }}
+          {% if form.pricing_strategy.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.pricing_strategy.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Bundle price — shown for manual_bundle or auto_bundle (read-only) #}
+        <div id="row_bundle_price" class="space-y-1">
+          <label for="{{ form.bundle_price.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.bundle_price.label }}</label>
+          {{ form.bundle_price }}
+          {% if form.bundle_price.help_text %}<p class="text-[11px] text-slate-400">{{ form.bundle_price.help_text }}</p>{% endif %}
+          {% if form.bundle_price.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.bundle_price.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Unit price — shown for manual_per_screen only #}
+        <div id="row_unit_price" class="space-y-1">
+          <label for="{{ form.unit_price.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.unit_price.label }}</label>
+          {{ form.unit_price }}
+          {% if form.unit_price.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.unit_price.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Auto-price preview chip #}
+        <div id="auto_price_preview" class="md:col-span-2 hidden">
+          <div class="flex items-center gap-3 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
+            <span class="text-blue-500 text-lg">🧮</span>
+            <div>
+              <p class="text-xs font-bold text-blue-700">السعر المحسوب تلقائيًا</p>
+              <p id="auto_price_value" class="text-lg font-extrabold text-blue-900 mt-0.5">—</p>
             </div>
-          {% endfor %}
+          </div>
         </div>
+
       </div>
+    </div>
 
-      <div class="pt-6 border-t border-slate-100 flex justify-end gap-3">
-        <a href="{% url 'dashboard:system_screen_addons_list' %}"
-           class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition">
-          إلغاء
-        </a>
-        <button type="submit"
-                class="px-8 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5">
-          حفظ
-        </button>
+    {# ─── Section 3: Period + Status ─── #}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4">
+      <div class="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+        <span class="text-base">📅</span>
+        <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wide">الفترة والحالة</span>
       </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
 
-    </form>
-  </div>
+        {# Validity days #}
+        <div class="space-y-1">
+          <label for="{{ form.validity_days.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.validity_days.label }}</label>
+          {{ form.validity_days }}
+          {% if form.validity_days.help_text %}<p class="text-[11px] text-slate-400">{{ form.validity_days.help_text }}</p>{% endif %}
+          {% if form.validity_days.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.validity_days.errors.0 }}</p>{% endif %}
+        </div>
 
+        {# Status #}
+        <div class="space-y-1">
+          <label for="{{ form.status.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if form.status.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.status.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Starts at #}
+        <div class="space-y-1">
+          <label for="{{ form.starts_at.id_for_label }}" class="block text-xs font-bold text-slate-600">{{ form.starts_at.label }}</label>
+          {{ form.starts_at }}
+          {% if form.starts_at.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.starts_at.errors.0 }}</p>{% endif %}
+        </div>
+
+        {# Ends at #}
+        <div class="space-y-1">
+          <label for="{{ form.ends_at.id_for_label }}" class="block text-xs font-bold text-slate-600">
+            {{ form.ends_at.label }}
+            <span id="ends_at_auto_badge" class="hidden mr-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">محسوبة</span>
+          </label>
+          {{ form.ends_at }}
+          <p id="ends_at_hint" class="text-[11px] text-slate-400">{{ form.ends_at.help_text }}</p>
+          {% if form.ends_at.errors %}<p class="text-xs text-rose-500 mt-0.5">{{ form.ends_at.errors.0 }}</p>{% endif %}
+        </div>
+
+      </div>
+    </div>
+
+    {# ─── Section 4: Notes ─── #}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-5">
+      <div class="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+        <span class="text-base">📝</span>
+        <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wide">ملاحظات</span>
+      </div>
+      <div class="p-5">
+        {{ form.notes }}
+        {% if form.notes.errors %}<p class="text-xs text-rose-500 mt-1">{{ form.notes.errors.0 }}</p>{% endif %}
+      </div>
+    </div>
+
+    {# ─── Actions ─── #}
+    <div class="flex justify-end gap-3">
+      <a href="{% url 'dashboard:system_screen_addons_list' %}"
+         class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition">
+        إلغاء
+      </a>
+      <button type="submit"
+              class="px-7 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-md shadow-blue-200 transition-all hover:-translate-y-0.5 active:translate-y-0">
+        {% if edit %}حفظ التعديلات{% else %}إضافة{% endif %}
+      </button>
+    </div>
+
+  </form>
 </div>
+
+{# ─── Field styling ─── #}
+<style>
+  #addonForm select,
+  #addonForm input[type="text"],
+  #addonForm input[type="number"],
+  #addonForm input[type="date"] {
+    width: 100%;
+    border-radius: 0.625rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background: #f8fafc;
+    color: #0f172a;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    appearance: auto;
+  }
+  #addonForm select:focus,
+  #addonForm input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    background: #fff;
+  }
+  #addonForm textarea {
+    width: 100%;
+    border-radius: 0.625rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.875rem;
+    background: #f8fafc;
+    color: #0f172a;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+  }
+  #addonForm textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    background: #fff;
+  }
+  #addonForm input[readonly] {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+  }
+</style>
+
+{# ─── Dynamic JS ─── #}
+<script>
+(function () {
+  /* ── helpers ── */
+  const $ = id => document.getElementById(id);
+  const fld = name => document.querySelector(`[name="${name}"]`);
+
+  const strategyEl  = fld('pricing_strategy');
+  const screensEl   = fld('screens_added');
+  const cycleEl     = fld('pricing_cycle');
+  const startsEl    = fld('starts_at');
+  const validEl     = fld('validity_days');
+  const endsEl      = fld('ends_at');
+  const bundleEl    = fld('bundle_price');
+  const unitEl      = fld('unit_price');
+
+  const rowBundle   = $('row_bundle_price');
+  const rowUnit     = $('row_unit_price');
+  const previewBox  = $('auto_price_preview');
+  const previewVal  = $('auto_price_value');
+  const endsBadge   = $('ends_at_auto_badge');
+
+  /* ── Tiered auto-pricing (mirrors Python model logic) ── */
+  function calcAutoBundle(screens, cycle) {
+    screens = parseInt(screens, 10);
+    if (!screens || screens <= 0) return null;
+
+    // Monthly slab prices
+    let monthlyPrice;
+    if (screens === 1)      monthlyPrice = 25;
+    else if (screens === 2) monthlyPrice = 40;
+    else if (screens === 3) monthlyPrice = 55;
+    else                    monthlyPrice = 55 + (screens - 3) * 15;
+
+    // Cycle multiplier
+    const multipliers = { inherit: 1, monthly: 1, semiannual: 5, annual: 10 };
+    const mult = multipliers[cycle] ?? 1;
+    return monthlyPrice * mult;
+  }
+
+  /* ── Show/hide price rows + preview ── */
+  function updatePricingRows() {
+    const strategy = strategyEl ? strategyEl.value : '';
+
+    const showBundle = strategy === 'manual_bundle' || strategy === 'auto_bundle';
+    const showUnit   = strategy === 'manual_per_screen';
+    const isAuto     = strategy === 'auto_bundle';
+
+    if (rowBundle) rowBundle.style.display = showBundle ? '' : 'none';
+    if (rowUnit)   rowUnit.style.display   = showUnit   ? '' : 'none';
+
+    // auto_bundle: bundle_price is read-only (server fills it on save)
+    if (bundleEl) {
+      bundleEl.readOnly = isAuto;
+      bundleEl.tabIndex = isAuto ? -1 : 0;
+    }
+
+    // live preview chip
+    if (previewBox) {
+      if (isAuto) {
+        previewBox.classList.remove('hidden');
+        updateAutoPreview();
+      } else {
+        previewBox.classList.add('hidden');
+      }
+    }
+  }
+
+  /* ── Update live price preview ── */
+  function updateAutoPreview() {
+    if (!previewVal) return;
+    const screens = screensEl ? screensEl.value : '';
+    const cycle   = cycleEl   ? cycleEl.value   : 'inherit';
+    const price   = calcAutoBundle(screens, cycle);
+    if (price === null) {
+      previewVal.textContent = '—';
+    } else {
+      previewVal.textContent = price.toLocaleString('ar-SA') + ' ر.س';
+      if (bundleEl && bundleEl.readOnly) bundleEl.value = price;
+    }
+  }
+
+  /* ── Auto-calculate ends_at from starts_at + validity_days ── */
+  function updateEndsAt() {
+    const starts = startsEl ? startsEl.value : '';
+    const days   = validEl  ? parseInt(validEl.value, 10) : NaN;
+
+    if (starts && !isNaN(days) && days > 0) {
+      const d = new Date(starts);
+      d.setDate(d.getDate() + days - 1);
+      const iso = d.toISOString().slice(0, 10);
+      if (endsEl) endsEl.value = iso;
+      if (endsBadge) endsBadge.classList.remove('hidden');
+    } else {
+      if (endsBadge) endsBadge.classList.add('hidden');
+    }
+  }
+
+  /* ── Wire events ── */
+  if (strategyEl) strategyEl.addEventListener('change', updatePricingRows);
+  if (screensEl)  screensEl.addEventListener('input',   () => { updateAutoPreview(); });
+  if (cycleEl)    cycleEl.addEventListener('change',    () => { updateAutoPreview(); });
+  if (startsEl)   startsEl.addEventListener('change',   updateEndsAt);
+  if (validEl)    validEl.addEventListener('input',     updateEndsAt);
+
+  /* ── Init on page load ── */
+  updatePricingRows();
+  updateEndsAt();
+})();
+</script>
 {% endblock %}

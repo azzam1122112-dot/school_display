@@ -308,7 +308,7 @@
       vector-effect: non-scaling-stroke;
     }
     .progress-bar { 
-      stroke: var(--accent-main, #60a5fa); 
+      stroke: var(--accent-main, #6366f1); 
       stroke-width: 6; 
       stroke-linecap: round; 
       fill: none; 
@@ -317,8 +317,7 @@
       transform-origin: 50% 50%;
       will-change: stroke-dashoffset;
       vector-effect: non-scaling-stroke;
-      /* Soft glow instead of heavy shadow */
-      filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.4));
+      filter: drop-shadow(0 0 4px var(--mesh1, rgba(99, 102, 241, 0.4)));
     }
 
     /* Animations - مُحسّن للأداء */
@@ -567,10 +566,10 @@
             filter: none;
         }
 
-        /* 🔵 Circle Progress - Solid Color */
+        /* 🔵 Circle Progress - Theme Color */
         #circleProgress {
-            stroke: #60a5fa !important; /* Blue-400 */
-            filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.4));
+            stroke: var(--accent-main, #6366f1) !important;
+            filter: drop-shadow(0 0 6px var(--mesh1, rgba(99, 102, 241, 0.5)));
             stroke-width: 6 !important;
         }
 
@@ -983,14 +982,10 @@
             opacity: 0.8 !important;
         }
 
-        /* Hero Progress Circle and SVG Gradient */
-        #circleProgress {
-            stroke: var(--accent-main) !important;
-            filter: drop-shadow(0 0 8px var(--mesh1));
-        }
-        #heroProgressGradient stop:nth-child(1) { stop-color: var(--accent-main); }
-        #heroProgressGradient stop:nth-child(2) { stop-color: var(--accent-sub); }
-        #heroProgressGradient stop:nth-child(3) { stop-color: var(--accent-main); }
+        /* SVG Gradient Stops */
+        #heroProgressGradient stop:nth-child(1) { stop-color: var(--accent-main) !important; }
+        #heroProgressGradient stop:nth-child(2) { stop-color: var(--accent-sub) !important; }
+        #heroProgressGradient stop:nth-child(3) { stop-color: var(--accent-main) !important; }
 
         /* Hero Active Dot and Label */
         main .glass-panel.rounded-3xl.flex-1 .w-2.h-2.rounded-full.bg-emerald-500 {
@@ -1246,11 +1241,6 @@
 
         #currentScheduleList {
             gap: 0.6rem !important;
-        }
-
-        #circleProgress {
-            stroke: var(--accent-main, #6366f1) !important;
-            filter: drop-shadow(0 0 8px var(--board-tint-1));
         }
 
         #progressBar {
@@ -1730,15 +1720,15 @@
         <!-- Hero Card -->
         <div class="glass-panel rounded-3xl flex-1 flex flex-col relative overflow-hidden group">
             <!-- Animated Background Mesh -->
-            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-50"></div>
+            <div class="absolute inset-0 opacity-50" style="background: linear-gradient(to bottom right, var(--mesh1), transparent, var(--mesh2));"></div>
             
             <!-- SVG Gradients Definition -->
             <svg width="0" height="0" style="position: absolute;">
                 <defs>
                     <linearGradient id="heroProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:rgb(99, 102, 241);stop-opacity:1" />
-                        <stop offset="50%" style="stop-color:rgb(139, 92, 246);stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:rgb(168, 85, 247);stop-opacity:1" />
+                        <stop offset="0%" style="stop-color: var(--accent-main, #6366f1); stop-opacity:1" />
+                        <stop offset="50%" style="stop-color: var(--accent-sub, #a5b4fc); stop-opacity:1" />
+                        <stop offset="100%" style="stop-color: var(--accent-main, #6366f1); stop-opacity:1" />
                     </linearGradient>
                 </defs>
             </svg>
@@ -1850,7 +1840,7 @@
                 <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"></div>
 
                 <div class="flex items-center gap-4 mb-4">
-                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/20">
+                    <div class="w-16 h-16 rounded-2xl p-[1px] shadow-lg" style="background: linear-gradient(135deg, var(--accent-main, #6366f1), var(--accent-sub, #a5b4fc)); box-shadow: 0 0 15px var(--mesh1, rgba(99,102,241,0.3));">
                         <div class="w-full h-full rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center text-3xl">
                             🛡️
                         </div>
