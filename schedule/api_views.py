@@ -265,6 +265,31 @@ def get_or_build_snapshot(school_id: int, rev: int, builder, *, day_key: object 
     _log_steady_get(key, hit=is_hit, school_id=school_id, rev=rev)
 
     if is_hit:
+        # Staleness check: a before_hours snapshot cached before active_start may
+        # still be in cache when the screen wakes up at active_start.  Serving it
+        # would return is_active_window=False and send the screen straight back to
+        # sleep, causing a multi-minute delay before the correct active snapshot
+        # is returned.  Force a rebuild if now >= next_wake_at.
+        try:
+            snap_check = entry.get("snap") if isinstance(entry, dict) else {}
+            if isinstance(snap_check, dict):
+                _state_check = snap_check.get("state") or {}
+                _meta_check = snap_check.get("meta") or {}
+                if str(_state_check.get("reason") or "").lower() == "before_hours":
+                    _nw = _meta_check.get("next_wake_at")
+                    if _nw:
+                        from datetime import datetime as _dt
+                        _wake_dt = _dt.fromisoformat(str(_nw))
+                        if timezone.now() >= _wake_dt:
+                            try:
+                                cache.delete(key)
+                            except Exception:
+                                pass
+                            is_hit = False
+        except Exception:
+            pass
+
+    if is_hit:
         try:
             _metrics_incr("metrics:snapshot_cache:steady_hit")
         except Exception:

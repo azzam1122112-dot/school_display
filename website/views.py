@@ -99,8 +99,13 @@ def _build_display_context(request, key: str | None) -> dict | None:
     if not screen or not settings_obj or not effective_token:
         return None
 
-    # ✅ الكاش يعتمد على token الحقيقي للشاشة دائمًا (حتى لو دخلت بـ short_code)
-    cache_key = f"display_ctx:{effective_token}"
+    try:
+        schedule_revision = int(getattr(settings_obj, "schedule_revision", 0) or 0)
+    except Exception:
+        schedule_revision = 0
+
+    # ✅ اربط الكاش بـ revision حتى ينعكس أي تحديث إعدادات فورًا.
+    cache_key = f"display_ctx:{effective_token}:rev:{schedule_revision}"
     if not bypass_cache:
         cached = cache.get(cache_key)
         if cached:
@@ -156,6 +161,7 @@ def _build_display_context(request, key: str | None) -> dict | None:
         "display_token": effective_token,
         "token": effective_token,
         "school_id": settings_obj.school_id if settings_obj.school_id else None,
+        "schedule_revision": schedule_revision,
         # مهم: هذا هو المسار الذي يستدعيه display.js
         "snapshot_url": f"/api/display/snapshot/{effective_token}/",
     }

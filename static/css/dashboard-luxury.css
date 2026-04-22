@@ -1187,3 +1187,121 @@
     padding-bottom: 0.14rem;
   }
 }
+
+/* ---------------------------------
+   Page-specific compact tuning
+   --------------------------------- */
+@media (max-width: 1023px) {
+  .dashboard-settings .settings-actions {
+    justify-content: stretch;
+    gap: 0.6rem;
+  }
+
+  .dashboard-settings #displayThemePalette {
+    gap: 0.5rem;
+  }
+
+  .dashboard-settings #displayThemePalette button {
+    border-radius: 0.9rem !important;
+  }
+
+  .dashboard-timetable-day .day-filters {
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .dashboard-timetable-day .day-filter-item {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-settings {
+    padding-bottom: 0.5rem;
+  }
+
+  .dashboard-settings .dashboard-section-card h2 {
+    font-size: 0.86rem !important;
+  }
+
+  .dashboard-settings .dashboard-section-card p,
+  .dashboard-settings .dashboard-form-shell p {
+    font-size: 0.7rem !important;
+  }
+
+  .dashboard-settings #settingsForm input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+  .dashboard-settings #settingsForm select,
+  .dashboard-settings #settingsForm textarea {
+    font-size: 0.75rem !important;
+    padding: 0.54rem 0.68rem !important;
+    min-height: 34px;
+  }
+
+  .dashboard-settings #settingsForm textarea {
+    min-height: 96px;
+  }
+
+  .dashboard-settings #settingsForm .text-sm {
+    font-size: 0.73rem !important;
+  }
+
+  .dashboard-settings #themeLabel {
+    font-size: 0.68rem !important;
+  }
+
+  .dashboard-settings #displayThemePalette button {
+    width: 2.7rem !important;
+    height: 2.7rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .dashboard-settings #displayThemePalette button > div:not(.border-selection) {
+    width: 1.55rem !important;
+    height: 1.55rem !important;
+  }
+
+  .dashboard-settings .settings-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .dashboard-timetable-day {
+    font-size: 0.79rem;
+  }
+
+  .dashboard-timetable-day .day-filters {
+    padding: 0.7rem !important;
+  }
+
+  .dashboard-timetable-day .day-filter-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .dashboard-timetable-day .day-filter-item label {
+    font-size: 0.69rem;
+    font-weight: 700;
+  }
+
+  .dashboard-timetable-day .day-filter-item select {
+    width: 100%;
+    font-size: 0.72rem !important;
+    min-height: 34px;
+  }
+
+  .dashboard-timetable-day .dashboard-table-shell {
+    border-radius: 0.85rem !important;
+  }
+
+  .dashboard-timetable-day table th,
+  .dashboard-timetable-day table td {
+    line-height: 1.32;
+  }
+
+  .dashboard-timetable-day .day-save-actions p {
+    text-align: center;
+    width: 100%;
+  }
+}

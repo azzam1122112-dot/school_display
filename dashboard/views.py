@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, date, time, timedelta
+import hashlib
 import csv
 import io
 import math
@@ -136,7 +137,7 @@ def _safe_reverse(name: str, *, kwargs: dict | None = None, fallback: str | None
         return "#"
 
 
-def _invalidate_display_cache(school):
+def _invalidate_display_cache(school, *, force_bump: bool = False):
     """
     Helper: Bump schedule revision, invalidate display cache, and broadcast
     WebSocket invalidation after any data change.
@@ -148,19 +149,54 @@ def _invalidate_display_cache(school):
             return
 
         did_bump = bump_schedule_revision_for_school_id_debounced(school_id=school_id)
+        if force_bump and not did_bump:
+            forced_rev = bump_schedule_revision_for_school_id(school_id)
+            did_bump = forced_rev is not None
+
+        new_rev = int(get_schedule_revision_for_school_id(school_id) or 0)
         invalidate_display_snapshot_cache_for_school_id(school_id)
 
-        if did_bump:
-            new_rev = get_schedule_revision_for_school_id(school_id) or 0
+        # Force active screens to fetch once on next /status poll and clear stale
+        # server-rendered display context cache keys.
+        try:
+            DisplayScreen = DisplayScreenModel()
+            screens = DisplayScreen.objects.filter(school_id=school_id, is_active=True).only("token")
+        except Exception:
+            screens = []
+
+        for screen in screens:
+            token_value = (getattr(screen, "token", "") or "").strip()
+            if not token_value:
+                continue
+
             try:
-                from schedule.signals import _broadcast_invalidate_ws
-                transaction.on_commit(
-                    lambda _sid=school_id, _rev=new_rev: _broadcast_invalidate_ws(_sid, _rev)
-                )
+                cache.delete(f"display_ctx:{token_value}")
+                cache.delete(f"display_ctx:{token_value}:rev:{new_rev}")
             except Exception:
-                logger.warning(
-                    "WS broadcast import/schedule failed for school_id=%s", school_id
-                )
+                pass
+
+            try:
+                token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
+                cache.set(f"display:force_refresh:{token_hash}", "1", timeout=120)
+            except Exception:
+                pass
+
+        try:
+            from schedule.signals import _broadcast_invalidate_ws
+            transaction.on_commit(
+                lambda _sid=school_id, _rev=new_rev: _broadcast_invalidate_ws(_sid, _rev)
+            )
+        except Exception:
+            logger.warning(
+                "WS broadcast import/schedule failed for school_id=%s", school_id
+            )
+
+        if not did_bump:
+            logger.info(
+                "schedule_revision debounce skip in dashboard invalidation school_id=%s force_bump=%s",
+                school_id,
+                bool(force_bump),
+            )
     except Exception:
         logger.exception("_invalidate_display_cache failed for school=%s", school)
 
@@ -981,7 +1017,7 @@ def school_settings(request):
             form.save()
             
             # ✅ Invalidate display cache + WS broadcast so TV updates immediately
-            _invalidate_display_cache(obj.school or school)
+            _invalidate_display_cache(obj.school or school, force_bump=True)
             
             messages.success(request, "تم حفظ إعدادات المدرسة.")
             return redirect("dashboard:settings")

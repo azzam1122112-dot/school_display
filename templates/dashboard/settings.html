@@ -6,9 +6,9 @@
 {% block page_description %}تخصيص هوية العرض، الأمان، وخيارات النظام{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto pb-12 dashboard-settings">
+<div class="max-w-5xl mx-auto pb-8 md:pb-12 dashboard-settings">
     <!-- Security Card -->
-    <div class="dashboard-section-card dashboard-spotlight bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <div class="dashboard-section-card dashboard-spotlight bg-white rounded-2xl border border-slate-200 p-4 md:p-6 mb-5 md:mb-6">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -20,7 +20,7 @@
                 </div>
             </div>
             <a href="{% url 'dashboard:change_password' %}?next={% url 'dashboard:settings' %}"
-               class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2">
+               class="w-full md:w-auto justify-center px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs md:text-sm rounded-xl transition-all flex items-center gap-2">
                 <span>تغيير كلمة المرور</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
             </a>
@@ -29,7 +29,7 @@
 
     <!-- Main Settings Form -->
     <div class="dashboard-form-shell bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3.5 md:px-6 md:py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
                 <svg class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 إعدادات العرض والنظام
@@ -37,11 +37,11 @@
             <span class="text-[10px] font-bold px-3 py-1 rounded-full bg-slate-50 text-slate-400 border border-slate-200">الإعدادات العامة</span>
         </div>
 
-        <form method="post" enctype="multipart/form-data" id="settingsForm" class="relative p-8" novalidate>
+        <form method="post" enctype="multipart/form-data" id="settingsForm" class="relative p-4 md:p-6 lg:p-8" novalidate>
             {% csrf_token %}
             
             {% if form.non_field_errors %}
-                <div class="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-4 shadow-sm animate-pulse">
+                <div class="mb-6 md:mb-8 p-3.5 md:p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3 md:gap-4 shadow-sm animate-pulse">
                     <div class="p-2 bg-rose-100 rounded-full text-rose-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     </div>
@@ -54,11 +54,11 @@
             {% endif %}
 
             <!-- Grid Layout -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-12">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 md:gap-x-10 lg:gap-x-16 gap-y-6 md:gap-y-10 lg:gap-y-12">
                 
                 <!-- Section 1: Basic Fields -->
                 <div class="col-span-1 lg:col-span-2">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
                         <div class="group relative">
                             <label class="text-sm font-bold text-slate-600 mb-2 flex items-center justify-between">
                                 <span>اسم المدرسة</span>
@@ -108,17 +108,17 @@
                 <div class="col-span-1 lg:col-span-2 border-t border-slate-100/80"></div>
 
                 <!-- Section 2: Display & Theme (Redesigned) -->
-                 <div class="col-span-1 lg:col-span-2 space-y-8">
-                    <h4 class="text-lg font-bold text-slate-800 flex items-center gap-3 mb-6">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 shadow-sm border border-purple-100">
+                 <div class="col-span-1 lg:col-span-2 space-y-6 md:space-y-8">
+                    <h4 class="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2.5 md:gap-3 mb-4 md:mb-6">
+                        <span class="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 shadow-sm border border-purple-100">
                              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
                         </span>
                         تخصيص المظهر
                     </h4>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
                         <!-- Featured Card Selector -->
-                        <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 transition-colors shadow-sm group">
+                        <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-4 md:p-6 border border-slate-200 hover:border-indigo-300 transition-colors shadow-sm group">
                             <label class="text-sm font-bold text-slate-700 mb-4 flex items-center justify-between">
                                 <span>الكرت المميز في شاشة العرض</span>
                                 <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded uppercase">Featured</span>
@@ -134,7 +134,7 @@
                         </div>
                         
                         <!-- Theme Colors Selector (Visual) -->
-                        <div class="dashboard-control-surface bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="dashboard-control-surface bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-sm relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
                             
                             <label class="block text-sm font-bold text-slate-700 mb-5 relative z-10">اختر لون الثيم المناسب</label>
@@ -144,54 +144,54 @@
                             </div>
                             
                             {% with value=form.theme.value|default:"indigo" %}
-                            <div id="displayThemePalette" class="flex flex-wrap gap-3 relative z-10">
+                                <div id="displayThemePalette" class="flex flex-wrap gap-2.5 md:gap-3 relative z-10">
                                 {% comment "Theme options definitions" %} {% endcomment %}
                                 <!-- Indigo -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="indigo" data-hex="#6366F1" style="background: #e0e7ff; color: #4338ca;" title="نيلي - Indigo">
-                                        <div class="w-8 h-8 rounded-full bg-[#6366F1] shadow-lg shadow-indigo-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#6366F1] shadow-lg shadow-indigo-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-indigo-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                                 
                                 <!-- Emerald -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="emerald" data-hex="#22C55E" style="background: #dcfce7; color: #15803d;" title="أخضر - Emerald">
-                                        <div class="w-8 h-8 rounded-full bg-[#22C55E] shadow-lg shadow-emerald-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#22C55E] shadow-lg shadow-emerald-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-emerald-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                                 
                                 <!-- Rose -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="rose" data-hex="#EC4899" style="background: #fce7f3; color: #be185d;" title="وردي - Rose">
-                                        <div class="w-8 h-8 rounded-full bg-[#EC4899] shadow-lg shadow-rose-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#EC4899] shadow-lg shadow-rose-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-rose-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                                 
                                 <!-- Cyan -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="cyan" data-hex="#06B6D4" style="background: #cffafe; color: #0e7490;" title="سماوي - Cyan">
-                                        <div class="w-8 h-8 rounded-full bg-[#06B6D4] shadow-lg shadow-cyan-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#06B6D4] shadow-lg shadow-cyan-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-cyan-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                                 
                                 <!-- Amber -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="amber" data-hex="#EAB308" style="background: #fef3c7; color: #b45309;" title="أصفر - Amber">
-                                        <div class="w-8 h-8 rounded-full bg-[#EAB308] shadow-lg shadow-amber-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#EAB308] shadow-lg shadow-amber-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-amber-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                                 
                                 <!-- Orange -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="orange" data-hex="#F97316" style="background: #ffedd5; color: #c2410c;" title="برتقالي - Orange">
-                                        <div class="w-8 h-8 rounded-full bg-[#F97316] shadow-lg shadow-orange-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#F97316] shadow-lg shadow-orange-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-orange-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
 
                                 <!-- Violet -->
-                                <button type="button" class="w-14 h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
+                                <button type="button" class="w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all duration-200 focus:outline-none ring-offset-2 hover:scale-105 flex items-center justify-center relative shadow-sm"
                                         data-theme="violet" data-hex="#A855F7" style="background: #f3e8ff; color: #7e22ce;" title="بنفسجي - Violet">
-                                        <div class="w-8 h-8 rounded-full bg-[#A855F7] shadow-lg shadow-violet-500/40"></div>
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#A855F7] shadow-lg shadow-violet-500/40"></div>
                                         <div class="absolute inset-0 rounded-2xl ring-2 ring-violet-500 opacity-0 scale-90 transition-all data-[selected=true]:opacity-100 data-[selected=true]:scale-100 pointer-events-none border-selection"></div>
                                 </button>
                             </div>
@@ -213,18 +213,18 @@
                  </div>
 
                 <!-- Section 3: Timings & Speeds -->
-                 <div class="col-span-1 lg:col-span-2 space-y-8">
-                     <h4 class="text-lg font-bold text-slate-800 flex items-center gap-3">
-                         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-sm border border-teal-100">
+                 <div class="col-span-1 lg:col-span-2 space-y-6 md:space-y-8">
+                     <h4 class="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2.5 md:gap-3">
+                         <span class="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-sm border border-teal-100">
                              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                          </span>
                         فترات التحديث والسرعة
                     </h4>
 
                     <!-- Scroll Speeds Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                         <!-- Standby Speed -->
-                        <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
+                        <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-4 md:p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
                              <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.standby_scroll_speed.label }}</label>
                              <div class="relative">
                                 {{ form.standby_scroll_speed }}
@@ -235,7 +235,7 @@
                         </div>
 
                         <!-- Periods Speed -->
-                        <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
+                                <div class="dashboard-control-surface bg-slate-50/50 rounded-2xl p-4 md:p-6 border border-slate-200 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
                              <label class="block text-sm font-bold text-slate-700 mb-3">{{ form.periods_scroll_speed.label }}</label>
                              <div class="relative">
                                 {{ form.periods_scroll_speed }}
@@ -250,9 +250,9 @@
             </div>
 
              <!-- Footer Actions -->
-            <div class="mt-10 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
-                 <a href="{% url 'dashboard:index' %}" class="px-6 py-3.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-900 transition-colors">إلغاء</a>
-                 <button type="submit" class="group relative inline-flex items-center justify-center px-8 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-emerald-500 rounded-xl hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5">
+              <div class="settings-actions mt-8 md:mt-10 pt-5 md:pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+                  <a href="{% url 'dashboard:index' %}" class="w-full sm:w-auto text-center px-6 py-3 rounded-xl text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-900 transition-colors">إلغاء</a>
+                  <button type="submit" class="group relative w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 overflow-hidden font-bold text-white transition-all duration-300 bg-emerald-500 rounded-xl hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5">
                     <span class="mr-2">حفظ التغييرات</span>
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                  </button>
@@ -263,8 +263,8 @@
 </div>
 
 <!-- Toast & Scripts -->
-<div id="toast" class="fixed bottom-6 left-6 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-center gap-4 min-w-[340px]">
+<div id="toast" class="fixed bottom-4 left-3 right-3 md:bottom-6 md:left-6 md:right-auto z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-center gap-3.5 md:gap-4 min-w-0 w-full md:min-w-[340px]">
         <div id="toastIcon" class="w-12 h-12 shrink-0 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
         </div>

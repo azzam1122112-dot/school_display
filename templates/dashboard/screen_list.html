@@ -225,12 +225,12 @@
                         </div>
                      {% endif %}
 
-                            <form method="post" action="{% url 'dashboard:screen_reload_now' screen.pk %}" class="shrink-0">
+                            <form method="post" action="{% url 'dashboard:screen_refresh_now' screen.pk %}" class="shrink-0">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                 <button type="submit"
                                           class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-3 py-2 text-[11px] sm:text-xs font-black text-slate-700 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition shadow-sm active:scale-95"
-                                          title="تحديث الشاشة (إعادة تحميل كاملة مثل F5)">
+                                          title="إرسال تحديث للبيانات (بدون إعادة تحميل الصفحة)">
                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7M19 5a9 9 0 01-14 7"/></svg>
                                       <span>تحديث الشاشة</span>
                                 </button>

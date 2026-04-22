@@ -5766,7 +5766,7 @@
   //  6. If meta validation fails, display stays active (safe default).
   // ===========================================================================
 
-  const SLEEP_CHECK_MS = 60 * 60 * 1000; // coarse local safety re-check every 60 min
+  const SLEEP_CHECK_MS = 15 * 60 * 1000; // coarse local safety re-check every 15 min
 
   function _parseIsoToMs(iso) {
     if (!iso) return null;

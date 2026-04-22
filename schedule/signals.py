@@ -1,4 +1,5 @@
 import logging
+import hashlib
 
 from django.conf import settings
 from django.core.cache import cache
@@ -16,6 +17,42 @@ from display.ws_groups import school_group_name
 from schedule.models import Break, ClassLesson, DaySchedule, Period, SchoolSettings
 
 logger = logging.getLogger(__name__)
+
+
+def _arm_force_refresh_for_school(
+    school_id: int,
+    *,
+    ttl_sec: int = 120,
+    schedule_revision: int | None = None,
+) -> None:
+    """Force active display clients to fetch one fresh snapshot.
+
+    This works even when revision bump is debounced (same revision), by using
+    token-scoped force-refresh flags consumed by /api/display/status.
+    """
+    school_id = int(school_id or 0)
+    if not school_id:
+        return
+
+    try:
+        from core.models import DisplayScreen
+
+        screens = DisplayScreen.objects.filter(school_id=school_id, is_active=True).only("token")
+    except Exception:
+        return
+
+    for screen in screens:
+        token_value = (getattr(screen, "token", "") or "").strip()
+        if not token_value:
+            continue
+        try:
+            token_hash = hashlib.sha256(token_value.encode("utf-8")).hexdigest()
+            cache.set(f"display:force_refresh:{token_hash}", "1", timeout=int(ttl_sec))
+            cache.delete(f"display_ctx:{token_value}")
+            if schedule_revision is not None:
+                cache.delete(f"display_ctx:{token_value}:rev:{int(schedule_revision)}")
+        except Exception:
+            continue
 
 
 def _broadcast_invalidate_ws(school_id: int, revision: int) -> None:
@@ -102,6 +139,13 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
     did_bump = bump_schedule_revision_for_school_id_debounced(school_id=school_id)
 
     if not did_bump:
+        # Debounce should collapse revision churn, not block immediate display updates.
+        current_rev = get_schedule_revision_for_school_id(school_id) or 0
+        invalidate_display_snapshot_cache_for_school_id(school_id)
+        _arm_force_refresh_for_school(school_id, schedule_revision=int(current_rev or 0))
+
+        transaction.on_commit(lambda: _broadcast_invalidate_ws(school_id, int(current_rev or 0)))
+
         logger.info(
             "schedule_revision debounce skip school_id=%s reason=%s model=%s",
             school_id,
@@ -112,6 +156,7 @@ def _bump_and_invalidate(*, school_id: int, reason: str, model_label: str) -> No
 
     new_rev = get_schedule_revision_for_school_id(school_id) or 0
     invalidate_display_snapshot_cache_for_school_id(school_id)
+    _arm_force_refresh_for_school(school_id, schedule_revision=int(new_rev or 0))
 
     logger.info(
         "schedule_revision bumped school_id=%s old_rev=%s new_rev=%s reason=%s model=%s",
