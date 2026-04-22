@@ -1928,6 +1928,35 @@
     </div>
   </noscript>
 
+    {# ── Compatibility guard ───────────────────────────────────────────────── #}
+    {# display.js requires async/await (Chrome 55+, Tizen 3.0+, WebOS 4+).    #}
+    {# Very old TV browsers that can't parse async function will silently skip  #}
+    {# the main script; this guard detects that and shows a legible warning.   #}
+    <script>
+    (function () {
+      try {
+        // async function is syntax in Chrome 55+. In older browsers the new
+        // Function() constructor throws SyntaxError on this string.
+        new Function("return (async function(){})()");
+      } catch (e) {
+        // Browser cannot parse async/await — show a plain-text fallback.
+        var el = document.createElement("div");
+        el.id = "old-browser-banner";
+        el.style.cssText =
+          "position:fixed;inset:0;z-index:99999;background:#0f172a;color:#f8fafc;" +
+          "display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+          "font-family:sans-serif;text-align:center;padding:2rem;direction:rtl;";
+        el.innerHTML =
+          "<p style='font-size:1.5rem;font-weight:700;margin:0 0 1rem'>المتصفح قديم جداً</p>" +
+          "<p style='font-size:1rem;opacity:.8;max-width:480px'>" +
+          "هذا الجهاز لا يدعم واجهة العرض الذكية.<br>" +
+          "يُوصى بتحديث متصفح الجهاز أو استخدام Chromium 80+ أو Chrome 80+." +
+          "</p>";
+        document.body.appendChild(el);
+      }
+    }());
+    </script>
+
     <script src="{% static 'js/display.js' %}?v=2026-04-02-layout-fix-v1"></script>
 
     <script>

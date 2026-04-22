@@ -1,6 +1,54 @@
 (function () {
   "use strict";
 
+  // ===========================================================================
+  // ===== Compatibility Polyfills (ES2017-era APIs missing on old TV browsers)
+  // ===========================================================================
+  // Samsung Smart TV Tizen 3.0 (2017) uses Chrome 56 internally.
+  // Chrome 56 is missing:
+  //   • Promise.prototype.finally  → added Chrome 63  (breaks ALL fetch calls)
+  //   • String.prototype.padStart  → added Chrome 57  (breaks accent-color theme)
+  //
+  // These polyfills must come first so every function below can rely on them.
+  // Written in ES5 syntax intentionally to survive even older engines.
+  // ===========================================================================
+
+  // Polyfill: Promise.prototype.finally
+  // Absence causes withTimeout() / safeFetchSnapshot() / safeFetchStatus() to
+  // throw "is not a function" on every fetch, making the screen stuck forever.
+  if (typeof Promise !== "undefined" && typeof Promise.prototype.finally !== "function") {
+    Promise.prototype.finally = function finallyPolyfill(onFinally) {
+      var P = this.constructor || Promise;
+      return this.then(
+        function (value) {
+          return P.resolve(typeof onFinally === "function" ? onFinally() : undefined).then(function () {
+            return value;
+          });
+        },
+        function (reason) {
+          return P.resolve(typeof onFinally === "function" ? onFinally() : undefined).then(function () {
+            throw reason;
+          });
+        }
+      );
+    };
+  }
+
+  // Polyfill: String.prototype.padStart
+  // Absence causes rgbToHex() to throw, breaking custom accent-color theming.
+  if (typeof String.prototype.padStart !== "function") {
+    String.prototype.padStart = function padStartPolyfill(targetLength, padString) {
+      var str = String(this);
+      var fill = padString === undefined || padString === null ? " " : String(padString);
+      var needed = (targetLength | 0) - str.length;
+      if (needed <= 0 || !fill) return str;
+      var result = "";
+      while (result.length < needed) result += fill;
+      return result.slice(0, needed) + str;
+    };
+  }
+
+  // ===========================================================================
   // ===== Helpers =====
   const $ = (id) => document.getElementById(id);
   const root = document.documentElement;
@@ -4937,6 +4985,19 @@
       }
     }
 
+    // Old TV browser fix (Tizen ≤3 / WebOS ≤3 / generic SmartTV / school proxies):
+    // `cache: "no-store"` and the `If-None-Match` opt-out alone do NOT defeat
+    // intermediate caches reliably. When we explicitly bypass ETag (force_refresh,
+    // WS push, transition, cold load) we MUST also vary the URL so any cached
+    // 200 response is bypassed. We use `_ts` (mirroring /status) which is bounded
+    // because it only fires on bypassEtag — not on every poll — so rate-limiting
+    // (token+device based) is unaffected.
+    if (opts.bypassEtag) {
+      try {
+        u.searchParams.set("_ts", String(Date.now()));
+      } catch (e) {}
+    }
+
     if (ctrl) {
       try {
         ctrl.abort();
@@ -4948,6 +5009,9 @@
       Accept: "application/json",
       "X-Display-Token": token || "",
       "X-Display-Device": deviceId,
+      // HTTP/1.0 caches and many TV browsers honor Pragma over Cache-Control.
+      "Pragma": "no-cache",
+      "Cache-Control": "no-cache, no-store, max-age=0",
     };
 
     if (!opts.bypassEtag) {
@@ -5164,6 +5228,9 @@
       "X-Display-Token": token || "",
       "X-Display-Device": deviceId,
       "X-Display-Fallback": rt.wsConnected ? "0" : "1",
+      // TV/proxy cache hardening (Tizen ≤3, WebOS ≤3, school proxies).
+      "Pragma": "no-cache",
+      "Cache-Control": "no-cache, no-store, max-age=0",
     };
 
     // Intentionally do NOT send If-None-Match for /status.
@@ -5512,13 +5579,19 @@
             }
 
             // Backoff on 304 to reduce polling load when nothing changes.
-            // Tuned: max 20s during active window to catch period transitions quickly.
+            // Tuned for old TV browsers without WebSocket: keep updates near-real-time
+            // during the active window so theme/standby/announcements/honor changes
+            // appear within ~15-25s instead of being capped at 60s.
             const base = Math.max(2, basePollEverySec());
             const isActiveWin = !!(lastPayloadForFiltering && lastPayloadForFiltering.meta && lastPayloadForFiltering.meta.is_active_window);
-            const minEvery = isActiveWin ? Math.max(30, base) : 60;
-            const maxEvery = isActiveWin ? 60 : 300;
+            // Lite/TV mode (Tizen/WebOS/SmartTV) gets the tightest interval since WS
+            // often fails silently behind school proxies and TV browsers ignore
+            // `cache: "no-store"`. Without this, settings changes can take >60s to land.
+            const isLite = !!(document.body && document.body.dataset && document.body.dataset.lite === "1");
+            const minEvery = isActiveWin ? (isLite ? 12 : 15) : 60;
+            const maxEvery = isActiveWin ? (isLite ? 20 : 30) : 300;
 
-            const backoffFactor = isActiveWin ? 1.7 : 2.0;
+            const backoffFactor = isActiveWin ? 1.4 : 2.0;
 
             const streak = Math.max(1, Number(rt.status304Streak) || 1);
             const pow = Math.pow(backoffFactor, Math.min(10, Math.max(0, streak - 1)));
@@ -5925,7 +5998,7 @@
       }));
       return;
     }
-    var MAX_CHUNK = 2 * 60 * 60 * 1000; // 2 hours
+    var MAX_CHUNK = 30 * 60 * 1000; // 30 minutes (reduced from 2 h for old TV browser reliability)
 
     if (delayMs <= MAX_CHUNK) {
       setNamedTimer("wake", function () {
@@ -5966,6 +6039,13 @@
       return;
     }
     if (rt.mode !== "sleeping") return;
+
+    // Old TV browsers (e.g. Samsung Tizen 3.x) can silently kill setInterval callbacks
+    // during TV standby. Restart the safety-check interval here if it was lost so the
+    // next call from visibilitychange / focus / pageshow re-establishes the heartbeat.
+    if (!_timers["safety_check"]) {
+      setNamedInterval("safety_check", sleepSafetyCheck, SLEEP_CHECK_MS, "sleep_safety");
+    }
 
     var now = nowMs();
     var wakeTarget = Number(rt.nextWakeMs) || null;
@@ -6516,6 +6596,11 @@
     "pageshow",
     () => {
       scheduleFit(0);
+      // Old TV browsers fire pageshow when the TV resumes from standby (BF-cache restore).
+      // visibilitychange may not fire on old Tizen/WebOS, so check sleep state here too.
+      if (rt.mode === "sleeping") {
+        try { sleepSafetyCheck(); } catch (e) {}
+      }
     },
     listenerOpts({ passive: true })
   );
@@ -6594,6 +6679,11 @@
     }
     detectClockDrift();
     requestReSyncIfNeeded(); // throttled request (skipped if sleeping or WS connected)
+    // Old TV browsers (Tizen/WebOS) fire focus when the TV screen comes back on, but may
+    // not fire visibilitychange. Check sleep state here so the screen wakes on TV resume.
+    if (rt.mode === "sleeping") {
+      try { sleepSafetyCheck(); } catch (e) {}
+    }
   }, listenerOpts({ passive: true }));
 
   window.addEventListener("online", function () {

@@ -1839,7 +1839,7 @@ def status(request, token: str | None = None):
                 },
                 status=403,
             )
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -1860,7 +1860,7 @@ def status(request, token: str | None = None):
                 },
                 status=403,
             )
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -1870,7 +1870,7 @@ def status(request, token: str | None = None):
         except Exception:
             logger.exception("status: device binding lookup failed token_hash=%s", token_hash[:12])
             resp = JsonResponse({"detail": "internal_error"}, status=500)
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -1976,7 +1976,7 @@ def status(request, token: str | None = None):
                 _bump_metric("rev_miss")
             _bump_metric("fetch_required")
             resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -2002,7 +2002,7 @@ def status(request, token: str | None = None):
                 {"fetch_required": True, "schedule_revision": int(current_rev or 0), "reload": True},
                 json_dumps_params={"ensure_ascii": False},
             )
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Schedule-Revision"] = str(int(current_rev or 0))
@@ -2021,7 +2021,7 @@ def status(request, token: str | None = None):
                 {"fetch_required": True, "schedule_revision": int(current_rev or 0)},
                 json_dumps_params={"ensure_ascii": False},
             )
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Schedule-Revision"] = str(int(current_rev or 0))
@@ -2037,7 +2037,7 @@ def status(request, token: str | None = None):
         if int(client_v) == int(current_rev):
             _bump_metric("rev_hit")
             resp = HttpResponseNotModified()
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             resp["X-Schedule-Revision"] = str(int(current_rev))
             try:
@@ -2064,7 +2064,7 @@ def status(request, token: str | None = None):
             {"fetch_required": True, "schedule_revision": int(current_rev)},
             json_dumps_params={"ensure_ascii": False},
         )
-        resp["Cache-Control"] = "no-store"
+        resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
         resp["Vary"] = "Accept-Encoding"
         resp["X-Schedule-Revision"] = str(int(current_rev))
         try:
@@ -2106,7 +2106,7 @@ def status(request, token: str | None = None):
             cached_rev = cached_entry.get("rev")
             if current_rev is None:
                 resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
-                resp["Cache-Control"] = "no-store"
+                resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
                 resp["Vary"] = "Accept-Encoding"
                 try:
                     resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -2118,7 +2118,7 @@ def status(request, token: str | None = None):
                     {"fetch_required": True, "schedule_revision": int(current_rev)},
                     json_dumps_params={"ensure_ascii": False},
                 )
-                resp["Cache-Control"] = "no-store"
+                resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
                 resp["Vary"] = "Accept-Encoding"
                 try:
                     resp["X-Schedule-Revision"] = str(int(current_rev))
@@ -2137,7 +2137,7 @@ def status(request, token: str | None = None):
         if inm and etag and inm == etag:
             resp = HttpResponseNotModified()
             resp["ETag"] = f"\"{etag}\""
-            resp["Cache-Control"] = "no-store"
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
             resp["Vary"] = "Accept-Encoding"
             try:
                 resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -2157,7 +2157,7 @@ def status(request, token: str | None = None):
             return resp
 
         resp = JsonResponse({"fetch_required": True, "etag": etag}, json_dumps_params={"ensure_ascii": False})
-        resp["Cache-Control"] = "no-store"
+        resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
         resp["Vary"] = "Accept-Encoding"
         try:
             if current_rev is not None:
@@ -2188,7 +2188,7 @@ def status(request, token: str | None = None):
         return resp
 
     resp = JsonResponse({"fetch_required": True}, json_dumps_params={"ensure_ascii": False})
-    resp["Cache-Control"] = "no-store"
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
     resp["Vary"] = "Accept-Encoding"
     try:
         resp["X-Server-Time-MS"] = str(int(timezone.now().timestamp() * 1000))
@@ -3182,8 +3182,17 @@ def snapshot(request, token: str | None = None):
 
     def _finalize(resp, cache_status=None, device_bound=None, school_id=None, rev=None):
         """Finalize snapshot responses with stable headers and lightweight diagnostics."""
-        if not resp.get("Cache-Control"):
-            resp["Cache-Control"] = "no-store"
+        # Hardened cache headers: old TV browsers (Tizen ≤3, WebOS ≤3) and many
+        # school/ISP proxies ignore plain `no-store`. Combine with `no-cache`,
+        # `must-revalidate`, `max-age=0`, `private` and `Pragma` so intermediate
+        # caches cannot serve stale snapshots after a settings change.
+        cur_cc = resp.get("Cache-Control") or ""
+        if "no-store" not in cur_cc:
+            resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+        elif "no-cache" not in cur_cc:
+            resp["Cache-Control"] = cur_cc + ", no-cache, must-revalidate, max-age=0, private"
+        resp["Pragma"] = "no-cache"
+        resp["Expires"] = "0"
         # Keep compression negotiation; never vary on Cookie.
         resp["Vary"] = "Accept-Encoding"
         if cache_status:
@@ -3713,7 +3722,7 @@ def snapshot(request, token: str | None = None):
                     json_dumps_params={"ensure_ascii": False},
                     status=403,
                 )
-                resp["Cache-Control"] = "no-store"
+                resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
                 return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None)
 
             # Positive cache check
@@ -3830,7 +3839,7 @@ def snapshot(request, token: str | None = None):
                         total,
                     )
                 resp = JsonResponse(_fallback_payload("إعدادات المدرسة غير مهيأة"), json_dumps_params={"ensure_ascii": False})
-                resp["Cache-Control"] = "no-store"
+                resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
                 return _finalize(resp, cache_status="ERROR", device_bound=True if is_snapshot_path else None, school_id=None, rev=None)
         
         # ✅ Cache Update: Store valid token mapping if not cached (24h)
@@ -3984,7 +3993,7 @@ def snapshot(request, token: str | None = None):
     except Exception as e:
         logger.exception("snapshot error: %s", e)
         resp = JsonResponse(_fallback_payload("حدث خطأ أثناء جلب البيانات"), json_dumps_params={"ensure_ascii": False})
-        resp["Cache-Control"] = "no-store"
+        resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"; resp["Pragma"] = "no-cache"; resp["Expires"] = "0"
         resp["Vary"] = "Accept-Encoding"
         resp["X-Snapshot-Cache"] = "ERROR"
         if app_rev:
