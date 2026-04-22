@@ -395,8 +395,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Update hidden accent color if cleared
-        if(accentInput && (!accentInput.value || accentInput.dataset.auto === '1')) {
+        // Keep the submitted display accent in lockstep with the visual palette.
+        // The field is hidden; the palette is the actual user-facing control.
+        if(accentInput) {
             accentInput.value = THEME_PRESETS[themeName] || '';
             accentInput.dataset.auto = '1';
         }
@@ -414,12 +415,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     setActiveTheme(currentTheme);
 
-    // Initial check for accent color input
-    if(accentInput && !accentInput.value) {
+    // Initial sync: prevents stale/custom hidden values (especially #000000
+    // from color inputs) from overriding the selected theme on the display.
+    if(accentInput) {
         accentInput.dataset.auto = '1';
-        accentInput.value = THEME_PRESETS[currentTheme];
-    } else if(accentInput) {
-        accentInput.dataset.auto = '0';
+        accentInput.value = THEME_PRESETS[currentTheme] || '';
     }
 
     // Theme Button Click

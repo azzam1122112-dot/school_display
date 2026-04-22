@@ -73,6 +73,18 @@ def _get_profile(user):
 
 class SchoolSettingsForm(forms.ModelForm):
     logo = forms.ImageField(label="شعار المدرسة", required=False)
+    THEME_ACCENTS = {
+        "indigo": "#6366F1",
+        "emerald": "#22C55E",
+        "rose": "#EC4899",
+        "cyan": "#06B6D4",
+        "amber": "#EAB308",
+        "orange": "#F97316",
+        "violet": "#A855F7",
+        "default": "#6366F1",
+        "boys": "#22C55E",
+        "girls": "#EC4899",
+    }
 
     class Meta:
         model = SchoolSettings
@@ -92,13 +104,11 @@ class SchoolSettingsForm(forms.ModelForm):
             "standby_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
             "periods_scroll_speed": forms.NumberInput(attrs={"min": 0.5, "max": 5.0, "step": 0.1}),
 
-            # اختيار لون HEX (يفضل عبر color picker)
-            "display_accent_color": forms.TextInput(
-                attrs={
-                    "type": "color",
-                    "title": "اختر لون شاشة العرض",
-                }
-            ),
+            # The settings screen uses the visual theme palette as the source
+            # of truth. Avoid type=color here because browsers submit #000000
+            # for empty hidden color inputs, which can override the selected
+            # theme on the display screen.
+            "display_accent_color": forms.HiddenInput(),
             
             "test_mode_weekday_override": forms.Select(),
         }
@@ -164,6 +174,15 @@ class SchoolSettingsForm(forms.ModelForm):
         if v_f < 0.5:
             raise forms.ValidationError("الحد الأدنى لسرعة تمرير جدول الحصص هو 0.5.")
         return v_f
+
+    def clean(self):
+        cleaned = super().clean()
+        theme = (cleaned.get("theme") or "indigo").strip().lower()
+        # The school dashboard exposes preset theme buttons, not a custom color
+        # picker. Keep the stored accent aligned so stale hidden values cannot
+        # override the selected theme on display.html.
+        cleaned["display_accent_color"] = self.THEME_ACCENTS.get(theme, "#6366F1")
+        return cleaned
 
     def clean_logo(self):
         file_obj = self.cleaned_data.get("logo")

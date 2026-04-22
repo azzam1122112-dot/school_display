@@ -1359,7 +1359,31 @@ def _snapshot_cache_day_key(day_key: object | None = None) -> str:
     return raw[:32]
 
 
+def _normalize_snapshot_theme_fields(snap: dict) -> bool:
+    if not isinstance(snap, dict):
+        return False
+    settings_payload = snap.get("settings")
+    if not isinstance(settings_payload, dict):
+        return False
+
+    changed = False
+    old_theme = settings_payload.get("theme")
+    theme = _normalize_theme_value(old_theme)
+    if old_theme != theme:
+        settings_payload["theme"] = theme
+        changed = True
+
+    old_accent = settings_payload.get("display_accent_color")
+    accent = _normalize_display_accent(old_accent, theme)
+    if old_accent != accent:
+        settings_payload["display_accent_color"] = accent
+        changed = True
+
+    return changed
+
+
 def _snapshot_cache_entry(payload: dict) -> dict:
+    _normalize_snapshot_theme_fields(payload)
     json_bytes = _stable_json_bytes(payload)
     return {
         "snap": payload,
@@ -1373,14 +1397,17 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
     if isinstance(cached, dict):
         snap = cached.get("snap")
         if isinstance(snap, dict):
+            normalized = _normalize_snapshot_theme_fields(snap)
             body = cached.get("body")
             if isinstance(body, str):
                 body = body.encode("utf-8")
             elif not isinstance(body, (bytes, bytearray)):
                 body = _stable_json_bytes(snap)
+            if normalized:
+                body = _stable_json_bytes(snap)
 
             etag = cached.get("etag")
-            if not isinstance(etag, str) or not etag:
+            if normalized or not isinstance(etag, str) or not etag:
                 etag = _etag_from_json_bytes(bytes(body))
 
             return {
@@ -1399,11 +1426,13 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
         except Exception:
             return None
         if isinstance(snap, dict):
+            normalized = _normalize_snapshot_theme_fields(snap)
+            body = _stable_json_bytes(snap) if normalized else bytes(cached)
             return {
                 "snap": snap,
-                "etag": _etag_from_json_bytes(bytes(cached)),
-                "body": bytes(cached),
-                "size": len(bytes(cached)),
+                "etag": _etag_from_json_bytes(body),
+                "body": body,
+                "size": len(body),
             }
         return None
 
@@ -1413,7 +1442,8 @@ def _snapshot_cache_entry_from_cached(cached: object) -> dict | None:
         except Exception:
             return None
         if isinstance(snap, dict):
-            body = cached.encode("utf-8")
+            normalized = _normalize_snapshot_theme_fields(snap)
+            body = _stable_json_bytes(snap) if normalized else cached.encode("utf-8")
             return {
                 "snap": snap,
                 "etag": _etag_from_json_bytes(body),
@@ -2506,6 +2536,30 @@ def _normalize_theme_value(raw: str | None) -> str:
     return "indigo"
 
 
+_THEME_ACCENT_PRESETS = {
+    "indigo": "#6366F1",
+    "emerald": "#22C55E",
+    "rose": "#EC4899",
+    "cyan": "#06B6D4",
+    "amber": "#EAB308",
+    "orange": "#F97316",
+    "violet": "#A855F7",
+}
+
+
+def _normalize_display_accent(raw: str | None, theme: str | None) -> str | None:
+    accent = raw.strip() if isinstance(raw, str) else ""
+    if accent and re.match(r"^#[0-9A-Fa-f]{6}$", accent):
+        # Hidden type=color fields used to submit #000000 when empty. That value
+        # is not part of the school dashboard palette, so fall back to the
+        # selected theme instead of letting black override the display.
+        if accent.upper() != "#000000":
+            return accent.upper()
+
+    normalized_theme = _normalize_theme_value(theme)
+    return _THEME_ACCENT_PRESETS.get(normalized_theme)
+
+
 def _merge_real_data_into_snapshot(request, snap: dict, settings_obj: SchoolSettings):
     """
     ✅ دمج بيانات المدرسة الحقيقية داخل snapshot:
@@ -2961,14 +3015,10 @@ def _build_final_snapshot(
     s.setdefault("display_holiday_badge", settings_obj.get_display_holiday_badge())
 
     # ✅ لون شاشة العرض (اختياري)
-    accent = getattr(settings_obj, "display_accent_color", None) or s.get("display_accent_color")
-    if isinstance(accent, str):
-        accent = accent.strip()
-    else:
-        accent = None
-    if accent and not re.match(r"^#[0-9A-Fa-f]{6}$", accent):
-        accent = None
-    s["display_accent_color"] = accent
+    s["display_accent_color"] = _normalize_display_accent(
+        getattr(settings_obj, "display_accent_color", None) or s.get("display_accent_color"),
+        s.get("theme"),
+    )
     snap["settings"] = s
 
     # ✅ ROOT FIX: merge real data
