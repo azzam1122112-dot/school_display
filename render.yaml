@@ -15,6 +15,9 @@ services:
     name: school-display
     runtime: python
     plan: starter
+    # Current runtime topology intentionally keeps a single Render web service.
+    # Snapshot materialization and wake scheduling still run as embedded child
+    # processes of this service; they are not standalone Render services yet.
 
     buildCommand: |
       pip install --upgrade pip
@@ -42,6 +45,10 @@ services:
         WORKERS=1
       fi
 
+      # Embedded runtime loops:
+      # - These are separate child processes started by the web service shell.
+      # - They are not Gunicorn workers and they are not independent services.
+      # - Disable them here only after equivalent dedicated services exist.
       SNAPSHOT_WORKER_PID=""
       if [ "${DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER:-True}" = "True" ]; then
         python manage.py display_snapshot_worker --poll-timeout=5 &
@@ -121,6 +128,8 @@ services:
         value: "True"
       - key: DISPLAY_SNAPSHOT_INLINE_FALLBACK
         value: "False"
+      # Keep these enabled while the worker/scheduler still live inside the web
+      # service. Turn them off only when equivalent dedicated services exist.
       - key: DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER
         value: "True"
       - key: DISPLAY_START_EMBEDDED_WAKE_SCHEDULER
