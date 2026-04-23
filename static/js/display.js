@@ -5917,11 +5917,27 @@
     }
   }
 
+  // Keep the WebSocket alive during sleep so the server can push `reload` /
+  // `snapshot_refresh` events to wake the screen ahead of the school day.
+  // Only the client-side keepalive ping and the in-app heartbeat watchdog are
+  // paused — the socket stays open and `onmessage` continues to fire.
   function _closeWsForSleep(reason) {
     clearNamedTimer("ws_reconnect");
     clearNamedTimer("sleep_reconnect");
     clearNamedTimer("ws_ping");
     _stopWsHeartbeat("sleep_pause");
+
+    var wsAlive = false;
+    try {
+      wsAlive = !!(rt.ws && rt.ws.readyState === WebSocket.OPEN);
+    } catch (e) {
+      wsAlive = false;
+    }
+
+    if (wsAlive) {
+      _log("ws_sleep_kept_alive", { reason: reason || "sleep_pause" });
+      return;
+    }
 
     if (rt.ws) {
       try { rt.ws.onopen = null; } catch (e) {}
@@ -5998,7 +6014,7 @@
       }));
       return;
     }
-    var MAX_CHUNK = 30 * 60 * 1000; // 30 minutes (reduced from 2 h for old TV browser reliability)
+    var MAX_CHUNK = 5 * 60 * 1000; // 5 minutes — short chunks recover fast from TV-side timer drift.
 
     if (delayMs <= MAX_CHUNK) {
       setNamedTimer("wake", function () {
@@ -6731,6 +6747,92 @@
       );
   }, listenerOpts());
 
+  // ===========================================================================
+  // ===== TV Anti-Throttle: Wake Lock + Silent Audio Loop =====================
+  // ===========================================================================
+  // Keeps the TV browser process and screen alive so the scheduled wake fires.
+  //
+  //  - Screen Wake Lock API (Chromium 84+, Tizen 6+, WebOS 6+) prevents the
+  //    panel from entering deep sleep that suspends the JS runtime.
+  //  - A muted, silent looping audio track discourages background-tab
+  //    throttling on browsers that aggressively pause inactive timers.
+  // Both features are best-effort; failures are silently ignored on TVs that
+  // do not support them, since the server-side wake broadcaster remains the
+  // primary recovery path.
+  // ===========================================================================
+
+  var _wakeLockSentinel = null;
+  var _wakeLockReacquireTimer = null;
+
+  function _requestScreenWakeLock() {
+    try {
+      if (!("wakeLock" in navigator) || !navigator.wakeLock) return;
+      if (document.visibilityState === "hidden") return;
+      navigator.wakeLock.request("screen").then(function (sentinel) {
+        _wakeLockSentinel = sentinel;
+        try {
+          sentinel.addEventListener("release", function () {
+            _wakeLockSentinel = null;
+            _log("wake_lock_released", {});
+          });
+        } catch (e) {}
+        _log("wake_lock_acquired", {});
+      }).catch(function (err) {
+        _log("wake_lock_failed", { error: String(err && err.message || err) });
+      });
+    } catch (e) {}
+  }
+
+  function _initWakeLockKeepalive() {
+    _requestScreenWakeLock();
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && !_wakeLockSentinel) {
+        _requestScreenWakeLock();
+      }
+    }, listenerOpts({ passive: true }));
+  }
+
+  var _silentAudioStarted = false;
+  function _initSilentAudioAntiThrottle() {
+    if (_silentAudioStarted) return;
+    try {
+      var AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      var unlock = function () {
+        if (_silentAudioStarted) return;
+        try {
+          var ctx = new AudioCtx();
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          gain.gain.value = 0.0001; // effectively silent
+          osc.frequency.value = 1;
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          if (ctx.resume) { try { ctx.resume(); } catch (e) {} }
+          _silentAudioStarted = true;
+          _log("silent_audio_started", {});
+        } catch (e) {
+          _log("silent_audio_failed", { error: String(e && e.message || e) });
+        }
+        try {
+          window.removeEventListener("click", unlock, true);
+          window.removeEventListener("touchstart", unlock, true);
+          window.removeEventListener("keydown", unlock, true);
+        } catch (e) {}
+      };
+
+      // Try immediately; many TV browsers do not require a user gesture for
+      // muted audio. Otherwise, attach one-shot unlockers for the first input.
+      unlock();
+      if (!_silentAudioStarted) {
+        window.addEventListener("click", unlock, true);
+        window.addEventListener("touchstart", unlock, true);
+        window.addEventListener("keydown", unlock, true);
+      }
+    } catch (e) {}
+  }
+
   // ===== Boot =====
   document.addEventListener("DOMContentLoaded", () => {
     bindDom();
@@ -6786,6 +6888,8 @@
     ensureDebugOverlay();
     tickClock();
     startTicker();
+    try { _initWakeLockKeepalive(); } catch (e) {}
+    try { _initSilentAudioAntiThrottle(); } catch (e) {}
 
     // init scrollers (مستقلين)
     // For low-end TVs: cap FPS to reduce paint cost.

@@ -49,9 +49,22 @@ services:
         echo "[INFO] started embedded snapshot worker pid=${SNAPSHOT_WORKER_PID}"
       fi
 
+      WAKE_SCHEDULER_PID=""
+      if [ "${DISPLAY_START_EMBEDDED_WAKE_SCHEDULER:-True}" = "True" ]; then
+        python manage.py display_wake_scheduler \
+          --interval="${DISPLAY_WAKE_SCAN_INTERVAL:-60}" \
+          --lead-minutes="${DISPLAY_WAKE_LEAD_MINUTES:-30}" \
+          --window-seconds="${DISPLAY_WAKE_WINDOW_SECONDS:-90}" &
+        WAKE_SCHEDULER_PID=$!
+        echo "[INFO] started embedded wake scheduler pid=${WAKE_SCHEDULER_PID}"
+      fi
+
       cleanup() {
         if [ -n "$SNAPSHOT_WORKER_PID" ]; then
           kill "$SNAPSHOT_WORKER_PID" 2>/dev/null || true
+        fi
+        if [ -n "$WAKE_SCHEDULER_PID" ]; then
+          kill "$WAKE_SCHEDULER_PID" 2>/dev/null || true
         fi
       }
       trap cleanup TERM INT EXIT
@@ -110,6 +123,14 @@ services:
         value: "False"
       - key: DISPLAY_START_EMBEDDED_SNAPSHOT_WORKER
         value: "True"
+      - key: DISPLAY_START_EMBEDDED_WAKE_SCHEDULER
+        value: "True"
+      - key: DISPLAY_WAKE_SCAN_INTERVAL
+        value: "60"
+      - key: DISPLAY_WAKE_LEAD_MINUTES
+        value: "30"
+      - key: DISPLAY_WAKE_WINDOW_SECONDS
+        value: "90"
       - key: DISPLAY_REQUIRE_REDIS_SPLIT
         value: "True"
       - key: DISPLAY_PUBLIC_BASE_URL
