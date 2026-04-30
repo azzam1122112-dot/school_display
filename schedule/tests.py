@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 from datetime import timedelta
 from types import SimpleNamespace
@@ -11,6 +12,7 @@ from django.utils import timezone
 from schedule import api_views as av
 from schedule import snapshot_materializer as sm
 from schedule import snapshot_observability as so
+from schedule.management.commands.display_snapshot_worker import Command as SnapshotWorkerCommand
 
 
 class FakeRedis:
@@ -299,3 +301,123 @@ class SnapshotObservabilityTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("snapshot_observability", data)
         self.assertIn("snapshot_cache", data["snapshot_observability"])
+
+
+class SnapshotWorkerCommandTests(SimpleTestCase):
+    def _make_command(self):
+        command = SnapshotWorkerCommand()
+        command.stdout = io.StringIO()
+        return command
+
+    def test_worker_skips_stale_job_when_newer_pending_job_exists(self):
+        job = {
+            "school_id": 7,
+            "rev": 12,
+            "day_key": "2026-04-20",
+            "job_id": "job-1",
+            "queued_at": 1.0,
+            "_dequeued_at": 2.0,
+            "_queue_wait_ms": 1000,
+        }
+        command = self._make_command()
+        with (
+            patch("schedule.management.commands.display_snapshot_worker.snapshot_queue_available", return_value=True),
+            patch("schedule.management.commands.display_snapshot_worker.touch_snapshot_worker_heartbeat"),
+            patch("schedule.management.commands.display_snapshot_worker.dequeue_snapshot_build", return_value=job),
+            patch("schedule.management.commands.display_snapshot_worker.get_latest_snapshot_revision", return_value=13),
+            patch("schedule.management.commands.display_snapshot_worker.get_pending_snapshot_job_id", return_value="job-2"),
+            patch("schedule.management.commands.display_snapshot_worker.materialize_snapshot_for_school") as materialize,
+            patch("schedule.management.commands.display_snapshot_worker.complete_snapshot_job") as complete_job,
+        ):
+            command.handle(once=True, poll_timeout=0, idle_sleep=0.5, max_idle_sleep=2.0)
+
+        materialize.assert_not_called()
+        complete_job.assert_called_once_with(job)
+        self.assertIn("event=skip_stale", command.stdout.getvalue())
+
+    def test_worker_skips_when_snapshot_is_already_cached(self):
+        job = {
+            "school_id": 7,
+            "rev": 15,
+            "day_key": "2026-04-20",
+            "job_id": "job-1",
+            "queued_at": 1.0,
+            "_dequeued_at": 2.0,
+            "_queue_wait_ms": 1000,
+        }
+        command = self._make_command()
+        with (
+            patch("schedule.management.commands.display_snapshot_worker.snapshot_queue_available", return_value=True),
+            patch("schedule.management.commands.display_snapshot_worker.touch_snapshot_worker_heartbeat"),
+            patch("schedule.management.commands.display_snapshot_worker.dequeue_snapshot_build", return_value=job),
+            patch("schedule.management.commands.display_snapshot_worker.get_latest_snapshot_revision", return_value=15),
+            patch("schedule.management.commands.display_snapshot_worker.get_pending_snapshot_job_id", return_value="job-1"),
+            patch("schedule.management.commands.display_snapshot_worker.acquire_snapshot_job_lock", return_value=(True, "lock-key", "job-1")),
+            patch("schedule.management.commands.display_snapshot_worker.get_materialized_snapshot_revision", return_value=None),
+            patch("schedule.management.commands.display_snapshot_worker.get_cached_snapshot_revision", return_value=15),
+            patch("schedule.management.commands.display_snapshot_worker.release_snapshot_job_lock") as release_lock,
+            patch("schedule.management.commands.display_snapshot_worker.materialize_snapshot_for_school") as materialize,
+            patch("schedule.management.commands.display_snapshot_worker.complete_snapshot_job") as complete_job,
+        ):
+            command.handle(once=True, poll_timeout=0, idle_sleep=0.5, max_idle_sleep=2.0)
+
+        materialize.assert_not_called()
+        release_lock.assert_called_once_with(lock_key="lock-key", token="job-1")
+        complete_job.assert_called_once_with(job)
+        self.assertIn("event=skip_cached", command.stdout.getvalue())
+
+    def test_worker_continues_and_logs_errors_for_bad_job(self):
+        job = {
+            "school_id": 7,
+            "rev": 15,
+            "day_key": "2026-04-20",
+            "job_id": "job-1",
+            "queued_at": 1.0,
+            "_dequeued_at": 2.0,
+            "_queue_wait_ms": 1000,
+        }
+        command = self._make_command()
+        with (
+            patch("schedule.management.commands.display_snapshot_worker.snapshot_queue_available", return_value=True),
+            patch("schedule.management.commands.display_snapshot_worker.touch_snapshot_worker_heartbeat"),
+            patch("schedule.management.commands.display_snapshot_worker.dequeue_snapshot_build", return_value=job),
+            patch("schedule.management.commands.display_snapshot_worker.get_latest_snapshot_revision", return_value=15),
+            patch("schedule.management.commands.display_snapshot_worker.get_pending_snapshot_job_id", return_value="job-1"),
+            patch("schedule.management.commands.display_snapshot_worker.acquire_snapshot_job_lock", return_value=(True, "lock-key", "job-1")),
+            patch("schedule.management.commands.display_snapshot_worker.get_materialized_snapshot_revision", return_value=None),
+            patch("schedule.management.commands.display_snapshot_worker.get_cached_snapshot_revision", return_value=None),
+            patch("schedule.management.commands.display_snapshot_worker.materialize_snapshot_for_school", side_effect=RuntimeError("boom")),
+            patch("schedule.management.commands.display_snapshot_worker.release_snapshot_job_lock"),
+            patch("schedule.management.commands.display_snapshot_worker.complete_snapshot_job") as complete_job,
+        ):
+            command.handle(once=True, poll_timeout=0, idle_sleep=0.5, max_idle_sleep=2.0)
+
+        complete_job.assert_called_once_with(job)
+        self.assertIn("event=errors", command.stdout.getvalue())
+
+    def test_worker_lock_prevents_duplicate_processing(self):
+        job = {
+            "school_id": 7,
+            "rev": 15,
+            "day_key": "2026-04-20",
+            "job_id": "job-1",
+            "queued_at": 1.0,
+            "_dequeued_at": 2.0,
+            "_queue_wait_ms": 1000,
+        }
+        command = self._make_command()
+        with (
+            patch("schedule.management.commands.display_snapshot_worker.snapshot_queue_available", return_value=True),
+            patch("schedule.management.commands.display_snapshot_worker.touch_snapshot_worker_heartbeat"),
+            patch("schedule.management.commands.display_snapshot_worker.dequeue_snapshot_build", return_value=job),
+            patch("schedule.management.commands.display_snapshot_worker.get_latest_snapshot_revision", return_value=15),
+            patch("schedule.management.commands.display_snapshot_worker.get_pending_snapshot_job_id", return_value="job-1"),
+            patch("schedule.management.commands.display_snapshot_worker.acquire_snapshot_job_lock", return_value=(False, "lock-key", "job-1")),
+            patch("schedule.management.commands.display_snapshot_worker.materialize_snapshot_for_school") as materialize,
+            patch("schedule.management.commands.display_snapshot_worker.complete_snapshot_job") as complete_job,
+        ):
+            command.handle(once=True, poll_timeout=0, idle_sleep=0.5, max_idle_sleep=2.0)
+
+        materialize.assert_not_called()
+        complete_job.assert_called_once_with(job)
+        self.assertIn("event=job_locked_or_skipped", command.stdout.getvalue())

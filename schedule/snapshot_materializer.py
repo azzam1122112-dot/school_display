@@ -275,6 +275,94 @@ return 0
     return False
 
 
+def _worker_job_lock_ttl_seconds() -> int:
+    return int(
+        getattr(
+            settings,
+            "DISPLAY_SNAPSHOT_WORKER_JOB_LOCK_TTL_SEC",
+            _env_int("DISPLAY_SNAPSHOT_WORKER_JOB_LOCK_TTL_SEC", 45, min_v=5, max_v=300),
+        )
+        or 45
+    )
+
+
+def snapshot_job_lock_key(*, school_id: int, day_key: str, rev: int) -> str:
+    return f"snapshot_worker_lock:{int(school_id)}:{normalize_day_key(day_key)}:{int(rev or 0)}"
+
+
+def acquire_snapshot_job_lock(*, school_id: int, day_key: str, rev: int, token: str | None = None) -> tuple[bool, str, str]:
+    lock_token = str(token or uuid.uuid4().hex)
+    lock_key = snapshot_job_lock_key(school_id=int(school_id), day_key=str(day_key), rev=int(rev or 0))
+    conn = _get_queue_redis_connection()
+    if conn is None:
+        return True, lock_key, lock_token
+    try:
+        acquired = bool(conn.set(lock_key, lock_token, nx=True, ex=_worker_job_lock_ttl_seconds()))
+    except Exception:
+        acquired = True
+    return acquired, lock_key, lock_token
+
+
+def release_snapshot_job_lock(*, lock_key: str, token: str) -> bool:
+    conn = _get_queue_redis_connection()
+    if conn is None:
+        return False
+    return _redis_delete_if_value(conn, str(lock_key), str(token))
+
+
+def get_latest_snapshot_revision(*, school_id: int, day_key: str) -> int | None:
+    conn = _get_queue_redis_connection()
+    if conn is None:
+        return None
+    return _redis_get_int(conn, _latest_rev_key(int(school_id), str(day_key)))
+
+
+def get_materialized_snapshot_revision(*, school_id: int, day_key: str) -> int | None:
+    conn = _get_queue_redis_connection()
+    if conn is None:
+        return None
+    return _redis_get_int(conn, _materialized_rev_key(int(school_id), str(day_key)))
+
+
+def get_pending_snapshot_job_id(*, school_id: int, day_key: str) -> str | None:
+    conn = _get_queue_redis_connection()
+    if conn is None:
+        return None
+    try:
+        raw = conn.get(_pending_job_key(int(school_id), str(day_key)))
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        value = str(raw or "").strip()
+        return value or None
+    except Exception:
+        return None
+
+
+def get_cached_snapshot_revision(*, school_id: int, day_key: str) -> int | None:
+    try:
+        from schedule import api_views as av
+    except Exception:
+        return None
+
+    steady_key = av._steady_cache_key_for_school_rev(int(school_id), 0, day_key=day_key)
+    try:
+        entry, _ = av._validated_snapshot_cache_entry_from_value(
+            cache.get(steady_key),
+            cache_key=steady_key,
+        )
+    except Exception:
+        return None
+    if not isinstance(entry, dict):
+        return None
+    try:
+        snap = entry.get("snap") or {}
+        meta = snap.get("meta") if isinstance(snap, dict) else {}
+        rev = int((meta or {}).get("schedule_revision") or 0)
+    except Exception:
+        rev = 0
+    return rev or None
+
+
 def _job_not_before(payload: dict[str, Any]) -> float:
     try:
         return float(payload.get("not_before") or 0.0)

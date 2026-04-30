@@ -105,9 +105,9 @@ APP_REVISION = (
 # =========================
 DISPLAY_SNAPSHOT_CACHE_TTL = env_int_clamped(
     "DISPLAY_SNAPSHOT_CACHE_TTL",
-    15,
+    900,
     5,
-    30,
+    900,
 )
 
 

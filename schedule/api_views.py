@@ -2957,10 +2957,10 @@ def _snapshot_cache_key(settings_obj: SchoolSettings) -> str:
 
 def _snapshot_cache_ttl_seconds() -> int:
     try:
-        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_CACHE_TTL", 15) or 15)
+        v = int(getattr(dj_settings, "DISPLAY_SNAPSHOT_CACHE_TTL", 900) or 900)
     except Exception:
-        v = 15
-    return max(5, min(30, v))
+        v = 900
+    return max(5, min(900, v))
 
 
 def _active_window_cache_ttl_seconds() -> int:
